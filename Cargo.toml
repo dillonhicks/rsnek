@@ -1,0 +1,11 @@
+[package]
+name = "rattlesnake"
+version = "0.1.0"
+authors = ["Dillon Hicks <dillon@blinkhealth.com>"]
+
+
+[lib]
+name = "rattlesnake"
+
+
+[dependencies]
