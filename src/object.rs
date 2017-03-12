@@ -1,11 +1,58 @@
-use result::Result;
-use snektype;
+use result::RuntimeResult;
+use builtin;
 use std;
-use std::rc::Rc;
-use snektype::BuiltinType;
+use std::rc::{Rc, Weak};
+use std::cell::RefCell;
+use builtin::Builtin;
 use std::fmt::Display;
+use std::ops::Deref;
+use runtime::Runtime;
+use std::borrow::Borrow;
+use integer::IntegerObject;
+use float::FloatObject;
 
-pub trait ObjectMethods<T: Object> {
+
+type _ObjectRef = Rc<RefCell<Builtin>>;
+pub struct ObjectRef(pub _ObjectRef);
+
+type RefCount = Weak<RefCell<Builtin>>;
+
+
+impl ObjectRef {
+    #[inline]
+    pub fn new(value: Builtin) -> ObjectRef{
+        ObjectRef(Rc::new(RefCell::new(value)))
+    }
+
+}
+
+
+impl Clone for ObjectRef {
+    fn clone(&self) -> Self {
+        ObjectRef((self.0).clone())
+    }
+
+}
+
+impl Borrow<RefCell<Builtin>> for ObjectRef {
+    fn borrow(&self) -> &RefCell<Builtin> {
+        self.0.borrow()
+    }
+}
+
+impl std::fmt::Display for ObjectRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let borrowed: &RefCell<Builtin> = (self.0.borrow());
+
+        match borrowed.borrow_mut().deref() {
+            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
+            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
+            other => write!(f, "<{:?} {:?}>", other, other as *const _)
+        }
+    }
+}
+
+pub trait ObjectMethods {
 
     //    binaryfunc nb_add;
     //    binaryfunc nb_subtract;
@@ -16,7 +63,7 @@ pub trait ObjectMethods<T: Object> {
     //    unaryfunc nb_negative;
     //    unaryfunc nb_positive;
     //    unaryfunc nb_absolute;
-    fn add(&self, Rc<T>) -> Result<Rc<BuiltinType>>;
+    fn add(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
 //    fn subtract(&self, &Object) -> Result<&Object>;
 //    fn multiply(&self, &Object) -> Result<&Object>;
 //    fn remainder(&self, &Object) -> Result<&Object>;
@@ -91,11 +138,11 @@ pub trait ObjectMethods<T: Object> {
 
 
 pub trait TypeInfo {
-    fn snek_type(&self) -> snektype::BuiltinType;
+
 }
 
 
-pub trait Object: ObjectMethods<Self> + TypeInfo + Display where Self: std::marker::Sized {
+pub trait Object: ObjectMethods + TypeInfo + Display where Self: std::marker::Sized {
 
 }
 

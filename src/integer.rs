@@ -1,47 +1,54 @@
-extern crate num;
-
-use self::num::BigInt;
-use self::num::FromPrimitive;
+use num;
+use num::FromPrimitive;
+use num::BigInt;
 
 use object;
-use snektype::{BuiltinType, SnekInteger};
-use result::Result;
+use object::ObjectRef;
+use builtin::Builtin;
+use result::RuntimeResult;
 use std::rc::{Weak,Rc};
 use runtime::Runtime;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::fmt;
+use std::ops::Deref;
+use float::FloatObject;
+use error::{Error, ErrorType};
 
-#[derive(Clone)]
+
+pub type Integer = BigInt;
+
+
+
+#[derive(Clone,Debug)]
 pub struct IntegerObject {
-    runtime: RefCell<Runtime>,
-    value: SnekInteger
+    pub value: Integer,
 }
 
 
-impl object::ObjectMethods<IntegerObject> for IntegerObject {
-    fn add(&self, rhs: Rc<IntegerObject>) -> Result<Rc<BuiltinType>> {
+impl object::ObjectMethods for IntegerObject {
+    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
 
-
-        let borrowed: &IntegerObject = rhs.borrow();
-        let new_value = &self.value + &borrowed.value;
-        let integer = BuiltinType::Integer(IntegerObject {
-            runtime: self.runtime.clone(),
-            value: new_value,
-        });
-
-
-        self.runtime.borrow_mut().reserve(Rc::new(integer))
-
+        let borrowed: &RefCell<Builtin> = rhs.0.borrow();
+        match borrowed.borrow_mut().deref() {
+            &Builtin::Integer(ref obj) => {
+                let new_number = IntegerObject::new_bigint(&self.value + &obj.value).as_builtin();
+                runtime.push_object(new_number.as_object_ref())
+            },
+            &Builtin::Float(ref obj) => {
+                let new_number = FloatObject::add_integer(obj, &self)?.as_builtin();
+                runtime.push_object(new_number.as_object_ref())
+            },
+            _ => Err(Error(ErrorType::Type, "TypeError cannot add to int"))
+        }
     }
+
 }
 
 impl object::TypeInfo for IntegerObject {
-    fn snek_type(&self) -> BuiltinType {
-        BuiltinType::Object
-    }
+
 }
 
 
@@ -52,11 +59,26 @@ impl fmt::Display for IntegerObject {
 }
 
 impl IntegerObject {
-    pub fn new(rt: RefCell<Runtime>, value: i64) -> IntegerObject {
-        return IntegerObject {
-            runtime: rt,
-            value: BigInt::from_i64(value).unwrap()
-        }
+
+
+    pub fn new_i64(value: i64) -> IntegerObject {
+        let integer = IntegerObject {
+            value: BigInt::from(value),
+        };
+
+        return integer
+    }
+
+    pub fn new_bigint(value: BigInt) -> IntegerObject {
+        let integer = IntegerObject {
+            value: BigInt::from(value),
+        };
+
+        return integer
+    }
+
+    pub fn as_builtin(self) -> Builtin {
+        return Builtin::Integer(self)
     }
 }
 

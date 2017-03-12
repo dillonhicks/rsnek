@@ -1,52 +1,115 @@
+#[macro_use]
 extern crate rattlesnake;
 
 use rattlesnake::opcode::OpCode;
 use rattlesnake::instruction::*;
 use rattlesnake::runtime::Runtime;
-use rattlesnake::snektype::{BuiltinType, SnekInteger};
+use rattlesnake::builtin::{Builtin};
 use rattlesnake::integer::IntegerObject;
+use rattlesnake::float::FloatObject;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::prelude::*;
 use std::fs::File;
 use std::borrow::Borrow;
-use rattlesnake::object::ObjectMethods;
+use rattlesnake::object::{ObjectRef,ObjectMethods};
+use std::ops::Deref;
 
 static FILEPATH: &'static str = "tests/python/e0002_add_x_plus_y.pyc";
 
 
 fn main() {
 
-    let f = File::open(FILEPATH).unwrap();
+//    let f = File::open(FILEPATH).unwrap();
+//    debug!("Potato!");
+//
+//    for byte in f.bytes() {
+//        let b = byte.unwrap();
+//        println!("{} = {:?}", b, OpCode::from(b));
+//    }
 
-    for byte in f.bytes() {
-        let b = byte.unwrap();
-        println!("{} = {:?}", b, OpCode::from(b));
+    let mut runtime = Runtime::new(None);
+
+    // int + int => int
+    let one = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+    runtime.push_object(one.clone());
+
+    for x in 1..10 {
+        println!("{}", x);
+        let integer = IntegerObject::new_i64(x).as_builtin().as_object_ref();
+        let value: ObjectRef = runtime.push_object(integer.clone()).unwrap();
+        let b: &RefCell<Builtin> = value.0.borrow();
+        let int_plus_one = b.borrow_mut().deref().add(&mut runtime, &one).unwrap();
+
+        println!("{}", integer);
+        println!("{}", int_plus_one);
+        //runtime.debug_references();
+        println!();
     }
+    //runtime.debug_references();
 
-    //println!("{:?}", PYFUNC_ADD);
+    // float + float => float
+    let fone = FloatObject::new(1.0).as_builtin().as_object_ref();
+    runtime.push_object(fone.clone());
 
-    {
-        let runtime = Runtime::new(None);
-        let mut rt = RefCell::new(runtime.clone());
+//    for x in 1..10 {
+//        println!("{}", x);
+//        let float = FloatObject::new(x as f64).as_builtin().as_object_ref();
+//        let value: ObjectRef = runtime.push_object(float.clone()).unwrap();
+//        let b: &RefCell<Builtin> = value.0.borrow();
+//        let float_plus_one = b.borrow_mut().deref().add(&mut runtime, &fone).unwrap();
+//
+//        println!("{}", float);
+//        println!("{}", float_plus_one);
+//        runtime.debug_references();
+//        println!();
+//    }
+//    runtime.debug_references();
+//
+//    // float + int => float
+//    for x in 30..40 {
+//        println!("{}", x);
+//        let float = FloatObject::new(x as f64).as_builtin().as_object_ref();
+//        let value: ObjectRef = runtime.push_object(float.clone()).unwrap();
+//        let b: &RefCell<Builtin> = value.0.borrow();
+//        let float_plus_one = b.borrow_mut().deref().add(&mut runtime, &one).unwrap();
+//
+//        println!("{}", float);
+//        println!("{}", float_plus_one);
+//        runtime.debug_references();
+//        println!();
+//
+//    }
+//
+//    // int + float => float
+//    for x in 45..103 {
+//        println!("{}", x);
+//        let float = IntegerObject::new_i64(x).as_builtin().as_object_ref();
+//        let value: ObjectRef = runtime.push_object(float.clone()).unwrap();
+//        let b: &RefCell<Builtin> = value.0.borrow();
+//        let int_plus_fone = b.borrow_mut().deref().add(&mut runtime, &fone).unwrap();
+//
+//        println!("{}", float);
+//        println!("{}", int_plus_fone);
+//        println!();
+//    }
 
+    for x in 1..1000000 {
+        let float = IntegerObject::new_i64(x).as_builtin().as_object_ref();
+        let value: ObjectRef = match runtime.push_object(float.clone()) {
+            Ok(obj) => obj,
+            Err(e) => {
+                //println!("Error happened! {:?}", e);
+                //println!("Forcing Garbage Collection...");
+                runtime.gc_object_refs();
+                continue
+            }
+        };
 
-        let zero = rt.borrow_mut().reserve(Rc::new(BuiltinType::Integer(IntegerObject::new(
-            RefCell::new(runtime), 10
-        ))));
-        let value = zero.unwrap();
-        println!("{}", value);
-        println!("{}", value.as_integer_object_ref());
-        let val2 = value.as_integer_object_ref();
-        let val4 = value.as_integer_object_ref().clone();
-        let val3 = val2.add(Rc::new(val4)).unwrap();
-
-        println!("{}", val3);
-
-        for x in 1..10 {
-            println!("{}", x);
-
-
-        }
+        let b: &RefCell<Builtin> = value.0.borrow();
+        let int_plus_fone = b.borrow_mut().deref().add(&mut runtime, &fone).unwrap();
+        //println!("{}", int_plus_fone);
     }
 }
+
+

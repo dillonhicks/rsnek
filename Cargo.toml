@@ -9,3 +9,5 @@ name = "rattlesnake"
 
 
 [dependencies]
+num = "0.1"
+
