@@ -1,7 +1,7 @@
 #[macro_use]
 use log;
 
-use arena::Heap;
+use heap::Heap;
 use object::ObjectRef;
 use result::RuntimeResult;
 use std::any::Any;

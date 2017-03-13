@@ -1,20 +1,21 @@
 // Memory and shit
+
 use result::RuntimeResult;
 use object::ObjectRef;
 use std::any::Any;
 use builtin::Builtin;
 use std::rc::Rc;
 use error::{Error, ErrorType};
-
+use arena::TypedArena;
 
 
 type Arena = Vec<ObjectRef>;
 
 
-#[derive(Clone)]
 pub struct Heap {
     max_size: usize,
-    arena : Arena
+    arena : Arena,
+    typed_arena: TypedArena<ObjectRef>
 }
 
 
@@ -24,7 +25,8 @@ impl Heap {
     pub fn new(capacity: usize) -> Heap {
         Heap {
             max_size: capacity,
-            arena: Arena::new()
+            arena: Arena::new(),
+            typed_arena: TypedArena::new(   ),
         }
     }
 
@@ -33,9 +35,12 @@ impl Heap {
             return Err(Error(ErrorType::Runtime, "Out of Heap Space!"))
         }
 
-        self.arena.push(reference.clone());
-        //debug!("Heap Size: {}", self.get_size());
+        self.typed_arena.alloc(reference.clone());
         Ok(reference)
+
+//        self.arena.push(reference.clone());
+//        //debug!("Heap Size: {}", self.get_size());
+//        Ok(reference)
     }
 
     pub fn get_size(&self) -> usize {
@@ -49,7 +54,7 @@ impl Heap {
     }
 
     pub fn gc_pass(&mut self) {
-        self.arena.retain(|ref objref| Rc::strong_count(&objref.0) > 1);
+        //self.arena.retain(|ref objref| Rc::strong_count(&objref.0) > 1);
     }
 
 }

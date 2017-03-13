@@ -7,6 +7,7 @@ use rattlesnake::runtime::Runtime;
 use rattlesnake::builtin::{Builtin};
 use rattlesnake::integer::IntegerObject;
 use rattlesnake::float::FloatObject;
+use rattlesnake::string::StringObject;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::prelude::*;
@@ -14,6 +15,7 @@ use std::fs::File;
 use std::borrow::Borrow;
 use rattlesnake::object::{ObjectRef,ObjectMethods};
 use std::ops::Deref;
+use std::string::String;
 
 static FILEPATH: &'static str = "tests/python/e0002_add_x_plus_y.pyc";
 
@@ -110,6 +112,18 @@ fn main() {
         let int_plus_fone = b.borrow_mut().deref().add(&mut runtime, &fone).unwrap();
         //println!("{}", int_plus_fone);
     }
+
+    let h = StringObject::new("Hello".to_string()).as_builtin().as_object_ref();
+    let value = runtime.push_object(h.clone()).unwrap();
+
+    let w = StringObject::new(" World".to_string()).as_builtin().as_object_ref();
+    runtime.push_object(w.clone()).unwrap();
+
+    let b: &RefCell<Builtin> = value.0.borrow();
+    let h_plus_w = b.borrow_mut().deref().add(&mut runtime, &w).unwrap();
+    println!("{}", h_plus_w);
+    println!("{} {}", h, w);
+    b.borrow_mut().deref().add(&mut runtime, &fone).unwrap();
 }
 
 

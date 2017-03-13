@@ -6,6 +6,7 @@ use object::{Object, ObjectRef};
 use result::RuntimeResult;
 use integer::IntegerObject;
 use float::FloatObject;
+use string::StringObject;
 use std::rc::Rc;
 use std::fmt;
 use error::{Error, ErrorType};
@@ -17,6 +18,7 @@ pub type CastResult<T: Object> = Result<T, Error>;
 pub enum Builtin {
     Integer(IntegerObject),
     Float(FloatObject),
+    String(StringObject),
     Object,
     Type,
     Meta,
@@ -28,6 +30,7 @@ impl object::ObjectMethods for Builtin {
         match self {
             &Builtin::Integer(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::Float(ref lhs) => lhs.add(runtime, rhs),
+            &Builtin::String(ref lhs) => lhs.add(runtime, rhs),
             ref other => Err(Error(ErrorType::Type, "Add not implemented for type"))
         }
     }
@@ -60,6 +63,8 @@ impl fmt::Display for Builtin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &Builtin::Integer(ref obj) => write!(f, "{}", obj),
+            &Builtin::Float(ref obj) => write!(f, "{}", obj),
+            &Builtin::String(ref obj) => write!(f, "{}", obj),
             _ => write!(f, "BuiltinType")
         }
     }
