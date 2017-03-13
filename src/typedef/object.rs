@@ -49,6 +49,22 @@ impl std::fmt::Display for ObjectRef {
         match borrowed.borrow_mut().deref() {
             &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
             &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
+            &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
+            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
+            other => write!(f, "<{:?} {:?}>", other, other as *const _)
+        }
+    }
+}
+
+impl std::fmt::Debug for ObjectRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let borrowed: &RefCell<Builtin> = (self.0.borrow());
+
+        match borrowed.borrow_mut().deref() {
+            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
+            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
+            &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
+            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
             other => write!(f, "<{:?} {:?}>", other, other as *const _)
         }
     }

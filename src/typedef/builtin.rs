@@ -10,6 +10,7 @@ use super::object::{Object, ObjectRef};
 use super::integer::IntegerObject;
 use super::float::FloatObject;
 use super::string::StringObject;
+use super::tuple::TupleObject;
 
 pub type CastResult<T: Object> = Result<T, Error>;
 
@@ -19,6 +20,7 @@ pub enum Builtin {
     Integer(IntegerObject),
     Float(FloatObject),
     String(StringObject),
+    Tuple(TupleObject),
     Object,
     Type,
     Meta,
@@ -31,6 +33,7 @@ impl object::ObjectMethods for Builtin {
             &Builtin::Integer(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::Float(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::String(ref lhs) => lhs.add(runtime, rhs),
+            &Builtin::Tuple(ref lhs) => lhs.add(runtime, rhs),
             ref other => Err(Error(ErrorType::Type, "Add not implemented for type"))
         }
     }
@@ -61,6 +64,7 @@ impl fmt::Display for Builtin {
             &Builtin::Integer(ref obj) => write!(f, "{}", obj),
             &Builtin::Float(ref obj) => write!(f, "{}", obj),
             &Builtin::String(ref obj) => write!(f, "{}", obj),
+            &Builtin::Tuple(ref obj) => write!(f, "{}", obj),
             _ => write!(f, "BuiltinType")
         }
     }

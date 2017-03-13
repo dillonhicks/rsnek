@@ -1,0 +1,81 @@
+use std;
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::RefCell;
+use std::ops::DerefMut;
+use std::fmt;
+use std::ops::Deref;
+use std::rc::{Weak,Rc};
+
+use num::{BigInt, FromPrimitive};
+
+use result::RuntimeResult;
+use runtime::Runtime;
+use error::{Error, ErrorType};
+
+use super::object;
+use super::object::ObjectRef;
+use super::builtin::Builtin;
+use super::float::FloatObject;
+
+
+#[derive(Clone)]
+pub struct Tuple(Box<[ObjectRef]>);
+
+
+#[derive(Clone)]
+pub struct TupleObject {
+    pub value: Tuple
+}
+
+
+impl object::ObjectMethods for TupleObject {
+    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let borrowed: &RefCell<Builtin> = rhs.0.borrow();
+        match borrowed.borrow_mut().deref() {
+            &Builtin::Tuple(ref obj) => {
+                let mut array = self.value.0.into_vec();
+                panic!("You stopped here");
+                let new_tuple = TupleObject::new(array).as_builtin();
+                runtime.push_object(new_number.as_object_ref())
+            },
+            _ => Err(Error(ErrorType::Type, "TypeError cannot add to Tuple"))
+        }
+    }
+
+}
+
+impl object::TypeInfo for TupleObject {
+
+}
+
+impl fmt::Display for Tuple {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.0.into_vec())
+    }
+}
+
+impl fmt::Display for TupleObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+impl TupleObject {
+
+
+    pub fn new(value: &[ObjectRef]) -> TupleObject {
+        let tuple = TupleObject {
+            value: Tuple(Box::new(value.clone().owned())),
+        };
+
+        return tuple
+    }
+
+    pub fn as_builtin(self) -> Builtin {
+        return Builtin::Tuple(self)
+    }
+}
+
+impl object::Object for TupleObject {
+
+}
