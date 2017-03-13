@@ -1,20 +1,20 @@
-extern crate num;
-
-use runtime::Runtime;
-use object;
-use object::{Object, ObjectRef};
-use result::RuntimeResult;
-use integer::IntegerObject;
-use float::FloatObject;
-use string::StringObject;
 use std::rc::Rc;
 use std::fmt;
+
+use runtime::Runtime;
+use result::RuntimeResult;
 use error::{Error, ErrorType};
+
+use super::object;
+use super::object::{Object, ObjectRef};
+use super::integer::IntegerObject;
+use super::float::FloatObject;
+use super::string::StringObject;
 
 pub type CastResult<T: Object> = Result<T, Error>;
 
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum Builtin {
     Integer(IntegerObject),
     Float(FloatObject),
@@ -36,13 +36,9 @@ impl object::ObjectMethods for Builtin {
     }
 }
 
-impl object::TypeInfo for Builtin {
+impl object::TypeInfo for Builtin {}
 
-}
-
-impl object::Object for Builtin {
-
-}
+impl object::Object for Builtin {}
 
 
 impl Builtin {
@@ -69,17 +65,3 @@ impl fmt::Display for Builtin {
         }
     }
 }
-
-#[derive(Debug,Clone)]
-pub enum FunctionType {
-    //    const Inquery: fn(Object) -> isize;
-    //    const Unary: fn(Object) -> Object;
-    //    const Binary: fn(Object, Object) -> Object;
-    //    const Ternary: fn(Object, Object, Object) -> Object;
-    //    Inquery(fn(Object) -> Result),
-    //    Unary(fn(Object) -> Result),
-    //    Binary(fn(Object, Object) -> Result),
-    //    Ternary(fn(Object, Object, Object) -> Result)
-}
-
-

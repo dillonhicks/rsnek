@@ -1,13 +1,13 @@
-// Memory and shit
-
-use result::RuntimeResult;
-use object::ObjectRef;
+// heap.rs - memory management for the "interpreter"
 use std::any::Any;
-use builtin::Builtin;
 use std::rc::Rc;
-use error::{Error, ErrorType};
 use arena::TypedArena;
 
+use error::{Error, ErrorType};
+use result::RuntimeResult;
+
+use typedef::object::ObjectRef;
+use typedef::builtin::Builtin;
 
 type Arena = Vec<ObjectRef>;
 

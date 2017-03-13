@@ -1,15 +1,17 @@
-use result::RuntimeResult;
-use builtin;
 use std;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
-use builtin::Builtin;
+use std::borrow::Borrow;
 use std::fmt::Display;
 use std::ops::Deref;
+
 use runtime::Runtime;
-use std::borrow::Borrow;
-use integer::IntegerObject;
-use float::FloatObject;
+use result::RuntimeResult;
+
+use super::builtin;
+use super::builtin::Builtin;
+use super::integer::IntegerObject;
+use super::float::FloatObject;
 
 
 type _ObjectRef = Rc<RefCell<Builtin>>;

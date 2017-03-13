@@ -4,16 +4,16 @@ extern crate rattlesnake;
 use rattlesnake::opcode::OpCode;
 use rattlesnake::instruction::*;
 use rattlesnake::runtime::Runtime;
-use rattlesnake::builtin::{Builtin};
-use rattlesnake::integer::IntegerObject;
-use rattlesnake::float::FloatObject;
-use rattlesnake::string::StringObject;
+use rattlesnake::typedef::builtin::{Builtin};
+use rattlesnake::typedef::integer::IntegerObject;
+use rattlesnake::typedef::float::FloatObject;
+use rattlesnake::typedef::string::StringObject;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::prelude::*;
 use std::fs::File;
 use std::borrow::Borrow;
-use rattlesnake::object::{ObjectRef,ObjectMethods};
+use rattlesnake::typedef::object::{ObjectRef,ObjectMethods};
 use std::ops::Deref;
 use std::string::String;
 
@@ -123,7 +123,7 @@ fn main() {
     let h_plus_w = b.borrow_mut().deref().add(&mut runtime, &w).unwrap();
     println!("{}", h_plus_w);
     println!("{} {}", h, w);
-    b.borrow_mut().deref().add(&mut runtime, &fone).unwrap();
+    b.borrow_mut().deref().add(&mut runtime, &fone)?
 }
 
 

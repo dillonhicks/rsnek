@@ -1,13 +1,13 @@
-#[macro_use]
-use log;
-
-use heap::Heap;
-use object::ObjectRef;
-use result::RuntimeResult;
 use std::any::Any;
-use builtin::Builtin;
 use std::rc::{Rc,Weak};
 use std::cell::RefCell;
+
+use result::RuntimeResult;
+use heap::Heap;
+
+use typedef::object::ObjectRef;
+use typedef::builtin::Builtin;
+
 
 // Patterns about References Taken from:
 //   https://ricardomartins.cc/2016/06/08/interior-mutability

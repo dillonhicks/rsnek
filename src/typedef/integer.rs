@@ -1,24 +1,23 @@
-use num;
-use num::FromPrimitive;
-use num::BigInt;
-
-use object;
-use object::ObjectRef;
-use builtin::Builtin;
-use result::RuntimeResult;
-use std::rc::{Weak,Rc};
-use runtime::Runtime;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
-use float::FloatObject;
+use std::rc::{Weak,Rc};
+
+use num::{FromPrimitive, BigInt};
+
 use error::{Error, ErrorType};
+use result::RuntimeResult;
+use runtime::Runtime;
+
+use super::object;
+use super::object::ObjectRef;
+use super::builtin::Builtin;
+use super::float::FloatObject;
 
 
 pub type Integer = BigInt;
-
 
 
 #[derive(Clone,Debug)]

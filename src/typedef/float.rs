@@ -1,23 +1,22 @@
-
-use num;
-use num::FromPrimitive;
-
-use object;
-use builtin::Builtin;
-use result::RuntimeResult;
-use std::rc::{Weak,Rc};
-use runtime::Runtime;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::fmt;
-use object::ObjectRef;
+use std::rc::{Weak, Rc};
 use std::ops::Deref;
-use num::BigInt;
-use num::ToPrimitive;
-use builtin::CastResult;
-use integer::IntegerObject;
+
+use num;
+use num::{FromPrimitive, BigInt, ToPrimitive};
+
 use error::{Error, ErrorType};
+use result::RuntimeResult;
+use runtime::Runtime;
+
+use super::object;
+use super::builtin::Builtin;
+use super::builtin::CastResult;
+use super::integer::IntegerObject;
+use super::object::ObjectRef;
 
 
 pub type Float = f64;

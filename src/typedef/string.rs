@@ -1,21 +1,21 @@
-use num;
-use num::FromPrimitive;
-use num::BigInt;
-
-use object;
-use object::ObjectRef;
-use builtin::Builtin;
-use result::RuntimeResult;
-use std::rc::{Weak,Rc};
-use runtime::Runtime;
+use std;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
-use float::FloatObject;
+use std::rc::{Weak,Rc};
+
+use num::{BigInt, FromPrimitive};
+
+use result::RuntimeResult;
+use runtime::Runtime;
 use error::{Error, ErrorType};
-use std;
+
+use super::object;
+use super::object::ObjectRef;
+use super::builtin::Builtin;
+use super::float::FloatObject;
 
 pub type String = std::string::String;
 
@@ -29,8 +29,6 @@ pub struct StringObject {
 
 impl object::ObjectMethods for StringObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
-
         let borrowed: &RefCell<Builtin> = rhs.0.borrow();
         match borrowed.borrow_mut().deref() {
             &Builtin::String(ref obj) => {
