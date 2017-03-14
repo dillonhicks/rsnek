@@ -12,8 +12,8 @@ use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
 
-use super::object;
-use super::object::ObjectRef;
+use super::objectref;
+use super::objectref::ObjectRef;
 use super::builtin::Builtin;
 use super::float::FloatObject;
 
@@ -27,7 +27,7 @@ pub struct StringObject {
 }
 
 
-impl object::ObjectMethods for StringObject {
+impl objectref::ObjectBinaryOperations for StringObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let borrowed: &RefCell<Builtin> = rhs.0.borrow();
         match borrowed.borrow_mut().deref() {
@@ -39,10 +39,12 @@ impl object::ObjectMethods for StringObject {
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to str"))
         }
     }
-
+    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
+        unimplemented!()
+    }
 }
 
-impl object::TypeInfo for StringObject {
+impl objectref::TypeInfo for StringObject {
 
 }
 
@@ -76,20 +78,20 @@ impl StringObject {
     }
 }
 
-impl object::ToType<Builtin> for StringObject {
+impl objectref::ToType<Builtin> for StringObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::String(self)
     }
 }
 
-impl object::ToType<ObjectRef> for StringObject {
+impl objectref::ToType<ObjectRef> for StringObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
     }
 }
 
-impl object::Object for StringObject {
+impl objectref::Object for StringObject {
 
 }

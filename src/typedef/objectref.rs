@@ -1,3 +1,4 @@
+/// Wrapper for the runtime housekeeping
 use std;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
@@ -14,10 +15,15 @@ use super::integer::IntegerObject;
 use super::float::FloatObject;
 use super::string::StringObject;
 use super::tuple::TupleObject;
+use super::list::ListObject;
+
 
 
 type _ObjectRef = Rc<RefCell<Builtin>>;
 pub struct ObjectRef(pub _ObjectRef);
+
+type _WeakObjectRef = Weak<RefCell<Builtin>>;
+pub struct WeakObjectRef(pub _WeakObjectRef);
 
 type RefCount = Weak<RefCell<Builtin>>;
 
@@ -28,6 +34,15 @@ impl ObjectRef {
         ObjectRef(Rc::new(RefCell::new(value)))
     }
 
+    /// Return a new clone of the ObjectRef as a downgraded WeakObjectRef
+    pub fn as_weak(&self) -> WeakObjectRef {
+        return WeakObjectRef(Rc::downgrade(&self.0.clone()))
+    }
+
+    /// Downgrade THIS ObjectRef to a WeakObjectRef
+    pub fn downgrade(self) -> WeakObjectRef {
+        WeakObjectRef(Rc::downgrade(&self.0))
+    }
 }
 
 
@@ -54,6 +69,7 @@ impl std::fmt::Display for ObjectRef {
             &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
             &Builtin::String(ref obj) => write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject),
             &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
+            &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
             other => write!(f, "<{:?} {:?}>", other, other as *const _)
         }
     }
@@ -68,6 +84,7 @@ impl std::fmt::Debug for ObjectRef {
             &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
             &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
             &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
+            &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
             other => write!(f, "<{:?} {:?}>", other, other as *const _)
         }
     }
@@ -77,7 +94,7 @@ pub trait ToType<T> {
     fn to(self) -> T;
 }
 
-pub trait ObjectMethods {
+pub trait ObjectBinaryOperations {
 
     //    binaryfunc nb_add;
     //    binaryfunc nb_subtract;
@@ -89,7 +106,9 @@ pub trait ObjectMethods {
     //    unaryfunc nb_positive;
     //    unaryfunc nb_absolute;
     fn add(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
-//    fn subtract(&self, &Object) -> Result<&Object>;
+    fn subtract(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
+
+    //    fn subtract(&self, &Object) -> Result<&Object>;
 //    fn multiply(&self, &Object) -> Result<&Object>;
 //    fn remainder(&self, &Object) -> Result<&Object>;
 //    fn divmod(&self, &Object) -> Result<&Object>;
@@ -168,7 +187,7 @@ pub trait TypeInfo {
 
 
 pub trait Object:
-        ObjectMethods +
+ObjectBinaryOperations +
         ToType<ObjectRef> +
         ToType<Builtin> +
         TypeInfo +

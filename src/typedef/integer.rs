@@ -11,8 +11,8 @@ use error::{Error, ErrorType};
 use result::RuntimeResult;
 use runtime::Runtime;
 
-use super::object;
-use super::object::ObjectRef;
+use super::objectref;
+use super::objectref::ObjectRef;
 use super::builtin::Builtin;
 use super::float::FloatObject;
 
@@ -27,7 +27,7 @@ pub struct IntegerObject {
 }
 
 
-impl object::ObjectMethods for IntegerObject {
+impl objectref::ObjectBinaryOperations for IntegerObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
 
@@ -45,9 +45,12 @@ impl object::ObjectMethods for IntegerObject {
         }
     }
 
+    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
+        unimplemented!()
+    }
 }
 
-impl object::TypeInfo for IntegerObject {
+impl objectref::TypeInfo for IntegerObject {
 
 }
 
@@ -95,20 +98,20 @@ impl IntegerObject {
     }
 }
 
-impl object::ToType<Builtin> for IntegerObject {
+impl objectref::ToType<Builtin> for IntegerObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::Integer(self)
     }
 }
 
-impl object::ToType<ObjectRef> for IntegerObject {
+impl objectref::ToType<ObjectRef> for IntegerObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
     }
 }
 
-impl object::Object for IntegerObject {
+impl objectref::Object for IntegerObject {
 }
 

@@ -7,7 +7,7 @@ use arena::TypedArena;
 use error::{Error, ErrorType};
 use result::RuntimeResult;
 
-use typedef::object::ObjectRef;
+use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
 type Arena = Vec<ObjectRef>;
@@ -19,7 +19,7 @@ type Arena = Vec<ObjectRef>;
 /// heap in order to benefit from the reference counting and garbage collection.
 ///
 pub struct Heap {
-    max_size: usize,
+    capacity: usize,
     object_count: usize,
     arena: TypedArena<ObjectRef>
 }
@@ -29,14 +29,14 @@ impl Heap {
     #[inline(always)]
     pub fn new(capacity: usize) -> Heap {
         Heap {
-            max_size: capacity,
+            capacity: capacity,
             object_count: 0,
             arena: TypedArena::new(),
         }
     }
 
     pub fn alloc_dynamic(&mut self, reference: ObjectRef) -> RuntimeResult {
-        if self.object_count == self.max_size {
+        if self.object_count == self.capacity {
             return Err(Error(ErrorType::Runtime, "Out of Heap Space!"))
         }
 
@@ -49,6 +49,10 @@ impl Heap {
         return self.object_count
     }
 
+    pub fn capacity(&self) -> usize {
+        return self.capacity
+    }
+
     #[cfg(rsnek_debug)]
     pub fn print_ref_counts(&self) {
         for objref in &self.arena {
@@ -59,6 +63,6 @@ impl Heap {
 
 impl std::fmt::Debug for Heap {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Heap(size={}, max={})", self.object_count, self.max_size)
+        write!(f, "Heap(size={}, max={})", self.object_count, self.capacity)
     }
 }

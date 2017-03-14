@@ -3,14 +3,14 @@ use runtime::Runtime;
 
 use super::objectref::{self, ObjectRef};
 
-pub type Dictionary = ();
+pub type Complex = ();
 
 #[derive(Clone,Debug)]
-pub struct DictionaryObject{
-    value: Dictionary
+pub struct ComplexObject{
+    value: Complex
 }
 
-impl objectref::ObjectBinaryOperations for DictionaryObject {
+impl objectref::ObjectBinaryOperations for ComplexObject {
     fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
         unimplemented!()
     }

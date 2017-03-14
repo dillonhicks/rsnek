@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use error::{Error};
 
-use typedef::object::ObjectRef;
+use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
 

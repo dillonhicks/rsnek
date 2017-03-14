@@ -1,16 +1,17 @@
+
 use result::RuntimeResult;
 use runtime::Runtime;
 
 use super::objectref::{self, ObjectRef};
 
-pub type Dictionary = ();
+pub type FrozenSet = ();
 
 #[derive(Clone,Debug)]
-pub struct DictionaryObject{
-    value: Dictionary
+pub struct FrozenSetObject{
+    value: FrozenSet
 }
 
-impl objectref::ObjectBinaryOperations for DictionaryObject {
+impl objectref::ObjectBinaryOperations for FrozenSetObject {
     fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
         unimplemented!()
     }

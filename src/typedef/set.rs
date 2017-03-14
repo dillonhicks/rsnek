@@ -3,14 +3,15 @@ use runtime::Runtime;
 
 use super::objectref::{self, ObjectRef};
 
-pub type Dictionary = ();
+pub type Set = ();
 
 #[derive(Clone,Debug)]
-pub struct DictionaryObject{
-    value: Dictionary
+pub struct SetObject{
+    value: Set
+
 }
 
-impl objectref::ObjectBinaryOperations for DictionaryObject {
+impl objectref::ObjectBinaryOperations for SetObject {
     fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
         unimplemented!()
     }

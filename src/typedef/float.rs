@@ -12,11 +12,11 @@ use error::{Error, ErrorType};
 use result::RuntimeResult;
 use runtime::Runtime;
 
-use super::object;
+use super::objectref;
 use super::builtin::Builtin;
 use super::builtin::CastResult;
 use super::integer::IntegerObject;
-use super::object::ObjectRef;
+use super::objectref::ObjectRef;
 
 
 pub type Float = f64;
@@ -28,7 +28,7 @@ pub struct FloatObject {
 }
 
 
-impl object::ObjectMethods for FloatObject {
+impl objectref::ObjectBinaryOperations for FloatObject {
 
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let borrowed: &RefCell<Builtin> = rhs.0.borrow();
@@ -45,6 +45,10 @@ impl object::ObjectMethods for FloatObject {
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to float"))
         }
     }
+
+    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
+        unimplemented!()
+    }
 }
 
 
@@ -55,14 +59,14 @@ impl fmt::Display for FloatObject {
 }
 
 
-impl object::ToType<Builtin> for FloatObject {
+impl objectref::ToType<Builtin> for FloatObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::Float(self)
     }
 }
 
-impl object::ToType<ObjectRef> for FloatObject {
+impl objectref::ToType<ObjectRef> for FloatObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
@@ -95,8 +99,8 @@ impl FloatObject {
 }
 
 
-impl object::TypeInfo for FloatObject {
+impl objectref::TypeInfo for FloatObject {
 }
 
-impl object::Object for FloatObject {
+impl objectref::Object for FloatObject {
 }

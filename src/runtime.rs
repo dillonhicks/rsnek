@@ -7,12 +7,12 @@ use std::cell::RefCell;
 use result::RuntimeResult;
 use heap::Heap;
 
-use typedef::object::ObjectRef;
+use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
 
 /// If not size is given, fallback to 256kb.
-pub const DEFAULT_HEAP_SIZE : usize = 256 * 1024;
+pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
 
 
 /// Holder struct around the Reference Counted RuntimeInternal that
@@ -48,7 +48,7 @@ impl Runtime {
     pub fn new(heap_size: Option<usize>) -> Runtime {
         let size = match heap_size {
             Some(i) => i,
-            None => DEFAULT_HEAP_SIZE
+            None => DEFAULT_HEAP_CAPACITY
         };
 
         let runtime = RuntimeInternal {
@@ -70,6 +70,10 @@ impl Runtime {
 
     pub fn heap_size(&self) -> usize{
         return (self.0.borrow()).heap.size()
+    }
+
+    pub fn heap_capacity(&self) -> usize{
+        return (self.0.borrow()).heap.capacity()
     }
 
     #[cfg(rsnek_debug)]

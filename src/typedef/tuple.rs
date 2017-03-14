@@ -12,8 +12,8 @@ use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
 
-use super::object;
-use super::object::ObjectRef;
+use super::objectref;
+use super::objectref::ObjectRef;
 use super::builtin::Builtin;
 use super::float::FloatObject;
 
@@ -28,7 +28,7 @@ pub struct TupleObject {
 }
 
 
-impl object::ObjectMethods for TupleObject {
+impl objectref::ObjectBinaryOperations for TupleObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let borrowed: &RefCell<Builtin> = rhs.0.borrow();
         match borrowed.borrow_mut().deref() {
@@ -42,9 +42,12 @@ impl object::ObjectMethods for TupleObject {
         }
     }
 
+    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
+        unimplemented!()
+    }
 }
 
-impl object::TypeInfo for TupleObject {
+impl objectref::TypeInfo for TupleObject {
 
 }
 
@@ -88,14 +91,14 @@ impl TupleObject {
     }
 }
 
-impl object::ToType<Builtin> for TupleObject {
+impl objectref::ToType<Builtin> for TupleObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::Tuple(self)
     }
 }
 
-impl object::ToType<ObjectRef> for TupleObject {
+impl objectref::ToType<ObjectRef> for TupleObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
@@ -103,6 +106,6 @@ impl object::ToType<ObjectRef> for TupleObject {
 }
 
 
-impl object::Object for TupleObject {
+impl objectref::Object for TupleObject {
 
 }
