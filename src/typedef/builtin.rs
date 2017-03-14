@@ -48,7 +48,14 @@ impl Builtin {
     pub fn int(&self) -> CastResult<&IntegerObject> {
         match *self {
             Builtin::Integer(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not an integer object"))
+            _ => Err(Error(ErrorType::Type, "Not an IntegerObject"))
+        }
+    }
+
+    pub fn float(&self) -> CastResult<&FloatObject> {
+        match *self {
+            Builtin::Float(ref obj) => Ok(&obj),
+            _ => Err(Error(ErrorType::Type, "Not a FloatObject"))
         }
     }
 
@@ -57,6 +64,20 @@ impl Builtin {
     }
 }
 
+
+impl object::ToType<Builtin> for Builtin {
+    #[inline]
+    fn to(self) -> Builtin {
+        self
+    }
+}
+
+impl object::ToType<ObjectRef> for Builtin {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self)
+    }
+}
 
 impl fmt::Display for Builtin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

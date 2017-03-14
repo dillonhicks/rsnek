@@ -33,10 +33,10 @@ impl object::ObjectMethods for TupleObject {
         let borrowed: &RefCell<Builtin> = rhs.0.borrow();
         match borrowed.borrow_mut().deref() {
             &Builtin::Tuple(ref obj) => {
-                let mut array = self.value.0.into_vec();
-                panic!("You stopped here");
-                let new_tuple = TupleObject::new(array).as_builtin();
-                runtime.push_object(new_number.as_object_ref())
+                let mut array = self.value.0.clone().into_vec();
+                array.extend_from_slice(obj.value.0.as_ref());
+                let new_tuple = TupleObject::new(&array).as_builtin();
+                runtime.alloc(new_tuple.as_object_ref())
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to Tuple"))
         }
@@ -50,7 +50,7 @@ impl object::TypeInfo for TupleObject {
 
 impl fmt::Display for Tuple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.0.into_vec())
+        write!(f, "{:?}", self.0.as_ref())
     }
 }
 
@@ -60,12 +60,24 @@ impl fmt::Display for TupleObject {
     }
 }
 
+impl fmt::Debug for TupleObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
+impl Tuple {
+    fn from_vec(vector: &Vec<ObjectRef>) -> Tuple {
+        Tuple(vector.clone().into_boxed_slice())
+    }
+}
+
 impl TupleObject {
 
 
-    pub fn new(value: &[ObjectRef]) -> TupleObject {
+    pub fn new(value: &Vec<ObjectRef>) -> TupleObject {
         let tuple = TupleObject {
-            value: Tuple(Box::new(value.clone().owned())),
+            value: Tuple::from_vec(&value.clone()),
         };
 
         return tuple
@@ -75,6 +87,21 @@ impl TupleObject {
         return Builtin::Tuple(self)
     }
 }
+
+impl object::ToType<Builtin> for TupleObject {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::Tuple(self)
+    }
+}
+
+impl object::ToType<ObjectRef> for TupleObject {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self.to())
+    }
+}
+
 
 impl object::Object for TupleObject {
 

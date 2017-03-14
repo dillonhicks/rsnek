@@ -34,7 +34,7 @@ impl object::ObjectMethods for StringObject {
             &Builtin::String(ref obj) => {
                 let new_string = self.value.clone() + obj.value.borrow();
                 let new_number = StringObject::new(new_string).as_builtin();
-                runtime.push_object(new_number.as_object_ref())
+                runtime.alloc(new_number.as_object_ref())
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to str"))
         }
@@ -55,6 +55,9 @@ impl fmt::Display for StringObject {
 
 impl StringObject {
 
+    pub fn from_str(value: &'static str) -> StringObject {
+        return StringObject::new(value.to_string())
+    }
 
     pub fn new(value: std::string::String) -> StringObject {
         let string = StringObject {
@@ -66,6 +69,24 @@ impl StringObject {
 
     pub fn as_builtin(self) -> Builtin {
         return Builtin::String(self)
+    }
+
+    pub fn as_objref(self) -> ObjectRef {
+        return ObjectRef::new(self.as_builtin())
+    }
+}
+
+impl object::ToType<Builtin> for StringObject {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::String(self)
+    }
+}
+
+impl object::ToType<ObjectRef> for StringObject {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self.to())
     }
 }
 

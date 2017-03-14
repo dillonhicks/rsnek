@@ -12,6 +12,8 @@ use super::builtin;
 use super::builtin::Builtin;
 use super::integer::IntegerObject;
 use super::float::FloatObject;
+use super::string::StringObject;
+use super::tuple::TupleObject;
 
 
 type _ObjectRef = Rc<RefCell<Builtin>>;
@@ -33,8 +35,8 @@ impl Clone for ObjectRef {
     fn clone(&self) -> Self {
         ObjectRef((self.0).clone())
     }
-
 }
+
 
 impl Borrow<RefCell<Builtin>> for ObjectRef {
     fn borrow(&self) -> &RefCell<Builtin> {
@@ -42,14 +44,15 @@ impl Borrow<RefCell<Builtin>> for ObjectRef {
     }
 }
 
+
 impl std::fmt::Display for ObjectRef {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let borrowed: &RefCell<Builtin> = (self.0.borrow());
+        let borrowed: &RefCell<Builtin> = self.0.borrow();
 
         match borrowed.borrow_mut().deref() {
             &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
             &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
-            &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
+            &Builtin::String(ref obj) => write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject),
             &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
             other => write!(f, "<{:?} {:?}>", other, other as *const _)
         }
@@ -58,7 +61,7 @@ impl std::fmt::Display for ObjectRef {
 
 impl std::fmt::Debug for ObjectRef {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let borrowed: &RefCell<Builtin> = (self.0.borrow());
+        let borrowed: &RefCell<Builtin> = self.0.borrow();
 
         match borrowed.borrow_mut().deref() {
             &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
@@ -68,6 +71,10 @@ impl std::fmt::Debug for ObjectRef {
             other => write!(f, "<{:?} {:?}>", other, other as *const _)
         }
     }
+}
+
+pub trait ToType<T> {
+    fn to(self) -> T;
 }
 
 pub trait ObjectMethods {
@@ -160,7 +167,12 @@ pub trait TypeInfo {
 }
 
 
-pub trait Object: ObjectMethods + TypeInfo + Display where Self: std::marker::Sized {
+pub trait Object:
+        ObjectMethods +
+        ToType<ObjectRef> +
+        ToType<Builtin> +
+        TypeInfo +
+        Display where Self: std::marker::Sized {
 
 }
 

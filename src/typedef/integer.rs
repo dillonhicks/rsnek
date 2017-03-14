@@ -20,6 +20,7 @@ use super::float::FloatObject;
 pub type Integer = BigInt;
 
 
+
 #[derive(Clone,Debug)]
 pub struct IntegerObject {
     pub value: Integer,
@@ -34,11 +35,11 @@ impl object::ObjectMethods for IntegerObject {
         match borrowed.borrow_mut().deref() {
             &Builtin::Integer(ref obj) => {
                 let new_number = IntegerObject::new_bigint(&self.value + &obj.value).as_builtin();
-                runtime.push_object(new_number.as_object_ref())
+                runtime.alloc(new_number.as_object_ref())
             },
             &Builtin::Float(ref obj) => {
                 let new_number = FloatObject::add_integer(obj, &self)?.as_builtin();
-                runtime.push_object(new_number.as_object_ref())
+                runtime.alloc(new_number.as_object_ref())
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to int"))
         }
@@ -57,9 +58,9 @@ impl fmt::Display for IntegerObject {
     }
 }
 
+
 impl IntegerObject {
-
-
+    #[inline]
     pub fn new_i64(value: i64) -> IntegerObject {
         let integer = IntegerObject {
             value: BigInt::from(value),
@@ -76,10 +77,38 @@ impl IntegerObject {
         return integer
     }
 
+    #[inline]
+    pub fn to_builtin(self) -> Builtin {
+        return Builtin::Integer(self)
+    }
+
+
+    #[inline]
     pub fn as_builtin(self) -> Builtin {
         return Builtin::Integer(self)
+    }
+
+
+    #[inline]
+    pub fn as_object_ref(self) -> ObjectRef {
+        return Builtin::Integer(self).as_object_ref()
+    }
+}
+
+impl object::ToType<Builtin> for IntegerObject {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::Integer(self)
+    }
+}
+
+impl object::ToType<ObjectRef> for IntegerObject {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self.to())
     }
 }
 
 impl object::Object for IntegerObject {
 }
+

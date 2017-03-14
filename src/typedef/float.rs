@@ -36,11 +36,11 @@ impl object::ObjectMethods for FloatObject {
         match borrowed.borrow_mut().deref() {
             &Builtin::Float(ref obj) => {
                 let new_number = FloatObject::new(self.value + obj.value).as_builtin();
-                runtime.push_object(new_number.as_object_ref())
+                runtime.alloc(new_number.as_object_ref())
             },
             &Builtin::Integer(ref obj) => {
                 let new_number = FloatObject::add_integer(&self, &obj)?.as_builtin();
-                runtime.push_object(new_number.as_object_ref())
+                runtime.alloc(new_number.as_object_ref())
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to float"))
         }
@@ -55,6 +55,20 @@ impl fmt::Display for FloatObject {
 }
 
 
+impl object::ToType<Builtin> for FloatObject {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::Float(self)
+    }
+}
+
+impl object::ToType<ObjectRef> for FloatObject {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self.to())
+    }
+}
+
 impl FloatObject {
     pub fn new(value: f64) -> FloatObject {
         return FloatObject {
@@ -62,10 +76,15 @@ impl FloatObject {
         }
     }
 
+    #[deprecated]
     pub fn as_builtin(self) -> Builtin {
         return Builtin::Float(self)
     }
 
+    #[deprecated]
+    pub fn as_object_ref(self) -> ObjectRef{
+        self.as_builtin().as_object_ref()
+    }
 
     pub fn add_integer(float: &FloatObject, integer: &IntegerObject) -> CastResult<FloatObject> {
         match integer.value.to_f64() {
@@ -74,6 +93,7 @@ impl FloatObject {
         }
     }
 }
+
 
 impl object::TypeInfo for FloatObject {
 }

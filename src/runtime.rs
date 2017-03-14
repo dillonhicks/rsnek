@@ -43,7 +43,7 @@ impl Runtime {
         Runtime(Rc::new(RefCell::new(runtime)))
     }
 
-    pub fn push_object(&mut self, reference: ObjectRef) -> RuntimeResult {
+    pub fn alloc(&mut self, reference: ObjectRef) -> RuntimeResult {
         (self.0.borrow_mut()).heap.push_object(reference)
     }
 
