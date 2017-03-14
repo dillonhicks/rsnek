@@ -1,3 +1,5 @@
+/// runtime.rs - The RSnek Runtime which will eventually be the interpreter
+use std;
 use std::any::Any;
 use std::rc::{Rc,Weak};
 use std::cell::RefCell;
@@ -9,51 +11,76 @@ use typedef::object::ObjectRef;
 use typedef::builtin::Builtin;
 
 
-// Patterns about References Taken from:
-//   https://ricardomartins.cc/2016/06/08/interior-mutability
-pub type RuntimeRef = Rc<RefCell<_Runtime>>;
+/// If not size is given, fallback to 256kb.
+pub const DEFAULT_HEAP_SIZE : usize = 256 * 1024;
 
 
-pub struct _Runtime {
+/// Holder struct around the Reference Counted RuntimeInternal that
+/// is passable and consumable in the interpreter code.
+///
+pub struct Runtime(RuntimeRef);
+
+
+/// Concrete struct that holds the current runtime state, heap, etc.
+struct RuntimeInternal {
     heap: Heap
 }
 
 
-pub struct Runtime(RuntimeRef);
+/// Type that is the Reference Counted wrapper around the actual runtime
+///
+/// Patterns about References Taken from:
+///  https://ricardomartins.cc/2016/06/08/interior-mutability
+type RuntimeRef = Rc<RefCell<RuntimeInternal>>;
 
 
+/// Cloning a runtime just increases the strong reference count and gives
+/// back another RC'd RuntimeInternal wrapper `Runtime`.
 impl Clone for Runtime {
     fn clone(&self) -> Self {
         Runtime((self.0).clone())
     }
 }
 
+
 impl Runtime {
     #[inline]
     pub fn new(heap_size: Option<usize>) -> Runtime {
         let size = match heap_size {
             Some(i) => i,
-            None => 256 * 1024
+            None => DEFAULT_HEAP_SIZE
         };
 
-        let runtime =_Runtime {
+        let runtime = RuntimeInternal {
             heap: Heap::new(size)
         };
 
         Runtime(Rc::new(RefCell::new(runtime)))
     }
 
+    /// Alloc a spot for the object ref in the `Heap` for the `Runtime` this will
+    /// mean that there will be at one single strong reference to the `ObjectRef`
+    /// for the life of the Runtime.
+    ///
+    /// This gives the `Runtime` to control when the `Drop<Object>` happens
+    /// and finally cleans up struct behind the `ObjectRef`.
     pub fn alloc(&mut self, reference: ObjectRef) -> RuntimeResult {
-        (self.0.borrow_mut()).heap.push_object(reference)
+        (self.0.borrow_mut()).heap.alloc_dynamic(reference)
     }
 
+    pub fn heap_size(&self) -> usize{
+        return (self.0.borrow()).heap.size()
+    }
+
+    #[cfg(rsnek_debug)]
     pub fn debug_references(&self) {
         (self.0.borrow_mut()).heap.print_ref_counts()
     }
 
-    pub fn gc_object_refs(&mut self) {
-        (self.0.borrow_mut()).heap.gc_pass()
+}
+
+impl std::fmt::Debug for Runtime {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Runtime(heap={:?})", (self.0.borrow()).heap)
     }
-
-
 }

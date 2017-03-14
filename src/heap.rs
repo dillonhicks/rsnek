@@ -1,4 +1,5 @@
-// heap.rs - memory management for the "interpreter"
+/// heap.rs - memory management for the "interpreter"
+use std;
 use std::any::Any;
 use std::rc::Rc;
 use arena::TypedArena;
@@ -12,49 +13,52 @@ use typedef::builtin::Builtin;
 type Arena = Vec<ObjectRef>;
 
 
+/// The dynamically growing heap space for the RSnek Runtime
+///
+/// Objects created dynamically for purposes of the interpreter should be alloc'd onto the
+/// heap in order to benefit from the reference counting and garbage collection.
+///
 pub struct Heap {
     max_size: usize,
-    arena : Arena,
-    typed_arena: TypedArena<ObjectRef>
+    object_count: usize,
+    arena: TypedArena<ObjectRef>
 }
 
 
 impl Heap {
-
-    #[inline]
+    #[inline(always)]
     pub fn new(capacity: usize) -> Heap {
         Heap {
             max_size: capacity,
-            arena: Arena::new(),
-            typed_arena: TypedArena::new(   ),
+            object_count: 0,
+            arena: TypedArena::new(),
         }
     }
 
-    pub fn push_object(&mut self, reference: ObjectRef) -> RuntimeResult {
-        if self.max_size == self.arena.len() {
+    pub fn alloc_dynamic(&mut self, reference: ObjectRef) -> RuntimeResult {
+        if self.object_count == self.max_size {
             return Err(Error(ErrorType::Runtime, "Out of Heap Space!"))
         }
 
-        self.typed_arena.alloc(reference.clone());
+        self.arena.alloc(reference.clone());
+        self.object_count += 1;
         Ok(reference)
-
-//        self.arena.push(reference.clone());
-//        //debug!("Heap Size: {}", self.get_size());
-//        Ok(reference)
     }
 
-    pub fn get_size(&self) -> usize {
-        return self.arena.len();
+    pub fn size(&self) -> usize {
+        return self.object_count
     }
 
+    #[cfg(rsnek_debug)]
     pub fn print_ref_counts(&self) {
         for objref in &self.arena {
             println!("{}: refs {}", objref, Rc::strong_count(&objref.0));
         }
     }
+}
 
-    pub fn gc_pass(&mut self) {
-        //self.arena.retain(|ref objref| Rc::strong_count(&objref.0) > 1);
+impl std::fmt::Debug for Heap {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Heap(size={}, max={})", self.object_count, self.max_size)
     }
-
 }
