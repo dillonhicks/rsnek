@@ -20,3 +20,7 @@ impl objectref::ObjectBinaryOperations for SetObject {
         unimplemented!()
     }
 }
+
+
+use object;
+impl object::api::Identity for SetObject{}

@@ -19,3 +19,6 @@ impl objectref::ObjectBinaryOperations for ComplexObject {
         unimplemented!()
     }
 }
+
+use object;
+impl object::api::Identity for ComplexObject{}

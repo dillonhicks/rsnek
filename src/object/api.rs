@@ -95,7 +95,7 @@ pub trait Sized {
 pub trait Collection: Sized + Iterable + Container {}
 
 pub trait Sequence: Reversible + Collection {
-    
+
 }
 //Sequence	Reversible, Collection	__getitem__, __len__	__contains__, __iter__, __reversed__, index, and count
 //MutableSequence	Sequence	__getitem__, __setitem__, __delitem__, __len__, insert	Inherited Sequence methods and append, reverse, extend, pop, remove, and __iadd__

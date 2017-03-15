@@ -92,6 +92,7 @@ impl objectref::ToType<ObjectRef> for StringObject {
     }
 }
 
-impl objectref::Object for StringObject {
+impl objectref::Object for StringObject {}
 
-}
+use object;
+impl object::api::Identity for StringObject{}

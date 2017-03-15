@@ -19,3 +19,6 @@ impl objectref::ObjectBinaryOperations for DictionaryObject {
         unimplemented!()
     }
 }
+
+use object;
+impl object::api::Identity for DictionaryObject{}

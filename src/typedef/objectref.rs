@@ -8,6 +8,7 @@ use std::ops::Deref;
 
 use runtime::Runtime;
 use result::RuntimeResult;
+use object;
 
 use super::builtin;
 use super::builtin::Builtin;
@@ -16,6 +17,7 @@ use super::float::FloatObject;
 use super::string::StringObject;
 use super::tuple::TupleObject;
 use super::list::ListObject;
+
 
 
 
@@ -189,6 +191,7 @@ pub trait TypeInfo {
 
 pub trait Object:
         ObjectBinaryOperations +
+        object::api::Identity +
         ToType<ObjectRef> +
         ToType<Builtin> +
         TypeInfo +

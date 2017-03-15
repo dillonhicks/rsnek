@@ -109,3 +109,7 @@ impl objectref::ToType<ObjectRef> for TupleObject {
 impl objectref::Object for TupleObject {
 
 }
+
+
+use object;
+impl object::api::Identity for TupleObject{}

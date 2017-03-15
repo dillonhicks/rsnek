@@ -117,6 +117,7 @@ impl objectref::ToType<ObjectRef> for ListObject {
 }
 
 
-impl objectref::Object for ListObject {
+impl objectref::Object for ListObject {}
 
-}
+use object;
+impl object::api::Identity for ListObject{}

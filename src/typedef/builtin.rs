@@ -58,7 +58,7 @@ impl objectref::ObjectBinaryOperations for Builtin {
             &Builtin::FrozenSet(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::Complex(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::Dictionary(ref lhs) => lhs.add(runtime, rhs),
-            ref other => Err(Error(ErrorType::Type, "Add not implemented for type"))
+            ref other => Err(Error::not_implemented())
         }
     }
 
@@ -73,7 +73,7 @@ impl objectref::ObjectBinaryOperations for Builtin {
             &Builtin::FrozenSet(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::Complex(ref lhs) => lhs.add(runtime, rhs),
             &Builtin::Dictionary(ref lhs) => lhs.add(runtime, rhs),
-            ref other => Err(Error(ErrorType::Type, "Add not implemented for type"))
+            ref other => Err(Error::not_implemented())
         }
     }
 }
@@ -148,6 +148,27 @@ impl fmt::Display for Builtin {
             &Builtin::Tuple(ref obj) => write!(f, "{}", obj),
             &Builtin::List(ref obj) => write!(f, "{}", obj),
             _ => write!(f, "BuiltinType")
+        }
+    }
+}
+
+
+use object;
+/// Builtin is an intermediate wrapper/union type and should not
+/// expose identity
+impl object::api::Identity for Builtin {
+    fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
+        match self {
+            &Builtin::Integer(ref lhs) => lhs.identity(runtime),
+            &Builtin::Float(ref lhs) => lhs.identity(runtime),
+            &Builtin::String(ref lhs) => lhs.identity(runtime),
+            &Builtin::Tuple(ref lhs) => lhs.identity(runtime),
+            &Builtin::List(ref lhs) => lhs.identity(runtime),
+            &Builtin::Set(ref lhs) => lhs.identity(runtime),
+            &Builtin::FrozenSet(ref lhs) => lhs.identity(runtime),
+            &Builtin::Complex(ref lhs) => lhs.identity(runtime),
+            &Builtin::Dictionary(ref lhs) => lhs.identity(runtime),
+            _ => Err(Error::not_implemented())
         }
     }
 }

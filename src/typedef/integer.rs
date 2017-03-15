@@ -121,6 +121,8 @@ impl objectref::ToType<ObjectRef> for IntegerObject {
     }
 }
 
-impl objectref::Object for IntegerObject {
-}
+impl objectref::Object for IntegerObject {}
 
+
+use object;
+impl object::api::Identity for IntegerObject{}

@@ -20,3 +20,6 @@ impl objectref::ObjectBinaryOperations for FrozenSetObject {
         unimplemented!()
     }
 }
+
+use object;
+impl object::api::Identity for FrozenSetObject {}

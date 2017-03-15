@@ -40,7 +40,7 @@ mod tests {
     use super::typedef::string::StringObject;
     use super::typedef::tuple::TupleObject;
     use super::typedef::list::ListObject;
-
+    use object::api::Identity;
     use std::borrow::Borrow;
 
 
@@ -170,8 +170,9 @@ mod tests {
         {
             let mut t2 = vec![
                 StringObject::from_str("Hello").as_objref(),
-                StringObject::from_str("World").as_objref()
+                StringObject::from_str("World").as_objref(),
             ];
+
             t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
 
@@ -180,7 +181,6 @@ mod tests {
 
             let x: &std::cell::RefCell<Builtin> = tuple2.0.borrow();
             tuple_3 = x.borrow().deref().add(&mut runtime, &tuple).unwrap();
-
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 3);
         }
 

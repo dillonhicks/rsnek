@@ -99,8 +99,9 @@ impl FloatObject {
 }
 
 
-impl objectref::TypeInfo for FloatObject {
-}
+impl objectref::TypeInfo for FloatObject {}
 
-impl objectref::Object for FloatObject {
-}
+impl objectref::Object for FloatObject {}
+
+use object;
+impl object::api::Identity for FloatObject{}
