@@ -5,6 +5,8 @@ use std::cell::RefCell;
 use std::borrow::Borrow;
 use std::fmt::Display;
 use std::ops::Deref;
+use std::cmp::Eq;
+use std::hash::{Hash, Hasher};
 
 use runtime::Runtime;
 use result::RuntimeResult;
@@ -17,7 +19,6 @@ use super::float::FloatObject;
 use super::string::StringObject;
 use super::tuple::TupleObject;
 use super::list::ListObject;
-
 
 
 
@@ -54,6 +55,11 @@ impl Clone for ObjectRef {
     }
 }
 
+impl Hash for ObjectRef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        unimplemented!()
+    }
+}
 
 impl Borrow<RefCell<Builtin>> for ObjectRef {
     fn borrow(&self) -> &RefCell<Builtin> {
@@ -192,6 +198,7 @@ pub trait TypeInfo {
 pub trait Object:
         ObjectBinaryOperations +
         object::api::Identity +
+        object::api::Hashable +
         ToType<ObjectRef> +
         ToType<Builtin> +
         TypeInfo +

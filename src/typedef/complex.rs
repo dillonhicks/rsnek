@@ -22,3 +22,4 @@ impl objectref::ObjectBinaryOperations for ComplexObject {
 
 use object;
 impl object::api::Identity for ComplexObject{}
+impl object::api::Hashable for ComplexObject{}

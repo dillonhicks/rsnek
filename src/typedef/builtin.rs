@@ -168,7 +168,24 @@ impl object::api::Identity for Builtin {
             &Builtin::FrozenSet(ref lhs) => lhs.identity(runtime),
             &Builtin::Complex(ref lhs) => lhs.identity(runtime),
             &Builtin::Dictionary(ref lhs) => lhs.identity(runtime),
-            _ => Err(Error::not_implemented())
+            _ => Err(Error::runtime("Missing case for identity"))
         }
     }
+}
+
+impl object::api::Hashable for Builtin{
+    fn op_hash(&self, runtime: &mut Runtime) -> RuntimeResult {
+        match self {
+            &Builtin::Integer(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::Float(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::String(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::Tuple(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::List(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::Set(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::FrozenSet(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::Complex(ref lhs) => lhs.op_hash(runtime),
+            &Builtin::Dictionary(ref lhs) => lhs.op_hash(runtime),
+            _ => Err(Error::runtime("Missing case for op_hash"))
+        }
+    }    
 }

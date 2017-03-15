@@ -35,11 +35,13 @@ mod tests {
     use super::runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
     use super::typedef::integer;
     use super::typedef::builtin::Builtin;
-    use super::typedef::integer::IntegerObject;
+    use super::typedef::integer::{Integer, IntegerObject};
     use super::typedef::float::FloatObject;
     use super::typedef::string::StringObject;
     use super::typedef::tuple::TupleObject;
     use super::typedef::list::ListObject;
+    use num::ToPrimitive;
+    use std::cmp::PartialEq;
     use object::api::Identity;
     use std::borrow::Borrow;
 
@@ -57,6 +59,28 @@ mod tests {
             assert_eq!(rt.heap_size(), 0);
             assert_eq!(rt.heap_capacity(), 2048);
         }
+    }
+
+    #[test]
+    fn test_integer_identity() {
+        let mut runtime = Runtime::new(None);
+        assert_eq!(runtime.heap_size(), 0);
+
+        let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
+        let one_ref: &std::cell::RefCell<Builtin> = one.0.borrow();
+        let one_bi = one_ref.borrow();
+        let one_b = one_bi.deref();
+        let one_value = one_b.int().unwrap();
+        let one_ptr: u64 = ((one_value as *const _) as u64);
+
+        let ident = one_ref.borrow().deref().identity(&mut runtime).unwrap();
+        let ident_ref: &std::cell::RefCell<Builtin> = ident.0.borrow();
+        let id_1 = ident_ref.borrow();
+        let id_2 = id_1.deref();
+        let ident_obj: &IntegerObject = id_2.int().unwrap();
+        let ident_value = ident_obj.value.to_u64().unwrap();
+        assert_eq!(ident_value, one_ptr);
     }
 
     // Create integer object on the stack and try to allocate it

@@ -113,3 +113,4 @@ impl objectref::Object for TupleObject {
 
 use object;
 impl object::api::Identity for TupleObject{}
+impl object::api::Hashable for TupleObject{}

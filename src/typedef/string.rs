@@ -96,3 +96,4 @@ impl objectref::Object for StringObject {}
 
 use object;
 impl object::api::Identity for StringObject{}
+impl object::api::Hashable for StringObject{}

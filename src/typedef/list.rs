@@ -121,3 +121,4 @@ impl objectref::Object for ListObject {}
 
 use object;
 impl object::api::Identity for ListObject{}
+impl object::api::Hashable for ListObject{}

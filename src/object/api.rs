@@ -1,3 +1,4 @@
+use std::any::Any;
 use runtime::{RuntimeResult, Runtime};
 use error::Error;
 use typedef::objectref::ObjectRef;
@@ -5,25 +6,37 @@ use typedef::integer::IntegerObject;
 
 /// # Identity and Equality Traits
 
-/// Identity        N/A (managed)
-pub trait Identity {
-    fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
-        let id =  (&self as *const _) as u64;
-        let objref = IntegerObject::new_u64(id).as_builtin().as_object_ref();
-        return runtime.alloc(objref)
-    }
+/// Identity and Equals  __eq__ and is
+
+#[inline(always)]
+fn address_of(&obj: Any) -> u64 {
+    (&obj as *const _) as u64
 }
 
-/// Hashable	 	__eq__
-pub trait Equals {
-    fn equals(&self, &mut Runtime) -> RuntimeResult {
+
+pub trait Identity {
+
+    fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
+        let objref = IntegerObject::new_u64(address_of(&self)).as_builtin().as_object_ref();
+        return runtime.alloc(objref)
+    }
+
+    fn op_is(&self, &mut Runtime, other: &ObjectRef) -> RuntimeResult {
+
+        //address_of(&self) == address_of(other.uwrapped())
+        Err(Error::not_implemented())
+
+    }
+
+    fn op_equals(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
         Err(Error::not_implemented())
     }
+
 }
 
 /// Hashable	 	__hash__
 pub trait Hashable {
-    fn hash(&self, &mut Runtime) -> RuntimeResult {
+    fn op_hash(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
@@ -32,7 +45,7 @@ pub trait Hashable {
 pub trait Callable {
     /// In the case of call the &ObjectRef should be to a type
     /// that represents arguments
-    fn call(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+    fn op_call(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
@@ -43,28 +56,28 @@ pub trait Callable {
 
 /// Container	 	__contains__
 pub trait Container {
-    fn contains(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+    fn op_contains(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
 
 /// Iterable	 	__iter__
 pub trait Iterable {
-    fn iter(&self, &mut Runtime) -> RuntimeResult {
+    fn op_iter(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
 
 /// Iterator Iterable	__next__	__iter__
 pub trait Iterator: Iterable{
-    fn next(&self, &mut Runtime) -> RuntimeResult {
+    fn _next(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
 
 /// Reversible	Iterable	__reversed__
 pub trait Reversible: Iterator {
-    fn reversed(&self, &mut Runtime) -> RuntimeResult {
+    fn op_reversed(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
@@ -86,7 +99,7 @@ pub trait Generator: Iterator {
 
 /// Sized	 	__len__
 pub trait Sized {
-    fn len(&self, &mut Runtime) -> RuntimeResult {
+    fn op_len(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }
@@ -94,11 +107,56 @@ pub trait Sized {
 /// Collection	Sized, Iterable, Container	__contains__, __iter__, __len__
 pub trait Collection: Sized + Iterable + Container {}
 
+/// Sequence	Reversible, Collection	__getitem__, __len__	__contains__, __iter__, __reversed__, index, and count
 pub trait Sequence: Reversible + Collection {
+    fn op_getitem(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
 
+    fn index(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn count(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
 }
-//Sequence	Reversible, Collection	__getitem__, __len__	__contains__, __iter__, __reversed__, index, and count
-//MutableSequence	Sequence	__getitem__, __setitem__, __delitem__, __len__, insert	Inherited Sequence methods and append, reverse, extend, pop, remove, and __iadd__
+
+/// MutableSequence	Sequence	__getitem__, __setitem__, __delitem__, __len__, insert	Inherited Sequence methods and append, reverse, extend, pop, remove, and __iadd__
+pub trait MutableSequence: Sequence {
+    fn op_setitem(&self, &mut Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn op_delitem(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn op_iadd(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn insert(&self, &mut Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn append(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn extend(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn pop(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn remove(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+}
+
 //ByteString	Sequence	__getitem__, __len__	Inherited Sequence methods
 //Set	Collection	__contains__, __iter__, __len__	__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
 //MutableSet	Set	__contains__, __iter__, __len__, add, discard	Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__

@@ -22,7 +22,7 @@ use super::objectref::ObjectRef;
 pub type Float = f64;
 
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Hash,Eq,PartialEq)]
 pub struct FloatObject {
     value: Float
 }
@@ -105,3 +105,4 @@ impl objectref::Object for FloatObject {}
 
 use object;
 impl object::api::Identity for FloatObject{}
+impl object::api::Hashable for FloatObject{}

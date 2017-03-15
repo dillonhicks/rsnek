@@ -21,7 +21,7 @@ pub type Integer = BigInt;
 
 
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Hash,Eq,PartialEq)]
 pub struct IntegerObject {
     pub value: Integer,
 }
@@ -126,3 +126,4 @@ impl objectref::Object for IntegerObject {}
 
 use object;
 impl object::api::Identity for IntegerObject{}
+impl object::api::Hashable for IntegerObject{}

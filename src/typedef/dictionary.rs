@@ -22,3 +22,4 @@ impl objectref::ObjectBinaryOperations for DictionaryObject {
 
 use object;
 impl object::api::Identity for DictionaryObject{}
+impl object::api::Hashable for DictionaryObject{}

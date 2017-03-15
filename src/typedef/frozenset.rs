@@ -23,3 +23,4 @@ impl objectref::ObjectBinaryOperations for FrozenSetObject {
 
 use object;
 impl object::api::Identity for FrozenSetObject {}
+impl object::api::Hashable for FrozenSetObject{}
