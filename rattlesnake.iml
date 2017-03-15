@@ -13,6 +13,7 @@
       <sourceFolder url="file://$MODULE_DIR$/cpython/PC" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/jython/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cpython/Include" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />

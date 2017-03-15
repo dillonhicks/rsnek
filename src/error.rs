@@ -18,7 +18,27 @@ pub struct InterpreterError {
 pub enum ErrorType {
     Runtime,
     Type,
-    Overflow
+    Overflow,
+    NotImplemented
+}
+
+impl Error {
+    pub fn runtime(message: &'static str) -> Error {
+        return Error(ErrorType::Runtime, message)
+    }
+
+    pub fn typerr(message: &'static str) -> Error {
+        return Error(ErrorType::Type, message)
+    }
+
+    pub fn overflow(message: &'static str) -> Error {
+        return Error(ErrorType::Overflow, message)
+    }
+
+    pub fn not_implemented() -> Error {
+        return Error(ErrorType::NotImplemented, "Not Implemented")
+    }
+
 }
 
 

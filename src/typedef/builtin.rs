@@ -34,6 +34,7 @@ pub enum Builtin {
     Complex(ComplexObject),
 
     // Not yet implemented
+    Boolean(()),
     Object(()),
     Function(()),
     Method(()),

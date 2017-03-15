@@ -181,13 +181,14 @@ pub trait ObjectBinaryOperations {
 }
 
 
+
 pub trait TypeInfo {
 
 }
 
 
 pub trait Object:
-ObjectBinaryOperations +
+        ObjectBinaryOperations +
         ToType<ObjectRef> +
         ToType<Builtin> +
         TypeInfo +

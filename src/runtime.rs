@@ -4,7 +4,7 @@ use std::any::Any;
 use std::rc::{Rc,Weak};
 use std::cell::RefCell;
 
-use result::RuntimeResult;
+pub use result::RuntimeResult;
 use heap::Heap;
 
 use typedef::objectref::ObjectRef;

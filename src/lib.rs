@@ -22,7 +22,7 @@ pub mod result;
 pub mod heap;
 pub mod runtime;
 pub mod error;
-
+pub mod object;
 
 
 #[cfg(test)]
@@ -43,9 +43,6 @@ mod tests {
 
     use std::borrow::Borrow;
 
-//    macro_rules! builtin {
-//    ($objref:expr) => ($objref.0.borrow())
-//}
 
     // Just try to init the runtime
     #[test]

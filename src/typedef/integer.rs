@@ -72,6 +72,15 @@ impl IntegerObject {
         return integer
     }
 
+    #[inline]
+    pub fn new_u64(value: u64) -> IntegerObject {
+        let integer = IntegerObject {
+            value: BigInt::from(value),
+        };
+
+        return integer
+    }
+
     pub fn new_bigint(value: BigInt) -> IntegerObject {
         let integer = IntegerObject {
             value: BigInt::from(value),
