@@ -48,6 +48,22 @@ impl ObjectRef {
     }
 }
 
+macro_rules! unwrap_builtin {
+    ($name:ident) => {
+            let borrowed: &RefCell<Builtin> = self.0.borrow();
+    }
+}
+
+impl std::cmp::PartialEq for ObjectRef {
+    fn eq(&self, rhs: &ObjectRef) -> bool {
+        let lhs_borrowed: &RefCell<Builtin> = self.0.borrow();
+        match lhs_borrowed.borrow_mut().deref() {
+            bultin => builtin.op_equals(rhs)
+        }
+    }
+}
+
+impl std::cmp::Eq for ObjectRef {}
 
 impl Clone for ObjectRef {
     fn clone(&self) -> Self {
@@ -57,7 +73,7 @@ impl Clone for ObjectRef {
 
 impl Hash for ObjectRef {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        unimplemented!()
+
     }
 }
 

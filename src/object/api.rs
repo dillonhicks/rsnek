@@ -1,23 +1,48 @@
 use std::any::Any;
+use result::{RuntimeResult,NativeResult};
 use runtime::{RuntimeResult, Runtime};
 use error::Error;
 use typedef::objectref::ObjectRef;
+use typedef::objectref::Object;
 use typedef::integer::IntegerObject;
+use typedef::builtin::Builtin;
+use typedef::native;
 
 /// # Identity and Equality Traits
 
 /// Identity and Equals  __eq__ and is
 
-#[inline(always)]
-fn address_of(&obj: Any) -> u64 {
-    (&obj as *const _) as u64
+//#[inline(always)]
+//fn address_of<T: Object>(obj: &T) -> u64 {
+//    (&obj as *const _) as u64
+//}
+
+
+struct Pointer;
+
+/// Get the address of some reference as u64
+macro_rules! self_ident {
+    ($name:ident) => {(&$name as *const Pointer) as native::ObjectId}
 }
 
+macro_rules! objref_ident {
+    ($name:ident) => {(
+        let __ref_of_$ident: &std::cell::RefCell<Builtin>  = $ident.0.borrow();
+        let __object_actual: &Builtin = ref_of_$ident.borrow().deref().;
+
+    )}
+}
+
+//impl Pointer {
+//    pub fn as_u64(ptr: *const usize) {
+//        (&obj as *const _) as u64
+//    }
+//}
 
 pub trait Identity {
 
     fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
-        let objref = IntegerObject::new_u64(address_of(&self)).as_builtin().as_object_ref();
+        let objref = IntegerObject::new_u64(self_ident!(self)).as_builtin().as_object_ref();
         return runtime.alloc(objref)
     }
 
@@ -25,10 +50,19 @@ pub trait Identity {
 
         //address_of(&self) == address_of(other.uwrapped())
         Err(Error::not_implemented())
-
     }
 
     fn op_equals(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    #[inline(always)]
+    fn native_identity(&self) -> native::ObjectId {
+        return self_ident!(self)
+    }
+
+
+    fn native_equals(&self, other: &ObjectRef) -> NativeResult<native::Boolean> {
         Err(Error::not_implemented())
     }
 

@@ -22,7 +22,7 @@ use super::objectref::ObjectRef;
 pub type Float = f64;
 
 
-#[derive(Clone,Debug,Hash,Eq,PartialEq)]
+#[derive(Clone,Debug)]
 pub struct FloatObject {
     value: Float
 }
