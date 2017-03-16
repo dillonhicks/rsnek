@@ -5,8 +5,8 @@ use super::objectref::{self, ObjectRef};
 
 pub type Complex = ();
 
-#[derive(Clone,Debug)]
-pub struct ComplexObject{
+#[derive(Clone, Debug)]
+pub struct ComplexObject {
     value: Complex
 }
 
@@ -21,5 +21,7 @@ impl objectref::ObjectBinaryOperations for ComplexObject {
 }
 
 use object;
-impl object::api::Identity for ComplexObject{}
-impl object::api::Hashable for ComplexObject{}
+
+impl object::api::Identifiable for ComplexObject {}
+
+impl object::api::Hashable for ComplexObject {}

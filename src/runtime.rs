@@ -1,7 +1,7 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 use std;
 use std::any::Any;
-use std::rc::{Rc,Weak};
+use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
 pub use result::RuntimeResult;
@@ -68,11 +68,11 @@ impl Runtime {
         (self.0.borrow_mut()).heap.alloc_dynamic(reference)
     }
 
-    pub fn heap_size(&self) -> usize{
+    pub fn heap_size(&self) -> usize {
         return (self.0.borrow()).heap.size()
     }
 
-    pub fn heap_capacity(&self) -> usize{
+    pub fn heap_capacity(&self) -> usize {
         return (self.0.borrow()).heap.capacity()
     }
 
@@ -80,7 +80,6 @@ impl Runtime {
     pub fn debug_references(&self) {
         (self.0.borrow_mut()).heap.print_ref_counts()
     }
-
 }
 
 impl std::fmt::Debug for Runtime {

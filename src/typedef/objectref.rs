@@ -11,6 +11,7 @@ use std::hash::{Hash, Hasher};
 use runtime::Runtime;
 use result::RuntimeResult;
 use object;
+use object::api::Identifiable;
 
 use super::builtin;
 use super::builtin::Builtin;
@@ -21,25 +22,42 @@ use super::tuple::TupleObject;
 use super::list::ListObject;
 
 
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///          macros
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+
+macro_rules! unwrap_builtin {
+    ($name:ident) => {
+            let borrowed: &RefCell<Builtin> = self.0.borrow();
+    }
+}
+
+
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///      Types and Structs
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///
 type _ObjectRef = Rc<RefCell<Builtin>>;
 pub struct ObjectRef(pub _ObjectRef);
 
 type _WeakObjectRef = Weak<RefCell<Builtin>>;
 pub struct WeakObjectRef(pub _WeakObjectRef);
 
-type RefCount = Weak<RefCell<Builtin>>;
 
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///       Struct Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl ObjectRef {
     #[inline]
-    pub fn new(value: Builtin) -> ObjectRef{
+    pub fn new(value: Builtin) -> ObjectRef {
         ObjectRef(Rc::new(RefCell::new(value)))
     }
 
     /// Return a new clone of the ObjectRef as a downgraded WeakObjectRef
     pub fn as_weak(&self) -> WeakObjectRef {
-        return WeakObjectRef(Rc::downgrade(&self.0.clone()))
+        return WeakObjectRef(Rc::downgrade(&self.0.clone()));
     }
 
     /// Downgrade THIS ObjectRef to a WeakObjectRef
@@ -48,22 +66,26 @@ impl ObjectRef {
     }
 }
 
-macro_rules! unwrap_builtin {
-    ($name:ident) => {
-            let borrowed: &RefCell<Builtin> = self.0.borrow();
-    }
-}
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///        stdlib Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 
 impl std::cmp::PartialEq for ObjectRef {
     fn eq(&self, rhs: &ObjectRef) -> bool {
         let lhs_borrowed: &RefCell<Builtin> = self.0.borrow();
-        match lhs_borrowed.borrow_mut().deref() {
-            bultin => builtin.op_equals(rhs)
-        }
+        let lhs_builtin = lhs_borrowed.borrow();
+
+        let rhs_borrowed: &RefCell<Builtin> = rhs.0.borrow();
+        let rhs_builtin = rhs_borrowed.borrow();
+
+        *lhs_builtin == *rhs_builtin
     }
 }
 
+
 impl std::cmp::Eq for ObjectRef {}
+
 
 impl Clone for ObjectRef {
     fn clone(&self) -> Self {
@@ -73,9 +95,12 @@ impl Clone for ObjectRef {
 
 impl Hash for ObjectRef {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        let lhs_borrowed: &RefCell<Builtin> = self.0.borrow();
+        let lhs_builtin = lhs_borrowed.borrow();
 
     }
 }
+
 
 impl Borrow<RefCell<Builtin>> for ObjectRef {
     fn borrow(&self) -> &RefCell<Builtin> {
@@ -89,12 +114,20 @@ impl std::fmt::Display for ObjectRef {
         let borrowed: &RefCell<Builtin> = self.0.borrow();
 
         match borrowed.borrow_mut().deref() {
-            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
-            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
-            &Builtin::String(ref obj) => write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject),
-            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
+            &Builtin::Integer(ref obj) => {
+                write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
+            }
+            &Builtin::Float(ref obj) => {
+                write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject)
+            }
+            &Builtin::String(ref obj) => {
+                write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject)
+            }
+            &Builtin::Tuple(ref obj) => {
+                write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject)
+            }
             &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
-            other => write!(f, "<{:?} {:?}>", other, other as *const _)
+            other => write!(f, "<{:?} {:?}>", other, other as *const _),
         }
     }
 }
@@ -104,126 +137,47 @@ impl std::fmt::Debug for ObjectRef {
         let borrowed: &RefCell<Builtin> = self.0.borrow();
 
         match borrowed.borrow_mut().deref() {
-            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
-            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
-            &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
-            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
+            &Builtin::Integer(ref obj) => {
+                write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
+            }
+            &Builtin::Float(ref obj) => {
+                write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject)
+            }
+            &Builtin::String(ref obj) => {
+                write!(f, "<String({}) {:?}>", obj, obj as *const StringObject)
+            }
+            &Builtin::Tuple(ref obj) => {
+                write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject)
+            }
             &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
-            other => write!(f, "<{:?} {:?}>", other, other as *const _)
+            other => write!(f, "<{:?} {:?}>", other, other as *const _),
         }
     }
 }
 
-pub trait ToType<T> {
+
+/// Convert between types the intermediate Builtin/ObjectRef/Etc types
+pub trait ToRtWrapperType<T> {
     fn to(self) -> T;
 }
 
-pub trait ObjectBinaryOperations {
 
-    //    binaryfunc nb_add;
-    //    binaryfunc nb_subtract;
-    //    binaryfunc nb_multiply;
-    //    binaryfunc nb_remainder;
-    //    binaryfunc nb_divmod;
-    //    ternaryfunc nb_power;
-    //    unaryfunc nb_negative;
-    //    unaryfunc nb_positive;
-    //    unaryfunc nb_absolute;
+// TODO: Move me to object::api
+pub trait ObjectBinaryOperations {
     fn add(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
     fn subtract(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
-
-    //    fn subtract(&self, &Object) -> Result<&Object>;
-//    fn multiply(&self, &Object) -> Result<&Object>;
-//    fn remainder(&self, &Object) -> Result<&Object>;
-//    fn divmod(&self, &Object) -> Result<&Object>;
-//    fn power(&self, &Object, &Object) -> Result<&Object>;
-//    fn negative(&self, &Object) -> Result<&Object>;
-//    fn positive(&self) -> Result<&Object>;
-//    fn absolute(&self) -> Result<&Object>;
-//
-//    //    inquiry nb_bool;
-//    fn inquery(&self) -> Result<&Object>;
-//
-//    //    unaryfunc nb_invert;
-//    //    binaryfunc nb_lshift;
-//    //    binaryfunc nb_rshift;
-//    //    binaryfunc nb_and;
-//    //    binaryfunc nb_xor;
-//    //    binaryfunc nb_or;
-//    //    unaryfunc nb_int;
-//    //    void *nb_reserved;  /* the slot formerly known as nb_long */
-//    //    unaryfunc nb_float;
-//    fn invert(&self) -> Result<&Object>;
-//    fn lshift(&self, &Object) -> Result<&Object>;
-//    fn rshift(&self, &Object) -> Result<&Object>;
-//    fn and(&self, &Object) -> Result<&Object>;
-//    fn xor(&self, &Object) -> Result<&Object>;
-//    fn or(&self, &Object) -> Result<&Object>;
-//    fn float(&self) -> Result<&Object>;
-//
-//    //    binaryfunc nb_inplace_add;
-//    //    binaryfunc nb_inplace_subtract;
-//    //    binaryfunc nb_inplace_multiply;
-//    //    binaryfunc nb_inplace_remainder;
-//    //    ternaryfunc nb_inplace_power;
-//    //    binaryfunc nb_inplace_lshift;
-//    //    binaryfunc nb_inplace_rshift;
-//    //    binaryfunc nb_inplace_and;
-//    //    binaryfunc nb_inplace_xor;
-//    //    binaryfunc nb_inplace_or;
-//
-//    fn inplace_add(&self, &Object) -> Result<&Object>;
-//    fn inplace_subtract(&self, &Object) -> Result<&Object>;
-//    fn inplace_multiply(&self, &Object) -> Result<&Object>;
-//    fn inplace_remainder(&self, &Object) -> Result<&Object>;
-//    fn inplace_power(&self, &Object, &Object) -> Result<&Object>;
-//    fn inplace_invert(&self, &Object) -> Result<&Object>;
-//    fn inplace_lshift(&self, &Object) -> Result<&Object>;
-//    fn inplace_rshift(&self, &Object) -> Result<&Object>;
-//    fn inplace_and(&self, &Object) -> Result<&Object>;
-//    fn inplace_xor(&self, &Object) -> Result<&Object>;
-//    fn inplace_or(&self, &Object) -> Result<&Object>;
-//
-//
-//    //    binaryfunc nb_floor_divide;
-//    //    binaryfunc nb_true_divide;
-//    //    binaryfunc nb_inplace_floor_divide;
-//    //    binaryfunc nb_inplace_true_divide;
-//
-//    fn floor_divide(&self, &Object) -> Result<&Object>;
-//    fn true_divide(&self, &Object) -> Result<&Object>;
-//    fn inplace_floor_divide(&self, &Object) -> Result<&Object>;
-//    fn inplace_true_divide(&self, &Object) -> Result<&Object>;
-//
-//    //    unaryfunc nb_index;
-//    fn index(&self, &Object) -> Result<&Object>;
-//
-//    //    binaryfunc nb_matrix_multiply;
-//    //    binaryfunc nb_inplace_matrix_multiply;
-//    fn matrix_multiply(&self, &Object) -> Result<&Object>;
-//    fn inplace_matrix_multiply(&self, &Object) -> Result<&Object>;
 }
 
+// TODO: move to object::api if needed
+pub trait TypeInfo {}
 
 
-pub trait TypeInfo {
-
-}
-
-
-pub trait Object:
-        ObjectBinaryOperations +
-        object::api::Identity +
-        object::api::Hashable +
-        ToType<ObjectRef> +
-        ToType<Builtin> +
-        TypeInfo +
-        Display where Self: std::marker::Sized {
-
-}
-
-//
-//
-//trait TypeInfo {
-//
-//}
+// TODO: Move me to object::api
+pub trait RtObject:
+ObjectBinaryOperations +
+object::api::Identifiable +
+object::api::Hashable +
+ToRtWrapperType<ObjectRef> +
+ToRtWrapperType<Builtin> +
+TypeInfo +
+Display where Self: std::marker::Sized {}

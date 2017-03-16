@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::{Weak,Rc};
+use std::rc::{Weak, Rc};
 
 use num::{BigInt, FromPrimitive};
 
@@ -20,8 +20,7 @@ use super::float::FloatObject;
 pub type String = std::string::String;
 
 
-
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct StringObject {
     pub value: String,
 }
@@ -44,9 +43,7 @@ impl objectref::ObjectBinaryOperations for StringObject {
     }
 }
 
-impl objectref::TypeInfo for StringObject {
-
-}
+impl objectref::TypeInfo for StringObject {}
 
 
 impl fmt::Display for StringObject {
@@ -56,7 +53,6 @@ impl fmt::Display for StringObject {
 }
 
 impl StringObject {
-
     pub fn from_str(value: &'static str) -> StringObject {
         return StringObject::new(value.to_string())
     }
@@ -78,22 +74,24 @@ impl StringObject {
     }
 }
 
-impl objectref::ToType<Builtin> for StringObject {
+impl objectref::ToRtWrapperType<Builtin> for StringObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::String(self)
     }
 }
 
-impl objectref::ToType<ObjectRef> for StringObject {
+impl objectref::ToRtWrapperType<ObjectRef> for StringObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
     }
 }
 
-impl objectref::Object for StringObject {}
+impl objectref::RtObject for StringObject {}
 
 use object;
-impl object::api::Identity for StringObject{}
-impl object::api::Hashable for StringObject{}
+
+impl object::api::Identifiable for StringObject {}
+
+impl object::api::Hashable for StringObject {}

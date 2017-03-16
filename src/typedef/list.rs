@@ -4,7 +4,7 @@ use std::cell::{Ref, RefCell};
 use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::{Weak,Rc};
+use std::rc::{Weak, Rc};
 
 use num::{BigInt, FromPrimitive};
 
@@ -45,7 +45,7 @@ impl objectref::ObjectBinaryOperations for ListObject {
                 rhs_borrow.iter().map(|objref| new_list.push(objref.clone()));
 
                 /// DUMB DUMB DUMB THIS IS A COPY AND NOT THE REF TO THE ORIGINAL LIST!!!
-                runtime.alloc(ListObject::new(& new_list).as_builtin().as_object_ref())
+                runtime.alloc(ListObject::new(&new_list).as_builtin().as_object_ref())
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to List"))
         }
@@ -56,9 +56,7 @@ impl objectref::ObjectBinaryOperations for ListObject {
     }
 }
 
-impl objectref::TypeInfo for ListObject {
-
-}
+impl objectref::TypeInfo for ListObject {}
 
 impl fmt::Display for List {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -87,9 +85,7 @@ impl List {
 
 
 impl ListObject {
-
     pub fn new(value: &Vec<ObjectRef>) -> ListObject {
-
         let tuple = ListObject {
             value: List::new(value.clone()),
         };
@@ -102,14 +98,14 @@ impl ListObject {
     }
 }
 
-impl objectref::ToType<Builtin> for ListObject {
+impl objectref::ToRtWrapperType<Builtin> for ListObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::List(self)
     }
 }
 
-impl objectref::ToType<ObjectRef> for ListObject {
+impl objectref::ToRtWrapperType<ObjectRef> for ListObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
@@ -117,8 +113,10 @@ impl objectref::ToType<ObjectRef> for ListObject {
 }
 
 
-impl objectref::Object for ListObject {}
+impl objectref::RtObject for ListObject {}
 
 use object;
-impl object::api::Identity for ListObject{}
-impl object::api::Hashable for ListObject{}
+
+impl object::api::Identifiable for ListObject {}
+
+impl object::api::Hashable for ListObject {}

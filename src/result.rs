@@ -1,6 +1,6 @@
 use std;
 use std::result;
-use std::fmt::{Debug,Formatter};
+use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::cell::RefCell;
 

@@ -1,7 +1,7 @@
 #![feature(associated_consts)]
 #![feature(rustc_private)]
-#[cfg_attr(rsnek_debug, any(test, feature="rsnek-debug"))]
-
+#![feature(const_fn)]
+#[cfg_attr(rsnek_debug, any(test, feature = "rsnek-debug"))]
 /// # Notes and TODOS
 ///
 ///  - TODO: Consider having objects implement an `pub fn alloc(self, rt: Runtime) -> ObjectRef`
@@ -10,8 +10,6 @@
 ///  - TODO: Some types need a weak ref back to their own RC in order to return back the proper
 ///          runtime result. We may also need an id or something else in order to look up
 ///          the in place modifyables down the chain.
-
-
 extern crate num;
 extern crate arena;
 
@@ -27,7 +25,6 @@ pub mod object;
 
 #[cfg(test)]
 mod tests {
-
     use std;
     use std::ops::Deref;
     use super::typedef::objectref::{self, ObjectBinaryOperations, ObjectRef};
@@ -40,9 +37,11 @@ mod tests {
     use super::typedef::string::StringObject;
     use super::typedef::tuple::TupleObject;
     use super::typedef::list::ListObject;
+    use super::typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
+
     use num::ToPrimitive;
     use std::cmp::PartialEq;
-    use object::api::Identity;
+    use object::api::Identifiable;
     use std::borrow::Borrow;
 
 
@@ -63,24 +62,55 @@ mod tests {
 
     #[test]
     fn test_integer_identity() {
+        //        let mut runtime = Runtime::new(None);
+        //        assert_eq!(runtime.heap_size(), 0);
+        //
+        //        let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+        //        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
+        //
+        //        assert_eq!(ident_value, one_ptr);
+        assert_eq!(1, 2)
+    }
+
+    #[test]
+    fn test_boolean_equality() {
         let mut runtime = Runtime::new(None);
         assert_eq!(runtime.heap_size(), 0);
 
-        let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
-        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
-        let one_ref: &std::cell::RefCell<Builtin> = one.0.borrow();
-        let one_bi = one_ref.borrow();
-        let one_b = one_bi.deref();
-        let one_value = one_b.int().unwrap();
-        let one_ptr: u64 = ((one_value as *const _) as u64);
+        let False = ObjectRef::new(SINGLETON_FALSE_BUILTIN);
+        let True = ObjectRef::new(SINGLETON_TRUE_BUILTIN);
 
-        let ident = one_ref.borrow().deref().identity(&mut runtime).unwrap();
-        let ident_ref: &std::cell::RefCell<Builtin> = ident.0.borrow();
-        let id_1 = ident_ref.borrow();
-        let id_2 = id_1.deref();
-        let ident_obj: &IntegerObject = id_2.int().unwrap();
-        let ident_value = ident_obj.value.to_u64().unwrap();
-        assert_eq!(ident_value, one_ptr);
+        let thing1 = runtime.alloc(False.clone()).unwrap();
+        let False2 = runtime.alloc(False.clone()).unwrap();
+        let thing3 = runtime.alloc(True.clone()).unwrap();
+
+        let False_ref: &std::cell::RefCell<Builtin> = False.0.borrow();
+
+        //        println!("!!!!! {:?}", False_ref.borrow().deref().op_equals(&mut runtime, &False2).unwrap());
+        //        println!("!!!!!! {:?}", False_ref.borrow().deref().op_is(&mut runtime, &False2).unwrap());
+        //        println!("!!!!!! {:?}", False_ref.borrow().deref().op_equals(&mut runtime, &thing3).unwrap());
+
+        let result = False_ref.borrow().op_equals(&mut runtime, &False2.clone()).unwrap();
+        assert_eq!(result, True, "BooleanObject equality (op_equals)");
+    }
+
+    #[test]
+    fn test_boolean_identity() {
+        let mut runtime = Runtime::new(None);
+        assert_eq!(runtime.heap_size(), 0);
+
+        let False = ObjectRef::new(SINGLETON_FALSE_BUILTIN);
+        let True = ObjectRef::new(SINGLETON_TRUE_BUILTIN);
+
+        let thing1 = runtime.alloc(False.clone()).unwrap();
+        let False2 = runtime.alloc(False.clone()).unwrap();
+        let thing3 = runtime.alloc(True.clone()).unwrap();
+
+        let False_ref: &std::cell::RefCell<Builtin> = False.0.borrow();
+
+
+        let result = False_ref.borrow().op_is(&mut runtime, &False2.clone()).unwrap();
+        assert_eq!(True, result, "BooleanObject identity (op_is)");
     }
 
     // Create integer object on the stack and try to allocate it
@@ -91,7 +121,7 @@ mod tests {
         assert_eq!(runtime.heap_size(), 0);
 
         let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
-        let one : ObjectRef = runtime.alloc(one_object.clone()).unwrap();
+        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
         println!("{:?}", runtime);
     }
@@ -102,14 +132,14 @@ mod tests {
         assert_eq!(runtime.heap_size(), 0);
 
         let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
-        let one : ObjectRef = runtime.alloc(one_object.clone()).unwrap();
+        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
 
         let another_one = IntegerObject::new_i64(1).as_builtin().as_object_ref();
-        let one2 : ObjectRef = runtime.alloc(another_one.clone()).unwrap();
+        let one2: ObjectRef = runtime.alloc(another_one.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 2);
 
-        let one_ref : &std::cell::RefCell<Builtin> = one.0.borrow();
+        let one_ref: &std::cell::RefCell<Builtin> = one.0.borrow();
         let two = one_ref.borrow().deref().add(&mut runtime, &another_one).unwrap();
         assert_eq!(runtime.heap_size(), 3);
 
@@ -122,11 +152,11 @@ mod tests {
         assert_eq!(runtime.heap_size(), 0);
 
         let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
-        let one : ObjectRef = runtime.alloc(one_object.clone()).unwrap();
+        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
 
-        let one_float= FloatObject::new(1.0).as_builtin().as_object_ref();
-        let onef : ObjectRef = runtime.alloc(one_float.clone()).unwrap();
+        let one_float = FloatObject::new(1.0).as_builtin().as_object_ref();
+        let onef: ObjectRef = runtime.alloc(one_float.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 2);
 
         let mut two_float: ObjectRef;
@@ -137,7 +167,7 @@ mod tests {
             assert_eq!(runtime.heap_size(), 3);
         }
 
-        let two_ref : &std::cell::RefCell<Builtin>  = two_float.0.borrow();
+        let two_ref: &std::cell::RefCell<Builtin> = two_float.0.borrow();
         two_ref.borrow().deref().float().unwrap();
 
         println!("{:?}", runtime);
@@ -149,14 +179,14 @@ mod tests {
         assert_eq!(runtime.heap_size(), 0);
 
         let one_object = StringObject::from_str("1").as_builtin().as_object_ref();
-        let one : ObjectRef = runtime.alloc(one_object.clone()).unwrap();
+        let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
 
         let another_one = StringObject::from_str("2").as_builtin().as_object_ref();
-        let one2 : ObjectRef = runtime.alloc(another_one.clone()).unwrap();
+        let one2: ObjectRef = runtime.alloc(another_one.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 2);
 
-        let one_ref : &std::cell::RefCell<Builtin> = one.0.borrow();
+        let one_ref: &std::cell::RefCell<Builtin> = one.0.borrow();
         let two = one_ref.borrow().deref().add(&mut runtime, &another_one).unwrap();
         assert_eq!(runtime.heap_size(), 3);
 
@@ -166,20 +196,18 @@ mod tests {
     #[test]
     fn test_tuple_add_tuple_equals_tuple() {
         let mut runtime = Runtime::new(None);
-        let mut t1 = vec![
-            IntegerObject::new_i64(0).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(1).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(2).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(3).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(4).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(5).as_builtin().as_object_ref(),
-            FloatObject::new(0.0).as_builtin().as_object_ref(),
-            FloatObject::new(1.0).as_builtin().as_object_ref(),
-            FloatObject::new(2.0).as_builtin().as_object_ref(),
-            FloatObject::new(3.0).as_builtin().as_object_ref(),
-            FloatObject::new(4.0).as_builtin().as_object_ref(),
-            FloatObject::new(5.0).as_builtin().as_object_ref(),
-        ];
+        let mut t1 = vec![IntegerObject::new_i64(0).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(1).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(2).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(3).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(4).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(5).as_builtin().as_object_ref(),
+                          FloatObject::new(0.0).as_builtin().as_object_ref(),
+                          FloatObject::new(1.0).as_builtin().as_object_ref(),
+                          FloatObject::new(2.0).as_builtin().as_object_ref(),
+                          FloatObject::new(3.0).as_builtin().as_object_ref(),
+                          FloatObject::new(4.0).as_builtin().as_object_ref(),
+                          FloatObject::new(5.0).as_builtin().as_object_ref()];
 
         t1 = t1.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
         assert_eq!(runtime.heap_size(), t1.len());
@@ -192,10 +220,8 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2 = vec![
-                StringObject::from_str("Hello").as_objref(),
-                StringObject::from_str("World").as_objref(),
-            ];
+            let mut t2 = vec![StringObject::from_str("Hello").as_objref(),
+                              StringObject::from_str("World").as_objref()];
 
             t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
@@ -220,20 +246,18 @@ mod tests {
     #[test]
     fn test_list_add_list_equals_list_no_alloc() {
         let mut runtime = Runtime::new(None);
-        let mut t1 = vec![
-            IntegerObject::new_i64(0).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(1).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(2).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(3).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(4).as_builtin().as_object_ref(),
-            IntegerObject::new_i64(5).as_builtin().as_object_ref(),
-            FloatObject::new(0.0).as_builtin().as_object_ref(),
-            FloatObject::new(1.0).as_builtin().as_object_ref(),
-            FloatObject::new(2.0).as_builtin().as_object_ref(),
-            FloatObject::new(3.0).as_builtin().as_object_ref(),
-            FloatObject::new(4.0).as_builtin().as_object_ref(),
-            FloatObject::new(5.0).as_builtin().as_object_ref(),
-        ];
+        let mut t1 = vec![IntegerObject::new_i64(0).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(1).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(2).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(3).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(4).as_builtin().as_object_ref(),
+                          IntegerObject::new_i64(5).as_builtin().as_object_ref(),
+                          FloatObject::new(0.0).as_builtin().as_object_ref(),
+                          FloatObject::new(1.0).as_builtin().as_object_ref(),
+                          FloatObject::new(2.0).as_builtin().as_object_ref(),
+                          FloatObject::new(3.0).as_builtin().as_object_ref(),
+                          FloatObject::new(4.0).as_builtin().as_object_ref(),
+                          FloatObject::new(5.0).as_builtin().as_object_ref()];
 
         t1 = t1.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
         assert_eq!(runtime.heap_size(), t1.len());
@@ -246,10 +270,8 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2 = vec![
-                StringObject::from_str("Hello").as_objref(),
-                StringObject::from_str("World").as_objref()
-            ];
+            let mut t2 = vec![StringObject::from_str("Hello").as_objref(),
+                              StringObject::from_str("World").as_objref()];
             t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
 
@@ -259,8 +281,9 @@ mod tests {
             let x: &std::cell::RefCell<Builtin> = tuple2.0.borrow();
             tuple_3 = x.borrow().deref().add(&mut runtime, &tuple).unwrap();
 
-            assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 2,
-                "list+list unexpectedly allocated extra heap");
+            assert_eq!(runtime.heap_size(),
+                       t1.len() + t2.len() + 2,
+                       "list+list unexpectedly allocated extra heap");
         }
 
         println!("{}", tuple_3);

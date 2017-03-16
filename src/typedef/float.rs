@@ -22,14 +22,13 @@ use super::objectref::ObjectRef;
 pub type Float = f64;
 
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct FloatObject {
-    value: Float
+    pub value: Float
 }
 
 
 impl objectref::ObjectBinaryOperations for FloatObject {
-
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let borrowed: &RefCell<Builtin> = rhs.0.borrow();
 
@@ -59,14 +58,14 @@ impl fmt::Display for FloatObject {
 }
 
 
-impl objectref::ToType<Builtin> for FloatObject {
+impl objectref::ToRtWrapperType<Builtin> for FloatObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::Float(self)
     }
 }
 
-impl objectref::ToType<ObjectRef> for FloatObject {
+impl objectref::ToRtWrapperType<ObjectRef> for FloatObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
@@ -86,7 +85,7 @@ impl FloatObject {
     }
 
     #[deprecated]
-    pub fn as_object_ref(self) -> ObjectRef{
+    pub fn as_object_ref(self) -> ObjectRef {
         self.as_builtin().as_object_ref()
     }
 
@@ -101,8 +100,10 @@ impl FloatObject {
 
 impl objectref::TypeInfo for FloatObject {}
 
-impl objectref::Object for FloatObject {}
+impl objectref::RtObject for FloatObject {}
 
 use object;
-impl object::api::Identity for FloatObject{}
-impl object::api::Hashable for FloatObject{}
+
+impl object::api::Identifiable for FloatObject {}
+
+impl object::api::Hashable for FloatObject {}

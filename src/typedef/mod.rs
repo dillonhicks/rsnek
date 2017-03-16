@@ -1,3 +1,6 @@
+#[macro_use]
+pub mod macros;
+
 pub mod builtin;
 pub mod integer;
 pub mod float;
@@ -10,3 +13,4 @@ pub mod set;
 pub mod frozenset;
 pub mod complex;
 pub mod native;
+pub mod boolean;

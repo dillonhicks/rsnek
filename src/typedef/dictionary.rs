@@ -5,8 +5,8 @@ use super::objectref::{self, ObjectRef};
 
 pub type Dictionary = ();
 
-#[derive(Clone,Debug)]
-pub struct DictionaryObject{
+#[derive(Clone, Debug)]
+pub struct DictionaryObject {
     value: Dictionary
 }
 
@@ -21,5 +21,7 @@ impl objectref::ObjectBinaryOperations for DictionaryObject {
 }
 
 use object;
-impl object::api::Identity for DictionaryObject{}
-impl object::api::Hashable for DictionaryObject{}
+
+impl object::api::Identifiable for DictionaryObject {}
+
+impl object::api::Hashable for DictionaryObject {}

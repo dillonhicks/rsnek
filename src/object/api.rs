@@ -1,76 +1,77 @@
 use std::any::Any;
-use result::{RuntimeResult,NativeResult};
-use runtime::{RuntimeResult, Runtime};
+use std::cell::RefCell;
+use std::ops::Deref;
+use std::borrow::Borrow;
+
+use result::{RuntimeResult, NativeResult};
+use runtime::Runtime;
 use error::Error;
+
 use typedef::objectref::ObjectRef;
-use typedef::objectref::Object;
+use typedef::objectref::RtObject;
 use typedef::integer::IntegerObject;
 use typedef::builtin::Builtin;
+use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
 use typedef::native;
+
 
 /// # Identity and Equality Traits
 
-/// Identity and Equals  __eq__ and is
 
-//#[inline(always)]
-//fn address_of<T: Object>(obj: &T) -> u64 {
-//    (&obj as *const _) as u64
-//}
-
-
-struct Pointer;
 
 /// Get the address of some reference as u64
-macro_rules! self_ident {
-    ($name:ident) => {(&$name as *const Pointer) as native::ObjectId}
+macro_rules! ident_from_ptr {
+    ($name:ident) => {(&$name as *const _) as native::ObjectId}
 }
 
-macro_rules! objref_ident {
-    ($name:ident) => {(
-        let __ref_of_$ident: &std::cell::RefCell<Builtin>  = $ident.0.borrow();
-        let __object_actual: &Builtin = ref_of_$ident.borrow().deref().;
-
-    )}
-}
-
-//impl Pointer {
-//    pub fn as_u64(ptr: *const usize) {
-//        (&obj as *const _) as u64
-//    }
-//}
-
-pub trait Identity {
-
+/// Identity and Equals  __eq__ and is
+pub trait Identifiable {
     fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
-        let objref = IntegerObject::new_u64(self_ident!(self)).as_builtin().as_object_ref();
+        let objref = IntegerObject::new_u64(ident_from_ptr!(self)).as_builtin().as_object_ref();
         return runtime.alloc(objref)
     }
 
-    fn op_is(&self, &mut Runtime, other: &ObjectRef) -> RuntimeResult {
-
+    fn op_is(&self, &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         //address_of(&self) == address_of(other.uwrapped())
-        Err(Error::not_implemented())
+        let rhs_borrowed: &RefCell<Builtin> = rhs.0.borrow();
+        let rhs_builtin = rhs_borrowed.borrow();
+
+        println!("{:?} == {:?}", self.native_identity(), rhs_builtin.native_identity());
+
+        if self.native_identity() == rhs_builtin.native_identity() {
+            Ok(ObjectRef::new(SINGLETON_TRUE_BUILTIN))
+        } else {
+            Ok(ObjectRef::new(SINGLETON_FALSE_BUILTIN))
+        }
     }
 
-    fn op_equals(&self, &mut Runtime, &ObjectRef) -> RuntimeResult {
-        Err(Error::not_implemented())
+    /// Default implementation of equals fallsbacks to op_is.
+    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        return self.op_is(rt, rhs)
     }
 
     #[inline(always)]
     fn native_identity(&self) -> native::ObjectId {
-        return self_ident!(self)
+        return ident_from_ptr!(self)
     }
 
-
-    fn native_equals(&self, other: &ObjectRef) -> NativeResult<native::Boolean> {
-        Err(Error::not_implemented())
+    fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(self.native_identity() == other.native_identity())
     }
 
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_equals(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        return self.native_is(other)
+    }
 }
 
 /// Hashable	 	__hash__
 pub trait Hashable {
     fn op_hash(&self, &mut Runtime) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
         Err(Error::not_implemented())
     }
 }
@@ -83,7 +84,6 @@ pub trait Callable {
         Err(Error::not_implemented())
     }
 }
-
 
 
 /// # Collection Traits
@@ -103,7 +103,7 @@ pub trait Iterable {
 }
 
 /// Iterator Iterable	__next__	__iter__
-pub trait Iterator: Iterable{
+pub trait Iterator: Iterable {
     fn _next(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
@@ -206,14 +206,10 @@ pub trait MutableSequence: Sequence {
 //AsyncIterator	AsyncIterable	__anext__	__aiter__
 //AsyncGenerator	AsyncIterator	asend, athrow	aclose, __aiter__, __anext__
 
-trait ArithmeticMethods {
-
-}
+trait ArithmeticMethods {}
 
 
-trait Map {
-
-}
+trait Map {}
 
 //typedef struct {
 //    lenfunc sq_length;

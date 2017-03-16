@@ -1,12 +1,20 @@
+use std;
+use std::ops::Deref;
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::fmt;
 
+use object;
+use object::api::Identifiable;
 use runtime::Runtime;
-use result::RuntimeResult;
+use result::{NativeResult, RuntimeResult};
 use error::{Error, ErrorType};
 
+
 use super::objectref;
-use super::objectref::{Object, ObjectRef};
+use super::objectref::{RtObject, ObjectRef};
+use super::boolean::BooleanObject;
 use super::integer::IntegerObject;
 use super::float::FloatObject;
 use super::string::StringObject;
@@ -16,9 +24,14 @@ use super::complex::ComplexObject;
 use super::set::SetObject;
 use super::frozenset::FrozenSetObject;
 use super::dictionary::DictionaryObject;
+use super::objectref::ObjectBinaryOperations;
+use super::native;
 
 
-pub type CastResult<T: Object> = Result<T, Error>;
+#[macro_use]
+use super::macros;
+
+pub type CastResult<T: RtObject> = Result<T, Error>;
 
 
 #[derive(Clone, Debug)]
@@ -34,88 +47,54 @@ pub enum Builtin {
     Complex(ComplexObject),
 
     // Not yet implemented
-    Boolean(()),
+    Boolean(BooleanObject),
     Object(()),
     Function(()),
     Method(()),
     None(()),
-    Module(())
-
-//    Type(TypeObject),
-//    Meta(MetaObject),
-//    None(NoneObject),
+    Module(()), /*    Type(TypeObject),
+                 *    Meta(MetaObject),
+                 *    None(NoneObject) */
 }
 
-impl objectref::ObjectBinaryOperations for Builtin {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        match self {
-            &Builtin::Integer(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Float(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::String(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Tuple(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::List(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Set(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::FrozenSet(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Complex(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Dictionary(ref lhs) => lhs.add(runtime, rhs),
-            ref other => Err(Error::not_implemented())
-        }
-    }
 
-    fn subtract(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        match self {
-            &Builtin::Integer(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Float(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::String(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Tuple(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::List(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Set(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::FrozenSet(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Complex(ref lhs) => lhs.add(runtime, rhs),
-            &Builtin::Dictionary(ref lhs) => lhs.add(runtime, rhs),
-            ref other => Err(Error::not_implemented())
-        }
-    }
-}
-
-impl objectref::TypeInfo for Builtin {}
-
-impl objectref::Object for Builtin {}
-
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///     Struct Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl Builtin {
     pub fn int(&self) -> CastResult<&IntegerObject> {
         match *self {
             Builtin::Integer(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not an IntegerObject"))
+            _ => Err(Error(ErrorType::Type, "Not an IntegerObject")),
         }
     }
 
     pub fn float(&self) -> CastResult<&FloatObject> {
         match *self {
             Builtin::Float(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a FloatObject"))
+            _ => Err(Error(ErrorType::Type, "Not a FloatObject")),
         }
     }
 
     pub fn tuple(&self) -> CastResult<&TupleObject> {
         match *self {
             Builtin::Tuple(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a TupleObject"))
+            _ => Err(Error(ErrorType::Type, "Not a TupleObject")),
         }
     }
 
     pub fn list(&self) -> CastResult<&ListObject> {
         match *self {
             Builtin::List(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a ListObject"))
+            _ => Err(Error(ErrorType::Type, "Not a ListObject")),
         }
     }
 
     pub fn string(&self) -> CastResult<&StringObject> {
         match *self {
             Builtin::String(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a StringObject"))
+            _ => Err(Error(ErrorType::Type, "Not a StringObject")),
         }
     }
 
@@ -125,19 +104,92 @@ impl Builtin {
 }
 
 
-impl objectref::ToType<Builtin> for Builtin {
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///     RtObject Traits
+///
+/// For the BuiltinObject this should mean just proxy dispatching the
+/// underlying associated function using the foreach macros.
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl objectref::RtObject for Builtin {}
+
+impl objectref::TypeInfo for Builtin {}
+
+impl objectref::ObjectBinaryOperations for Builtin {
+    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, runtime, add, lhs, rhs)
+    }
+
+    fn subtract(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, runtime, subtract, lhs, rhs)
+    }
+}
+
+/// Builtin is an intermediate wrapper/union type and should not
+/// expose identity
+impl object::api::Identifiable for Builtin {
+    fn identity(&self, rt: &mut Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, identity, lhs)
+    }
+
+    fn op_is(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_is, lhs, rhs)
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_equals, lhs, rhs)
+    }
+
+    #[inline(always)]
+    fn native_identity(&self) -> native::ObjectId {
+        native_foreach_builtin!(self, native_identity, obj)
+    }
+
+    fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(self.native_identity() == other.native_identity())
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_equals(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_equals, lhs, rhs)
+    }
+}
+
+impl object::api::Hashable for Builtin {
+    fn op_hash(&self, rt: &mut Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_hash, obj)
+    }
+}
+
+
+
+impl objectref::ToRtWrapperType<Builtin> for Builtin {
     #[inline]
     fn to(self) -> Builtin {
         self
     }
 }
 
-impl objectref::ToType<ObjectRef> for Builtin {
+impl objectref::ToRtWrapperType<ObjectRef> for Builtin {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self)
     }
 }
+
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///     stdlib Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl std::cmp::PartialEq for Builtin {
+    fn eq(&self, rhs: &Builtin) -> bool {
+        self.native_equals(rhs).unwrap()
+    }
+}
+
+
+impl std::cmp::Eq for Builtin {}
+
 
 impl fmt::Display for Builtin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -147,45 +199,8 @@ impl fmt::Display for Builtin {
             &Builtin::String(ref obj) => write!(f, "{}", obj),
             &Builtin::Tuple(ref obj) => write!(f, "{}", obj),
             &Builtin::List(ref obj) => write!(f, "{}", obj),
-            _ => write!(f, "BuiltinType")
+            _ => write!(f, "BuiltinType"),
         }
     }
 }
 
-
-use object;
-/// Builtin is an intermediate wrapper/union type and should not
-/// expose identity
-impl object::api::Identity for Builtin {
-    fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
-        match self {
-            &Builtin::Integer(ref lhs) => lhs.identity(runtime),
-            &Builtin::Float(ref lhs) => lhs.identity(runtime),
-            &Builtin::String(ref lhs) => lhs.identity(runtime),
-            &Builtin::Tuple(ref lhs) => lhs.identity(runtime),
-            &Builtin::List(ref lhs) => lhs.identity(runtime),
-            &Builtin::Set(ref lhs) => lhs.identity(runtime),
-            &Builtin::FrozenSet(ref lhs) => lhs.identity(runtime),
-            &Builtin::Complex(ref lhs) => lhs.identity(runtime),
-            &Builtin::Dictionary(ref lhs) => lhs.identity(runtime),
-            _ => Err(Error::runtime("Missing case for identity"))
-        }
-    }
-}
-
-impl object::api::Hashable for Builtin{
-    fn op_hash(&self, runtime: &mut Runtime) -> RuntimeResult {
-        match self {
-            &Builtin::Integer(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::Float(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::String(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::Tuple(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::List(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::Set(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::FrozenSet(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::Complex(ref lhs) => lhs.op_hash(runtime),
-            &Builtin::Dictionary(ref lhs) => lhs.op_hash(runtime),
-            _ => Err(Error::runtime("Missing case for op_hash"))
-        }
-    }    
-}

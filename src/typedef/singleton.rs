@@ -1,5 +1,3 @@
-
-
 enum SingletonValue {
     True,
     False,

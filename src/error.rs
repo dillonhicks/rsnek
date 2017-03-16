@@ -1,20 +1,20 @@
 use std;
 
-pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display{
+pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display {
     fn error_type(&self) -> ErrorType;
     fn message(&self) -> &'static str;
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Error(pub ErrorType, pub &'static str);
 
 #[deprecated]
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct InterpreterError {
     pub message: &'static str
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ErrorType {
     Runtime,
     Type,
@@ -38,7 +38,6 @@ impl Error {
     pub fn not_implemented() -> Error {
         return Error(ErrorType::NotImplemented, "Not Implemented")
     }
-
 }
 
 

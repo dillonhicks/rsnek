@@ -4,13 +4,14 @@ use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::{Weak,Rc};
+use std::rc::{Weak, Rc};
 
 use num::{BigInt, FromPrimitive};
 
 use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
+use object;
 
 use super::objectref;
 use super::objectref::ObjectRef;
@@ -26,6 +27,9 @@ pub struct Tuple(Box<[ObjectRef]>);
 pub struct TupleObject {
     pub value: Tuple
 }
+
+impl objectref::RtObject for TupleObject {}
+
 
 
 impl objectref::ObjectBinaryOperations for TupleObject {
@@ -47,9 +51,7 @@ impl objectref::ObjectBinaryOperations for TupleObject {
     }
 }
 
-impl objectref::TypeInfo for TupleObject {
-
-}
+impl objectref::TypeInfo for TupleObject {}
 
 impl fmt::Display for Tuple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -76,8 +78,6 @@ impl Tuple {
 }
 
 impl TupleObject {
-
-
     pub fn new(value: &Vec<ObjectRef>) -> TupleObject {
         let tuple = TupleObject {
             value: Tuple::from_vec(&value.clone()),
@@ -91,14 +91,14 @@ impl TupleObject {
     }
 }
 
-impl objectref::ToType<Builtin> for TupleObject {
+impl objectref::ToRtWrapperType<Builtin> for TupleObject {
     #[inline]
     fn to(self) -> Builtin {
         return Builtin::Tuple(self)
     }
 }
 
-impl objectref::ToType<ObjectRef> for TupleObject {
+impl objectref::ToRtWrapperType<ObjectRef> for TupleObject {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
@@ -106,11 +106,8 @@ impl objectref::ToType<ObjectRef> for TupleObject {
 }
 
 
-impl objectref::Object for TupleObject {
-
-}
 
 
-use object;
-impl object::api::Identity for TupleObject{}
-impl object::api::Hashable for TupleObject{}
+impl object::api::Identifiable for TupleObject {}
+
+impl object::api::Hashable for TupleObject {}

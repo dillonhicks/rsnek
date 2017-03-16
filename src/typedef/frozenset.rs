@@ -1,4 +1,3 @@
-
 use result::RuntimeResult;
 use runtime::Runtime;
 
@@ -6,8 +5,8 @@ use super::objectref::{self, ObjectRef};
 
 pub type FrozenSet = ();
 
-#[derive(Clone,Debug)]
-pub struct FrozenSetObject{
+#[derive(Clone, Debug)]
+pub struct FrozenSetObject {
     value: FrozenSet
 }
 
@@ -22,5 +21,6 @@ impl objectref::ObjectBinaryOperations for FrozenSetObject {
 }
 
 use object;
-impl object::api::Identity for FrozenSetObject {}
-impl object::api::Hashable for FrozenSetObject{}
+
+impl object::api::Identifiable for FrozenSetObject {}
+impl object::api::Hashable for FrozenSetObject {}
