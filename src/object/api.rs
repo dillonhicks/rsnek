@@ -120,6 +120,8 @@ pub trait Callable {
 }
 
 
+
+
 /// # Collection Traits
 
 /// Container	 	__contains__
@@ -226,6 +228,9 @@ pub trait MutableSequence: Sequence {
 }
 
 // Set	Collection	__contains__, __iter__, __len__	__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
+//pub trait Set: Collection {
+//    fn op__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
+//}
 // MutableSet	Set	__contains__, __iter__, __len__, add, discard	Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__
 
 // ByteString	Sequence	__getitem__, __len__	Inherited Sequence methods
