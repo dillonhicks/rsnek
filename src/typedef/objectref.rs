@@ -38,10 +38,10 @@ macro_rules! unwrap_builtin {
 ///      Types and Structs
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///
-type _ObjectRef = Rc<RefCell<Builtin>>;
+type _ObjectRef = Rc<Box<Builtin>>;
 pub struct ObjectRef(pub _ObjectRef);
 
-type _WeakObjectRef = Weak<RefCell<Builtin>>;
+type _WeakObjectRef = Weak<Box<Builtin>>;
 pub struct WeakObjectRef(pub _WeakObjectRef);
 
 
@@ -52,7 +52,7 @@ pub struct WeakObjectRef(pub _WeakObjectRef);
 impl ObjectRef {
     #[inline]
     pub fn new(value: Builtin) -> ObjectRef {
-        ObjectRef(Rc::new(RefCell::new(value)))
+        ObjectRef(Rc::new(Box::new(value)))
     }
 
     /// Return a new clone of the ObjectRef as a downgraded WeakObjectRef
@@ -73,13 +73,12 @@ impl ObjectRef {
 
 impl std::cmp::PartialEq for ObjectRef {
     fn eq(&self, rhs: &ObjectRef) -> bool {
-        let lhs_borrowed: &RefCell<Builtin> = self.0.borrow();
-        let lhs_builtin = lhs_borrowed.borrow();
+        let lhs_box: &Box<Builtin> = self.0.borrow();
 
-        let rhs_borrowed: &RefCell<Builtin> = rhs.0.borrow();
-        let rhs_builtin = rhs_borrowed.borrow();
+        let rhs_box: &Box<Builtin> = rhs.0.borrow();
 
-        *lhs_builtin == *rhs_builtin
+
+        *lhs_box.deref() == *rhs_box.deref()
     }
 }
 
@@ -95,15 +94,14 @@ impl Clone for ObjectRef {
 
 impl Hash for ObjectRef {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let lhs_borrowed: &RefCell<Builtin> = self.0.borrow();
-        let lhs_builtin = lhs_borrowed.borrow();
-
+        let builtin: &Box<Builtin> = self.0.borrow();
+        unimplemented!()
     }
 }
 
 
-impl Borrow<RefCell<Builtin>> for ObjectRef {
-    fn borrow(&self) -> &RefCell<Builtin> {
+impl Borrow<Box<Builtin>> for ObjectRef {
+    fn borrow(&self) -> &Box<Builtin> {
         self.0.borrow()
     }
 }
@@ -111,9 +109,9 @@ impl Borrow<RefCell<Builtin>> for ObjectRef {
 
 impl std::fmt::Display for ObjectRef {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let borrowed: &RefCell<Builtin> = self.0.borrow();
+        let builtin: &Box<Builtin> = self.0.borrow();
 
-        match borrowed.borrow_mut().deref() {
+        match builtin.deref() {
             &Builtin::Integer(ref obj) => {
                 write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
             }
@@ -134,11 +132,11 @@ impl std::fmt::Display for ObjectRef {
 
 impl std::fmt::Debug for ObjectRef {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let borrowed: &RefCell<Builtin> = self.0.borrow();
+        let builtin: &Box<Builtin> = self.0.borrow();
 
-        match borrowed.borrow_mut().deref() {
+        match builtin.deref() {
             &Builtin::Integer(ref obj) => {
-                write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
+                write!(f, "<Integer({}): {:?}>", obj, (obj as *const IntegerObject) as u64)
             }
             &Builtin::Float(ref obj) => {
                 write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject)

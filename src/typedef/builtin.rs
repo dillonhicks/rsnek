@@ -140,13 +140,16 @@ impl object::api::Identifiable for Builtin {
         foreach_builtin!(self, rt, op_equals, lhs, rhs)
     }
 
-    #[inline(always)]
-    fn native_identity(&self) -> native::ObjectId {
-        native_foreach_builtin!(self, native_identity, obj)
-    }
+    /// Short circuit the ident to hit the wrapper since
+    /// the macro unwrapping causes an extra layer of indirection
+    /// and makes comparing porinters at the Object level harder.
+    //
+    // fn native_identity(&self) -> native::ObjectId {
+    //   return (&self as *const _) as native::ObjectId;
+    // }
 
-    fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
-        Ok(self.native_identity() == other.native_identity())
+    fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_is, lhs, rhs)
     }
 
     /// Default implementation of equals fallsbacks to op_is.
@@ -155,12 +158,12 @@ impl object::api::Identifiable for Builtin {
     }
 }
 
+
 impl object::api::Hashable for Builtin {
     fn op_hash(&self, rt: &mut Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_hash, obj)
     }
 }
-
 
 
 impl objectref::ToRtWrapperType<Builtin> for Builtin {

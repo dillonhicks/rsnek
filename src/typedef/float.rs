@@ -30,9 +30,9 @@ pub struct FloatObject {
 
 impl objectref::ObjectBinaryOperations for FloatObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let borrowed: &RefCell<Builtin> = rhs.0.borrow();
+        let builtin: &Box<Builtin> = rhs.0.borrow();
 
-        match borrowed.borrow_mut().deref() {
+        match builtin.deref() {
             &Builtin::Float(ref obj) => {
                 let new_number = FloatObject::new(self.value + obj.value).as_builtin();
                 runtime.alloc(new_number.as_object_ref())

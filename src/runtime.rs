@@ -9,6 +9,7 @@ use heap::Heap;
 
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
+use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
 
 
 /// If not size is given, fallback to 256kb.
@@ -23,9 +24,23 @@ pub struct Runtime(RuntimeRef);
 
 /// Concrete struct that holds the current runtime state, heap, etc.
 struct RuntimeInternal {
-    heap: Heap
+    heap: Heap,
+    singletons: SingletonIndex
 }
 
+
+//noinspection RsFieldNaming
+struct SingletonIndex {
+    True: ObjectRef,
+    False: ObjectRef,
+  //  None: Objectref
+}
+
+
+pub enum Singleton {
+    True,
+    False
+}
 
 /// Type that is the Reference Counted wrapper around the actual runtime
 ///
@@ -51,9 +66,18 @@ impl Runtime {
             None => DEFAULT_HEAP_CAPACITY
         };
 
-        let runtime = RuntimeInternal {
-            heap: Heap::new(size)
+        let mut heap = Heap::new(size);
+
+        let singletons = SingletonIndex {
+            True: heap.alloc_static(ObjectRef::new(SINGLETON_TRUE_BUILTIN)).unwrap(),
+            False: heap.alloc_static(ObjectRef::new(SINGLETON_FALSE_BUILTIN)).unwrap(),
         };
+
+        let runtime = RuntimeInternal {
+            heap: heap,
+            singletons: singletons
+        };
+
 
         Runtime(Rc::new(RefCell::new(runtime)))
     }
@@ -74,6 +98,15 @@ impl Runtime {
 
     pub fn heap_capacity(&self) -> usize {
         return (self.0.borrow()).heap.capacity()
+    }
+
+    pub fn True(&self) -> ObjectRef {
+        return (self.0.borrow()).singletons.True.clone()
+    }
+
+    pub fn False(&self) -> ObjectRef {
+        return (self.0.borrow()).singletons.False.clone()
+
     }
 
     #[cfg(rsnek_debug)]

@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -25,23 +26,22 @@ macro_rules! ident_from_ptr {
 }
 
 /// Identity and Equals  __eq__ and is
-pub trait Identifiable {
+pub trait Identifiable: Debug {
     fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
-        let objref = IntegerObject::new_u64(ident_from_ptr!(self)).as_builtin().as_object_ref();
+        let objref = IntegerObject::new_u64(self.native_identity()).as_builtin().as_object_ref();
         return runtime.alloc(objref)
     }
 
-    fn op_is(&self, &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
         //address_of(&self) == address_of(other.uwrapped())
-        let rhs_borrowed: &RefCell<Builtin> = rhs.0.borrow();
-        let rhs_builtin = rhs_borrowed.borrow();
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
-        println!("{:?} == {:?}", self.native_identity(), rhs_builtin.native_identity());
+        //println!("{:?} == {:?}", self.native_identity(), rhs_builtin.native_identity());
 
         if self.native_identity() == rhs_builtin.native_identity() {
-            Ok(ObjectRef::new(SINGLETON_TRUE_BUILTIN))
+            Ok(rt.True())
         } else {
-            Ok(ObjectRef::new(SINGLETON_FALSE_BUILTIN))
+            Ok(rt.False())
         }
     }
 
@@ -50,10 +50,9 @@ pub trait Identifiable {
         return self.op_is(rt, rhs)
     }
 
-    #[inline(always)]
     fn native_identity(&self) -> native::ObjectId {
-        return ident_from_ptr!(self)
-    }
+        return (&self as *const _) as native::ObjectId
+     }
 
     fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         Ok(self.native_identity() == other.native_identity())

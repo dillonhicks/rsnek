@@ -34,8 +34,8 @@ impl objectref::RtObject for TupleObject {}
 
 impl objectref::ObjectBinaryOperations for TupleObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let borrowed: &RefCell<Builtin> = rhs.0.borrow();
-        match borrowed.borrow_mut().deref() {
+        let borrowed: &Box<Builtin> = rhs.0.borrow();
+        match borrowed.deref() {
             &Builtin::Tuple(ref obj) => {
                 let mut array = self.value.0.clone().into_vec();
                 array.extend_from_slice(obj.value.0.as_ref());

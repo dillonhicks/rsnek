@@ -3,12 +3,23 @@ use runtime::Runtime;
 
 use super::objectref::{self, ObjectRef};
 
+use object;
+
+
 pub type Dictionary = ();
 
 #[derive(Clone, Debug)]
 pub struct DictionaryObject {
     value: Dictionary
 }
+
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///       Struct Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+impl object::api::Identifiable for DictionaryObject {}
+impl object::api::Hashable for DictionaryObject {}
 
 impl objectref::ObjectBinaryOperations for DictionaryObject {
     fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
@@ -20,8 +31,3 @@ impl objectref::ObjectBinaryOperations for DictionaryObject {
     }
 }
 
-use object;
-
-impl object::api::Identifiable for DictionaryObject {}
-
-impl object::api::Hashable for DictionaryObject {}

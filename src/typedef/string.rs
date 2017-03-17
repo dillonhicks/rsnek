@@ -28,13 +28,13 @@ pub struct StringObject {
 
 impl objectref::ObjectBinaryOperations for StringObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let borrowed: &RefCell<Builtin> = rhs.0.borrow();
-        match borrowed.borrow_mut().deref() {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+        match builtin.deref() {
             &Builtin::String(ref obj) => {
-                let new_string = self.value.clone() + obj.value.borrow();
-                let new_number = StringObject::new(new_string).as_builtin();
-                runtime.alloc(new_number.as_object_ref())
+                let new_string = StringObject::new(self.value.clone() + obj.value.borrow());
+                runtime.alloc(ObjectRef::new(Builtin::String(new_string)))
             },
+
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to str"))
         }
     }

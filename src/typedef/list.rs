@@ -30,8 +30,9 @@ pub struct ListObject {
 
 impl objectref::ObjectBinaryOperations for ListObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let borrowed: &RefCell<Builtin> = rhs.0.borrow();
-        match borrowed.borrow_mut().deref() {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
             &Builtin::List(ref obj) => {
                 // TODO: Modify the new to allow runtime to give weakrefs back to self
                 let lhs_cell: Ref<Vec<ObjectRef>> = self.value.0.borrow();
