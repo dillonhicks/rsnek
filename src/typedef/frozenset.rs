@@ -1,5 +1,6 @@
 use result::RuntimeResult;
 use runtime::Runtime;
+use object;
 
 use super::objectref::{self, ObjectRef};
 
@@ -9,6 +10,18 @@ pub type FrozenSet = ();
 pub struct FrozenSetObject {
     value: FrozenSet
 }
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///    Python Object Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::model::PythonObject for FrozenSetObject {}
+impl object::api::Identifiable for FrozenSetObject {}
+impl object::api::Hashable for FrozenSetObject {}
 
 impl objectref::ObjectBinaryOperations for FrozenSetObject {
     fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
@@ -20,7 +33,7 @@ impl objectref::ObjectBinaryOperations for FrozenSetObject {
     }
 }
 
-use object;
 
-impl object::api::Identifiable for FrozenSetObject {}
-impl object::api::Hashable for FrozenSetObject {}
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+

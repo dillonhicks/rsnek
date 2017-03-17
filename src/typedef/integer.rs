@@ -54,28 +54,30 @@ impl IntegerObject {
         return integer;
     }
 
+    #[deprecated]
     #[inline]
     pub fn to_builtin(self) -> Builtin {
         return Builtin::Integer(self);
     }
 
+    #[deprecated]
     #[inline]
     pub fn as_builtin(self) -> Builtin {
         return Builtin::Integer(self);
     }
 
-
+    #[deprecated]
     #[inline]
     pub fn as_object_ref(self) -> ObjectRef {
         return Builtin::Integer(self).as_object_ref();
     }
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///      Rt Object Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-
+impl object::model::PythonObject for IntegerObject {}
 impl objectref::RtObject for IntegerObject {}
 impl objectref::TypeInfo for IntegerObject {}
 
@@ -160,7 +162,7 @@ impl objectref::ToRtWrapperType<ObjectRef> for IntegerObject {
 
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///      Rt Object Traits
+///      stdlib Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl fmt::Display for IntegerObject {

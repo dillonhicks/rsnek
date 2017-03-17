@@ -28,9 +28,40 @@ pub struct TupleObject {
     pub value: Tuple
 }
 
+impl Tuple {
+    fn from_vec(vector: &Vec<ObjectRef>) -> Tuple {
+        Tuple(vector.clone().into_boxed_slice())
+    }
+}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl TupleObject {
+    pub fn new(value: &Vec<ObjectRef>) -> TupleObject {
+        let tuple = TupleObject {
+            value: Tuple::from_vec(&value.clone()),
+        };
+
+        return tuple
+    }
+
+    pub fn as_builtin(self) -> Builtin {
+        return Builtin::Tuple(self)
+    }
+}
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl object::model::PythonObject for TupleObject {}
 impl objectref::RtObject for TupleObject {}
-
-
+impl objectref::TypeInfo for TupleObject {}
+impl object::api::Identifiable for TupleObject {}
+impl object::api::Hashable for TupleObject {}
 
 impl objectref::ObjectBinaryOperations for TupleObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
@@ -51,7 +82,25 @@ impl objectref::ObjectBinaryOperations for TupleObject {
     }
 }
 
-impl objectref::TypeInfo for TupleObject {}
+
+impl objectref::ToRtWrapperType<Builtin> for TupleObject {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::Tuple(self)
+    }
+}
+
+impl objectref::ToRtWrapperType<ObjectRef> for TupleObject {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self.to())
+    }
+}
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl fmt::Display for Tuple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,44 +119,3 @@ impl fmt::Debug for TupleObject {
         write!(f, "{}", self.value)
     }
 }
-
-impl Tuple {
-    fn from_vec(vector: &Vec<ObjectRef>) -> Tuple {
-        Tuple(vector.clone().into_boxed_slice())
-    }
-}
-
-impl TupleObject {
-    pub fn new(value: &Vec<ObjectRef>) -> TupleObject {
-        let tuple = TupleObject {
-            value: Tuple::from_vec(&value.clone()),
-        };
-
-        return tuple
-    }
-
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::Tuple(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<Builtin> for TupleObject {
-    #[inline]
-    fn to(self) -> Builtin {
-        return Builtin::Tuple(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for TupleObject {
-    #[inline]
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(self.to())
-    }
-}
-
-
-
-
-impl object::api::Identifiable for TupleObject {}
-
-impl object::api::Hashable for TupleObject {}

@@ -105,13 +105,13 @@ impl Builtin {
 
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///     RtObject Traits
+///     Python Object Traits
 ///
 /// For the BuiltinObject this should mean just proxy dispatching the
 /// underlying associated function using the foreach macros.
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::model::PythonObject for Builtin {}
 impl objectref::RtObject for Builtin {}
-
 impl objectref::TypeInfo for Builtin {}
 
 impl objectref::ObjectBinaryOperations for Builtin {

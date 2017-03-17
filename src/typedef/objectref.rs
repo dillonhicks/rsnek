@@ -174,6 +174,7 @@ pub trait RtObject:
 ObjectBinaryOperations +
 object::api::Identifiable +
 object::api::Hashable +
+object::model::PythonObject +
 ToRtWrapperType<ObjectRef> +
 ToRtWrapperType<Builtin> +
 TypeInfo +

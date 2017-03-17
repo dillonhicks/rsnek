@@ -23,6 +23,10 @@ pub struct SetObject {
     value: RefCell<Set>,
 }
 
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//     Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 
 impl SetObject {
     #[inline]
@@ -32,10 +36,11 @@ impl SetObject {
 }
 
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///     RtObject Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//     RtObject Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+impl object::model::PythonObject for SetObject {}
 impl objectref::RtObject for SetObject {}
 impl objectref::TypeInfo for SetObject {}
 impl object::api::Identifiable for SetObject {}
@@ -72,9 +77,9 @@ impl objectref::ObjectBinaryOperations for SetObject {
     }
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///        stdlib Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//        stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl fmt::Display for SetObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -83,9 +88,9 @@ impl fmt::Display for SetObject {
 }
 
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///        Tests
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//        Tests
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[cfg(test)]
 mod tests {

@@ -52,8 +52,10 @@ impl BooleanObject {
 }
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///     RtObject Traits
+///    Python Object Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl object::model::PythonObject for BooleanObject {}
 impl objectref::RtObject for BooleanObject {}
 impl objectref::TypeInfo for BooleanObject {}
 impl object::api::Identifiable for BooleanObject {

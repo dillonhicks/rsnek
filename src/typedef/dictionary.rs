@@ -18,6 +18,11 @@ pub struct DictionaryObject {
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
+
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+///    Python Object Traits
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::model::PythonObject for DictionaryObject {}
 impl object::api::Identifiable for DictionaryObject {}
 impl object::api::Hashable for DictionaryObject {}
 

@@ -1,6 +1,6 @@
 use result::RuntimeResult;
 use runtime::Runtime;
-
+use object;
 use super::objectref::{self, ObjectRef};
 
 pub type Complex = ();
@@ -20,8 +20,6 @@ impl objectref::ObjectBinaryOperations for ComplexObject {
     }
 }
 
-use object;
-
+impl object::model::PythonObject for ComplexObject {}
 impl object::api::Identifiable for ComplexObject {}
-
 impl object::api::Hashable for ComplexObject {}

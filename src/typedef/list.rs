@@ -8,6 +8,7 @@ use std::rc::{Weak, Rc};
 
 use num::{BigInt, FromPrimitive};
 
+use object;
 use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
@@ -27,6 +28,42 @@ pub struct ListObject {
     pub value: List,
 }
 
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl List {
+    fn new(vector: Vec<ObjectRef>) -> List {
+        List(RefCell::new(vector))
+    }
+}
+
+
+impl ListObject {
+    pub fn new(value: &Vec<ObjectRef>) -> ListObject {
+        let tuple = ListObject {
+            value: List::new(value.clone()),
+        };
+
+        return tuple
+    }
+
+    #[deprecated]
+    pub fn as_builtin(self) -> Builtin {
+        return Builtin::List(self)
+    }
+}
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::model::PythonObject for ListObject {}
+impl objectref::RtObject for ListObject {}
+impl objectref::TypeInfo for ListObject {}
+impl object::api::Identifiable for ListObject {}
+impl object::api::Hashable for ListObject {}
 
 impl objectref::ObjectBinaryOperations for ListObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
@@ -57,7 +94,26 @@ impl objectref::ObjectBinaryOperations for ListObject {
     }
 }
 
-impl objectref::TypeInfo for ListObject {}
+
+impl objectref::ToRtWrapperType<Builtin> for ListObject {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::List(self)
+    }
+}
+
+impl objectref::ToRtWrapperType<ObjectRef> for ListObject {
+    #[inline]
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(self.to())
+    }
+}
+
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl fmt::Display for List {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -76,48 +132,3 @@ impl fmt::Debug for ListObject {
         write!(f, "{}", self.value)
     }
 }
-
-
-impl List {
-    fn new(vector: Vec<ObjectRef>) -> List {
-        List(RefCell::new(vector))
-    }
-}
-
-
-impl ListObject {
-    pub fn new(value: &Vec<ObjectRef>) -> ListObject {
-        let tuple = ListObject {
-            value: List::new(value.clone()),
-        };
-
-        return tuple
-    }
-
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::List(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<Builtin> for ListObject {
-    #[inline]
-    fn to(self) -> Builtin {
-        return Builtin::List(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for ListObject {
-    #[inline]
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(self.to())
-    }
-}
-
-
-impl objectref::RtObject for ListObject {}
-
-use object;
-
-impl object::api::Identifiable for ListObject {}
-
-impl object::api::Hashable for ListObject {}

@@ -8,6 +8,7 @@ use std::rc::{Weak, Rc};
 
 use num::{BigInt, FromPrimitive};
 
+use object;
 use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
@@ -25,6 +26,44 @@ pub struct StringObject {
     pub value: String,
 }
 
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl StringObject {
+    pub fn from_str(value: &'static str) -> StringObject {
+        return StringObject::new(value.to_string())
+    }
+
+    pub fn new(value: std::string::String) -> StringObject {
+        let string = StringObject {
+            value: value,
+        };
+
+        return string
+    }
+
+    #[deprecated]
+    pub fn as_builtin(self) -> Builtin {
+        return Builtin::String(self)
+    }
+
+    #[deprecated]
+    pub fn as_objref(self) -> ObjectRef {
+        return ObjectRef::new(self.as_builtin())
+    }
+}
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl object::model::PythonObject for StringObject {}
+impl objectref::RtObject for StringObject {}
+impl objectref::TypeInfo for StringObject {}
+impl object::api::Identifiable for StringObject {}
+impl object::api::Hashable for StringObject {}
 
 impl objectref::ObjectBinaryOperations for StringObject {
     fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
@@ -43,36 +82,6 @@ impl objectref::ObjectBinaryOperations for StringObject {
     }
 }
 
-impl objectref::TypeInfo for StringObject {}
-
-
-impl fmt::Display for StringObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
-
-impl StringObject {
-    pub fn from_str(value: &'static str) -> StringObject {
-        return StringObject::new(value.to_string())
-    }
-
-    pub fn new(value: std::string::String) -> StringObject {
-        let string = StringObject {
-            value: value,
-        };
-
-        return string
-    }
-
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::String(self)
-    }
-
-    pub fn as_objref(self) -> ObjectRef {
-        return ObjectRef::new(self.as_builtin())
-    }
-}
 
 impl objectref::ToRtWrapperType<Builtin> for StringObject {
     #[inline]
@@ -88,10 +97,12 @@ impl objectref::ToRtWrapperType<ObjectRef> for StringObject {
     }
 }
 
-impl objectref::RtObject for StringObject {}
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-use object;
-
-impl object::api::Identifiable for StringObject {}
-
-impl object::api::Hashable for StringObject {}
+impl fmt::Display for StringObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
