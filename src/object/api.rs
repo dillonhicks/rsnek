@@ -18,8 +18,6 @@ use typedef::native;
 
 /// # Identity and Equality Traits
 
-
-
 /// Get the address of some reference as u64
 macro_rules! ident_from_ptr {
     ($name:ident) => {(&$name as *const _) as native::ObjectId}
@@ -29,16 +27,27 @@ macro_rules! ident_from_ptr {
 pub trait Identifiable: Debug {
     fn identity(&self, runtime: &mut Runtime) -> RuntimeResult {
         let objref = IntegerObject::new_u64(self.native_identity()).as_builtin().as_object_ref();
-        return runtime.alloc(objref)
+        return runtime.alloc(objref);
+    }
+
+    fn native_identity(&self) -> native::ObjectId {
+        return (&self as *const _) as native::ObjectId;
     }
 
     fn op_is(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        //address_of(&self) == address_of(other.uwrapped())
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
-        //println!("{:?} == {:?}", self.native_identity(), rhs_builtin.native_identity());
+        if self.native_is(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
 
-        if self.native_identity() == rhs_builtin.native_identity() {
+    fn op_is_not(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is_not(rhs_builtin).unwrap() {
             Ok(rt.True())
         } else {
             Ok(rt.False())
@@ -47,25 +56,51 @@ pub trait Identifiable: Debug {
 
     /// Default implementation of equals fallsbacks to op_is.
     fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        return self.op_is(rt, rhs)
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_equals(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
     }
 
-    fn native_identity(&self) -> native::ObjectId {
-        return (&self as *const _) as native::ObjectId
-     }
+    /// Default implementation of equals fallsbacks to op_is_not.
+    fn op_not_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_not_equals(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
 
     fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         Ok(self.native_identity() == other.native_identity())
     }
 
+    fn native_is_not(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(!self.native_is(other).unwrap())
+    }
+
     /// Default implementation of equals fallsbacks to op_is.
     fn native_equals(&self, other: &Builtin) -> NativeResult<native::Boolean> {
-        return self.native_is(other)
+        return self.native_is(other);
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_not_equals(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        return Ok(!self.native_equals(other).unwrap());
     }
 }
 
+
 /// Hashable	 	__hash__
-pub trait Hashable {
+///
+pub trait Hashable
+    where Self: Identifiable
+{
     fn op_hash(&self, &mut Runtime) -> RuntimeResult {
         Err(Error::not_implemented())
     }
@@ -190,27 +225,28 @@ pub trait MutableSequence: Sequence {
     }
 }
 
-//ByteString	Sequence	__getitem__, __len__	Inherited Sequence methods
-//Set	Collection	__contains__, __iter__, __len__	__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
-//MutableSet	Set	__contains__, __iter__, __len__, add, discard	Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__
-//Mapping	Collection	__getitem__, __iter__, __len__	__contains__, keys, items, values, get, __eq__, and __ne__
-//MutableMapping	Mapping	__getitem__, __setitem__, __delitem__, __iter__, __len__	Inherited Mapping methods and pop, popitem, clear, update, and setdefault
-//MappingView	Sized	 	__len__
-//ItemsView	MappingView, Set	 	__contains__, __iter__
-//KeysView	MappingView, Set	 	__contains__, __iter__
-//ValuesView	MappingView	 	__contains__, __iter__
-//Awaitable	 	__await__
-//Coroutine	Awaitable	send, throw	close
-//AsyncIterable	 	__aiter__
-//AsyncIterator	AsyncIterable	__anext__	__aiter__
-//AsyncGenerator	AsyncIterator	asend, athrow	aclose, __aiter__, __anext__
+// Set	Collection	__contains__, __iter__, __len__	__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
+// MutableSet	Set	__contains__, __iter__, __len__, add, discard	Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__
+
+// ByteString	Sequence	__getitem__, __len__	Inherited Sequence methods
+// Mapping	Collection	__getitem__, __iter__, __len__	__contains__, keys, items, values, get, __eq__, and __ne__
+// MutableMapping	Mapping	__getitem__, __setitem__, __delitem__, __iter__, __len__	Inherited Mapping methods and pop, popitem, clear, update, and setdefault
+// MappingView	Sized	 	__len__
+// ItemsView	MappingView, Set	 	__contains__, __iter__
+// KeysView	MappingView, Set	 	__contains__, __iter__
+// ValuesView	MappingView	 	__contains__, __iter__
+// Awaitable	 	__await__
+// Coroutine	Awaitable	send, throw	close
+// AsyncIterable	 	__aiter__
+// AsyncIterator	AsyncIterable	__anext__	__aiter__
+// AsyncGenerator	AsyncIterator	asend, athrow	aclose, __aiter__, __anext__
 
 trait ArithmeticMethods {}
 
 
 trait Map {}
 
-//typedef struct {
+// typedef struct {
 //    lenfunc sq_length;
 //    binaryfunc sq_concat;
 //    ssizeargfunc sq_repeat;
@@ -222,54 +258,54 @@ trait Map {}
 //
 //    binaryfunc sq_inplace_concat;
 //    ssizeargfunc sq_inplace_repeat;
-//} PySequenceMethods;
+// PySequenceMethods;
 //
-//typedef struct {
+// typedef struct {
 //    lenfunc mp_length;
 //    binaryfunc mp_subscript;
 //    objobjargproc mp_ass_subscript;
-//} PyMappingMethods;
+// PyMappingMethods;
 //
-//typedef struct {
+// typedef struct {
 //    unaryfunc am_await;
 //    unaryfunc am_aiter;
 //    unaryfunc am_anext;
-//} PyAsyncMethods;
+// PyAsyncMethods;
 //
-//typedef struct {
+// typedef struct {
 //    getbufferproc bf_getbuffer;
 //    releasebufferproc bf_releasebuffer;
-//} PyBufferProcs;
-//#endif /* Py_LIMITED_API */
+// PyBufferProcs;
+// endif /* Py_LIMITED_API */
 //
-//typedef void (*freefunc)(void *);
-//typedef void (*destructor)(PyObject *);
-//#ifndef Py_LIMITED_API
-//* We can't provide a full compile-time check that limited-API
+// typedef void (*freefunc)(void *);
+// typedef void (*destructor)(PyObject *);
+// ifndef Py_LIMITED_API
+// We can't provide a full compile-time check that limited-API
 //   users won't implement tp_print. However, not defining printfunc
 //   and making tp_print of a different function pointer type
 //   should at least cause a warning in most cases. */
-//typedef int (*printfunc)(PyObject *, FILE *, int);
-//#endif
-//typedef PyObject *(*getattrfunc)(PyObject *, char *);
-//typedef PyObject *(*getattrofunc)(PyObject *, PyObject *);
-//typedef int (*setattrfunc)(PyObject *, char *, PyObject *);
-//typedef int (*setattrofunc)(PyObject *, PyObject *, PyObject *);
-//typedef PyObject *(*reprfunc)(PyObject *);
-//typedef Py_hash_t (*hashfunc)(PyObject *);
-//typedef PyObject *(*richcmpfunc) (PyObject *, PyObject *, int);
-//typedef PyObject *(*getiterfunc) (PyObject *);
-//typedef PyObject *(*iternextfunc) (PyObject *);
-//typedef PyObject *(*descrgetfunc) (PyObject *, PyObject *, PyObject *);
-//typedef int (*descrsetfunc) (PyObject *, PyObject *, PyObject *);
-//typedef int (*initproc)(PyObject *, PyObject *, PyObject *);
-//typedef PyObject *(*newfunc)(struct _typeobject *, PyObject *, PyObject *);
-//typedef PyObject *(*allocfunc)(struct _typeobject *, Py_ssize_t);
+// typedef int (*printfunc)(PyObject *, FILE *, int);
+// endif
+// typedef PyObject *(*getattrfunc)(PyObject *, char *);
+// typedef PyObject *(*getattrofunc)(PyObject *, PyObject *);
+// typedef int (*setattrfunc)(PyObject *, char *, PyObject *);
+// typedef int (*setattrofunc)(PyObject *, PyObject *, PyObject *);
+// typedef PyObject *(*reprfunc)(PyObject *);
+// typedef Py_hash_t (*hashfunc)(PyObject *);
+// typedef PyObject *(*richcmpfunc) (PyObject *, PyObject *, int);
+// typedef PyObject *(*getiterfunc) (PyObject *);
+// typedef PyObject *(*iternextfunc) (PyObject *);
+// typedef PyObject *(*descrgetfunc) (PyObject *, PyObject *, PyObject *);
+// typedef int (*descrsetfunc) (PyObject *, PyObject *, PyObject *);
+// typedef int (*initproc)(PyObject *, PyObject *, PyObject *);
+// typedef PyObject *(*newfunc)(struct _typeobject *, PyObject *, PyObject *);
+// typedef PyObject *(*allocfunc)(struct _typeobject *, Py_ssize_t);
 //
-//#ifdef Py_LIMITED_API
-//typedef struct _typeobject PyTypeObject; /* opaque */
-//#else
-//typedef struct _typeobject {
+// ifdef Py_LIMITED_API
+// typedef struct _typeobject PyTypeObject; /* opaque */
+// else
+// typedef struct _typeobject {
 //    PyObject_VAR_HEAD
 //    const char *tp_name; /* For printing, in format "<module>.<name>" */
 //    Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
@@ -358,5 +394,5 @@ trait Map {}
 //    struct _typeobject *tp_prev;
 //    struct _typeobject *tp_next;
 //    #endif
-//} PyTypeObject;
-//#endif
+// PyTypeObject;
+// endif

@@ -39,7 +39,8 @@ struct SingletonIndex {
 
 pub enum Singleton {
     True,
-    False
+    False,
+    None
 }
 
 /// Type that is the Reference Counted wrapper around the actual runtime
@@ -105,6 +106,12 @@ impl Runtime {
     }
 
     pub fn False(&self) -> ObjectRef {
+        return (self.0.borrow()).singletons.False.clone()
+
+    }
+
+    pub fn None(&self) -> ObjectRef {
+        // TODO: Update this to be actually None
         return (self.0.borrow()).singletons.False.clone()
 
     }

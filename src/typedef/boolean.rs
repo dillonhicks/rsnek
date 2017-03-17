@@ -147,7 +147,28 @@ mod tests {
     use object::api::Identifiable;
     use std::borrow::Borrow;
 
+    /// Reference equality
+    ///  True is True
+    #[test]
+    fn test_boolean_identity() {
+        let mut rt = Runtime::new(None);
+        assert_eq!(rt.heap_size(), 0);
 
+        let False = rt.False();
+        let False2 = False.clone();
+
+        let False_ref: &Box<Builtin> = False.0.borrow();
+
+        let result = False_ref.native_is(False_ref).unwrap();
+        assert_eq!(result, true, "BooleanObject native is(native_is)");
+
+        let result = False_ref.op_is(&mut rt, &False2).unwrap();
+        assert_eq!(result, rt.True(), "BooleanObject is(op_is)");
+
+    }
+
+    ///
+    /// True == True
     #[test]
     fn test_boolean_equality() {
         let mut runtime = Runtime::new(None);
@@ -168,26 +189,12 @@ mod tests {
 
         let result = False_ref.op_equals(&mut runtime, &False2.clone()).unwrap();
         assert_eq!(result, True, "BooleanObject equality (op_equals)");
+
+        let result = False_ref.native_equals(False_ref).unwrap();
+        assert_eq!(result, true);
     }
 
-    #[test]
-    fn test_boolean_identity() {
-        let mut rt = Runtime::new(None);
-        assert_eq!(rt.heap_size(), 0);
 
-        let False = rt.False();
-        let False2 = False.clone();
-
-        let False_ref: &Box<Builtin> = False.0.borrow();
-
-
-        let result = False_ref.native_is(False_ref).unwrap();
-        assert_eq!(result, true, "BooleanObject native is(native_is)");
-
-        let result = False_ref.op_is(&mut rt, &False2).unwrap();
-        assert_eq!(result, rt.True(), "BooleanObject is(op_is)");
-
-    }
 
 
 }

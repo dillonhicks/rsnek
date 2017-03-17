@@ -131,15 +131,6 @@ impl object::api::Identifiable for Builtin {
         foreach_builtin!(self, rt, identity, lhs)
     }
 
-    fn op_is(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_is, lhs, rhs)
-    }
-
-    /// Default implementation of equals fallsbacks to op_is.
-    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_equals, lhs, rhs)
-    }
-
     /// Short circuit the ident to hit the wrapper since
     /// the macro unwrapping causes an extra layer of indirection
     /// and makes comparing porinters at the Object level harder.
@@ -148,13 +139,38 @@ impl object::api::Identifiable for Builtin {
     //   return (&self as *const _) as native::ObjectId;
     // }
 
+    fn op_is(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_is, lhs, rhs)
+    }
+
+    fn op_is_not(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_is_not, lhs, rhs)
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_equals, lhs, rhs)
+    }
+
+    fn op_not_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_not_equals, lhs, rhs)
+    }
+
     fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_is, lhs, rhs)
+    }
+
+    fn native_is_not(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_is_not, lhs, rhs)
     }
 
     /// Default implementation of equals fallsbacks to op_is.
     fn native_equals(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_equals, lhs, rhs)
+    }
+
+    fn native_not_equals(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_not_equals, lhs, rhs)
     }
 }
 
@@ -163,6 +179,11 @@ impl object::api::Hashable for Builtin {
     fn op_hash(&self, rt: &mut Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_hash, obj)
     }
+
+    fn native_hash(&self) -> NativeResult<native::HashId>{
+        native_foreach_builtin!(self, native_hash, obj)
+    }
+
 }
 
 

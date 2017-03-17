@@ -4,6 +4,7 @@ use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::{Weak, Rc};
+use std::hash::{Hash, SipHasher, Hasher};
 
 use num::{FromPrimitive, BigInt};
 
@@ -103,7 +104,20 @@ impl object::api::Identifiable for IntegerObject {
 }
 
 
-impl object::api::Hashable for IntegerObject {}
+impl object::api::Hashable for IntegerObject {
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        let mut s = SipHasher::new();
+        self.hash(&mut s);
+        Ok(s.finish())
+    }
+
+    fn op_hash(&self, rt: &mut Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
+            Err(err) => Err(err)
+        }
+    }
+}
 
 
 impl objectref::ObjectBinaryOperations for IntegerObject {

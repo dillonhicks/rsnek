@@ -93,9 +93,8 @@ impl Clone for ObjectRef {
 }
 
 impl Hash for ObjectRef {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let builtin: &Box<Builtin> = self.0.borrow();
-        unimplemented!()
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // noop since we use Holder elements with manually computed hashes
     }
 }
 
@@ -136,7 +135,7 @@ impl std::fmt::Debug for ObjectRef {
 
         match builtin.deref() {
             &Builtin::Integer(ref obj) => {
-                write!(f, "<Integer({}): {:?}>", obj, (obj as *const IntegerObject) as u64)
+                write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
             }
             &Builtin::Float(ref obj) => {
                 write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject)
