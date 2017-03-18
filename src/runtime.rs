@@ -8,8 +8,8 @@ use heap::Heap;
 use typedef::native::ObjectId;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
-
+use typedef::boolean::BooleanObject;
+use typedef::objectref::ToRtWrapperType;
 
 /// If not size is given, fallback to 256kb.
 pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
@@ -68,9 +68,12 @@ impl Runtime {
 
         let mut heap = Heap::new(size);
 
+        let True: ObjectRef = BooleanObject::new_true().to();
+        let False: ObjectRef = BooleanObject::new_false().to();
+
         let singletons = SingletonIndex {
-            True: heap.alloc_static(ObjectRef::new(SINGLETON_TRUE_BUILTIN)).unwrap(),
-            False: heap.alloc_static(ObjectRef::new(SINGLETON_FALSE_BUILTIN)).unwrap(),
+            True: heap.alloc_static(True).unwrap(),
+            False: heap.alloc_static(False).unwrap()
         };
 
         let runtime = RuntimeInternal {

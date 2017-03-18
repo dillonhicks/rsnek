@@ -101,7 +101,6 @@ mod tests {
     use typedef::string::StringObject;
     use typedef::tuple::TupleObject;
     use typedef::list::ListObject;
-    use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
     use typedef::objectref::ToRtWrapperType;
 
     use super::SetObject;

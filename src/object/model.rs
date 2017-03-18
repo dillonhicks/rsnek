@@ -378,7 +378,6 @@ pub trait PyBehavior {
     }
 
 
-
     // 3.3.6. Emulating container types
     api_method!(unary, self, __len__, Length, op_len, native_len);
     api_method!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint);
@@ -449,15 +448,90 @@ pub trait PyBehavior {
     api_method!(unary, self, __invert__, Invert, op_invert, native_invert);
 
     // Standard numeric conversions
-    api_method!(unary, self, __complex__, ToComplex, op_complex, native_complex);
-    api_method!(unary, self, __int__, ToInt, op_int, native_int);
-    api_method!(unary, self, __float__, ToFloat, op_float, native_float);
-    api_method!(unary, self, __round__, ToRounded, op_round, native_round);
-    api_method!(unary, self, __index__, ToIndex, op_index, native_index);
-
+    api_method!(unary, self, __complex__, ToComplex, op_complex, native_complex, native::Complex);
+    api_method!(unary, self, __int__, ToInt, op_int, native_int, native::Integer);
+    api_method!(unary, self, __float__, ToFloat, op_float, native_float, native::Float);
+    api_method!(unary, self, __round__, ToRounded, op_round, native_round, native::Integer);
+    api_method!(unary, self, __index__, ToIndex, op_index, native_index, native::Integer);
 }
 
+//trait CollectionPyBehavior: PyBehavior {
+//    api_method!(unary, self, __len__, Length, op_len, native_len);
+//    api_method!(unary, self, __iter__, Iterator, op_iter, native_iter);
+//    api_method!(binary, self, __contains__, Contains, op_contains, native_contains);
+//}
+//
+//trait SequencePyBehavior: PyBehavior {
+//    api_method!(unary, self, __len__, Length, op_len, native_len);
+//
+//}
 
+///// Sized	 	__len__
+//pub trait Sized {
+//    fn op_len(&self, &Runtime) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//}
+//
+///// Collection	Sized, Iterable, Container	__contains__, __iter__, __len__
+//pub trait Collection: Sized + Iterable + Container {}
+//
+///// Sequence	Reversible, Collection	__getitem__, __len__	__contains__, __iter__, __reversed__, index, and count
+//pub trait Sequence: Reversible + Collection {
+//    fn op_getitem(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn index(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn count(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//}
+
+///// MutableSequence	Sequence	__getitem__, __setitem__, __delitem__, __len__, insert	Inherited Sequence methods and append, reverse, extend, pop, remove, and __iadd__
+//pub trait MutableSequence: Sequence {
+//    fn op_setitem(&self, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn op_delitem(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn op_iadd(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn insert(&self, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn append(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn extend(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn pop(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//
+//    fn remove(&self, &Runtime, &ObjectRef) -> RuntimeResult {
+//        Err(Error::not_implemented())
+//    }
+//}
+//
+//// Set	Collection	__contains__, __iter__, __len__	__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
+////pub trait Set: Collection {
+////    fn op__le__, __lt__, __eq__, __ne__, __gt__, __ge__, __and__, __or__, __sub__, __xor__, and isdisjoint
+////}
+//// MutableSet	Set	__contains__, __iter__, __len__, add, discard	Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__
+//
 /// This module represents more advanced types outside of the scope of
 /// the initial phase of "get the builtin type system working" since
 /// their implementation can heavily influence the design of the interpreter

@@ -15,14 +15,11 @@ use runtime::Runtime;
 use typedef::objectref::ToRtWrapperType;
 
 use super::native;
+pub use typedef::native::Integer;
 use super::objectref;
 use super::objectref::ObjectRef;
 use super::builtin::Builtin;
 use super::float::FloatObject;
-use super::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
-
-
-pub type Integer = BigInt;
 
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
@@ -37,20 +34,20 @@ pub struct IntegerObject {
 impl IntegerObject {
     #[inline]
     pub fn new_i64(value: i64) -> IntegerObject {
-        let integer = IntegerObject { value: BigInt::from(value) };
+        let integer = IntegerObject { value: Integer::from(value) };
 
         return integer;
     }
 
     #[inline]
     pub fn new_u64(value: u64) -> IntegerObject {
-        let integer = IntegerObject { value: BigInt::from(value) };
+        let integer = IntegerObject { value: Integer::from(value) };
 
         return integer;
     }
 
-    pub fn new_bigint(value: BigInt) -> IntegerObject {
-        let integer = IntegerObject { value: BigInt::from(value) };
+    pub fn new_bigint(value: Integer) -> IntegerObject {
+        let integer = IntegerObject { value: Integer::from(value) };
 
         return integer;
     }
@@ -71,9 +68,9 @@ impl object::model::PyBehavior for IntegerObject {
         match self.native_eq(builtin.deref()) {
             Ok(value) => {
                 if value {
-                    rt.alloc(ObjectRef::new(SINGLETON_TRUE_BUILTIN))
+                    Ok(rt.True())
                 } else {
-                    rt.alloc(ObjectRef::new(SINGLETON_FALSE_BUILTIN))
+                    Ok(rt.False())
                 }
             }
             Err(err) => Err(err),

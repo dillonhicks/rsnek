@@ -9,6 +9,8 @@ use object::api;
 use object::model::PyBehavior;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
+use typedef::integer::IntegerObject;
+use typedef::objectref::ToRtWrapperType;
 
 use super::builtin;
 use super::builtin::Builtin;
@@ -16,8 +18,9 @@ use super::objectref;
 use super::objectref::ObjectRef;
 use super::native;
 
+use num::Zero;
+use num::FromPrimitive;
 use num::ToPrimitive;
-
 
 
 
@@ -30,27 +33,20 @@ pub struct BooleanObject {
 }
 
 
-pub const SINGLETON_TRUE: BooleanObject = BooleanObject { value: 1 };
-pub const SINGLETON_FALSE: BooleanObject = BooleanObject { value: 0 };
-pub const SINGLETON_TRUE_BUILTIN: builtin::Builtin = builtin::Builtin::Boolean(SINGLETON_TRUE);
-pub const SINGLETON_FALSE_BUILTIN: builtin::Builtin = builtin::Builtin::Boolean(SINGLETON_FALSE);
-
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///       Struct Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl BooleanObject {
-    pub fn new_u64(value: u64) -> BooleanObject {
-        match value {
-            0 => SINGLETON_FALSE,
-            _ => SINGLETON_TRUE,
+    pub fn new_true() -> BooleanObject {
+        return BooleanObject{
+            value: native::Integer::from(1)
         }
     }
 
-    pub fn new_f64(value: f64) -> BooleanObject {
-        match value {
-            0.0 => SINGLETON_FALSE,
-            _ => SINGLETON_TRUE,
+    pub fn new_false() -> BooleanObject {
+        return BooleanObject{
+            value: native::Integer::from(0)
         }
     }
 }
@@ -79,14 +75,29 @@ impl object::model::PyBehavior for BooleanObject {
     }
 
     fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        let equality = match rhs {
-            &Builtin::Boolean(ref obj) => self.value == obj.value,
-            &Builtin::Integer(ref obj) => *self == BooleanObject::new_u64(obj.value.to_u64().unwrap_or_default()),
-            &Builtin::Float(ref obj) =>  *self == BooleanObject::new_f64(obj.value),
-            _ => self.value == 1,
-        };
+        match rhs.native_bool() {
+            Ok(value) => Ok(self.native_bool().unwrap() == value),
+            Err(err) => Err(err)
+        }
+    }
 
-        Ok(equality)
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        return Ok(!self.value.is_zero())
+    }
+
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_int() {
+            Ok(int) => {
+                let int_obj: ObjectRef = IntegerObject::new_bigint(int).to();
+                rt.alloc(int_obj)
+            },
+            Err(err) => Err(err)
+        }
+
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        return Ok(self.value.clone())
     }
 }
 
@@ -119,7 +130,8 @@ impl fmt::Display for BooleanObject {
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[cfg(test)]
-mod tests {
+#[allow(non_snake_case)]
+mod test_pybehavior {
     use std;
     use std::rc::Rc;
     use std::ops::Deref;
@@ -134,7 +146,6 @@ mod tests {
     use typedef::string::StringObject;
     use typedef::tuple::TupleObject;
     use typedef::list::ListObject;
-    use super::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
     use typedef::objectref::ToRtWrapperType;
 
     use num::ToPrimitive;
@@ -144,7 +155,7 @@ mod tests {
     /// Reference equality
     ///  True is True
     #[test]
-    fn test_boolean_identity() {
+    fn is() {
         let mut rt = Runtime::new(None);
         assert_eq!(rt.heap_size(), 0);
 
@@ -164,20 +175,20 @@ mod tests {
     ///
     /// True == True
     #[test]
-    fn test_boolean_equality() {
-        let mut runtime = Runtime::new(None);
-        assert_eq!(runtime.heap_size(), 0);
+    fn __eq__() {
+        let mut rt = Runtime::new(None);
+        assert_eq!(rt.heap_size(), 0);
 
-        let False = ObjectRef::new(SINGLETON_FALSE_BUILTIN);
-        let True = ObjectRef::new(SINGLETON_TRUE_BUILTIN);
+        let False = rt.False();
+        let True = rt.True();
 
-        let thing1 = runtime.alloc(False.clone()).unwrap();
-        let False2 = runtime.alloc(False.clone()).unwrap();
-        let thing3 = runtime.alloc(True.clone()).unwrap();
+        let thing1 = rt.alloc(False.clone()).unwrap();
+        let False2 = rt.alloc(False.clone()).unwrap();
+        let thing3 = rt.alloc(True.clone()).unwrap();
 
         let False_ref: &Box<Builtin> = False.0.borrow();
 
-        let result = False_ref.op_eq(&mut runtime, &False2.clone()).unwrap();
+        let result = False_ref.op_eq(&rt, &False2.clone()).unwrap();
         assert_eq!(result, True, "BooleanObject equality (op_equals)");
 
         let result = False_ref.native_eq(False_ref).unwrap();
@@ -185,6 +196,34 @@ mod tests {
     }
 
 
+    #[test]
+    #[allow(non_snake_case)]
+    fn __bool__() {
+        let mut rt = Runtime::new(None);
+
+        let True = rt.True();
+        let True_ref: &Box<Builtin> = True.0.borrow();
+
+        let result = True_ref.op_bool(&rt).unwrap();
+        assert_eq!(rt.True(), result);
+
+        let result = True_ref.native_bool().unwrap();
+        assert_eq!(result, true);
+
+    }
+
+    #[test]
+    fn __int__() {
+        let mut rt = Runtime::new(None);
+
+        let one: ObjectRef = IntegerObject::new_u64(1).to();
+
+        let True = rt.True();
+        let True_ref: &Box<Builtin> = True.0.borrow();
+
+        let result = True_ref.op_int(&rt).unwrap();
+        assert_eq!(result, one);
+    }
 
 
 }

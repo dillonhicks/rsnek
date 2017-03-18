@@ -109,6 +109,10 @@ impl objectref::RtObject for Builtin {}
 impl object::model::PyObject for Builtin {}
 impl object::model::PyBehavior for Builtin {
 
+    //
+    // Identity and Equality
+    //
+
     fn identity(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, identity, lhs)
     }
@@ -156,6 +160,11 @@ impl object::model::PyBehavior for Builtin {
         native_foreach_builtin!(self, native_ne, lhs, rhs)
     }
 
+
+
+    //
+    // Hash
+    //
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_hash, obj)
     }
@@ -164,6 +173,50 @@ impl object::model::PyBehavior for Builtin {
         native_foreach_builtin!(self, native_hash, obj)
     }
 
+    //
+    // Numeric Conversions
+    //
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_bool, obj)
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean>{
+        native_foreach_builtin!(self, native_bool, obj)
+    }
+    
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_int, obj)
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer>{
+        native_foreach_builtin!(self, native_int, obj)
+    }
+
+    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_float, obj)
+    }
+
+    fn native_float(&self) -> NativeResult<native::Float>{
+        native_foreach_builtin!(self, native_float, obj)
+    }
+
+    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_complex, obj)
+    }
+
+    fn native_complex(&self) -> NativeResult<native::Complex>{
+        native_foreach_builtin!(self, native_complex, obj)
+    }
+
+    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_index, obj)
+    }
+
+    fn native_index(&self) -> NativeResult<native::Integer>{
+        native_foreach_builtin!(self, native_index, obj)
+    }
+
+    // Numeric operators
     fn op_add(&self, rt: &Runtime, rhs:&ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
