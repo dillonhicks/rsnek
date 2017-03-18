@@ -43,30 +43,16 @@ impl StringObject {
         return string
     }
 
-    #[deprecated]
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::String(self)
-    }
-
-    #[deprecated]
-    pub fn as_objref(self) -> ObjectRef {
-        return ObjectRef::new(self.as_builtin())
-    }
 }
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl object::model::PythonObject for StringObject {}
 impl objectref::RtObject for StringObject {}
-impl objectref::TypeInfo for StringObject {}
-impl object::api::Identifiable for StringObject {}
-impl object::api::Hashable for StringObject {}
-
-impl objectref::ObjectBinaryOperations for StringObject {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl object::model::PyObject for StringObject {}
+impl object::model::PyBehavior for StringObject {
+    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
         match builtin.deref() {
             &Builtin::String(ref obj) => {
@@ -76,9 +62,6 @@ impl objectref::ObjectBinaryOperations for StringObject {
 
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to str"))
         }
-    }
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
     }
 }
 

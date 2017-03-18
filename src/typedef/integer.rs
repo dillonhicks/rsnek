@@ -12,6 +12,7 @@ use object;
 use error::{Error, ErrorType};
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
+use typedef::objectref::ToRtWrapperType;
 
 use super::native;
 use super::objectref;
@@ -54,38 +55,20 @@ impl IntegerObject {
         return integer;
     }
 
-    #[deprecated]
-    #[inline]
-    pub fn to_builtin(self) -> Builtin {
-        return Builtin::Integer(self);
-    }
-
-    #[deprecated]
-    #[inline]
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::Integer(self);
-    }
-
-    #[deprecated]
-    #[inline]
-    pub fn as_object_ref(self) -> ObjectRef {
-        return Builtin::Integer(self).as_object_ref();
-    }
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl object::model::PythonObject for IntegerObject {}
 impl objectref::RtObject for IntegerObject {}
-impl objectref::TypeInfo for IntegerObject {}
+impl object::model::PyObject for IntegerObject {}
+impl object::model::PyBehavior for IntegerObject {
 
-impl object::api::Identifiable for IntegerObject {
-    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
-        match self.native_equals(builtin.deref()) {
+        match self.native_eq(builtin.deref()) {
             Ok(value) => {
                 if value {
                     rt.alloc(ObjectRef::new(SINGLETON_TRUE_BUILTIN))
@@ -97,51 +80,41 @@ impl object::api::Identifiable for IntegerObject {
         }
     }
 
-    fn native_equals(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         match other {
             &Builtin::Integer(ref obj) => Ok(self.value == obj.value),
             _ => Ok(false),
         }
     }
-}
 
-
-impl object::api::Hashable for IntegerObject {
     fn native_hash(&self) -> NativeResult<native::HashId> {
         let mut s = SipHasher::new();
         self.hash(&mut s);
         Ok(s.finish())
     }
 
-    fn op_hash(&self, rt: &mut Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
             Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
             Err(err) => Err(err)
         }
     }
-}
 
-
-impl objectref::ObjectBinaryOperations for IntegerObject {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
             &Builtin::Integer(ref obj) => {
-                let new_number = IntegerObject::new_bigint(&self.value + &obj.value).as_builtin();
-                runtime.alloc(new_number.as_object_ref())
+                let new_number: ObjectRef = IntegerObject::new_bigint(&self.value + &obj.value).to();
+                runtime.alloc(new_number)
             }
             &Builtin::Float(ref obj) => {
-                let new_number = FloatObject::add_integer(obj, &self)?.as_builtin();
-                runtime.alloc(new_number.as_object_ref())
+                let new_number: ObjectRef = FloatObject::add_integer(obj, &self)?.to();
+                runtime.alloc(new_number)
             }
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to int")),
         }
-    }
-
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
     }
 }
 
@@ -181,7 +154,7 @@ mod tests {
     use std;
     use std::rc::Rc;
     use std::ops::Deref;
-    use typedef::objectref::{self, ObjectBinaryOperations, ObjectRef};
+    use typedef::objectref::{self, ObjectRef};
 
     use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
     use typedef::integer;
@@ -191,18 +164,15 @@ mod tests {
     use typedef::string::StringObject;
     use typedef::tuple::TupleObject;
     use typedef::list::ListObject;
-    use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
     use typedef::objectref::ToRtWrapperType;
+    use object::model::PyBehavior;
 
     use num::ToPrimitive;
     use std::cmp::PartialEq;
-    use object::api::Identifiable;
     use std::borrow::Borrow;
 
-
-
     #[test]
-    fn test_integer_identity() {
+    fn test_integer_alloc() {
         let mut runtime = Runtime::new(None);
         assert_eq!(runtime.heap_size(), 0);
 
@@ -210,7 +180,7 @@ mod tests {
         let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
 
         let one_clone = one.clone();
-        assert_eq!(Rc::strong_count(&one.0), 4);
+        assert_eq!(Rc::strong_count(&one.0), 5);
 
     }
 
@@ -223,7 +193,7 @@ mod tests {
         let mut runtime = Runtime::new(None);
         assert_eq!(runtime.heap_size(), 0);
 
-        let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+        let one_object: ObjectRef = IntegerObject::new_i64(1).to();
         let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
 
         /// A new integer should only alloc one spot on the heap
@@ -238,16 +208,16 @@ mod tests {
         let mut runtime = Runtime::new(None);
         assert_eq!(runtime.heap_size(), 0);
 
-        let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+        let one_object: ObjectRef = IntegerObject::new_i64(1).to();
         let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
 
-        let another_one = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+        let another_one: ObjectRef = IntegerObject::new_i64(1).to();
         let one2: ObjectRef = runtime.alloc(another_one.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 2);
 
         let one_ref: &Box<Builtin> = one.0.borrow();
-        let two = one_ref.add(&mut runtime, &another_one).unwrap();
+        let two = one_ref.op_add(&mut runtime, &another_one).unwrap();
         assert_eq!(runtime.heap_size(), 3);
 
         println!("{:?}", runtime);
@@ -271,7 +241,7 @@ mod tests {
         println!("{:?}", rt);
 
         let one_builtin: &Box<Builtin> = one.0.borrow();
-        let result = one_builtin.op_equals(&mut rt, &one2).unwrap();
+        let result = one_builtin.op_eq(&mut rt, &one2).unwrap();
 
         assert_eq!(result, rt.True())
     }

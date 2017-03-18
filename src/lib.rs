@@ -28,25 +28,27 @@ pub mod error;
 pub mod object;
 
 
+#[allow(unused_variables,non_snake_case,unused_imports,unused_mut)]
 #[cfg(test)]
 mod tests {
     use std;
     use std::ops::Deref;
-    use super::typedef::objectref::{self, ObjectBinaryOperations, ObjectRef};
+    use typedef::objectref::{self, ObjectRef};
 
-    use super::runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
-    use super::typedef::integer;
-    use super::typedef::builtin::Builtin;
-    use super::typedef::integer::{Integer, IntegerObject};
-    use super::typedef::float::FloatObject;
-    use super::typedef::string::StringObject;
-    use super::typedef::tuple::TupleObject;
-    use super::typedef::list::ListObject;
-    use super::typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
+    use typedef::objectref::ToRtWrapperType;
+    use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
+    use typedef::integer;
+    use typedef::builtin::Builtin;
+    use typedef::integer::{Integer, IntegerObject};
+    use typedef::float::FloatObject;
+    use typedef::string::StringObject;
+    use typedef::tuple::TupleObject;
+    use typedef::list::ListObject;
+    use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
+    use object::model::PyBehavior;
 
     use num::ToPrimitive;
     use std::cmp::PartialEq;
-    use object::api::Identifiable;
     use std::borrow::Borrow;
 
 
@@ -71,11 +73,11 @@ mod tests {
         let mut runtime = Runtime::new(None);
         assert_eq!(runtime.heap_size(), 0);
 
-        let one_object = IntegerObject::new_i64(1).as_builtin().as_object_ref();
+        let one_object: ObjectRef = IntegerObject::new_i64(1).to();
         let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
 
-        let one_float = FloatObject::new(1.0).as_builtin().as_object_ref();
+        let one_float: ObjectRef = FloatObject::new(1.0).to();
         let onef: ObjectRef = runtime.alloc(one_float.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 2);
 
@@ -83,7 +85,7 @@ mod tests {
         {
             let one_ref: &Box<Builtin> = one.0.borrow();
             // Alloc will happen here because a new float will be created during the addition
-            two_float = one_ref.add(&mut runtime, &onef).unwrap();
+            two_float = one_ref.op_add(&mut runtime, &onef).unwrap();
             assert_eq!(runtime.heap_size(), 3);
         }
 
@@ -98,16 +100,16 @@ mod tests {
         let mut runtime = Runtime::new(None);
         assert_eq!(runtime.heap_size(), 0);
 
-        let one_object = StringObject::from_str("1").as_builtin().as_object_ref();
+        let one_object: ObjectRef = StringObject::from_str("1").to();
         let one: ObjectRef = runtime.alloc(one_object.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 1);
 
-        let another_one = StringObject::from_str("2").as_builtin().as_object_ref();
+        let another_one: ObjectRef = StringObject::from_str("2").to();
         let one2: ObjectRef = runtime.alloc(another_one.clone()).unwrap();
         assert_eq!(runtime.heap_size(), 2);
 
         let one_ref: &Box<Builtin> = one.0.borrow();
-        let two = one_ref.add(&mut runtime, &another_one).unwrap();
+        let two = one_ref.op_add(&mut runtime, &another_one).unwrap();
         assert_eq!(runtime.heap_size(), 3);
 
         println!("{:?}", runtime);
@@ -116,23 +118,23 @@ mod tests {
     #[test]
     fn test_tuple_add_tuple_equals_tuple() {
         let mut runtime = Runtime::new(None);
-        let mut t1 = vec![IntegerObject::new_i64(0).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(1).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(2).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(3).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(4).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(5).as_builtin().as_object_ref(),
-                          FloatObject::new(0.0).as_builtin().as_object_ref(),
-                          FloatObject::new(1.0).as_builtin().as_object_ref(),
-                          FloatObject::new(2.0).as_builtin().as_object_ref(),
-                          FloatObject::new(3.0).as_builtin().as_object_ref(),
-                          FloatObject::new(4.0).as_builtin().as_object_ref(),
-                          FloatObject::new(5.0).as_builtin().as_object_ref()];
+        let mut t1: Vec<ObjectRef> = vec![IntegerObject::new_i64(0).to(),
+                          IntegerObject::new_i64(1).to(),
+                          IntegerObject::new_i64(2).to(),
+                          IntegerObject::new_i64(3).to(),
+                          IntegerObject::new_i64(4).to(),
+                          IntegerObject::new_i64(5).to(),
+                          FloatObject::new(0.0).to(),
+                          FloatObject::new(1.0).to(),
+                          FloatObject::new(2.0).to(),
+                          FloatObject::new(3.0).to(),
+                          FloatObject::new(4.0).to(),
+                          FloatObject::new(5.0).to()];
 
-        t1 = t1.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
+        t1 = t1.iter().map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap()).collect();
         assert_eq!(runtime.heap_size(), t1.len());
 
-        let tuple_obj = TupleObject::new(&t1).as_builtin().as_object_ref();
+        let tuple_obj: ObjectRef = TupleObject::new(&t1).to();
         let tuple: ObjectRef = runtime.alloc(tuple_obj.clone()).unwrap();
         assert_eq!(runtime.heap_size(), t1.len() + 1);
 
@@ -140,17 +142,18 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2 = vec![StringObject::from_str("Hello").as_objref(),
-                              StringObject::from_str("World").as_objref()];
+            let mut t2: Vec<ObjectRef> = vec![
+                            StringObject::from_str("Hello").to(),
+                            StringObject::from_str("World").to()];
 
             t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
 
-            let tuple2 = runtime.alloc(TupleObject::new(&t2).as_builtin().as_object_ref()).unwrap();
+            let tuple2 = runtime.alloc(TupleObject::new(&t2).to()).unwrap();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 2);
 
             let x: &Box<Builtin> = tuple2.0.borrow();
-            tuple_3 = x.add(&mut runtime, &tuple).unwrap();
+            tuple_3 = x.op_add(&mut runtime, &tuple).unwrap();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 3);
         }
 
@@ -166,23 +169,23 @@ mod tests {
     #[test]
     fn test_list_add_list_equals_list_no_alloc() {
         let mut runtime = Runtime::new(None);
-        let mut t1 = vec![IntegerObject::new_i64(0).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(1).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(2).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(3).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(4).as_builtin().as_object_ref(),
-                          IntegerObject::new_i64(5).as_builtin().as_object_ref(),
-                          FloatObject::new(0.0).as_builtin().as_object_ref(),
-                          FloatObject::new(1.0).as_builtin().as_object_ref(),
-                          FloatObject::new(2.0).as_builtin().as_object_ref(),
-                          FloatObject::new(3.0).as_builtin().as_object_ref(),
-                          FloatObject::new(4.0).as_builtin().as_object_ref(),
-                          FloatObject::new(5.0).as_builtin().as_object_ref()];
+        let mut t1 = vec![IntegerObject::new_i64(0).to(),
+                          IntegerObject::new_i64(1).to(),
+                          IntegerObject::new_i64(2).to(),
+                          IntegerObject::new_i64(3).to(),
+                          IntegerObject::new_i64(4).to(),
+                          IntegerObject::new_i64(5).to(),
+                          FloatObject::new(0.0).to(),
+                          FloatObject::new(1.0).to(),
+                          FloatObject::new(2.0).to(),
+                          FloatObject::new(3.0).to(),
+                          FloatObject::new(4.0).to(),
+                          FloatObject::new(5.0).to()];
 
-        t1 = t1.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
+        t1 = t1.iter().map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap()).collect();
         assert_eq!(runtime.heap_size(), t1.len());
 
-        let tuple_obj = ListObject::new(&t1).as_builtin().as_object_ref();
+        let tuple_obj: ObjectRef = ListObject::new(&t1).to();
         let tuple: ObjectRef = runtime.alloc(tuple_obj.clone()).unwrap();
         assert_eq!(runtime.heap_size(), t1.len() + 1);
 
@@ -190,16 +193,17 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2 = vec![StringObject::from_str("Hello").as_objref(),
-                              StringObject::from_str("World").as_objref()];
-            t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
+            let mut t2: Vec<ObjectRef> = vec![
+                              StringObject::from_str("Hello").to(),
+                              StringObject::from_str("World").to()];
+            t2 = t2.iter().map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
 
-            let tuple2 = runtime.alloc(ListObject::new(&t2).as_builtin().as_object_ref()).unwrap();
+            let tuple2 = runtime.alloc(ListObject::new(&t2).to()).unwrap();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 2);
 
             let x: &Box<Builtin> = tuple2.0.borrow();
-            tuple_3 = x.deref().add(&mut runtime, &tuple).unwrap();
+            tuple_3 = x.deref().op_add(&mut runtime, &tuple).unwrap();
 
             assert_eq!(runtime.heap_size(),
                        t1.len() + t2.len() + 2,

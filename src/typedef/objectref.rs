@@ -11,7 +11,8 @@ use std::hash::{Hash, Hasher};
 use runtime::Runtime;
 use result::RuntimeResult;
 use object;
-use object::api::Identifiable;
+use object::model::PyBehavior;
+
 
 use super::builtin;
 use super::builtin::Builtin;
@@ -55,14 +56,16 @@ impl ObjectRef {
         ObjectRef(Rc::new(Box::new(value)))
     }
 
-    /// Return a new clone of the ObjectRef as a downgraded WeakObjectRef
-    pub fn as_weak(&self) -> WeakObjectRef {
-        return WeakObjectRef(Rc::downgrade(&self.0.clone()));
-    }
-
-    /// Downgrade THIS ObjectRef to a WeakObjectRef
+    /// Downgrade the ObjectRef to a WeakObjectRef
     pub fn downgrade(self) -> WeakObjectRef {
         WeakObjectRef(Rc::downgrade(&self.0))
+    }
+}
+
+
+impl Default for WeakObjectRef {
+    fn default() -> WeakObjectRef {
+        WeakObjectRef(Weak::default())
     }
 }
 
@@ -124,7 +127,7 @@ impl std::fmt::Display for ObjectRef {
                 write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject)
             }
             &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
-            other => write!(f, "<{:?} {:?}>", other, other as *const _),
+            other => write!(f, "<{:?} {:?}>", other, other.native_identity()),
         }
     }
 }
@@ -159,23 +162,15 @@ pub trait ToRtWrapperType<T> {
 }
 
 
-// TODO: Move me to object::api
-pub trait ObjectBinaryOperations {
-    fn add(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
-    fn subtract(&self, &mut Runtime, &ObjectRef) -> RuntimeResult;
-}
-
 // TODO: move to object::api if needed
 pub trait TypeInfo {}
 
 
 // TODO: Move me to object::api
 pub trait RtObject:
-ObjectBinaryOperations +
-object::api::Identifiable +
-object::api::Hashable +
-object::model::PythonObject +
-ToRtWrapperType<ObjectRef> +
-ToRtWrapperType<Builtin> +
-TypeInfo +
-Display where Self: std::marker::Sized {}
+    object::model::PyBehavior +
+    ToRtWrapperType<ObjectRef> +
+    ToRtWrapperType<Builtin> +
+    Display where Self: std::marker::Sized {
+
+}

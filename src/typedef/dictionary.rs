@@ -17,22 +17,11 @@ pub struct DictionaryObject {
 ///       Struct Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-
+impl DictionaryObject {}
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///    Python Object Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl object::model::PythonObject for DictionaryObject {}
-impl object::api::Identifiable for DictionaryObject {}
-impl object::api::Hashable for DictionaryObject {}
-
-impl objectref::ObjectBinaryOperations for DictionaryObject {
-    fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-}
+impl object::model::PyObject for DictionaryObject {}
+impl object::model::PyBehavior for DictionaryObject {}
 

@@ -13,11 +13,13 @@ use error::{Error, ErrorType};
 use result::RuntimeResult;
 use runtime::Runtime;
 
+use object::model::PyBehavior;
 use super::objectref;
 use super::builtin::Builtin;
 use super::builtin::CastResult;
 use super::integer::IntegerObject;
 use super::objectref::ObjectRef;
+use typedef::objectref::ToRtWrapperType;
 
 
 pub type Float = f64;
@@ -40,16 +42,6 @@ impl FloatObject {
         }
     }
 
-    #[deprecated]
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::Float(self)
-    }
-
-    #[deprecated]
-    pub fn as_object_ref(self) -> ObjectRef {
-        self.as_builtin().as_object_ref()
-    }
-
     pub fn add_integer(float: &FloatObject, integer: &IntegerObject) -> CastResult<FloatObject> {
         match integer.value.to_f64() {
             Some(other) => Ok(FloatObject::new(float.value + other)),
@@ -62,33 +54,29 @@ impl FloatObject {
 ///    Python Object Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl object::model::PythonObject for FloatObject {}
-impl objectref::TypeInfo for FloatObject {}
 impl objectref::RtObject for FloatObject {}
-impl object::api::Identifiable for FloatObject {}
-impl object::api::Hashable for FloatObject {}
+impl object::model::PyObject for FloatObject {}
+impl object::model::PyBehavior for FloatObject {
 
-
-impl objectref::ObjectBinaryOperations for FloatObject {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
             &Builtin::Float(ref obj) => {
-                let new_number = FloatObject::new(self.value + obj.value).as_builtin();
-                runtime.alloc(new_number.as_object_ref())
+                let new_number = FloatObject::new(self.value + obj.value);
+                let num_ref: ObjectRef = new_number.to();
+                runtime.alloc(num_ref)
             },
             &Builtin::Integer(ref obj) => {
-                let new_number = FloatObject::add_integer(&self, &obj)?.as_builtin();
-                runtime.alloc(new_number.as_object_ref())
+                let new_number = FloatObject::add_integer(&self, &obj)?;
+                let num_ref: ObjectRef = new_number.to();
+                runtime.alloc(num_ref)
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to float"))
         }
     }
 
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
+
 }
 
 

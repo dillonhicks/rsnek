@@ -1,10 +1,11 @@
 use std;
 use std::borrow::{Borrow, BorrowMut};
-use std::cell::{Ref, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 use std::ops::DerefMut;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::{Weak, Rc};
+use std::marker::Copy;
 
 use num::{BigInt, FromPrimitive};
 
@@ -12,6 +13,8 @@ use object;
 use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
+use typedef::objectref::ToRtWrapperType;
+use typedef::native;
 
 use super::objectref;
 use super::objectref::{ObjectRef, WeakObjectRef};
@@ -21,7 +24,6 @@ use super::float::FloatObject;
 
 #[derive(Clone)]
 pub struct List(RefCell<Vec<ObjectRef>>);
-
 
 #[derive(Clone)]
 pub struct ListObject {
@@ -43,30 +45,22 @@ impl List {
 impl ListObject {
     pub fn new(value: &Vec<ObjectRef>) -> ListObject {
         let tuple = ListObject {
-            value: List::new(value.clone()),
+            value: List::new(value.clone())
         };
 
         return tuple
     }
 
-    #[deprecated]
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::List(self)
-    }
 }
-
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl object::model::PythonObject for ListObject {}
 impl objectref::RtObject for ListObject {}
-impl objectref::TypeInfo for ListObject {}
-impl object::api::Identifiable for ListObject {}
-impl object::api::Hashable for ListObject {}
+impl object::model::PyObject for ListObject {}
+impl object::model::PyBehavior for ListObject {
 
-impl objectref::ObjectBinaryOperations for ListObject {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -82,16 +76,17 @@ impl objectref::ObjectBinaryOperations for ListObject {
                 lhs_borrow.iter().map(|objref| new_list.push(objref.clone()));
                 rhs_borrow.iter().map(|objref| new_list.push(objref.clone()));
 
+
+                rt.find_object((&(*self) as *const _) as native::ObjectId).unwrap();
+
                 /// DUMB DUMB DUMB THIS IS A COPY AND NOT THE REF TO THE ORIGINAL LIST!!!
-                runtime.alloc(ListObject::new(&new_list).as_builtin().as_object_ref())
+                let l: ObjectRef = ListObject::new(&new_list).to();
+                rt.alloc(l)
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to List"))
         }
     }
 
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
 }
 
 

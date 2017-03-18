@@ -7,14 +7,15 @@ use std::cell::RefCell;
 
 use object;
 use typedef::builtin::Builtin;
-use object::api::Hashable;
+use object::model::PyBehavior;
+
 use super::objectref::{self, ObjectRef};
 use super::builtin;
-use super::native::{HashId};
+use super::native::HashId;
 
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-struct SetElement(HashId, ObjectRef);
+pub struct SetElement(HashId, ObjectRef);
 pub type Set = HashSet<SetElement>;
 
 
@@ -40,26 +41,10 @@ impl SetObject {
 //     RtObject Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl object::model::PythonObject for SetObject {}
 impl objectref::RtObject for SetObject {}
-impl objectref::TypeInfo for SetObject {}
-impl object::api::Identifiable for SetObject {}
-impl object::api::Hashable for SetObject {}
-
-impl objectref::ToRtWrapperType<builtin::Builtin> for SetObject {
-    fn to(self) -> builtin::Builtin {
-        builtin::Builtin::Set(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for SetObject {
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(builtin::Builtin::Set(self))
-    }
-}
-
-impl objectref::ObjectBinaryOperations for SetObject {
-    fn add(&self, rt: &mut Runtime, item: &ObjectRef) -> RuntimeResult {
+impl object::model::PyObject for SetObject {}
+impl object::model::PyBehavior for SetObject {
+    fn op_add(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = item.0.borrow();
         match builtin.native_hash() {
             Ok(hash_id) => {
@@ -72,8 +57,17 @@ impl objectref::ObjectBinaryOperations for SetObject {
         }
     }
 
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
+}
+
+impl objectref::ToRtWrapperType<builtin::Builtin> for SetObject {
+    fn to(self) -> builtin::Builtin {
+        builtin::Builtin::Set(self)
+    }
+}
+
+impl objectref::ToRtWrapperType<ObjectRef> for SetObject {
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(builtin::Builtin::Set(self))
     }
 }
 
@@ -97,7 +91,7 @@ mod tests {
 
     use std;
     use std::ops::Deref;
-    use typedef::objectref::{self, ObjectBinaryOperations, ObjectRef};
+    use typedef::objectref::{self, ObjectRef};
 
     use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
     use typedef::integer;
@@ -114,7 +108,7 @@ mod tests {
 
     use num::ToPrimitive;
     use std::cmp::PartialEq;
-    use object::api::Identifiable;
+    use object::model::PyBehavior;
     use std::borrow::Borrow;
 
 
@@ -137,7 +131,7 @@ mod tests {
         let set_bi: &Box<Builtin> = set.0.borrow();
 
         for obj in &t1 {
-            set_bi.add(&mut rt, &obj).unwrap();
+            set_bi.op_add(&mut rt, &obj).unwrap();
         }
 
         println!("{:?}", set_bi)

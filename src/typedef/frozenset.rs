@@ -16,22 +16,11 @@ pub struct FrozenSetObject {
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///    Python Object Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl object::model::PythonObject for FrozenSetObject {}
-impl object::api::Identifiable for FrozenSetObject {}
-impl object::api::Hashable for FrozenSetObject {}
-
-impl objectref::ObjectBinaryOperations for FrozenSetObject {
-    fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-}
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::model::PyObject for FrozenSetObject {}
+impl object::model::PyBehavior for FrozenSetObject {}
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+

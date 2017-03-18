@@ -1,12 +1,11 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 use std;
-use std::any::Any;
-use std::rc::{Rc, Weak};
-use std::cell::RefCell;
+use std::rc::Rc;
 
 pub use result::RuntimeResult;
 use heap::Heap;
 
+use typedef::native::ObjectId;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 use typedef::boolean::{SINGLETON_FALSE_BUILTIN, SINGLETON_TRUE_BUILTIN};
@@ -47,7 +46,7 @@ pub enum Singleton {
 ///
 /// Patterns about References Taken from:
 ///  https://ricardomartins.cc/2016/06/08/interior-mutability
-type RuntimeRef = Rc<RefCell<RuntimeInternal>>;
+type RuntimeRef = Rc<Box<RuntimeInternal>>;
 
 
 /// Cloning a runtime just increases the strong reference count and gives
@@ -79,8 +78,7 @@ impl Runtime {
             singletons: singletons
         };
 
-
-        Runtime(Rc::new(RefCell::new(runtime)))
+        Runtime(Rc::new(Box::new(runtime)))
     }
 
     /// Alloc a spot for the object ref in the `Heap` for the `Runtime` this will
@@ -89,31 +87,36 @@ impl Runtime {
     ///
     /// This gives the `Runtime` to control when the `Drop<Object>` happens
     /// and finally cleans up struct behind the `ObjectRef`.
-    pub fn alloc(&mut self, reference: ObjectRef) -> RuntimeResult {
-        (self.0.borrow_mut()).heap.alloc_dynamic(reference)
+    pub fn alloc(&self, reference: ObjectRef) -> RuntimeResult {
+        self.0.heap.alloc_dynamic(reference)
     }
 
     pub fn heap_size(&self) -> usize {
-        return (self.0.borrow()).heap.size()
+        self.0.heap.size()
     }
 
     pub fn heap_capacity(&self) -> usize {
-        return (self.0.borrow()).heap.capacity()
+        self.0.heap.capacity()
     }
 
+    pub fn find_object(&self, id: ObjectId) -> RuntimeResult {
+        return self.0.heap.find_object(id)
+    }
+
+    #[allow(non_snake_case)]
     pub fn True(&self) -> ObjectRef {
-        return (self.0.borrow()).singletons.True.clone()
+        self.0.singletons.True.clone()
     }
 
+    #[allow(non_snake_case)]
     pub fn False(&self) -> ObjectRef {
-        return (self.0.borrow()).singletons.False.clone()
-
+        self.0.singletons.False.clone()
     }
 
+    #[allow(non_snake_case)]
     pub fn None(&self) -> ObjectRef {
         // TODO: Update this to be actually None
-        return (self.0.borrow()).singletons.False.clone()
-
+        self.False()
     }
 
     #[cfg(rsnek_debug)]
@@ -124,6 +127,6 @@ impl Runtime {
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Runtime(heap={:?})", (self.0.borrow()).heap)
+        write!(f, "Runtime(heap={:?})", self.0.heap)
     }
 }

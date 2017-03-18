@@ -10,16 +10,5 @@ pub struct ComplexObject {
     value: Complex
 }
 
-impl objectref::ObjectBinaryOperations for ComplexObject {
-    fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-}
-
-impl object::model::PythonObject for ComplexObject {}
-impl object::api::Identifiable for ComplexObject {}
-impl object::api::Hashable for ComplexObject {}
+impl object::model::PyObject for ComplexObject {}
+impl object::model::PyBehavior for ComplexObject {}

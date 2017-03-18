@@ -6,11 +6,10 @@ use std::rc::Rc;
 use std::fmt;
 
 use object;
-use object::api::Identifiable;
 use runtime::Runtime;
 use result::{NativeResult, RuntimeResult};
 use error::{Error, ErrorType};
-
+use object::model::PyBehavior;
 
 use super::objectref;
 use super::objectref::{RtObject, ObjectRef};
@@ -24,7 +23,6 @@ use super::complex::ComplexObject;
 use super::set::SetObject;
 use super::frozenset::FrozenSetObject;
 use super::dictionary::DictionaryObject;
-use super::objectref::ObjectBinaryOperations;
 use super::native;
 
 
@@ -98,9 +96,6 @@ impl Builtin {
         }
     }
 
-    pub fn as_object_ref(self) -> ObjectRef {
-        ObjectRef::new(self)
-    }
 }
 
 
@@ -110,24 +105,11 @@ impl Builtin {
 /// For the BuiltinObject this should mean just proxy dispatching the
 /// underlying associated function using the foreach macros.
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl object::model::PythonObject for Builtin {}
 impl objectref::RtObject for Builtin {}
-impl objectref::TypeInfo for Builtin {}
+impl object::model::PyObject for Builtin {}
+impl object::model::PyBehavior for Builtin {
 
-impl objectref::ObjectBinaryOperations for Builtin {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, runtime, add, lhs, rhs)
-    }
-
-    fn subtract(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, runtime, subtract, lhs, rhs)
-    }
-}
-
-/// Builtin is an intermediate wrapper/union type and should not
-/// expose identity
-impl object::api::Identifiable for Builtin {
-    fn identity(&self, rt: &mut Runtime) -> RuntimeResult {
+    fn identity(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, identity, lhs)
     }
 
@@ -135,25 +117,26 @@ impl object::api::Identifiable for Builtin {
     /// the macro unwrapping causes an extra layer of indirection
     /// and makes comparing porinters at the Object level harder.
     //
-    // fn native_identity(&self) -> native::ObjectId {
-    //   return (&self as *const _) as native::ObjectId;
-    // }
+    //     fn native_identity(&self) -> native::ObjectId {
+    //        native_foreach_builtin!(self, native_identity, lhs)
+    //        //return (&self as *const _) as native::ObjectId;
+    //     }
 
-    fn op_is(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_is, lhs, rhs)
     }
 
-    fn op_is_not(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_is_not, lhs, rhs)
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_equals, lhs, rhs)
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_eq, lhs, rhs)
     }
 
-    fn op_not_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_not_equals, lhs, rhs)
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_ne, lhs, rhs)
     }
 
     fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
@@ -165,23 +148,28 @@ impl object::api::Identifiable for Builtin {
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_equals(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_equals, lhs, rhs)
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_eq, lhs, rhs)
     }
 
-    fn native_not_equals(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_not_equals, lhs, rhs)
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_ne, lhs, rhs)
     }
-}
 
-
-impl object::api::Hashable for Builtin {
-    fn op_hash(&self, rt: &mut Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_hash, obj)
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId>{
         native_foreach_builtin!(self, native_hash, obj)
+    }
+
+    fn op_add(&self, rt: &Runtime, rhs:&ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_add, lhs, rhs)
+    }
+
+    fn native_add(&self, rhs: &Builtin) -> NativeResult<Builtin>{
+        native_foreach_builtin!(self, native_add, lhs, rhs)
     }
 
 }
@@ -207,10 +195,9 @@ impl objectref::ToRtWrapperType<ObjectRef> for Builtin {
 
 impl std::cmp::PartialEq for Builtin {
     fn eq(&self, rhs: &Builtin) -> bool {
-        self.native_equals(rhs).unwrap()
+        self.native_eq(rhs).unwrap()
     }
 }
-
 
 impl std::cmp::Eq for Builtin {}
 

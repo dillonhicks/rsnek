@@ -8,6 +8,7 @@ use std::rc::{Weak, Rc};
 
 use num::{BigInt, FromPrimitive};
 
+use typedef::objectref::ToRtWrapperType;
 use result::RuntimeResult;
 use runtime::Runtime;
 use error::{Error, ErrorType};
@@ -47,38 +48,27 @@ impl TupleObject {
         return tuple
     }
 
-    pub fn as_builtin(self) -> Builtin {
-        return Builtin::Tuple(self)
-    }
 }
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl object::model::PythonObject for TupleObject {}
 impl objectref::RtObject for TupleObject {}
-impl objectref::TypeInfo for TupleObject {}
-impl object::api::Identifiable for TupleObject {}
-impl object::api::Hashable for TupleObject {}
+impl object::model::PyObject for TupleObject {}
+impl object::model::PyBehavior for TupleObject {
 
-impl objectref::ObjectBinaryOperations for TupleObject {
-    fn add(&self, runtime: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let borrowed: &Box<Builtin> = rhs.0.borrow();
         match borrowed.deref() {
             &Builtin::Tuple(ref obj) => {
                 let mut array = self.value.0.clone().into_vec();
                 array.extend_from_slice(obj.value.0.as_ref());
-                let new_tuple = TupleObject::new(&array).as_builtin();
-                runtime.alloc(new_tuple.as_object_ref())
+                let new_tuple: ObjectRef = TupleObject::new(&array).to();
+                runtime.alloc(new_tuple)
             },
             _ => Err(Error(ErrorType::Type, "TypeError cannot add to Tuple"))
         }
-    }
-
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
     }
 }
 
@@ -86,7 +76,7 @@ impl objectref::ObjectBinaryOperations for TupleObject {
 impl objectref::ToRtWrapperType<Builtin> for TupleObject {
     #[inline]
     fn to(self) -> Builtin {
-        return Builtin::Tuple(self)
+        Builtin::Tuple(self)
     }
 }
 
@@ -96,7 +86,6 @@ impl objectref::ToRtWrapperType<ObjectRef> for TupleObject {
         ObjectRef::new(self.to())
     }
 }
-
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Stdlib Traits

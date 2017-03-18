@@ -6,6 +6,7 @@ use std::borrow::Borrow;
 
 use object;
 use object::api;
+use object::model::PyBehavior;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 
@@ -14,7 +15,10 @@ use super::builtin::Builtin;
 use super::objectref;
 use super::objectref::ObjectRef;
 use super::native;
+
 use num::ToPrimitive;
+
+
 
 
 pub type Boolean = native::Integer;
@@ -55,14 +59,14 @@ impl BooleanObject {
 ///    Python Object Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl object::model::PythonObject for BooleanObject {}
 impl objectref::RtObject for BooleanObject {}
-impl objectref::TypeInfo for BooleanObject {}
-impl object::api::Identifiable for BooleanObject {
-    fn op_equals(&self, rt: &mut Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl object::model::PyObject for BooleanObject {}
+impl object::model::PyBehavior for BooleanObject {
+
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
-        match self.native_equals(builtin.deref()) {
+        match self.native_eq(builtin.deref()) {
             Ok(value) => {
                 if value {
                     Ok(rt.True())
@@ -74,7 +78,7 @@ impl object::api::Identifiable for BooleanObject {
         }
     }
 
-    fn native_equals(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         let equality = match rhs {
             &Builtin::Boolean(ref obj) => self.value == obj.value,
             &Builtin::Integer(ref obj) => *self == BooleanObject::new_u64(obj.value.to_u64().unwrap_or_default()),
@@ -86,8 +90,6 @@ impl object::api::Identifiable for BooleanObject {
     }
 }
 
-impl object::api::Hashable for BooleanObject {}
-
 
 impl objectref::ToRtWrapperType<builtin::Builtin> for BooleanObject {
     fn to(self) -> builtin::Builtin {
@@ -98,16 +100,6 @@ impl objectref::ToRtWrapperType<builtin::Builtin> for BooleanObject {
 impl objectref::ToRtWrapperType<objectref::ObjectRef> for BooleanObject {
     fn to(self) -> ObjectRef {
         ObjectRef::new(builtin::Builtin::Boolean(self))
-    }
-}
-
-impl objectref::ObjectBinaryOperations for BooleanObject {
-    fn add(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
-    }
-
-    fn subtract(&self, _: &mut Runtime, _: &ObjectRef) -> RuntimeResult {
-        unimplemented!()
     }
 }
 
@@ -131,7 +123,8 @@ mod tests {
     use std;
     use std::rc::Rc;
     use std::ops::Deref;
-    use typedef::objectref::{self, ObjectBinaryOperations, ObjectRef};
+    use typedef::objectref::{self, ObjectRef};
+    use object::model::PyBehavior;
 
     use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
     use typedef::integer;
@@ -146,7 +139,6 @@ mod tests {
 
     use num::ToPrimitive;
     use std::cmp::PartialEq;
-    use object::api::Identifiable;
     use std::borrow::Borrow;
 
     /// Reference equality
@@ -161,7 +153,7 @@ mod tests {
 
         let False_ref: &Box<Builtin> = False.0.borrow();
 
-        let result = False_ref.native_is(False_ref).unwrap();
+        let result = False_ref.native_is(False_ref.deref()).unwrap();
         assert_eq!(result, true, "BooleanObject native is(native_is)");
 
         let result = False_ref.op_is(&mut rt, &False2).unwrap();
@@ -185,14 +177,10 @@ mod tests {
 
         let False_ref: &Box<Builtin> = False.0.borrow();
 
-        //        println!("!!!!! {:?}", False_ref.borrow().deref().op_equals(&mut runtime, &False2).unwrap());
-        //        println!("!!!!!! {:?}", False_ref.borrow().deref().op_is(&mut runtime, &False2).unwrap());
-        //        println!("!!!!!! {:?}", False_ref.borrow().deref().op_equals(&mut runtime, &thing3).unwrap());
-
-        let result = False_ref.op_equals(&mut runtime, &False2.clone()).unwrap();
+        let result = False_ref.op_eq(&mut runtime, &False2.clone()).unwrap();
         assert_eq!(result, True, "BooleanObject equality (op_equals)");
 
-        let result = False_ref.native_equals(False_ref).unwrap();
+        let result = False_ref.native_eq(False_ref).unwrap();
         assert_eq!(result, true);
     }
 
