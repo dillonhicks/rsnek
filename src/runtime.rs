@@ -17,8 +17,8 @@ use typedef::none::NONE_TYPE;
 pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
 
 pub const STATIC_INT_IDX_OFFSET: usize = 5;
-pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1024);
-pub const STATIC_INT_RANGE_MAX: usize = 1024 + STATIC_INT_IDX_OFFSET;
+pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
+pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
