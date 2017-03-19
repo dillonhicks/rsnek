@@ -1,13 +1,13 @@
 #[macro_export]
 macro_rules! foreach_builtin {
-    ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => (
-        unary_op_foreach!($obj, $rt, $op, $lhs)
+    ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (
+        unary_op_foreach!($sel, $rt, $function, $receiver)
     );
-    ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $rhs:ident) => (
-        binary_op_foreach!($obj, $rt, $op, $lhs, $rhs)
+    ($sel:expr, $rt:expr, $function:ident, $receiver:ident, $rhs:ident) => (
+        binary_op_foreach!($sel, $rt, $function, $receiver, $rhs)
     );
-    ($op:expr, $rt:expr, $lhs:expr, $infix:ident, $rhs:expr, $obj:expr, $rt:expr) => (
-        ternary_op_foreach!($obj, $rt, $op, $lhs, $infix, $rhs)
+    ($sel:expr, $rt:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident) => (
+        ternary_op_foreach!($sel, $rt, $function, $receiver, $arg0, $arg1)
     )
 }
 
@@ -70,14 +70,14 @@ macro_rules! ternary_op_foreach{
 
 #[macro_export]
 macro_rules! native_foreach_builtin {
-    ($obj:expr, $op:ident, $lhs:ident) => (
-        native_unary_op_foreach!($obj, $op, $lhs)
+    ($sel:expr, $function:ident, $receiver:ident) => (
+        native_unary_op_foreach!($sel, $function, $receiver)
     );
-    ($obj:expr, $op:ident, $lhs:ident, $rhs:ident) => (
-        native_binary_op_foreach!($obj, $op, $lhs, $rhs)
+    ($sel:expr, $function:ident, $receiver:ident, $rhs:ident) => (
+        native_binary_op_foreach!($sel, $function, $receiver, $rhs)
     );
-    ($op:expr, $lhs:expr, $infix:ident, $rhs:expr, $obj:expr) => (
-        native_ternary_op_foreach!($obj, $op, $lhs, $infix, $rhs)
+    ($sel:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident) => (
+        native_ternary_op_foreach!($sel, $function, $receiver, $arg0, $arg1)
     )
 
 }
