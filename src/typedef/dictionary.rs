@@ -34,22 +34,27 @@ impl DictionaryObject {
     }
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///    Python Object Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 impl typedef::objectref::RtObject for DictionaryObject {}
 impl object::model::PyObject for DictionaryObject {}
 impl object::model::PyBehavior for DictionaryObject {
+
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        Err(Error::typerr("Unhashable type dict"))
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        Err(Error::typerr("Unhashable type dict"))
+    }
 
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         Ok(if self.native_bool().unwrap() {rt.True()} else {rt.False()})
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        match self.native_len() {
-            Ok(int) => Ok(if int.is_zero() {false} else {true}),
-            _ => unreachable!()
-        }
+        Ok(!self.value.borrow().is_empty())
     }
 
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
@@ -72,7 +77,8 @@ impl object::model::PyBehavior for DictionaryObject {
             Ok(hash) => {
                 let key = Key(hash, keyref.clone());
                 let result = self.value.borrow_mut().insert(key, valueref.clone());
-                if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
+                //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
+                Ok(rt.None())
             },
             Err(err) => Err(Error::typerr("TypeError: Unhashable key type"))
         }
@@ -126,6 +132,54 @@ mod impl_pybehavior {
 
     use super::*;
 
+    /// Call the identity function to make sure it succeeds
+    #[test]
+    fn identity() {
+        let mut rt = Runtime::new(None);
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.identity(&rt).unwrap();
+    }
+
+    /// Ensure that the dictionary reference equality succeeds with itself
+    #[test]
+    fn op_is() {
+        let mut rt = Runtime::new(None);
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.op_is(&rt, &empty_dict).unwrap();
+        assert_eq!(result, rt.True());
+    }
+
+    /// Ensure that the dictionary reference equality does not
+    /// match against two separarte dictionaries.
+    #[test]
+    fn op_is_not() {
+        let mut rt = Runtime::new(None);
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+        let another_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.op_is_not(&rt, &another_dict).unwrap();
+        assert_eq!(result, rt.False());
+    }
+
+    /// Mutable collection types should not be hashable
+    #[test]
+    #[should_panic]
+    fn __hash__() {
+        let mut rt = Runtime::new(None);
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+        let result = dict_ref.op_hash(&rt).unwrap();
+    }
+
 
     #[test]
     fn __bool__() {
@@ -165,10 +219,10 @@ mod impl_pybehavior {
     // that objects which compare equal have the same hash value; it is advised to mix together
     // the hash values of the components of the object that also play a part in comparison
     // of objects by packing them into a tuple and hashing the tuple. Example:
-    api_test_stub!(unary, self, __hash__, Hashable, op_hash, native_hash, native::HashId);
+    // api_test_stub!(unary, self, __hash__, Hashable, op_hash, native_hash, native::HashId);
 
     // Identity operators
-    api_test_stub!(unary, self, identity, Identity, identity, native_identity, native::Boolean);
+    // api_test_stub!(unary, self, identity, Identity, identity, native_identity, native::Boolean);
     // api_test_stub!(unary, self, __bool__, Truth, op_bool, native_bool, native::Boolean);
     api_test_stub!(unary, self, __not__, Not, op_not, native_not, native::Boolean);
     api_test_stub!(binary, self, is_, Is, op_is, native_is, native::Boolean);
@@ -249,4 +303,72 @@ mod impl_pybehavior {
     api_test_stub!(unary, self, __float__, ToFloat, op_float, native_float);
     api_test_stub!(unary, self, __round__, ToRounded, op_round, native_round);
     api_test_stub!(unary, self, __index__, ToIndex, op_index, native_index);
+}
+
+
+#[cfg(test)]
+mod impl_mappingpybehavior {
+    use std;
+    use std::rc::Rc;
+    use std::ops::Deref;
+    use typedef::objectref::{self, ObjectRef};
+
+    use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
+    use typedef::integer;
+    use typedef::builtin::Builtin;
+    use super::{Integer, IntegerObject};
+    use typedef::float::FloatObject;
+    use typedef::string::StringObject;
+    use typedef::tuple::TupleObject;
+    use typedef::list::ListObject;
+    use typedef::objectref::ToRtWrapperType;
+    use typedef::complex::ComplexObject;
+    use object::model::PyBehavior;
+
+    use num::ToPrimitive;
+    use std::cmp::PartialEq;
+    use std::borrow::Borrow;
+
+    use super::*;
+
+
+    #[test]
+    fn op_len() {
+        let mut rt = Runtime::new(None);
+        let zero: ObjectRef = rt.alloc(IntegerObject::new_u64(0).to()).unwrap();
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.op_len(&rt).unwrap();
+        assert_eq!(result, zero);
+    }
+
+    #[test]
+    fn op_setitem() {
+        let mut rt = Runtime::new(None);
+        let key: ObjectRef = rt.alloc(IntegerObject::new_u64(0).to()).unwrap();
+        let value: ObjectRef = rt.alloc(StringObject::from_str("Dictionary Value").to()).unwrap();
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.op_setitem(&rt, &key, &value).unwrap();
+        assert_eq!(result, rt.None());
+
+        let result = dict_ref.op_len(&rt).unwrap();
+        assert_eq!(result, rt.One());
+    }
+
+    // 3.3.6. Emulating container types
+    api_test_stub!(unary, self, __len__, Length, op_len, native_len);
+    api_test_stub!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint);
+    api_test_stub!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
+    api_test_stub!(binary, self, __missing__, MissingItem, op_missing, native_missing);
+    api_test_stub!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem);
+    api_test_stub!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
+    api_test_stub!(unary, self, __iter__, Iterator, op_iter, native_iter);
+    api_test_stub!(unary, self, __reversed__, Reverse, op_reverse, native_reverse);
+    api_test_stub!(binary, self, __contains__, Contains, op_contains, native_contains);
+
 }
