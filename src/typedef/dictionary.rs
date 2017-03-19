@@ -1,33 +1,146 @@
-use result::RuntimeResult;
-use runtime::Runtime;
+use std::fmt;
+use std::borrow::Borrow;
+use num::{Zero, FromPrimitive};
+use std::cell::RefCell;
+use result::{NativeResult, RuntimeResult};
 
+use runtime::Runtime;
+use error::Error;
 use super::objectref::{self, ObjectRef};
+use typedef;
+use typedef::native::*;
+use typedef::native;
+use typedef::integer::IntegerObject;
+use typedef::objectref::ToRtWrapperType;
+use typedef::builtin::Builtin;
 
 use object;
 
 
-pub type Dictionary = ();
-
 #[derive(Clone, Debug)]
 pub struct DictionaryObject {
-    value: Dictionary
+    value: RefCell<Dictionary>
 }
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///       Struct Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl DictionaryObject {}
+impl DictionaryObject {
+    fn new () -> Self {
+        return DictionaryObject {
+            value: RefCell::new(Dictionary::new())
+        }
+    }
+}
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///    Python Object Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl typedef::objectref::RtObject for DictionaryObject {}
 impl object::model::PyObject for DictionaryObject {}
-impl object::model::PyBehavior for DictionaryObject {}
+impl object::model::PyBehavior for DictionaryObject {
 
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(if self.native_bool().unwrap() {rt.True()} else {rt.False()})
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        match self.native_len() {
+            Ok(int) => Ok(if int.is_zero() {false} else {true}),
+            _ => unreachable!()
+        }
+    }
+
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_len() {
+            Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
+            Err(_) => unreachable!()
+        }
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        match Integer::from_usize(self.value.borrow().len()) {
+            Some(int) => Ok(int),
+            None => Err(Error::value("ValueError converting native integer"))
+        }
+    }
+
+    fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
+        let key_value: &Box<Builtin>  = keyref.borrow();
+        match key_value.native_hash() {
+            Ok(hash) => {
+                let key = Key(hash, keyref.clone());
+                let result = self.value.borrow_mut().insert(key, valueref.clone());
+                if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
+            },
+            Err(err) => Err(Error::typerr("TypeError: Unhashable key type"))
+        }
+    }
+
+}
+
+
+impl typedef::objectref::ToRtWrapperType<Builtin> for DictionaryObject {
+    fn to(self) -> Builtin {
+        Builtin::Dictionary(self)
+    }
+}
+
+
+impl typedef::objectref::ToRtWrapperType<ObjectRef> for DictionaryObject {
+    fn to(self) -> ObjectRef{
+        ObjectRef::new(Builtin::Dictionary(self))
+    }
+}
+
+
+impl fmt::Display for DictionaryObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value)
+    }
+}
 
 #[cfg(test)]
 mod impl_pybehavior {
+    use std;
+    use std::rc::Rc;
+    use std::ops::Deref;
+    use typedef::objectref::{self, ObjectRef};
+
+    use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
+    use typedef::integer;
+    use typedef::builtin::Builtin;
+    use super::{Integer, IntegerObject};
+    use typedef::float::FloatObject;
+    use typedef::string::StringObject;
+    use typedef::tuple::TupleObject;
+    use typedef::list::ListObject;
+    use typedef::objectref::ToRtWrapperType;
+    use typedef::complex::ComplexObject;
+    use object::model::PyBehavior;
+
+    use num::ToPrimitive;
+    use std::cmp::PartialEq;
+    use std::borrow::Borrow;
+
+    use super::*;
+
+
+    #[test]
+    fn __bool__() {
+        let mut rt = Runtime::new(None);
+        let zero_int: ObjectRef = rt.alloc(IntegerObject::new_u64(0).to()).unwrap();
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.op_len(&rt).unwrap();
+        assert_eq!(result, zero_int);
+    }
+
+
+
     api_test_stub!(unary, self, __del__, Delete, op_del, native_del);
     api_test_stub!(unary, self, __repr__, ToStringRepr, op_repr, native_repr);
     api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
@@ -56,7 +169,7 @@ mod impl_pybehavior {
 
     // Identity operators
     api_test_stub!(unary, self, identity, Identity, identity, native_identity, native::Boolean);
-    api_test_stub!(unary, self, __bool__, Truth, op_bool, native_bool, native::Boolean);
+    // api_test_stub!(unary, self, __bool__, Truth, op_bool, native_bool, native::Boolean);
     api_test_stub!(unary, self, __not__, Not, op_not, native_not, native::Boolean);
     api_test_stub!(binary, self, is_, Is, op_is, native_is, native::Boolean);
     api_test_stub!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);

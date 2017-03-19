@@ -1,18 +1,20 @@
 [package]
 name = "rattlesnake"
 version = "0.1.0"
-authors = ["Dillon Hicks <dillon@blinkhealth.com>"]
+authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
 
 [lib]
 name = "rattlesnake"
 
 
+[dependencies.fringe]
+version = "1.2.1"
+
 [dependencies]
 num = "0.1"
 
 
 [features]
-
 rsnek-debug-heap = []
 rsnek-debug = []

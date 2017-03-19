@@ -15,8 +15,10 @@ pub enum ErrorType {
     Type,
     Overflow,
     NotImplemented,
-    Attribute
+    Attribute,
+    Value
 }
+
 
 impl Error {
     pub fn runtime(message: &'static str) -> Error {
@@ -39,6 +41,9 @@ impl Error {
         return Error(ErrorType::Attribute, "Attribute is not defined for type")
     }
 
+    pub fn value(message: &'static str) -> Self {
+        return Error(ErrorType::Value, message)
+    }
 }
 
 

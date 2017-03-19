@@ -238,6 +238,13 @@ impl object::model::PyBehavior for Builtin {
         native_foreach_builtin!(self, native_add, lhs, rhs)
     }
 
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_len, lhs)
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        native_foreach_builtin!(self, native_len, lhs)
+    }
 }
 
 

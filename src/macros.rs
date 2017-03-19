@@ -185,6 +185,16 @@ macro_rules! api_method {
                 Err(Error::not_implemented())
             }
     };
+    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
+                Err(Error::not_implemented())
+            }
+
+    };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
                 Err(Error::not_implemented())
@@ -195,7 +205,7 @@ macro_rules! api_method {
             }
 
     };
-   (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+    (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
 
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
                 Err(Error::not_implemented())

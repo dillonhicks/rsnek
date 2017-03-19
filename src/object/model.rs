@@ -304,15 +304,15 @@ pub trait PyBehavior {
 
 
     // 3.3.6. Emulating container types
-    api_method!(unary, self, __len__, Length, op_len, native_len);
-    api_method!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint);
+    api_method!(unary, self, __len__, Length, op_len, native_len, native::Integer);
+    api_method!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);
     api_method!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
     api_method!(binary, self, __missing__, MissingItem, op_missing, native_missing);
-    api_method!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem);
+    api_method!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::NoneValue);
     api_method!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
     api_method!(unary, self, __iter__, Iterator, op_iter, native_iter);
     api_method!(unary, self, __reversed__, Reverse, op_reverse, native_reverse);
-    api_method!(binary, self, __contains__, Contains, op_contains, native_contains);
+    api_method!(binary, self, __contains__, Contains, op_contains, native_contains, native::Boolean);
 
     // 3.3.7. Emulating numeric types
     //
