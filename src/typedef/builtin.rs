@@ -230,7 +230,7 @@ impl object::model::PyBehavior for Builtin {
     }
 
     // Numeric operators
-    fn op_add(&self, rt: &Runtime, rhs:&ObjectRef) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
 
@@ -238,12 +238,24 @@ impl object::model::PyBehavior for Builtin {
         native_foreach_builtin!(self, native_add, lhs, rhs)
     }
 
+
+    //
+    // Collections
+    //
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_len, lhs)
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
         native_foreach_builtin!(self, native_len, lhs)
+    }
+
+    fn op_setitem(&self, rt: &Runtime, item: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_setitem, object, item, value)
+    }
+
+    fn native_setitem(&self, item: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
+        native_foreach_builtin!(self, native_setitem, object, item, value)
     }
 }
 
