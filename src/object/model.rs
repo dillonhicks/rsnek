@@ -18,81 +18,6 @@ pub trait NaryOperation {}
 pub trait VariadicOperation {}
 
 
-/// Macro to create Object and native typed level hooks for
-/// the rsnek runtime. Each method is generated with a default implementation
-/// that will return a NotImplemented error.
-///
-/// Note that for arity of methods may appear deceiving since the receiver (self)
-/// is always the first argument and is the first argument by convention.
-macro_rules! api_method {
-    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
-            fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
-            }
-    };
-    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-    };
-    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
-            }
-    };
-    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-    };
-    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-
-    };
-   (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-
-    };
-    (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-    }
-}
-
 //
 //macro_rules! declare_method {
 //    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
@@ -304,8 +229,8 @@ pub trait PyBehavior {
     }
 
     api_method!(unary, self, __del__, Delete, op_del, native_del);
-    api_method!(unary, self, __repr__, ToStringRepr, op_repr, native_repr);
-    api_method!(unary, self, __str__, ToString, op_str, native_str);
+    api_method!(unary, self, __repr__, ToStringRepr, op_repr, native_repr, native::String);
+    api_method!(unary, self, __str__, ToString, op_str, native_str, native::String);
 
     /// Called by `bytes()` to compute a byte-string representation of an object.
     /// This should return a bytes object.
@@ -428,7 +353,7 @@ pub trait PyBehavior {
     // In place operators
     api_method!(binary, self, __iadd__, InPlaceAdd, op_iadd, native_iadd);
     api_method!(binary, self, __iand__, InPlaceAnd, op_iand, native_iand);
-    api_method!(binary, self, __rdivmod__, InPlaceDivMod, op_idivmod, native_idivmod);
+    api_method!(binary, self, __idivmod__, InPlaceDivMod, op_idivmod, native_idivmod);
     api_method!(binary, self, __ifloordiv__, InPlaceFloorDivision, op_ifloordiv, native_ifloordiv);
     api_method!(binary, self, __ilshift__, InPlaceLeftShift, op_ilshift, native_ilshift);
     api_method!(binary, self, __imod__, InPlaceModulus, op_imod, native_imod);
@@ -452,7 +377,9 @@ pub trait PyBehavior {
     api_method!(unary, self, __int__, ToInt, op_int, native_int, native::Integer);
     api_method!(unary, self, __float__, ToFloat, op_float, native_float, native::Float);
     api_method!(unary, self, __round__, ToRounded, op_round, native_round, native::Integer);
+
     api_method!(unary, self, __index__, ToIndex, op_index, native_index, native::Integer);
+
 }
 
 //trait CollectionPyBehavior: PyBehavior {

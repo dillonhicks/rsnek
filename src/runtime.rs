@@ -10,6 +10,7 @@ use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 use typedef::boolean::BooleanObject;
 use typedef::objectref::ToRtWrapperType;
+use typedef::none::NONE_TYPE;
 
 /// If not size is given, fallback to 256kb.
 pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
@@ -32,7 +33,7 @@ struct RuntimeInternal {
 struct SingletonIndex {
     True: ObjectRef,
     False: ObjectRef,
-  //  None: Objectref
+    None: ObjectRef
 }
 
 
@@ -73,7 +74,8 @@ impl Runtime {
 
         let singletons = SingletonIndex {
             True: heap.alloc_static(True).unwrap(),
-            False: heap.alloc_static(False).unwrap()
+            False: heap.alloc_static(False).unwrap(),
+            None: heap.alloc_static(NONE_TYPE.to()).unwrap()
         };
 
         let runtime = RuntimeInternal {
@@ -118,8 +120,7 @@ impl Runtime {
 
     #[allow(non_snake_case)]
     pub fn None(&self) -> ObjectRef {
-        // TODO: Update this to be actually None
-        self.False()
+        self.0.singletons.None.clone()
     }
 
     #[cfg(rsnek_debug)]

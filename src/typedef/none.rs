@@ -10,11 +10,12 @@ use std::marker::Copy;
 use num::{BigInt, FromPrimitive};
 
 use object;
-use result::RuntimeResult;
+use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
 use error::{Error, ErrorType};
 use typedef::objectref::ToRtWrapperType;
 use typedef::native;
+use typedef::string::StringObject;
 
 use super::objectref;
 use super::objectref::{ObjectRef, WeakObjectRef};
@@ -22,82 +23,115 @@ use super::builtin::Builtin;
 use super::float::FloatObject;
 
 
-#[derive(Clone)]
-pub struct List(RefCell<native::List>);
+pub const NONE_TYPE: NoneType = NoneType(());
+const NONE_STR: &'static str = "None";
 
-#[derive(Clone)]
-pub struct ListObject {
-    pub value: List,
-}
 
+#[derive(Clone,Hash,Eq,PartialEq,PartialOrd,Ord)]
+pub struct NoneType(());
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Struct Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl List {
-    fn new(vector: Vec<ObjectRef>) -> List {
-        List(RefCell::new(vector))
-    }
-}
-
-
-impl ListObject {
-    pub fn new(value: &Vec<ObjectRef>) -> ListObject {
-        let tuple = ListObject {
-            value: List::new(value.clone())
-        };
-
-        return tuple
-    }
+impl NoneType {
 
 }
+
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl objectref::RtObject for ListObject {}
-impl object::model::PyObject for ListObject {}
-impl object::model::PyBehavior for ListObject {
-
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl objectref::RtObject for NoneType {}
+impl object::model::PyObject for NoneType {}
+impl object::model::PyBehavior for NoneType {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref() {
-            &Builtin::List(ref obj) => {
-                // TODO: Modify the new to allow runtime to give weakrefs back to self
-                let lhs_cell: Ref<Vec<ObjectRef>> = self.value.0.borrow();
-                let lhs_borrow: &Vec<ObjectRef> = lhs_cell.borrow().deref();
-
-                // Inc refcounts for the objects transferred over to self's List
-                let rhs_borrow = obj.value.0.borrow();
-
-                let mut new_list: Vec<ObjectRef> = Vec::with_capacity(lhs_borrow.len() + rhs_borrow.len());
-                lhs_borrow.iter().map(|objref| new_list.push(objref.clone()));
-                rhs_borrow.iter().map(|objref| new_list.push(objref.clone()));
-
-
-                rt.find_object((&(*self) as *const _) as native::ObjectId).unwrap();
-
-                /// DUMB DUMB DUMB THIS IS A COPY AND NOT THE REF TO THE ORIGINAL LIST!!!
-                let l: ObjectRef = ListObject::new(&new_list).to();
-                rt.alloc(l)
-            },
-            _ => Err(Error(ErrorType::Type, "TypeError cannot add to List"))
+        match self.native_eq(builtin.deref()) {
+            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Err(err) => Err(err),
         }
     }
 
-}
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::None(ref obj) => Ok(true),
+            _ => Ok(false)
+        }
+    }
 
+    fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::None(ref obj) => Ok(true),
+            _ => Ok(false)
+        }
+    }
 
-impl objectref::ToRtWrapperType<Builtin> for ListObject {
-    #[inline]
-    fn to(self) -> Builtin {
-        return Builtin::List(self)
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        return Ok(false)
+    }
+
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        Err(Error::attribute())
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        Err(Error::attribute())
+    }
+
+    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+        Err(Error::attribute())
+    }
+
+    fn native_float(&self) -> NativeResult<native::Float> {
+        Err(Error::attribute())
+    }
+
+    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+        Err(Error::attribute())
+    }
+
+    fn native_complex(&self) -> NativeResult<native::Complex> {
+        Err(Error::attribute())
+    }
+
+    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
+        Err(Error::attribute())
+    }
+
+    fn native_index(&self) -> NativeResult<native::Integer> {
+        Err(Error::attribute())
+    }
+
+    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_repr() {
+            Ok(string) => rt.alloc(StringObject::new(string).to()),
+            Err(err) => unreachable!(),
+        }
+    }
+
+    fn native_repr(&self) -> NativeResult<native::String> {
+        Ok(NONE_STR.to_string())
+    }
+
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        self.op_repr(rt)
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        return self.native_repr()
     }
 }
 
-impl objectref::ToRtWrapperType<ObjectRef> for ListObject {
+
+impl objectref::ToRtWrapperType<Builtin> for NoneType {
+    #[inline]
+    fn to(self) -> Builtin {
+        return Builtin::None(self)
+    }
+}
+
+impl objectref::ToRtWrapperType<ObjectRef> for NoneType {
     #[inline]
     fn to(self) -> ObjectRef {
         ObjectRef::new(self.to())
@@ -110,29 +144,150 @@ impl objectref::ToRtWrapperType<ObjectRef> for ListObject {
 //    stdlib Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl fmt::Display for List {
+impl fmt::Display for NoneType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.0.borrow())
+        write!(f, "NoneType")
     }
 }
 
-impl fmt::Display for ListObject {
+impl fmt::Debug for NoneType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
-
-impl fmt::Debug for ListObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
+        write!(f, "NoneType")
     }
 }
 
 #[cfg(test)]
 mod impl_pybehavior {
+    use std;
+    use std::rc::Rc;
+    use std::ops::Deref;
+    use typedef::objectref::{self, ObjectRef};
+    use object::model::PyBehavior;
+
+    use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
+    use typedef::integer;
+    use typedef::builtin::Builtin;
+    use typedef::integer::{Integer, IntegerObject};
+    use typedef::float::FloatObject;
+    use typedef::string::StringObject;
+    use typedef::tuple::TupleObject;
+    use typedef::list::ListObject;
+    use typedef::complex::ComplexObject;
+    use typedef::objectref::ToRtWrapperType;
+
+    use num::ToPrimitive;
+    use std::cmp::PartialEq;
+    use std::borrow::Borrow;
+
+    use super::*;
+
+    /// Reference equality
+    /// None is None
+    #[test]
+    fn is_() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+
+        let result = boxed.op_is(&rt, &rt.None()).unwrap();
+        assert_eq!(result, rt.True());
+
+        let result = boxed.op_is(&rt, &rt.False()).unwrap();
+        assert_eq!(result, rt.False());
+
+        let result = boxed.op_is(&rt, &rt.True()).unwrap();
+        assert_eq!(result, rt.False());
+    }
+
+    
+    /// None == None
+    #[test]
+    fn __eq__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+
+        let result = boxed.op_eq(&rt, &rt.None()).unwrap();
+        assert_eq!(result, rt.True());
+
+        let result = boxed.op_eq(&rt, &rt.False()).unwrap();
+        assert_eq!(result, rt.False());
+
+        let result = boxed.op_eq(&rt, &rt.True()).unwrap();
+        assert_eq!(result, rt.False());
+    }
+
+    #[test]
+    fn __bool__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+        let result = boxed.op_bool(&rt).unwrap();
+
+        assert_eq!(result, rt.False());
+    }
+
+    #[test]
+    #[should_panic]
+    fn __int__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+        let result = boxed.op_int(&rt).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn __complex__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+        let result = boxed.op_complex(&rt).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn __float__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+        let result = boxed.op_float(&rt).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn __index__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+        let result = boxed.op_index(&rt).unwrap();
+    }
+
+    #[test]
+    fn __repr__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+
+        let none_str: ObjectRef = rt.alloc(StringObject::from_str(NONE_STR).to()).unwrap();
+        let result = boxed.op_repr(&rt).unwrap();
+        assert_eq!(result, none_str);
+    }
+
+    #[test]
+    fn __str__() {
+        let mut rt = Runtime::new(None);
+        let none = rt.None();
+        let boxed: &Box<Builtin> = none.0.borrow();
+
+        let none_str: ObjectRef = rt.alloc(StringObject::from_str(NONE_STR).to()).unwrap();
+        let result = boxed.op_str(&rt).unwrap();
+        assert_eq!(result, none_str);
+    }
+
     api_test_stub!(unary, self, __del__, Delete, op_del, native_del);
-    api_test_stub!(unary, self, __repr__, ToStringRepr, op_repr, native_repr);
-    api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
+    //api_test_stub!(unary, self, __repr__, ToStringRepr, op_repr, native_repr);
+    //api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
 
     /// Called by `bytes()` to compute a byte-string representation of an object.
     /// This should return a bytes object.
@@ -144,7 +299,7 @@ mod impl_pybehavior {
     /// and are named after the rich comparison operators they support:
     api_test_stub!(binary, self, __lt__, LessThan, op_lt, native_lt);
     api_test_stub!(binary, self, __le__, LessOrEqual, op_le, native_le);
-    api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);
+    //api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);
     api_test_stub!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);
     api_test_stub!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge);
     api_test_stub!(binary, self, __gt__, GreaterThan, op_gt, native_gt);
@@ -158,9 +313,9 @@ mod impl_pybehavior {
 
     // Identity operators
     api_test_stub!(unary, self, identity, Identity, identity, native_identity, native::Boolean);
-    api_test_stub!(unary, self, __bool__, Truth, op_bool, native_bool, native::Boolean);
+    //api_test_stub!(unary, self, __bool__, Truth, op_bool, native_bool, native::Boolean);
     api_test_stub!(unary, self, __not__, Not, op_not, native_not, native::Boolean);
-    api_test_stub!(binary, self, is_, Is, op_is, native_is, native::Boolean);
+    //api_test_stub!(binary, self, is_, Is, op_is, native_is, native::Boolean);
     api_test_stub!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
 
     // 3.3.6. Emulating container types
@@ -233,9 +388,9 @@ mod impl_pybehavior {
     api_test_stub!(unary, self, __invert__, Invert, op_invert, native_invert);
 
     // Standard numeric conversions
-    api_test_stub!(unary, self, __complex__, ToComplex, op_complex, native_complex);
-    api_test_stub!(unary, self, __int__, ToInt, op_int, native_int);
-    api_test_stub!(unary, self, __float__, ToFloat, op_float, native_float);
+    //api_test_stub!(unary, self, __complex__, ToComplex, op_complex, native_complex);
+    //api_test_stub!(unary, self, __int__, ToInt, op_int, native_int);
+    //api_test_stub!(unary, self, __float__, ToFloat, op_float, native_float);
     api_test_stub!(unary, self, __round__, ToRounded, op_round, native_round);
-    api_test_stub!(unary, self, __index__, ToIndex, op_index, native_index);
+    //api_test_stub!(unary, self, __index__, ToIndex, op_index, native_index);
 }

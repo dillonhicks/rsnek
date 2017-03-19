@@ -1,5 +1,5 @@
 #[macro_use]
-pub mod macros;
+use macros;
 
 pub mod builtin;
 pub mod integer;
@@ -14,3 +14,4 @@ pub mod frozenset;
 pub mod complex;
 pub mod native;
 pub mod boolean;
+pub mod none;

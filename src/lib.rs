@@ -20,6 +20,9 @@ extern crate arena;
 
 #[macro_use]
 pub mod log;
+#[macro_use]
+pub mod macros;
+
 pub mod typedef;
 pub mod result;
 pub mod heap;
@@ -118,17 +121,17 @@ mod tests {
     fn test_tuple_add_tuple_equals_tuple() {
         let mut runtime = Runtime::new(None);
         let mut t1: Vec<ObjectRef> = vec![IntegerObject::new_i64(0).to(),
-                          IntegerObject::new_i64(1).to(),
-                          IntegerObject::new_i64(2).to(),
-                          IntegerObject::new_i64(3).to(),
-                          IntegerObject::new_i64(4).to(),
-                          IntegerObject::new_i64(5).to(),
-                          FloatObject::new(0.0).to(),
-                          FloatObject::new(1.0).to(),
-                          FloatObject::new(2.0).to(),
-                          FloatObject::new(3.0).to(),
-                          FloatObject::new(4.0).to(),
-                          FloatObject::new(5.0).to()];
+                                          IntegerObject::new_i64(1).to(),
+                                          IntegerObject::new_i64(2).to(),
+                                          IntegerObject::new_i64(3).to(),
+                                          IntegerObject::new_i64(4).to(),
+                                          IntegerObject::new_i64(5).to(),
+                                          FloatObject::new(0.0).to(),
+                                          FloatObject::new(1.0).to(),
+                                          FloatObject::new(2.0).to(),
+                                          FloatObject::new(3.0).to(),
+                                          FloatObject::new(4.0).to(),
+                                          FloatObject::new(5.0).to()];
 
         t1 = t1.iter().map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap()).collect();
         assert_eq!(runtime.heap_size(), t1.len());
@@ -141,9 +144,8 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2: Vec<ObjectRef> = vec![
-                            StringObject::from_str("Hello").to(),
-                            StringObject::from_str("World").to()];
+            let mut t2: Vec<ObjectRef> = vec![StringObject::from_str("Hello").to(),
+                                              StringObject::from_str("World").to()];
 
             t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
@@ -192,10 +194,11 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2: Vec<ObjectRef> = vec![
-                              StringObject::from_str("Hello").to(),
-                              StringObject::from_str("World").to()];
-            t2 = t2.iter().map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap()).collect();
+            let mut t2: Vec<ObjectRef> = vec![StringObject::from_str("Hello").to(),
+                                              StringObject::from_str("World").to()];
+            t2 = t2.iter()
+                .map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap())
+                .collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
 
             let tuple2 = runtime.alloc(ListObject::new(&t2).to()).unwrap();

@@ -14,36 +14,21 @@ use object;
 use object::model::PyBehavior;
 
 
-use super::builtin;
-use super::builtin::Builtin;
-use super::integer::IntegerObject;
-use super::float::FloatObject;
-use super::string::StringObject;
-use super::tuple::TupleObject;
-use super::list::ListObject;
-
-
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///          macros
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-
-macro_rules! unwrap_builtin {
-    ($name:ident) => {
-            let borrowed: &RefCell<Builtin> = self.0.borrow();
-    }
-}
+use typedef::builtin;
+use typedef::builtin::Builtin;
+use typedef::integer::IntegerObject;
+use typedef::float::FloatObject;
+use typedef::string::StringObject;
+use typedef::tuple::TupleObject;
+use typedef::list::ListObject;
+use typedef::native;
 
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///      Types and Structs
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///
-type _ObjectRef = Rc<Box<Builtin>>;
-pub struct ObjectRef(pub _ObjectRef);
-
-type _WeakObjectRef = Weak<Box<Builtin>>;
-pub struct WeakObjectRef(pub _WeakObjectRef);
+pub struct ObjectRef(pub native::RuntimeRef);
+pub struct WeakObjectRef(pub native::RuntimeWeakRef);
 
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+

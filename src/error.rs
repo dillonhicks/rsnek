@@ -8,18 +8,14 @@ pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display {
 #[derive(Debug, Clone, Copy)]
 pub struct Error(pub ErrorType, pub &'static str);
 
-#[deprecated]
-#[derive(Debug, Clone, Copy)]
-pub struct InterpreterError {
-    pub message: &'static str
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ErrorType {
     Runtime,
     Type,
     Overflow,
-    NotImplemented
+    NotImplemented,
+    Attribute
 }
 
 impl Error {
@@ -38,6 +34,11 @@ impl Error {
     pub fn not_implemented() -> Error {
         return Error(ErrorType::NotImplemented, "Not Implemented")
     }
+
+    pub fn attribute() -> Error {
+        return Error(ErrorType::Attribute, "Attribute is not defined for type")
+    }
+
 }
 
 
@@ -47,22 +48,6 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl std::fmt::Display for InterpreterError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[deprecated]
-impl Exception for InterpreterError {
-    fn error_type(&self) -> ErrorType {
-        ErrorType::Runtime
-    }
-
-    fn message(&self) -> &'static str {
-        self.message
-    }
-}
 
 impl Exception for Error {
     fn error_type(&self) -> ErrorType {

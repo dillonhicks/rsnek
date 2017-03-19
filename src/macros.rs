@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! foreach_builtin {
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => (
@@ -14,8 +13,8 @@ macro_rules! foreach_builtin {
 
 macro_rules! unary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => {
-
         match $obj {
+            &Builtin::None(ref $lhs) => $lhs.$op($rt),
             &Builtin::Boolean(ref $lhs) => $lhs.$op($rt),
             &Builtin::Integer(ref $lhs) => $lhs.$op($rt),
             &Builtin::Float(ref $lhs) => $lhs.$op($rt),
@@ -26,15 +25,15 @@ macro_rules! unary_op_foreach{
             &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt),
             &Builtin::Complex(ref $lhs) => $lhs.$op($rt),
             &Builtin::Dictionary(ref $lhs) => $lhs.$op($rt),
-            _ => Err(Error::not_implemented())
+            _ => unreachable!()
         }
     };
 }
 
 macro_rules! binary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $rhs:ident) => {
-
         match $obj {
+            &Builtin::None(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Boolean(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Integer(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Float(ref $lhs) => $lhs.$op($rt, $rhs),
@@ -45,7 +44,7 @@ macro_rules! binary_op_foreach{
             &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Complex(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Dictionary(ref $lhs) => $lhs.$op($rt, $rhs),
-            _ => Err(Error::not_implemented())
+            _ => unreachable!()
         }
     };
 }
@@ -53,6 +52,7 @@ macro_rules! binary_op_foreach{
 macro_rules! ternary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
+            &Builtin::None(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Boolean(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Integer(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Float(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
@@ -63,7 +63,7 @@ macro_rules! ternary_op_foreach{
             &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Complex(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Dictionary(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            _ => Err(Error::not_implemented())
+            _ => unreachable!()
         }
     };
 }
@@ -84,8 +84,8 @@ macro_rules! native_foreach_builtin {
 
 macro_rules! native_unary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident) => {
-
         match $obj {
+            &Builtin::None(ref $lhs) => $lhs.$op(),
             &Builtin::Boolean(ref $lhs) => $lhs.$op(),
             &Builtin::Integer(ref $lhs) => $lhs.$op(),
             &Builtin::Float(ref $lhs) => $lhs.$op(),
@@ -96,15 +96,15 @@ macro_rules! native_unary_op_foreach{
             &Builtin::FrozenSet(ref $lhs) => $lhs.$op(),
             &Builtin::Complex(ref $lhs) => $lhs.$op(),
             &Builtin::Dictionary(ref $lhs) => $lhs.$op(),
-            _ => panic!("Unhandled native case in macro!")
+            _ => unreachable!()
         }
     };
 }
 
 macro_rules! native_binary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $rhs:ident) => {
-
         match $obj {
+            &Builtin::None(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Boolean(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Integer(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Float(ref $lhs) => $lhs.$op($rhs),
@@ -115,7 +115,7 @@ macro_rules! native_binary_op_foreach{
             &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Complex(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Dictionary(ref $lhs) => $lhs.$op($rhs),
-            _ => panic!("Unhandled native case in macro!")
+            _ => unreachable!()
         }
     };
 }
@@ -123,6 +123,7 @@ macro_rules! native_binary_op_foreach{
 macro_rules! native_ternary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
+            &Builtin::None(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Boolean(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Integer(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Float(ref $lhs) => $lhs.$op($mid, $rhs),
@@ -133,7 +134,99 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::FrozenSet(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Complex(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Dictionary(ref $lhs) => $lhs.$op($mid, $rhs),
-            _ => panic!("Unhandled native case in macro!")
+            _ => unreachable!()
         }
+    };
+}
+
+
+
+/// Macro to create Object and native typed level hooks for
+/// the rsnek runtime. Each method is generated with a default implementation
+/// that will return a NotImplemented error.
+///
+/// Note that for arity of methods may appear deceiving since the receiver (self)
+/// is always the first argument and is the first argument by convention.
+#[macro_export]
+macro_rules! api_method {
+    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+            fn $fname(&$sel, &Runtime) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel) -> NativeResult<$nativety> {
+                Err(Error::not_implemented())
+            }
+    };
+    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+            fn $fname(&$sel, &Runtime) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel) -> NativeResult<Builtin> {
+                Err(Error::not_implemented())
+            }
+    };
+    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
+                Err(Error::not_implemented())
+            }
+    };
+    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
+                Err(Error::not_implemented())
+            }
+    };
+    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
+                Err(Error::not_implemented())
+            }
+
+    };
+   (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+
+            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
+                Err(Error::not_implemented())
+            }
+
+    };
+    (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+            fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
+                Err(Error::not_implemented())
+            }
+
+            fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
+                Err(Error::not_implemented())
+            }
+    };
+}
+
+
+macro_rules! api_test_stub {
+    ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+        //#[test]
+        fn $pyname() {
+            println!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), stringify!($tname), stringify!($fname), stringify!($nfname));
+            unimplemented!()
+        }
+    };
+    ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $($misc:ty),*) => {
+        api_test_stub!($args, $sel, $pyname, $tname, $fname, $nfname);
     };
 }

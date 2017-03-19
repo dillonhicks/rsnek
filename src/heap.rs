@@ -48,7 +48,7 @@ impl Heap {
 
         let intern = reference.clone();
         let builtin: &Box<Builtin> = intern.0.borrow();
-        let id = builtin.native_identity();
+        let id = builtin.deref().native_identity();
 
         self.index.borrow_mut().insert(id, reference.clone());
         Ok(reference.clone())
