@@ -31,9 +31,8 @@ fn main() {
 
         match out {
             None => break,
-            _ => ()
+            _ => (),
         };
     }
 
 }
-

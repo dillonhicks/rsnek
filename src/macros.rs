@@ -230,7 +230,7 @@ macro_rules! api_method {
 
 macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-        //#[test]
+        #[test]
         fn $pyname() {
             println!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), stringify!($tname), stringify!($fname), stringify!($nfname));
             unimplemented!()
