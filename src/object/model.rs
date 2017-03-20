@@ -10,6 +10,7 @@ use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 use typedef::native;
 use typedef::integer::IntegerObject;
+use typedef::string::StringObject;
 
 pub trait UnaryOperation {}
 pub trait BinaryOperation {}
@@ -178,6 +179,9 @@ pub trait PyBehavior {
     // api_method!(binary, self, __not__, Not, op_not, native_not);
     // api_method!(binary, self, is_, Is, op_is, native_is);
     // api_method!(binary, self, is_not, IsNot, op_is_not, native_is_not);
+    // api_method!(unary, self, __repr__, ToStringRepr, op_repr, native_repr, native::String);
+    // api_method!(unary, self, __str__, ToString, op_str, native_str, native::String);
+    api_method!(unary, self, __del__, Delete, op_del, native_del);
 
     fn identity(&self, rt: &Runtime) -> RuntimeResult {
         let objref: ObjectRef = IntegerObject::new_u64(self.native_identity()).to();
@@ -228,9 +232,29 @@ pub trait PyBehavior {
         Ok(true)
     }
 
-    api_method!(unary, self, __del__, Delete, op_del, native_del);
-    api_method!(unary, self, __repr__, ToStringRepr, op_repr, native_repr, native::String);
-    api_method!(unary, self, __str__, ToString, op_str, native_str, native::String);
+    /// Default implementation gives a string similar to pythons default
+    /// repr in the form "<object [NAME] at [ADDR]>".
+    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_str() {
+            Ok(string) => rt.alloc(StringObject::new(string).to()),
+            Err(err) => unreachable!()
+        }
+    }
+
+    fn native_repr(&self) -> NativeResult<native::String> {
+        // TODO: Once types are implemented this should inject the name
+        // from the type struct.
+        Ok(format!("<object UnknownType at {:?}>", (&self as *const _)))
+    }
+
+    /// `op_str()` falls back to `op_repr` as per cPython's default
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        self.op_repr(rt)
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        return self.native_repr()
+    }
 
     /// Called by `bytes()` to compute a byte-string representation of an object.
     /// This should return a bytes object.

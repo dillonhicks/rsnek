@@ -149,7 +149,10 @@ impl Runtime {
     #[allow(non_snake_case)]
     pub fn Int(&self, idx: isize) -> Option<ObjectRef> {
         match (idx + (STATIC_INT_IDX_OFFSET as isize)) as usize {
-            checked_idx @ 0 ... STATIC_INT_RANGE_MAX => Some(self.0.singletons.integers[checked_idx as usize].clone()),
+            checked_idx @ 0 ... STATIC_INT_RANGE_MAX => {
+                let static_ref = self.0.singletons.integers[checked_idx as usize].clone();
+                Some(static_ref.clone())
+            },
             _ => None
         }
     }
@@ -196,7 +199,7 @@ mod impl_runtime {
     #[test]
     fn static_int_bad_idx_lower_bound() {
         let mut rt = Runtime::new(None);
-        assert!(rt.Int(-1 - (STATIC_INT_IDX_OFFSET as isize)).is_none());
+        assert!(rt.Int(-(1 + STATIC_INT_IDX_OFFSET as isize)).is_none());
     }
 
     #[test]

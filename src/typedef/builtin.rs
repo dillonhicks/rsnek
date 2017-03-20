@@ -250,12 +250,20 @@ impl object::model::PyBehavior for Builtin {
         native_foreach_builtin!(self, native_len, lhs)
     }
 
-    fn op_setitem(&self, rt: &Runtime, item: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_setitem, object, item, value)
+    fn op_setitem(&self, rt: &Runtime, name: &ObjectRef, item: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_setitem, object, name, item)
     }
 
-    fn native_setitem(&self, item: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
-        native_foreach_builtin!(self, native_setitem, object, item, value)
+    fn native_setitem(&self, name: &Builtin, item: &Builtin) -> NativeResult<native::NoneValue> {
+        native_foreach_builtin!(self, native_setitem, object, name, item)
+    }
+    
+    fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_getitem, object, name)
+    }
+
+    fn native_getitem(&self, name: &Builtin) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_getitem, object, name)
     }
 }
 

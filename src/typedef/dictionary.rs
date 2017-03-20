@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Deref;
 use std::borrow::Borrow;
 use num::{Zero, FromPrimitive};
 use std::cell::RefCell;
@@ -84,6 +85,31 @@ impl object::model::PyBehavior for DictionaryObject {
         }
     }
 
+    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
+        // TODO: enforce all objects containing a weakref to itself so we can support
+        // the clone and upgrade here for the native map api. Should check if the strong count
+        // exists or otherwise return Err because it would mean the value is unmanaged which
+        // leads to memory leaks and such.
+        Err(Error::not_implemented())
+    }
+
+    fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
+        let key_box: &Box<Builtin>  = keyref.borrow();
+        match key_box.native_hash() {
+            Ok(hash) => {
+                let key = Key(hash, keyref.clone());
+                match self.value.borrow().get(&key) {
+                    Some(value) => Ok(value.clone()),
+                    None => {
+                        // TODO: use repr for this as per cPython default
+                        Err(Error::key("KeyError: no such key"))
+                    }
+                }
+            },
+            Err(err) => Err(Error::typerr("TypeError: Unhashable key type"))
+        }
+    }
+
 }
 
 
@@ -145,7 +171,7 @@ mod impl_pybehavior {
 
     /// Ensure that the dictionary reference equality succeeds with itself
     #[test]
-    fn op_is() {
+    fn is_() {
         let mut rt = Runtime::new(None);
         let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
 
@@ -158,7 +184,7 @@ mod impl_pybehavior {
     /// Ensure that the dictionary reference equality does not
     /// match against two separarte dictionaries.
     #[test]
-    fn op_is_not() {
+    fn is_not() {
         let mut rt = Runtime::new(None);
         let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
         let another_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
@@ -225,8 +251,8 @@ mod impl_pybehavior {
     // api_test_stub!(unary, self, identity, Identity, identity, native_identity, native::Boolean);
     // api_test_stub!(unary, self, __bool__, Truth, op_bool, native_bool, native::Boolean);
     api_test_stub!(unary, self, __not__, Not, op_not, native_not, native::Boolean);
-    api_test_stub!(binary, self, is_, Is, op_is, native_is, native::Boolean);
-    api_test_stub!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
+    //api_test_stub!(binary, self, is_, Is, op_is, native_is, native::Boolean);
+    //api_test_stub!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
 
     // 3.3.6. Emulating container types
     api_test_stub!(unary, self, __len__, Length, op_len, native_len);
@@ -333,7 +359,7 @@ mod impl_mappingpybehavior {
 
 
     #[test]
-    fn op_len() {
+    fn __len__() {
         let mut rt = Runtime::new(None);
         let zero: ObjectRef = rt.alloc(IntegerObject::new_u64(0).to()).unwrap();
         let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
@@ -345,7 +371,7 @@ mod impl_mappingpybehavior {
     }
 
     #[test]
-    fn op_setitem() {
+    fn __setitem__() {
         let mut rt = Runtime::new(None);
         let key: ObjectRef = rt.alloc(IntegerObject::new_u64(0).to()).unwrap();
         let value: ObjectRef = rt.alloc(StringObject::from_str("Dictionary Value").to()).unwrap();
@@ -360,12 +386,29 @@ mod impl_mappingpybehavior {
         assert_eq!(result, rt.One());
     }
 
+    #[test]
+    fn __getitem__() {
+        let mut rt = Runtime::new(None);
+        let key: ObjectRef = rt.alloc(IntegerObject::new_u64(0).to()).unwrap();
+        let value: ObjectRef = rt.alloc(StringObject::from_str("Dictionary Value").to()).unwrap();
+        let empty_dict: ObjectRef = rt.alloc(DictionaryObject::new().to()).unwrap();
+
+        let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
+
+        let result = dict_ref.op_setitem(&rt, &key, &value).unwrap();
+        assert_eq!(result, rt.None());
+
+        let result = dict_ref.op_getitem(&rt, &key).unwrap();
+        assert_eq!(value, result);
+    }
+
     // 3.3.6. Emulating container types
-    api_test_stub!(unary, self, __len__, Length, op_len, native_len);
+    //api_test_stub!(unary, self, __len__, Length, op_len, native_len);
     api_test_stub!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint);
-    api_test_stub!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
+    //api_test_stub!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
+    //api_test_stub!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem);
+
     api_test_stub!(binary, self, __missing__, MissingItem, op_missing, native_missing);
-    api_test_stub!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem);
     api_test_stub!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
     api_test_stub!(unary, self, __iter__, Iterator, op_iter, native_iter);
     api_test_stub!(unary, self, __reversed__, Reverse, op_reverse, native_reverse);

@@ -36,6 +36,11 @@ pub type List = Vec<typedef::objectref::ObjectRef>;
 pub struct Key(pub HashId, pub typedef::objectref::ObjectRef);
 pub type Dictionary = std::collections::HashMap<Key, typedef::objectref::ObjectRef>;
 
+/*struct {
+    key_set: Set,
+    mapping: std::collections::HashMap<Key, typedef::objectref::ObjectRef>
+};
+*/
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct SetElement(pub HashId, pub typedef::objectref::ObjectRef);
 pub type Set = std::collections::HashSet<SetElement>;
