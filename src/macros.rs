@@ -1,4 +1,15 @@
-#[macro_export]
+use std;
+
+use std::io::Write;
+
+
+// TODO: Replace this with an actual logging mod
+macro_rules! log {
+   ($fmt:expr) => (print!(concat!("DEBUG: ", $fmt, "\n")));
+   ($fmt:expr, $($arg:tt)*) => (print!(concat!("DEBUG: ", $fmt, "\n"), $($arg)*));
+}
+
+
 macro_rules! foreach_builtin {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (
         unary_op_foreach!($sel, $rt, $function, $receiver)
@@ -68,7 +79,6 @@ macro_rules! ternary_op_foreach{
     };
 }
 
-#[macro_export]
 macro_rules! native_foreach_builtin {
     ($sel:expr, $function:ident, $receiver:ident) => (
         native_unary_op_foreach!($sel, $function, $receiver)
@@ -147,7 +157,6 @@ macro_rules! native_ternary_op_foreach{
 ///
 /// Note that for arity of methods may appear deceiving since the receiver (self)
 /// is always the first argument and is the first argument by convention.
-#[macro_export]
 macro_rules! api_method {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {

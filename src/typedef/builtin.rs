@@ -282,9 +282,9 @@ impl objectref::ToRtWrapperType<ObjectRef> for Builtin {
     }
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///     stdlib Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//     stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl std::cmp::PartialEq for Builtin {
     fn eq(&self, rhs: &Builtin) -> bool {

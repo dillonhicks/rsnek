@@ -82,7 +82,6 @@ impl Runtime {
                     .map(|obj| heap.alloc_static(obj.to()).unwrap())
                     .collect();
 
-
         let singletons = SingletonIndex {
             True: heap.alloc_static(True).unwrap(),
             False: heap.alloc_static(False).unwrap(),

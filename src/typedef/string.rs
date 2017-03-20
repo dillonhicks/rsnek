@@ -79,7 +79,6 @@ impl object::model::PyBehavior for StringObject {
         }
     }
 
-
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
             Ok(string) => rt.alloc(StringObject::new(string).to()),
