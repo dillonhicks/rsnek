@@ -16,7 +16,8 @@ pub enum ErrorType {
     Overflow,
     NotImplemented,
     Attribute,
-    Value
+    Value,
+    Key
 }
 
 
@@ -43,6 +44,10 @@ impl Error {
 
     pub fn value(message: &'static str) -> Self {
         return Error(ErrorType::Value, message)
+    }
+
+    pub fn key(message: &'static str) -> Error {
+        return Error(ErrorType::Key, message)
     }
 }
 
