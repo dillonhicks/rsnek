@@ -8,6 +8,10 @@ use std::ops::Deref;
 use std::cmp::Eq;
 use std::hash::{Hash, Hasher};
 
+use num::Zero;
+use num::FromPrimitive;
+
+use error::Error;
 use runtime::Runtime;
 use result::RuntimeResult;
 use object;
@@ -24,18 +28,19 @@ use typedef::list::ListObject;
 use typedef::native;
 
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///      Types and Structs
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      Types and Structs
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 pub struct ObjectRef(pub native::RuntimeRef);
 pub struct WeakObjectRef(pub native::RuntimeWeakRef);
 
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///       Struct Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//       Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl ObjectRef {
+
     #[inline]
     pub fn new(value: Builtin) -> ObjectRef {
         ObjectRef(Rc::new(Box::new(value)))
@@ -44,6 +49,10 @@ impl ObjectRef {
     /// Downgrade the ObjectRef to a WeakObjectRef
     pub fn downgrade(self) -> WeakObjectRef {
         WeakObjectRef(Rc::downgrade(&self.0))
+    }
+
+    pub fn refcount(&self) -> native::Integer {
+        native::Integer::from_usize(Rc::strong_count(&self.0)).unwrap()
     }
 }
 
@@ -54,9 +63,28 @@ impl Default for WeakObjectRef {
     }
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///        stdlib Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+impl WeakObjectRef {
+    pub fn weak_refcount(&self) -> native::Integer {
+        let objref = match self.upgrade() {
+            Ok(strong) => strong,
+            Err(_) => return native::Integer::zero()
+        };
+
+        objref.refcount()
+    }
+
+    pub fn upgrade(&self) -> RuntimeResult {
+        match Weak::upgrade(&self.0) {
+            None => Err(Error::runtime("Attempted to create a strong ref to a an object with no existing refs")),
+            Some(objref) => Ok(ObjectRef(objref))
+        }
+    }
+}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//        stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
 impl std::cmp::PartialEq for ObjectRef {
@@ -80,12 +108,25 @@ impl Clone for ObjectRef {
     }
 }
 
+
+impl Clone for WeakObjectRef {
+    fn clone(&self) -> Self {
+        WeakObjectRef((self.0).clone())
+    }
+}
+
 impl Hash for ObjectRef {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // noop since we use Holder elements with manually computed hashes
     }
 }
 
+
+impl Hash for WeakObjectRef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // noop since we use Holder elements with manually computed hashes
+    }
+}
 
 impl Borrow<Box<Builtin>> for ObjectRef {
     fn borrow(&self) -> &Box<Builtin> {

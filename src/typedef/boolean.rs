@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 
 use object;
-use object::model::PyBehavior;
+use object::model::{PyType, PyBehavior, RefCount};
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::integer::IntegerObject;
@@ -28,22 +28,98 @@ use num::ToPrimitive;
 pub const TRUE_STR: &'static str = "True";
 pub const FALSE_STR: &'static str = "False";
 
-pub type Boolean = native::Integer;
+
+#[derive(Clone)]
+pub struct BooleanType {
+    rt: Runtime,
+}
+
+
+pub type PyBoolean = object::model::RtValue<native::Integer>;
+
+impl std::fmt::Debug for PyBoolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.value.is_zero() {
+            write!(f, "{}", FALSE_STR)
+        } else {
+            write!(f, "{}", TRUE_STR)
+        }
+    }
+}
+
+impl PyType for BooleanType {
+    type T = PyBoolean;
+
+    fn register(rt: &Runtime) -> Self {
+        return BooleanType {rt: rt.clone()}
+    }
+
+    fn op_new(&self) -> RuntimeResult {
+        match self.native_init() {
+            Ok(inst) => self.rt.alloc(inst.to()),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_new(&self) -> NativeResult<Self::T> {
+        Ok(PyBoolean {
+            value: native::Integer::zero(),
+            rc: RefCount::default()
+        })
+    }
+
+    fn op_init(&self) -> RuntimeResult {
+        self.op_new()
+    }
+
+    #[inline]
+    fn native_init(&self) -> NativeResult<Self::T> {
+        self.native_new()
+    }
+
+    fn op_name(&self) -> RuntimeResult {
+        match self.native_name() {
+            Ok(string) => self.rt.alloc(StringObject::new(string).to()),
+            Err(err) => Err(err)
+        }
+    }
+
+    #[inline]
+    fn native_name(&self) -> NativeResult<native::String> {
+        Ok("Boolean".to_string())
+    }
+
+}
+
+impl ToRtWrapperType<builtin::Builtin> for PyBoolean {
+    fn to(self) -> builtin::Builtin {
+        builtin::Builtin::Bool(self)
+    }
+}
+
+impl ToRtWrapperType<objectref::ObjectRef> for PyBoolean {
+    fn to(self) -> ObjectRef {
+        ObjectRef::new(builtin::Builtin::Bool(self))
+    }
+}
 
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BooleanObject {
-    value: Boolean,
+    value: native::Integer,
 }
-
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //       Struct Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+
 impl BooleanObject {
     pub fn new_true() -> BooleanObject {
-        return BooleanObject { value: native::Integer::from(1) };
+        return BooleanObject {
+            value: native::Integer::from(1)
+
+        };
     }
 
     pub fn new_false() -> BooleanObject {
@@ -58,6 +134,7 @@ impl BooleanObject {
 impl objectref::RtObject for BooleanObject {}
 impl object::model::PyObject for BooleanObject {}
 impl object::model::PyBehavior for BooleanObject {
+
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
@@ -655,4 +732,37 @@ mod impl_pybehavior {
     //    api_test_stub!(unary, self, __round__, ToRounded, op_round, native_round);
     //    api_test_stub!(unary, self, __index__, ToIndex, op_index, native_index);
 
+}
+
+#[cfg(test)]
+mod impl_pytypebehavior {
+    use std;
+    use std::rc::Rc;
+    use std::ops::Deref;
+    use typedef::objectref::{self, ObjectRef};
+    use object::model::PyBehavior;
+
+    use runtime::{Runtime, DEFAULT_HEAP_CAPACITY};
+    use typedef::integer;
+    use typedef::builtin::Builtin;
+    use typedef::integer::{Integer, IntegerObject};
+    use typedef::float::FloatObject;
+    use typedef::string::StringObject;
+    use typedef::tuple::TupleObject;
+    use typedef::list::ListObject;
+    use typedef::complex::ComplexObject;
+    use typedef::objectref::ToRtWrapperType;
+
+    use num::ToPrimitive;
+    use std::cmp::PartialEq;
+    use std::borrow::Borrow;
+
+    use super::*;
+
+    #[test]
+    fn test_type() {
+        let bool = BooleanType::register(&Runtime::new(None));
+
+        println!("{:?}", bool.op_new())
+    }
 }

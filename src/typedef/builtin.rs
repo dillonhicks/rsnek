@@ -13,7 +13,7 @@ use object::model::PyBehavior;
 
 use typedef::objectref;
 use typedef::objectref::{RtObject, ObjectRef};
-use typedef::boolean::BooleanObject;
+use typedef::boolean::{PyBoolean, BooleanObject};
 use typedef::integer::IntegerObject;
 use typedef::float::FloatObject;
 use typedef::string::StringObject;
@@ -44,6 +44,7 @@ pub enum Builtin {
     Dictionary(DictionaryObject),
     Complex(ComplexObject),
 
+    Bool(PyBoolean),
     // Not yet implemented
     Object(()),
     Function(()),
