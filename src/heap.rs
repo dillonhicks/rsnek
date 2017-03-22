@@ -42,6 +42,8 @@ impl Heap {
         }
     }
 
+
+
     pub fn alloc_static(&self, reference: ObjectRef) -> RuntimeResult {
 
         self.arena.borrow_mut().push(reference.clone());
@@ -49,7 +51,6 @@ impl Heap {
         let intern = reference.clone();
         let builtin: &Box<Builtin> = intern.0.borrow();
         let id = builtin.deref().native_identity();
-
         self.index.borrow_mut().insert(id, reference.clone());
         Ok(reference.clone())
     }

@@ -141,14 +141,17 @@ use typedef::string::StringObject;
 //#endif
 
 
+pub type RtValue<T> = RefCountedValue<T, RefCount>;
+
+
 // TODO: Allow arguments to new and init
 // TODO: Inheritance? Missing bases, mro, etc.
 /// __builtins__.type: Defines how types are created
-pub trait PyType {
+pub trait TypePyBehavior {
     type T;
 
     /// Create the type and register it with the runtime
-    fn register(&Runtime) -> Self;
+    fn create(&Runtime) -> Self;
 
     /// __new__
     fn op_new(&self) -> RuntimeResult;
@@ -161,21 +164,22 @@ pub trait PyType {
     /// __name__ (e.g. self.__class__.__name__)
     fn op_name(&self) -> RuntimeResult;
     fn native_name(&self) -> NativeResult<native::String>;
+
+    api_method!(unary, self, __bases__, HasBases, op_bases, native_bases);
 }
 
 
+/// RefCount struct that holds a mutable and optional weakref
+/// this is so instances can have a reference to their own RefCount
+///
 #[derive(Clone)]
-pub struct RefCount(RefCell<Option<WeakObjectRef>>);
+pub struct RefCount(pub RefCell<Option<WeakObjectRef>>);
 
-
-
-pub trait SelfRef: Clone + Sized {
-    fn strong_count(&self) -> native::Integer;
-    fn weak_count(&self) -> native::Integer;
-    fn set(&mut self, &ObjectRef);
-    fn upgrade(&self) -> RuntimeResult;
+impl Debug for RefCount {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{}/{}", self.strong_count(), self.weak_count())
+    }
 }
-
 
 /// A wrapper around a value with its own reference count
 /// in the runtime.
@@ -186,7 +190,15 @@ pub struct RefCountedValue<T, V: SelfRef> {
 }
 
 
-pub type RtValue<T> = RefCountedValue<T, RefCount>;
+/// A trait that must be implemented on a refcount wrapper type
+/// in order to provide the necessary behavior for a value to
+/// contain a reference to itself.
+pub trait SelfRef: Sized {
+    fn strong_count(&self) -> native::Integer;
+    fn weak_count(&self) -> native::Integer;
+    fn set(&self, &ObjectRef);
+    fn upgrade(&self) -> RuntimeResult;
+}
 
 
 impl SelfRef for RefCount {
@@ -204,8 +216,9 @@ impl SelfRef for RefCount {
         }
     }
 
-    fn set(&mut self, selfref: &ObjectRef) {
-        self.0 = RefCell::new(Some(selfref.clone().downgrade()))
+    fn set(&self, selfref: &ObjectRef) {
+        let mut rc = self.0.borrow_mut();
+        *rc = Some(selfref.downgrade())
     }
 
     fn upgrade(&self) -> RuntimeResult {
@@ -213,6 +226,25 @@ impl SelfRef for RefCount {
             None => Err(Error::runtime("Explosions!")),
             Some(_) => Err(Error::runtime("Explosions!")),
         }
+    }
+}
+
+
+impl<T, V: SelfRef> SelfRef for RefCountedValue<T, V> {
+    fn strong_count(&self) -> native::Integer {
+        self.rc.strong_count()
+    }
+
+    fn weak_count(&self) -> native::Integer {
+        self.rc.weak_count()
+    }
+
+    fn set(&self, selfref: &ObjectRef) {
+        self.rc.set(selfref)
+    }
+
+    fn upgrade(&self) -> RuntimeResult {
+        self.rc.upgrade()
     }
 }
 

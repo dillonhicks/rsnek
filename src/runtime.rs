@@ -1,14 +1,15 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 use std;
 use std::rc::Rc;
-
+use std::cell::RefCell;
+use object::model::TypePyBehavior;
 pub use result::RuntimeResult;
 use heap::Heap;
 
 use typedef::native::ObjectId;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::boolean::BooleanObject;
+use typedef::boolean::{BooleanObject, BooleanSingletons, BooleanType};
 use typedef::integer::IntegerObject;
 use typedef::objectref::ToRtWrapperType;
 use typedef::none::NONE_TYPE;
@@ -29,9 +30,14 @@ pub struct Runtime(RuntimeRef);
 /// Concrete struct that holds the current runtime state, heap, etc.
 struct RuntimeInternal {
     heap: Heap,
-    singletons: SingletonIndex
+    singletons: SingletonIndex,
+    types: RefCell<Vec<PythonType>>
 }
 
+
+pub enum PythonType {
+    Bool(BooleanType),
+}
 
 //noinspection RsFieldNaming
 struct SingletonIndex {
@@ -67,6 +73,7 @@ impl Clone for Runtime {
 
 impl Runtime {
     #[inline]
+    #[allow(non_snake_case)]
     pub fn new(heap_size: Option<usize>) -> Runtime {
         let size = match heap_size {
             Some(i) => i,
@@ -89,13 +96,22 @@ impl Runtime {
             integers: range.into(),
         };
 
-        let runtime = RuntimeInternal {
+        let internal = RuntimeInternal {
             heap: heap,
-            singletons: singletons
+            singletons: singletons,
+            types: RefCell::new(Vec::new())
         };
 
-        Runtime(Rc::new(Box::new(runtime)))
+
+        Runtime(Rc::new(Box::new(internal)))
     }
+//
+//    pub fn register_type(&self, pytype: PythonType) {
+//        let mut types = self.0.types.borrow_mut();
+//        let boxed = Box::new(pytype);
+//        types.push(boxed);
+//
+//    }
 
     /// Alloc a spot for the object ref in the `Heap` for the `Runtime` this will
     /// mean that there will be at one single strong reference to the `ObjectRef`

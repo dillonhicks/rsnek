@@ -5,12 +5,14 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 
 use object;
-use object::model::{PyType, PyBehavior, RefCount};
+use object::model::{TypePyBehavior, PyBehavior, RefCount};
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::integer::IntegerObject;
 use typedef::objectref::ToRtWrapperType;
 use typedef::float::FloatObject;
+use object::model::SelfRef;
+use runtime::PythonType;
 
 use typedef::builtin;
 use typedef::builtin::Builtin;
@@ -29,6 +31,13 @@ pub const TRUE_STR: &'static str = "True";
 pub const FALSE_STR: &'static str = "False";
 
 
+#[allow(non_snake_case)]
+pub struct BooleanSingletons {
+    True: ObjectRef,
+    False: ObjectRef
+}
+
+
 #[derive(Clone)]
 pub struct BooleanType {
     rt: Runtime,
@@ -40,23 +49,40 @@ pub type PyBoolean = object::model::RtValue<native::Integer>;
 impl std::fmt::Debug for PyBoolean {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.value.is_zero() {
-            write!(f, "{}", FALSE_STR)
+            write!(f, "{} - {:?}", FALSE_STR, self.rc)
         } else {
-            write!(f, "{}", TRUE_STR)
+            write!(f, "{} - {:?}", TRUE_STR, self.rc)
         }
     }
 }
 
-impl PyType for BooleanType {
+impl TypePyBehavior for BooleanType {
     type T = PyBoolean;
 
-    fn register(rt: &Runtime) -> Self {
-        return BooleanType {rt: rt.clone()}
+    fn create(rt: &Runtime) -> Self {
+        return BooleanType {
+            rt: rt.clone()
+        }
     }
 
     fn op_new(&self) -> RuntimeResult {
         match self.native_init() {
-            Ok(inst) => self.rt.alloc(inst.to()),
+            Ok(inst) => {
+                let objref: ObjectRef = ObjectRef::new(Builtin::Bool(inst));
+                let result = self.rt.alloc(objref.clone());
+                match result {
+                    Ok(selfref) => {
+                        // TODO: This looks gross but might be the only way
+                        // to set the selfref unless the heap can pass back mut
+                        // boxes.
+                        let builtin: &Box<Builtin> = objref.0.borrow();
+                        let bool: &PyBoolean = builtin.bool().unwrap();
+                        bool.rc.set(&selfref.clone());
+                        Ok(selfref)
+                    },
+                    Err(err) => Err(err)
+                }
+            },
             Err(err) => Err(err)
         }
     }
@@ -759,9 +785,15 @@ mod impl_pytypebehavior {
 
     use super::*;
 
+    fn setup() -> (Runtime, BooleanType) {
+        let rt = Runtime::new(None);
+        let bool = BooleanType::create(&rt);
+        (rt, bool)
+    }
+
     #[test]
-    fn test_type() {
-        let bool = BooleanType::register(&Runtime::new(None));
+    fn __new__() {
+        let (rt, bool) = setup();
 
         println!("{:?}", bool.op_new())
     }

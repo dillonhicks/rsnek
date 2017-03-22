@@ -47,13 +47,15 @@ impl ObjectRef {
     }
 
     /// Downgrade the ObjectRef to a WeakObjectRef
-    pub fn downgrade(self) -> WeakObjectRef {
+    pub fn downgrade(&self) -> WeakObjectRef {
         WeakObjectRef(Rc::downgrade(&self.0))
     }
 
     pub fn refcount(&self) -> native::Integer {
         native::Integer::from_usize(Rc::strong_count(&self.0)).unwrap()
     }
+
+
 }
 
 
@@ -120,7 +122,6 @@ impl Hash for ObjectRef {
         // noop since we use Holder elements with manually computed hashes
     }
 }
-
 
 impl Hash for WeakObjectRef {
     fn hash<H: Hasher>(&self, state: &mut H) {

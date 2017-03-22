@@ -95,6 +95,13 @@ impl Builtin {
         }
     }
 
+    pub fn bool(&self) -> CastResult<&PyBoolean> {
+        match *self {
+            Builtin::Bool(ref obj) => Ok(obj),
+            _ => Err(Error::typerr("Not a PyBoolean")),
+        }
+    }
+
 }
 
 
