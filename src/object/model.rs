@@ -143,32 +143,6 @@ use typedef::string::StringObject;
 
 pub type RtValue<T> = RefCountedValue<T, RefCount>;
 
-
-// TODO: Allow arguments to new and init
-// TODO: Inheritance? Missing bases, mro, etc.
-/// __builtins__.type: Defines how types are created
-pub trait TypePyBehavior {
-    type T;
-
-    /// Create the type and register it with the runtime
-    fn create(&Runtime) -> Self;
-
-    /// __new__
-    fn op_new(&self) -> RuntimeResult;
-    fn native_new(&self) -> NativeResult<Self::T>;
-
-    /// __init___
-    fn op_init(&self) -> RuntimeResult;
-    fn native_init(&self) -> NativeResult<Self::T>;
-
-    /// __name__ (e.g. self.__class__.__name__)
-    fn op_name(&self) -> RuntimeResult;
-    fn native_name(&self) -> NativeResult<native::String>;
-
-    api_method!(unary, self, __bases__, HasBases, op_bases, native_bases);
-}
-
-
 /// RefCount struct that holds a mutable and optional weakref
 /// this is so instances can have a reference to their own RefCount
 ///
@@ -254,6 +228,329 @@ impl Default for RefCount {
         RefCount(RefCell::new(None))
     }
 }
+
+
+
+
+// TODO: Allow arguments to new and init
+// TODO: Inheritance? Missing bases, mro, etc.
+/// __builtins__.type: Defines how types are created
+pub trait Type {
+    type T;
+
+    /// Create the type and register it with the runtime
+    fn create(&Runtime) -> Self;
+
+    /// __new__
+    fn op_new(&self) -> RuntimeResult;
+    fn native_new(&self) -> NativeResult<Self::T>;
+
+    /// __init___
+    fn op_init(&self) -> RuntimeResult;
+    fn native_init(&self) -> NativeResult<Self::T>;
+
+    /// __name__ (e.g. self.__class__.__name__)
+    fn op_name(&self) -> RuntimeResult;
+    fn native_name(&self) -> NativeResult<native::String>;
+
+    api_method!(unary, self, __bases__, HasBases, op_bases, native_bases);
+    api_method!(unary, self, __del__, Delete, op_del, native_del);
+}
+
+pub trait Identity {
+
+    fn identity(&self, rt: &Runtime) -> RuntimeResult {
+        let objref: ObjectRef = IntegerObject::new_u64(self.native_identity()).to();
+        return rt.alloc(objref);
+    }
+
+    fn native_identity(&self) -> native::ObjectId {
+        return (&self as *const _) as native::ObjectId;
+    }
+
+    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
+
+    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is_not(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
+
+    fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(self.native_identity() == other.native_identity())
+    }
+
+    fn native_is_not(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(!self.native_is(other).unwrap())
+    }
+}
+
+pub trait Number: Compare {
+
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        if self.native_bool().unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(true)
+    }
+
+    // Standard numeric conversions
+    api_method!(unary, self, __complex__, ToComplex, op_complex, native_complex, native::Complex);
+    api_method!(unary, self, __int__, ToInt, op_int, native_int, native::Integer);
+    api_method!(unary, self, __float__, ToFloat, op_float, native_float, native::Float);
+    api_method!(unary, self, __round__, ToRounded, op_round, native_round, native::Integer);
+    api_method!(unary, self, __index__, ToIndex, op_index, native_index, native::Integer);
+
+    // Standard unary operators
+    api_method!(unary, self, __neg__, Negate, op_neg, native_neg);
+    api_method!(unary, self, __abs__, Abs, op_abs, native_abs);
+    api_method!(unary, self, __pos__, Positive, op_pos, native_pos);
+    api_method!(unary, self, __invert__, Invert, op_invert, native_invert);
+}
+
+pub trait ToString {
+
+    /// Default implementation gives a string similar to pythons default
+    /// repr in the form "<object [NAME] at [ADDR]>".
+    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_str() {
+            Ok(string) => rt.alloc(StringObject::new(string).to()),
+            Err(err) => unreachable!()
+        }
+    }
+
+    fn native_repr(&self) -> NativeResult<native::String> {
+        // TODO: Once types are implemented this should inject the name
+        // from the type struct.
+        Ok(format!("<object UnknownType at {:?}>", (&self as *const _)))
+    }
+
+    /// `op_str()` falls back to `op_repr` as per cPython's default
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        self.op_repr(rt)
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        return self.native_repr()
+    }
+
+    /// Called by `bytes()` to compute a byte-string representation of an object.
+    /// This should return a bytes object.
+    // api_method!(unary, self, __repr__, ToRepr, op_repr, native_repr, native::String);
+    // api_method!(unary, self, __str__, ToString, op_str, native_str, native::String);
+    api_method!(unary, self, __bytes__, ToBytes, op_bytes, native_bytes);
+}
+
+pub trait Serialize {
+    // Standard unary operators
+    api_method!(unary, self, __neg__, Negate, op_neg, native_neg);
+    api_method!(unary, self, __abs__, Abs, op_abs, native_abs);
+    api_method!(unary, self, __pos__, Positive, op_pos, native_pos);
+    api_method!(unary, self, __invert__, Invert, op_invert, native_invert);
+}
+
+pub trait Compare: Identity{
+
+    /// The object comparison functions are useful for all objects,
+    /// and are named after the rich comparison operators they support:
+    //api_method!(binary, self, __eq__, Equal, op_eq, native_eq);
+    //api_method!(binary, self, __ne__, NotEqual, op_ne, native_ne);
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_eq(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
+
+    /// Default implementation of equals fallsbacks to op_is_not.
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_ne(rhs_builtin).unwrap() {
+            Ok(rt.True())
+        } else {
+            Ok(rt.False())
+        }
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        return self.native_is(other);
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_ne(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        return Ok(!self.native_eq(other).unwrap());
+    }
+
+    api_method!(binary, self, __lt__, LessThan, op_lt, native_lt);
+    api_method!(binary, self, __le__, LessOrEqual, op_le, native_le);
+    api_method!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge);
+    api_method!(binary, self, __gt__, GreaterThan, op_gt, native_gt);
+}
+
+
+pub trait Operate {
+    // 3.3.7. Emulating numeric types
+    //
+    // The following methods can be defined to emulate numeric objects. Methods corresponding to
+    // operations that are not supported by the particular kind of number implemented
+    // (e.g., bitwise operations for non-integral numbers) should be left undefined.
+    api_method!(binary, self, __add__, Add, op_add, native_add);
+    api_method!(binary, self, __and__, And, op_and, native_and);
+    api_method!(binary, self, __divmod__, DivMod, op_divmod, native_divmod);
+    api_method!(binary, self, __floordiv__, FloorDivision, op_floordiv, native_floordiv);
+    api_method!(binary, self, __lshift__, LeftShift, op_lshift, native_lshift);
+    api_method!(binary, self, __mod__, Modulus, op_mod, native_mod);
+    api_method!(binary, self, __mul__, Multiply, op_mul, native_mul);
+    api_method!(binary, self, __matmul__, MatrixMultiply, op_matmul, native_matmul);
+    api_method!(binary, self, __or__, Or, op_or, native_or);
+    api_method!(ternary, self, __pow__, Pow, op_pow, native_pow);
+    api_method!(binary, self, __rshift__, RightShift, op_rshift, native_rshift);
+    api_method!(binary, self, __sub__, Subtract, op_sub, native_sub);
+    api_method!(binary, self, __truediv__, TrueDivision, op_truediv, native_truediv);
+    api_method!(binary, self, __xor__, XOr, op_xor, native_xor);
+
+    // Reflected Operators
+    api_method!(binary, self, __radd__, ReflectedAdd, op_radd, native_radd);
+    api_method!(binary, self, __rand__, ReflectedAnd, op_rand, native_rand);
+    api_method!(binary, self, __rdivmod__, ReflectedDivMod, op_rdivmod, native_rdivmod);
+    api_method!(binary, self, __rfloordiv__, ReflectedFloorDivision, op_rfloordiv, native_rfloordiv);
+    api_method!(binary, self, __rlshift__, ReflectedLeftShift, op_rlshift, native_rlshift);
+    api_method!(binary, self, __rmod__, ReflectedModulus, op_rmod, native_rmod);
+    api_method!(binary, self, __rmul__, ReflectedMultiply, op_rmul, native_rmul);
+    api_method!(binary, self, __rmatmul__, ReflectedMatrixMultiply, op_rmatmul, native_rmatmul);
+    api_method!(binary, self, __ror__, ReflectedOr, op_ror, native_ror);
+    api_method!(binary, self, __rpow__, ReflectedPow, op_rpow, native_rpow);
+    api_method!(binary, self, __rrshift__, ReflectedRightShift, op_rrshift, native_rrshift);
+    api_method!(binary, self, __rsub__, ReflectedSubtract, op_rsub, native_rsub);
+    api_method!(binary, self, __rtruediv__, ReflectedTrueDivision, op_rtruediv, native_rtruediv);
+    api_method!(binary, self, __rxor__, ReflectedXOr, op_rxor, native_rxor);
+
+    // In place operators
+    api_method!(binary, self, __iadd__, InPlaceAdd, op_iadd, native_iadd);
+    api_method!(binary, self, __iand__, InPlaceAnd, op_iand, native_iand);
+    api_method!(binary, self, __idivmod__, InPlaceDivMod, op_idivmod, native_idivmod);
+    api_method!(binary, self, __ifloordiv__, InPlaceFloorDivision, op_ifloordiv, native_ifloordiv);
+    api_method!(binary, self, __ilshift__, InPlaceLeftShift, op_ilshift, native_ilshift);
+    api_method!(binary, self, __imod__, InPlaceModulus, op_imod, native_imod);
+    api_method!(binary, self, __imul__, InPlaceMultiply, op_imul, native_imul);
+    api_method!(binary, self, __imatmul__, InPlaceMatrixMultiply, op_imatmul, native_imatmul);
+    api_method!(binary, self, __ior__, InPlaceOr, op_ior, native_ior);
+    api_method!(ternary, self, __ipow__, InPlacePow, op_ipow, native_ipow);
+    api_method!(binary, self, __irshift__, InPlaceRightShift, op_irshift, native_irshift);
+    api_method!(binary, self, __isub__, InPlaceSubtract, op_isub, native_isub);
+    api_method!(binary, self, __itruediv__, InPlaceTrueDivision, op_itruediv, native_itruediv);
+    api_method!(binary, self, __ixor__, InPlaceXOr, op_ixor, native_ixor);
+}
+
+
+pub trait Hashed: Identity {
+    // Called by built-in function hash() and for operations on members of hashed collections including
+    // set, frozenset, and dict. __hash__() should return an integer. The only required property is
+    // that objects which compare equal have the same hash value; it is advised to mix together
+    // the hash values of the components of the object that also play a part in comparison
+    // of objects by packing them into a tuple and hashing the tuple. Example:
+    // api_method!(unary, self, __hash__, Hashable, op_hash, native_hash);
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
+            Err(err) => Err(err)
+        }
+    }
+
+    /// Default implementation of the native hash is to
+    /// use the ptr identity and hash that.
+    /// Numerical types especially should override
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        let mut s = SipHasher::new();
+        self.native_identity().hash(&mut s);
+        Ok(s.finish())
+    }
+
+}
+
+pub trait Container {
+    api_method!(binary, self, __contains__, Contains, op_contains, native_contains, native::Boolean);
+}
+
+pub trait Iterable {
+    api_method!(unary, self, __iter__, Iterable, op_iter, native_iter);
+}
+
+pub trait Iterator: Iterable {
+    api_method!(unary, self, __next__, Iterator, op_next, native_next);
+}
+
+pub trait Reverse: Iterator{
+    api_method!(unary, self, __reversed__, Reverse, op_reverse, native_reverse);
+}
+
+
+pub trait Generator: Iterator + Close {
+    api_method!(binary, self, send, Send, send, native_send);
+    api_method!(4ary, self, throw, Throw, throw, native_throw);
+}
+
+
+pub trait Close {
+    api_method!(unary, self, __reversed__, Close, close, native_close);
+}
+
+/// Alised to finite from sized because Sized is a standard trait name
+pub trait Finite {
+    // 3.3.6. Emulating container types
+    api_method!(unary, self, __len__, Length, op_len, native_len, native::Integer);
+api_method!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);
+
+}
+
+pub trait Call {
+    api_method!(variadic, self, __call__, Callable, op_call, native_call);
+}
+
+pub trait Collection: Finite + Iterable + Container {}
+
+pub trait Sequence: Reverse + Collection {
+    api_method!(ternary, self, index, Index, index, native_index, native::Integer);
+    api_method!(binary, self, count, Count, count, native_count, native::Integer);
+    api_method!(binary, self, __getitem__, Getitem, op_getitem, native_getitem);
+}
+
+pub trait MutableSequence: Sequence {
+    api_method!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
+    api_method!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::NoneValue);
+    api_method!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
+    api_method!(binary, self, append, Append, append, native_append, native::Integer);
+    api_method!(binary, self, reverse, Reverse, reverse, native_reverse, native::Integer);
+    api_method!(binary, self, extend, Extend, extend, native_extend, native::Integer);
+    api_method!(binary, self, pop, Pop, pop, native_pop, native::Integer);
+    api_method!(binary, self, remove, Remove, remove, native_remove);
+    api_method!(binary, self, __iadd__, InPlaceAdd, op_iadd, native_iadd);
+}
+
 
 
 pub trait PyObject {}
@@ -586,11 +883,11 @@ mod incomplete_models {
     trait TypeModel {
         api_method!(variadic, self, __new__, New, new_type, native_new_type);
         api_method!(variadic, self, __init__, Init, init_instance, native_init_instance);
-        api_method!(binary, self, __getattr__, GetAttribute, op_getattr, native_getattr);
-        api_method!(binary, self, __getattribute__, StrictGetAttribute, op_getattribute, native_getattribute);
-        api_method!(binary, self, __setattr__, SetAttribute, op_setattr, native_setattr);
-        api_method!(binary, self, __del__, DeleteAttribute, op_delattr, native_delattr);
-        api_method!(binary, self, __dir__, Directory, op_dir, native_dir);
+    api_method!(binary, self, __getattr__, GetAttribute, op_getattr, native_getattr);
+    api_method!(binary, self, __getattribute__, StrictGetAttribute, op_getattribute, native_getattribute);
+    api_method!(binary, self, __setattr__, SetAttribute, op_setattr, native_setattr);
+    api_method!(binary, self, __del__, DeleteAttribute, op_delattr, native_delattr);
+    api_method!(binary, self, __dir__, Directory, op_dir, native_dir);
     }
 
     trait DescriptorModel {

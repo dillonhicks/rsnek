@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 
 use object;
-use object::model::{TypePyBehavior, PyBehavior, RefCount};
+use object::model::{Type, PyBehavior, RefCount};
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::integer::IntegerObject;
@@ -56,7 +56,7 @@ impl std::fmt::Debug for PyBoolean {
     }
 }
 
-impl TypePyBehavior for BooleanType {
+impl Type for BooleanType {
     type T = PyBoolean;
 
     fn create(rt: &Runtime) -> Self {

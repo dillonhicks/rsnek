@@ -2,7 +2,7 @@
 use std;
 use std::rc::Rc;
 use std::cell::RefCell;
-use object::model::TypePyBehavior;
+use object::model::Type;
 pub use result::RuntimeResult;
 use heap::Heap;
 
