@@ -20,6 +20,7 @@ pub trait SelfRef: Sized {
     fn strong_count(&self) -> native::Integer;
     fn weak_count(&self) -> native::Integer;
     fn set(&self, &ObjectRef);
+    fn get(&self) -> WeakObjectRef;
     fn upgrade(&self) -> RuntimeResult;
 }
 
@@ -42,16 +43,21 @@ pub struct RefCount(pub RefCell<Option<WeakObjectRef>>);
 impl SelfRef for RefCount {
     fn strong_count(&self) -> native::Integer {
         match *self.0.borrow().deref() {
-            Some(ref weak) => weak.upgrade().unwrap().refcount(),
+            Some(ref weak) => weak.strong_count(),
             None => native::Integer::zero()
         }
     }
 
     fn weak_count(&self) -> native::Integer {
-        match *self.0.borrow().deref() {
-            Some(ref weak) => weak.weak_refcount(),
-            None => native::Integer::zero()
+        let mut count: native::Integer;
+        {
+            count = match *self.0.borrow().deref() {
+                Some(ref weak) => weak.weak_count(),
+                None => native::Integer::zero()
+            }
         }
+
+        count
     }
 
     fn set(&self, selfref: &ObjectRef) {
@@ -59,7 +65,13 @@ impl SelfRef for RefCount {
         match *rc {
             None => *rc = Some(selfref.downgrade()),
             _ => panic!("Tried to overwrite self reference")
+        }
+    }
 
+    fn get(&self) -> WeakObjectRef {
+        match *self.0.borrow().deref() {
+            Some(ref weak) => weak.clone(),
+            None => panic!()
         }
     }
 

@@ -51,10 +51,13 @@ impl ObjectRef {
         WeakObjectRef(Rc::downgrade(&self.0))
     }
 
-    pub fn refcount(&self) -> native::Integer {
+    pub fn strong_count(&self) -> native::Integer {
         native::Integer::from_usize(Rc::strong_count(&self.0)).unwrap()
     }
 
+    pub fn weak_count(&self) -> native::Integer {
+        native::Integer::from_usize(Rc::weak_count(&self.0)).unwrap()
+    }
 
 }
 
@@ -67,13 +70,34 @@ impl Default for WeakObjectRef {
 
 
 impl WeakObjectRef {
-    pub fn weak_refcount(&self) -> native::Integer {
-        let objref = match self.upgrade() {
-            Ok(strong) => strong,
-            Err(_) => return native::Integer::zero()
-        };
+    pub fn weak_count(&self) -> native::Integer {
+        let mut count: native::Integer;
+        {
+            let objref = match self.upgrade() {
+                Ok(strong) => strong,
+                Err(_) => return native::Integer::zero()
+            };
 
-        objref.refcount()
+            count = objref.weak_count();
+            drop(objref)
+        }
+
+        count
+    }
+
+    pub fn strong_count(&self) -> native::Integer {
+        let mut count: native::Integer;
+        {
+            let objref = match self.upgrade() {
+                Ok(strong) => strong,
+                Err(_) => return native::Integer::zero()
+            };
+
+            count = objref.strong_count();
+            drop(objref)
+        }
+
+        count
     }
 
     pub fn upgrade(&self) -> RuntimeResult {

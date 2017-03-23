@@ -1,96 +1,3 @@
-// Python object.c for referernce
-//
-//}
-//PyObject_VAR_HEAD
-//const char *tp_name; /* For printing, in format "<module>.<name>" */
-//Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
-//
-///* Methods to implement standard operations */
-//
-//destructor tp_dealloc;
-//printfunc tp_print;
-//getattrfunc tp_getattr;
-//setattrfunc tp_setattr;
-//PyAsyncMethods *tp_as_async; /* formerly known as tp_compare (Python 2)
-//                                    or tp_reserved (Python 3) */
-//reprfunc tp_repr;
-//
-///* Method suites for standard classes */
-//
-//PyNumberMethods *tp_as_number;
-//PySequenceMethods *tp_as_sequence;
-//PyMappingMethods *tp_as_mapping;
-//
-///* More standard operations (here for binary compatibility) */
-//
-//hashfunc tp_hash;
-//ternaryfunc tp_call;
-//reprfunc tp_str;
-//getattrofunc tp_getattro;
-//setattrofunc tp_setattro;
-//
-///* Functions to access object as input/output buffer */
-//PyBufferProcs *tp_as_buffer;
-//
-///* Flags to define presence of optional/expanded features */
-//unsigned long tp_flags;
-//
-//const char *tp_doc; /* Documentation string */
-//
-///* Assigned meaning in release 2.0 */
-///* call function for all accessible objects */
-//traverseproc tp_traverse;
-//
-///* delete references to contained objects */
-//inquiry tp_clear;
-//
-///* Assigned meaning in release 2.1 */
-///* rich comparisons */
-//richcmpfunc tp_richcompare;
-//
-///* weak reference enabler */
-//Py_ssize_t tp_weaklistoffset;
-//
-///* Iterators */
-//getiterfunc tp_iter;
-//iternextfunc tp_iternext;
-//
-///* Attribute descriptor and subclassing stuff */
-//struct PyMethodDef *tp_methods;
-//struct PyMemberDef *tp_members;
-//struct PyGetSetDef *tp_getset;
-//struct _typeobject *tp_base;
-//PyObject *tp_dict;
-//descrgetfunc tp_descr_get;
-//descrsetfunc tp_descr_set;
-//Py_ssize_t tp_dictoffset;
-//initproc tp_init;
-//allocfunc tp_alloc;
-//newfunc tp_new;
-//freefunc tp_free; /* Low-level free-memory routine */
-//inquiry tp_is_gc; /* For PyObject_IS_GC */
-//PyObject *tp_bases;
-//PyObject *tp_mro; /* method resolution order */
-//PyObject *tp_cache;
-//PyObject *tp_subclasses;
-//PyObject *tp_weaklist;
-//destructor tp_del;
-//
-///* Type attribute cache version tag. Added in version 2.6 */
-//unsigned int tp_version_tag;
-//
-//destructor tp_finalize;
-//
-//#ifdef COUNT_ALLOCS
-///* these must be last and never explicitly initialized */
-//Py_ssize_t tp_allocs;
-//Py_ssize_t tp_frees;
-//Py_ssize_t tp_maxalloc;
-//struct _typeobject *tp_prev;
-//struct _typeobject *tp_next;
-//#endif
-//} PyTypeObject;
-//#endif
 pub mod method;
 pub mod model;
 pub mod selfref;
@@ -107,3 +14,74 @@ pub mod context;
 
 /// Runtime Value delegate that holds its own self reference
 pub type RtValue<T> = selfref::RefCountedValue<T, selfref::RefCount>;
+
+
+#[cfg(test)]
+mod impl_object {
+    use num::{Zero,FromPrimitive};
+    use std::borrow::Borrow;
+
+    use super::*;
+    use super::selfref::SelfRef;
+    use typedef::native;
+    use typedef::boolean::PyBoolean;
+    use typedef::objectref::{WeakObjectRef, ObjectRef};
+    use typedef::builtin::Builtin;
+
+    impl PyBoolean {
+        pub fn unmanaged(value: bool) -> Self{
+            PyBoolean {
+                value: if value {native::Integer::from_usize(1).unwrap()} else {native::Integer::zero()},
+                rc: selfref::RefCount::default()
+            }
+        }
+        pub fn managed(value: bool) -> ObjectRef {
+            let rtvalue = PyBoolean::unmanaged(value);
+            let objref = ObjectRef::new(Builtin::Bool(rtvalue));
+
+            let new =  objref.clone();
+            let builtin: &Box<Builtin> = objref.0.borrow();
+            let bool: &PyBoolean = builtin.bool().unwrap();
+            bool.rc.set(&objref.clone());
+            new
+        }
+    }
+
+    /// Gist of this test is to ensure that the SelfRef, ObjectRef, and WeakObjectRef
+    /// machinery is working as intended so that SelfRefs do not cause a
+    #[test]
+    fn test_refcount() {
+        let objref = PyBoolean::managed(false);
+        recurse_refcount(&objref, 1, 10);
+        let builtin: &Box<Builtin> = objref.0.borrow();
+        let bool: &PyBoolean = builtin.bool().unwrap();
+        println!("strong: {}; weak: {}", bool.rc.strong_count(), bool.rc.weak_count());
+
+    }
+
+    fn recurse_weak(bool: &PyBoolean, weakref: WeakObjectRef, depth: usize, max: usize) {
+        println!("rweak: {}; strong: {}; weak: {}", depth, bool.rc.strong_count(), bool.rc.weak_count());
+
+        if max == depth {
+            assert_eq!(bool.rc.weak_count(), native::Integer::from_usize(1 + depth).unwrap());
+            return
+        } else {
+            recurse_weak(bool, bool.rc.get(), depth + 1, max)
+        }
+    }
+
+    fn recurse_refcount(objref: &ObjectRef, depth: usize, max: usize) {
+        let builtin: &Box<Builtin> = objref.0.borrow();
+        let bool: &PyBoolean = builtin.bool().unwrap();
+        println!("depth: {}; strong: {}; weak: {}", depth, bool.rc.strong_count(), bool.rc.weak_count());
+
+        if max == depth {
+            assert_eq!(bool.rc.strong_count(), native::Integer::from_usize(1 + depth).unwrap());
+            assert_eq!(bool.rc.weak_count(), native::Integer::from_usize(1).unwrap());
+            recurse_weak(bool, bool.rc.get(), 1, max)
+        } else {
+            recurse_refcount(&objref.clone(), depth + 1, max)
+        }
+    }
+
+}

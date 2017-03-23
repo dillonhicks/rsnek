@@ -40,9 +40,7 @@ pub struct BooleanSingletons {
 
 
 #[derive(Clone)]
-pub struct BooleanType {
-    rt: Runtime,
-}
+pub struct BooleanType;
 
 
 pub type PyBoolean = RtValue<native::Integer>;
@@ -60,17 +58,12 @@ impl std::fmt::Debug for PyBoolean {
 impl Type for BooleanType {
     type T = PyBoolean;
 
-    fn create(rt: &Runtime) -> Self {
-        return BooleanType {
-            rt: rt.clone()
-        }
-    }
 
-    fn op_new(&self) -> RuntimeResult {
-        match self.native_init() {
+    fn op_new(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_new() {
             Ok(inst) => {
                 let objref: ObjectRef = ObjectRef::new(Builtin::Bool(inst));
-                let result = self.rt.alloc(objref.clone());
+                let result = rt.alloc(objref.clone());
                 match result {
                     Ok(selfref) => {
                         // TODO: This looks gross but might be the only way
@@ -95,8 +88,8 @@ impl Type for BooleanType {
         })
     }
 
-    fn op_init(&self) -> RuntimeResult {
-        self.op_new()
+    fn op_init(&self, rt: &Runtime) -> RuntimeResult {
+        self.op_new(&rt)
     }
 
     #[inline]
@@ -104,9 +97,9 @@ impl Type for BooleanType {
         self.native_new()
     }
 
-    fn op_name(&self) -> RuntimeResult {
+    fn op_name(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_name() {
-            Ok(string) => self.rt.alloc(StringObject::new(string).to()),
+            Ok(string) => rt.alloc(StringObject::new(string).to()),
             Err(err) => Err(err)
         }
     }
@@ -837,7 +830,7 @@ mod impl_pytypebehavior {
 
     fn setup() -> (Runtime, BooleanType) {
         let rt = Runtime::new(None);
-        let bool = BooleanType::create(&rt);
+        let bool = BooleanType{};
         (rt, bool)
     }
 
@@ -845,6 +838,6 @@ mod impl_pytypebehavior {
     fn __new__() {
         let (rt, bool) = setup();
 
-        println!("{:?}", bool.op_new())
+        println!("{:?}", bool.op_new(&rt))
     }
 }

@@ -1,7 +1,6 @@
 #![feature(associated_consts)]
 #![feature(rustc_private)]
 #![feature(const_fn)]
-#[cfg_attr(rsnek_debug, any(test, feature = "rsnek-debug"))]
 /// # Notes and TODOS
 ///
 ///  - TODO: Consider having objects implement an `pub fn alloc(self, rt: Runtime) -> ObjectRef`
@@ -16,8 +15,9 @@
 ///  - TODO: Consider a lighter weight NativeBuiltin union/enum for polymorphic native type cases
 ///
 extern crate num;
-//#[macro_use]
-//extern crate serde_derive;
+
+#[macro_use]
+extern crate serde_derive;
 
 #[macro_use]
 pub mod macros;

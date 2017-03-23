@@ -21,10 +21,12 @@ use typedef::integer::IntegerObject;
 use typedef::string::StringObject;
 
 
+#[deprecated]
 pub trait PyObject {}
 
 
 /// Define the base default python object behavior
+#[deprecated]
 pub trait PyBehavior {
 
     // Identity operators
