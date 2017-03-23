@@ -48,13 +48,12 @@ impl object::model::PyBehavior for SetObject {
             Ok(hash_id) => {
                 self.value.borrow_mut().insert(SetElement(hash_id, item.clone()));
                 Ok(rt.None())
-            },
+            }
             // TODO: When objects are around we will need to match
             // against builtin enum variants.
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
-
 }
 
 impl objectref::ToRtWrapperType<builtin::Builtin> for SetObject {
@@ -113,16 +112,15 @@ mod impl_setbehavior {
     fn test_add_item_to_set() {
         let mut rt = Runtime::new(None);
 
-        let mut t1: Vec<ObjectRef> = 
-                    vec![IntegerObject::new_i64(0).to(),
-                         IntegerObject::new_i64(0).to(),
-                         IntegerObject::new_i64(1).to(),
-                         IntegerObject::new_i64(1).to(),
-                         IntegerObject::new_i64(2).to(),
-                         IntegerObject::new_i64(2).to()];
-        
+        let mut t1: Vec<ObjectRef> = vec![IntegerObject::new_i64(0).to(),
+                                          IntegerObject::new_i64(0).to(),
+                                          IntegerObject::new_i64(1).to(),
+                                          IntegerObject::new_i64(1).to(),
+                                          IntegerObject::new_i64(2).to(),
+                                          IntegerObject::new_i64(2).to()];
+
         t1 = t1.iter().map(|objref| rt.alloc(objref.clone()).unwrap()).collect();
-        
+
 
         let set = rt.alloc(ObjectRef::new(Builtin::Set(SetObject::new()))).unwrap();
         let set_bi: &Box<Builtin> = set.0.borrow();

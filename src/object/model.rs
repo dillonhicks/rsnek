@@ -28,7 +28,6 @@ pub trait PyObject {}
 /// Define the base default python object behavior
 #[deprecated]
 pub trait PyBehavior {
-
     // Identity operators
     // api_method!(unary, self, __bool__, Truth, op_bool, native_bool);
     // api_method!(binary, self, __not__, Not, op_not, native_not);
@@ -92,7 +91,7 @@ pub trait PyBehavior {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_str() {
             Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => unreachable!()
+            Err(err) => unreachable!(),
         }
     }
 
@@ -108,7 +107,7 @@ pub trait PyBehavior {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr()
+        return self.native_repr();
     }
 
     /// Called by `bytes()` to compute a byte-string representation of an object.
@@ -121,7 +120,6 @@ pub trait PyBehavior {
     /// and are named after the rich comparison operators they support:
     //api_method!(binary, self, __eq__, Equal, op_eq, native_eq);
     //api_method!(binary, self, __ne__, NotEqual, op_ne, native_ne);
-
     /// Default implementation of equals fallsbacks to op_is.
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
@@ -168,7 +166,7 @@ pub trait PyBehavior {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
             Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -258,7 +256,6 @@ pub trait PyBehavior {
     api_method!(unary, self, __round__, ToRounded, op_round, native_round, native::Integer);
 
     api_method!(unary, self, __index__, ToIndex, op_index, native_index, native::Integer);
-
 }
 
 //trait CollectionPyBehavior: PyBehavior {
@@ -364,7 +361,7 @@ mod incomplete_models {
         api_method!(ternary, self, __get__, DescriptorGet, op_descriptor_get, native_descriptor_get);
         api_method!(ternary, self, __set__, DescriptorSet, op_descriptor_set, native_descriptor_set);
         api_method!(binary, self, __del__, DescriptorDelete, op_descriptor_del, native_descriptor_del);
-        api_method!(ternary, self, __set_name__, DescriptorSetName, op_descriptor_set_name, native_descriptor_set_name);        
+        api_method!(ternary, self, __set_name__, DescriptorSetName, op_descriptor_set_name, native_descriptor_set_name);
     }
 
 
@@ -380,6 +377,3 @@ mod incomplete_models {
         api_method!(unary, self, close, CoroutineClose, op_coro_close, native_coro_close);
     }
 }
-
-
-

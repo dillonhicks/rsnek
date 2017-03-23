@@ -30,7 +30,7 @@ pub struct Runtime(RuntimeRef);
 struct RuntimeInternal {
     heap: Heap,
     singletons: SingletonIndex,
-    types: RefCell<Vec<PythonType>>
+    types: RefCell<Vec<PythonType>>,
 }
 
 
@@ -43,14 +43,14 @@ struct SingletonIndex {
     True: ObjectRef,
     False: ObjectRef,
     None: ObjectRef,
-    integers: Box<[ObjectRef]>
+    integers: Box<[ObjectRef]>,
 }
 
 
 pub enum Singleton {
     True,
     False,
-    None
+    None,
 }
 
 
@@ -76,17 +76,15 @@ impl Runtime {
     pub fn new(heap_size: Option<usize>) -> Runtime {
         let size = match heap_size {
             Some(i) => i,
-            None => DEFAULT_HEAP_CAPACITY
+            None => DEFAULT_HEAP_CAPACITY,
         };
 
         let mut heap = Heap::new(size);
 
         let True: ObjectRef = BooleanObject::new_true().to();
         let False: ObjectRef = BooleanObject::new_false().to();
-        let range: Vec<ObjectRef> = STATIC_INT_RANGE
-                    .map(|int| IntegerObject::new_i64(int as i64))
-                    .map(|obj| heap.alloc_static(obj.to()).unwrap())
-                    .collect();
+        let range: Vec<ObjectRef> =
+            STATIC_INT_RANGE.map(|int| IntegerObject::new_i64(int as i64)).map(|obj| heap.alloc_static(obj.to()).unwrap()).collect();
 
         let singletons = SingletonIndex {
             True: heap.alloc_static(True).unwrap(),
@@ -98,19 +96,19 @@ impl Runtime {
         let internal = RuntimeInternal {
             heap: heap,
             singletons: singletons,
-            types: RefCell::new(Vec::new())
+            types: RefCell::new(Vec::new()),
         };
 
 
         Runtime(Rc::new(Box::new(internal)))
     }
-//
-//    pub fn register_type(&self, pytype: PythonType) {
-//        let mut types = self.0.types.borrow_mut();
-//        let boxed = Box::new(pytype);
-//        types.push(boxed);
-//
-//    }
+    //
+    //    pub fn register_type(&self, pytype: PythonType) {
+    //        let mut types = self.0.types.borrow_mut();
+    //        let boxed = Box::new(pytype);
+    //        types.push(boxed);
+    //
+    //    }
 
     /// Alloc a spot for the object ref in the `Heap` for the `Runtime` this will
     /// mean that there will be at one single strong reference to the `ObjectRef`
@@ -131,7 +129,7 @@ impl Runtime {
     }
 
     pub fn find_object(&self, id: ObjectId) -> RuntimeResult {
-        return self.0.heap.find_object(id)
+        return self.0.heap.find_object(id);
     }
 
     #[cfg(rsnek_debug)]
@@ -145,17 +143,26 @@ impl Runtime {
 
     #[allow(non_snake_case)]
     pub fn True(&self) -> ObjectRef {
-        self.0.singletons.True.clone()
+        self.0
+            .singletons
+            .True
+            .clone()
     }
 
     #[allow(non_snake_case)]
     pub fn False(&self) -> ObjectRef {
-        self.0.singletons.False.clone()
+        self.0
+            .singletons
+            .False
+            .clone()
     }
 
     #[allow(non_snake_case)]
     pub fn None(&self) -> ObjectRef {
-        self.0.singletons.None.clone()
+        self.0
+            .singletons
+            .None
+            .clone()
     }
 
     // Statically allocated integers to make
@@ -163,24 +170,23 @@ impl Runtime {
     #[allow(non_snake_case)]
     pub fn Int(&self, idx: isize) -> Option<ObjectRef> {
         match (idx + (STATIC_INT_IDX_OFFSET as isize)) as usize {
-            checked_idx @ 0 ... STATIC_INT_RANGE_MAX => {
+            checked_idx @ 0...STATIC_INT_RANGE_MAX => {
                 let static_ref = self.0.singletons.integers[checked_idx as usize].clone();
                 Some(static_ref.clone())
-            },
-            _ => None
+            }
+            _ => None,
         }
     }
 
     #[allow(non_snake_case)]
     pub fn Zero(&self) -> ObjectRef {
-        return self.Int(0).unwrap()
+        return self.Int(0).unwrap();
     }
 
     #[allow(non_snake_case)]
     pub fn One(&self) -> ObjectRef {
-        return self.Int(1).unwrap()
+        return self.Int(1).unwrap();
     }
-
 }
 
 impl std::fmt::Debug for Runtime {
@@ -193,7 +199,7 @@ impl std::fmt::Debug for Runtime {
 #[cfg(test)]
 mod impl_runtime {
     use super::*;
-    
+
     #[test]
     #[allow(non_snake_case)]
     fn static_integers_Zero_and_One() {

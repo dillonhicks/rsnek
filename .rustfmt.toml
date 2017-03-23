@@ -1,0 +1,6 @@
+max_width = 150
+ideal_width = 100
+fn_call_width = 150
+
+type_puncuation_density = "Vertical"
+error_on_line_overflow = false

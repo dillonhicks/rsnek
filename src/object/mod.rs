@@ -18,7 +18,7 @@ pub type RtValue<T> = selfref::RefCountedValue<T, selfref::RefCount>;
 
 #[cfg(test)]
 mod impl_object {
-    use num::{Zero,FromPrimitive};
+    use num::{Zero, FromPrimitive};
     use std::borrow::Borrow;
 
     use super::*;
@@ -29,17 +29,21 @@ mod impl_object {
     use typedef::builtin::Builtin;
 
     impl PyBoolean {
-        pub fn unmanaged(value: bool) -> Self{
+        pub fn unmanaged(value: bool) -> Self {
             PyBoolean {
-                value: if value {native::Integer::from_usize(1).unwrap()} else {native::Integer::zero()},
-                rc: selfref::RefCount::default()
+                value: if value {
+                    native::Integer::from_usize(1).unwrap()
+                } else {
+                    native::Integer::zero()
+                },
+                rc: selfref::RefCount::default(),
             }
         }
         pub fn managed(value: bool) -> ObjectRef {
             let rtvalue = PyBoolean::unmanaged(value);
             let objref = ObjectRef::new(Builtin::Bool(rtvalue));
 
-            let new =  objref.clone();
+            let new = objref.clone();
             let builtin: &Box<Builtin> = objref.0.borrow();
             let bool: &PyBoolean = builtin.bool().unwrap();
             bool.rc.set(&objref.clone());
@@ -64,7 +68,7 @@ mod impl_object {
 
         if max == depth {
             assert_eq!(bool.rc.weak_count(), native::Integer::from_usize(1 + depth).unwrap());
-            return
+            return;
         } else {
             recurse_weak(bool, bool.rc.get(), depth + 1, max)
         }

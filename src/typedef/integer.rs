@@ -55,7 +55,6 @@ impl IntegerObject {
 
         return integer;
     }
-
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -65,7 +64,6 @@ impl IntegerObject {
 impl objectref::RtObject for IntegerObject {}
 impl object::model::PyObject for IntegerObject {}
 impl object::model::PyBehavior for IntegerObject {
-
     fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
         let builtin: &Box<Builtin> = rhs.0.borrow();
@@ -92,7 +90,7 @@ impl object::model::PyBehavior for IntegerObject {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
             Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -100,13 +98,7 @@ impl object::model::PyBehavior for IntegerObject {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => {
-                if value {
-                    Ok(rt.True())
-                } else {
-                    Ok(rt.False())
-                }
-            }
+            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
             Err(err) => Err(err),
         }
     }
@@ -119,7 +111,7 @@ impl object::model::PyBehavior for IntegerObject {
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        return Ok(!self.value.is_zero())
+        return Ok(!self.value.is_zero());
     }
 
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
@@ -128,31 +120,31 @@ impl object::model::PyBehavior for IntegerObject {
                 // TODO: once self refs are are implemented, just
                 // clone the ref and pass it back
                 rt.alloc(IntegerObject::new_bigint(int).to())
-            },
-            Err(err) => Err(err)
+            }
+            Err(err) => Err(err),
         }
     }
 
     fn native_int(&self) -> NativeResult<native::Integer> {
-        return Ok(self.value.clone())
+        return Ok(self.value.clone());
     }
 
     fn op_float(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_float() {
             Ok(float) => rt.alloc(FloatObject::new(float).to()),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
 
     }
 
     fn native_float(&self) -> NativeResult<native::Float> {
-        return Ok(self.value.to_f64().unwrap())
+        return Ok(self.value.to_f64().unwrap());
     }
 
     fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_complex() {
             Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -165,13 +157,13 @@ impl object::model::PyBehavior for IntegerObject {
     }
 
     fn native_index(&self) -> NativeResult<native::Integer> {
-        return self.native_int()
+        return self.native_int();
     }
 
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
             Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => unreachable!()
+            Err(err) => unreachable!(),
         }
     }
 
@@ -184,7 +176,7 @@ impl object::model::PyBehavior for IntegerObject {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr()
+        return self.native_repr();
     }
 }
 
@@ -218,7 +210,6 @@ impl fmt::Display for IntegerObject {
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///          Tests
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
 #[cfg(test)]
 mod impl_pybehavior {
     use std;
@@ -305,7 +296,7 @@ mod impl_pybehavior {
         let one: ObjectRef = rt.alloc(one_object.clone()).unwrap();
         assert_eq!(rt.heap_size(), 1);
 
-        let another_one: ObjectRef= IntegerObject::new_i64(1).to();
+        let another_one: ObjectRef = IntegerObject::new_i64(1).to();
         let one2: ObjectRef = rt.alloc(another_one.clone()).unwrap();
         assert_eq!(rt.heap_size(), 2);
 

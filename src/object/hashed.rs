@@ -25,7 +25,7 @@ pub trait DefaultHashed: DefaultIdentity + method::Hashed {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match DefaultHashed::native_hash(self) {
             Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -37,5 +37,4 @@ pub trait DefaultHashed: DefaultIdentity + method::Hashed {
         DefaultIdentity::native_id(self).hash(&mut s);
         Ok(s.finish())
     }
-
 }

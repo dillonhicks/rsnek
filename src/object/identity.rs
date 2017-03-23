@@ -11,11 +11,7 @@ use typedef::integer::IntegerObject;
 
 use object::method;
 
-pub trait DefaultIdentity:
-    method::Id +
-    method::Is +
-    method::IsNot {
-
+pub trait DefaultIdentity: method::Id + method::Is + method::IsNot {
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
         let objref: ObjectRef = IntegerObject::new_u64(DefaultIdentity::native_id(self)).to();
         return rt.alloc(objref);
@@ -54,4 +50,3 @@ pub trait DefaultIdentity:
         Ok(!DefaultIdentity::native_is(self, other).unwrap())
     }
 }
-

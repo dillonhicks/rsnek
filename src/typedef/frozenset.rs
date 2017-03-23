@@ -8,7 +8,7 @@ pub type FrozenSet = ();
 
 #[derive(Clone, Debug)]
 pub struct FrozenSetObject {
-    value: FrozenSet
+    value: FrozenSet,
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+

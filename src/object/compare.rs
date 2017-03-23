@@ -12,13 +12,10 @@ use object::identity::DefaultIdentity;
 use object::method;
 
 
-pub trait RichComparison:
-    DefaultEqual +
-    DefaultNotEqual +
-    method::LessThan +
-    method::LessOrEqual +
-    method::GreaterThan +
-    method::GreaterOrEqual {}
+pub trait RichComparison
+    : DefaultEqual + DefaultNotEqual + method::LessThan + method::LessOrEqual + method::GreaterThan + method::GreaterOrEqual
+    {
+}
 
 
 /// The object comparison functions are useful for all objects,
@@ -43,7 +40,6 @@ pub trait DefaultEqual: DefaultIdentity + method::Equal {
 
 
 pub trait DefaultNotEqual: DefaultEqual + method::NotEqual {
-
     /// Default implementation of equals fallsbacks to op_is_not.
     fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
@@ -59,5 +55,4 @@ pub trait DefaultNotEqual: DefaultEqual + method::NotEqual {
     fn native_ne(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         return Ok(!DefaultEqual::native_eq(self, other).unwrap());
     }
-
 }

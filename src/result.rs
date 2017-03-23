@@ -4,7 +4,7 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use error::{Error};
+use error::Error;
 
 use typedef;
 use typedef::objectref::ObjectRef;

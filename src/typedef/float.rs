@@ -27,7 +27,7 @@ pub type Float = f64;
 
 #[derive(Clone, Debug)]
 pub struct FloatObject {
-    pub value: Float
+    pub value: Float,
 }
 
 
@@ -37,15 +37,13 @@ pub struct FloatObject {
 
 impl FloatObject {
     pub fn new(value: f64) -> FloatObject {
-        return FloatObject {
-            value: value
-        }
+        return FloatObject { value: value };
     }
 
     pub fn add_integer(float: &FloatObject, integer: &IntegerObject) -> CastResult<FloatObject> {
         match integer.value.to_f64() {
             Some(other) => Ok(FloatObject::new(float.value + other)),
-            None => Err(Error(ErrorType::Overflow, "Floating Point Overflow"))
+            None => Err(Error(ErrorType::Overflow, "Floating Point Overflow")),
         }
     }
 }
@@ -57,7 +55,6 @@ impl FloatObject {
 impl objectref::RtObject for FloatObject {}
 impl object::model::PyObject for FloatObject {}
 impl object::model::PyBehavior for FloatObject {
-
     fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
@@ -66,24 +63,22 @@ impl object::model::PyBehavior for FloatObject {
                 let new_number = FloatObject::new(self.value + obj.value);
                 let num_ref: ObjectRef = new_number.to();
                 runtime.alloc(num_ref)
-            },
+            }
             &Builtin::Integer(ref obj) => {
                 let new_number = FloatObject::add_integer(&self, &obj)?;
                 let num_ref: ObjectRef = new_number.to();
                 runtime.alloc(num_ref)
-            },
-            _ => Err(Error(ErrorType::Type, "TypeError cannot add to float"))
+            }
+            _ => Err(Error(ErrorType::Type, "TypeError cannot add to float")),
         }
     }
-
-
 }
 
 
 impl objectref::ToRtWrapperType<Builtin> for FloatObject {
     #[inline]
     fn to(self) -> Builtin {
-        return Builtin::Float(self)
+        return Builtin::Float(self);
     }
 }
 

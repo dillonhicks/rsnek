@@ -26,7 +26,7 @@ pub struct Tuple(Box<[ObjectRef]>);
 
 #[derive(Clone)]
 pub struct TupleObject {
-    pub value: Tuple
+    pub value: Tuple,
 }
 
 impl Tuple {
@@ -41,13 +41,10 @@ impl Tuple {
 
 impl TupleObject {
     pub fn new(value: &Vec<ObjectRef>) -> TupleObject {
-        let tuple = TupleObject {
-            value: Tuple::from_vec(&value.clone()),
-        };
+        let tuple = TupleObject { value: Tuple::from_vec(&value.clone()) };
 
-        return tuple
+        return tuple;
     }
-
 }
 
 
@@ -57,17 +54,19 @@ impl TupleObject {
 impl objectref::RtObject for TupleObject {}
 impl object::model::PyObject for TupleObject {}
 impl object::model::PyBehavior for TupleObject {
-
     fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let borrowed: &Box<Builtin> = rhs.0.borrow();
         match borrowed.deref() {
             &Builtin::Tuple(ref obj) => {
-                let mut array = self.value.0.clone().into_vec();
+                let mut array = self.value
+                    .0
+                    .clone()
+                    .into_vec();
                 array.extend_from_slice(obj.value.0.as_ref());
                 let new_tuple: ObjectRef = TupleObject::new(&array).to();
                 runtime.alloc(new_tuple)
-            },
-            _ => Err(Error(ErrorType::Type, "TypeError cannot add to Tuple"))
+            }
+            _ => Err(Error(ErrorType::Type, "TypeError cannot add to Tuple")),
         }
     }
 }

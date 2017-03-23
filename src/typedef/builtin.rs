@@ -101,7 +101,6 @@ impl Builtin {
             _ => Err(Error::typerr("Not a PyBoolean")),
         }
     }
-
 }
 
 
@@ -121,7 +120,6 @@ impl object::method::IsNot for Builtin {}
 impl objectref::RtObject for Builtin {}
 impl object::model::PyObject for Builtin {}
 impl object::model::PyBehavior for Builtin {
-
     //
     // Identity and Equality
     //
@@ -181,7 +179,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_hash, obj)
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId>{
+    fn native_hash(&self) -> NativeResult<native::HashId> {
         native_foreach_builtin!(self, native_hash, obj)
     }
 
@@ -192,15 +190,15 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_bool, obj)
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean>{
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_bool, obj)
     }
-    
+
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_int, obj)
     }
 
-    fn native_int(&self) -> NativeResult<native::Integer>{
+    fn native_int(&self) -> NativeResult<native::Integer> {
         native_foreach_builtin!(self, native_int, obj)
     }
 
@@ -208,7 +206,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_float, obj)
     }
 
-    fn native_float(&self) -> NativeResult<native::Float>{
+    fn native_float(&self) -> NativeResult<native::Float> {
         native_foreach_builtin!(self, native_float, obj)
     }
 
@@ -216,7 +214,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_complex, obj)
     }
 
-    fn native_complex(&self) -> NativeResult<native::Complex>{
+    fn native_complex(&self) -> NativeResult<native::Complex> {
         native_foreach_builtin!(self, native_complex, obj)
     }
 
@@ -224,7 +222,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_index, obj)
     }
 
-    fn native_index(&self) -> NativeResult<native::Integer>{
+    fn native_index(&self) -> NativeResult<native::Integer> {
         native_foreach_builtin!(self, native_index, obj)
     }
 
@@ -232,7 +230,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_str, obj)
     }
 
-    fn native_str(&self) -> NativeResult<native::String>{
+    fn native_str(&self) -> NativeResult<native::String> {
         native_foreach_builtin!(self, native_str, obj)
     }
 
@@ -240,7 +238,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_repr, obj)
     }
 
-    fn native_repr(&self) -> NativeResult<native::String>{
+    fn native_repr(&self) -> NativeResult<native::String> {
         native_foreach_builtin!(self, native_repr, obj)
     }
 
@@ -249,7 +247,7 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
 
-    fn native_add(&self, rhs: &Builtin) -> NativeResult<Builtin>{
+    fn native_add(&self, rhs: &Builtin) -> NativeResult<Builtin> {
         native_foreach_builtin!(self, native_add, lhs, rhs)
     }
 
@@ -272,7 +270,7 @@ impl object::model::PyBehavior for Builtin {
     fn native_setitem(&self, name: &Builtin, item: &Builtin) -> NativeResult<native::NoneValue> {
         native_foreach_builtin!(self, native_setitem, object, name, item)
     }
-    
+
     fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_getitem, object, name)
     }

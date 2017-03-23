@@ -44,13 +44,10 @@ impl List {
 
 impl ListObject {
     pub fn new(value: &Vec<ObjectRef>) -> ListObject {
-        let tuple = ListObject {
-            value: List::new(value.clone())
-        };
+        let tuple = ListObject { value: List::new(value.clone()) };
 
-        return tuple
+        return tuple;
     }
-
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -59,7 +56,6 @@ impl ListObject {
 impl objectref::RtObject for ListObject {}
 impl object::model::PyObject for ListObject {}
 impl object::model::PyBehavior for ListObject {
-
     fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
@@ -82,18 +78,17 @@ impl object::model::PyBehavior for ListObject {
                 /// DUMB DUMB DUMB THIS IS A COPY AND NOT THE REF TO THE ORIGINAL LIST!!!
                 let l: ObjectRef = ListObject::new(&new_list).to();
                 rt.alloc(l)
-            },
-            _ => Err(Error(ErrorType::Type, "TypeError cannot add to List"))
+            }
+            _ => Err(Error(ErrorType::Type, "TypeError cannot add to List")),
         }
     }
-
 }
 
 
 impl objectref::ToRtWrapperType<Builtin> for ListObject {
     #[inline]
     fn to(self) -> Builtin {
-        return Builtin::List(self)
+        return Builtin::List(self);
     }
 }
 

@@ -18,7 +18,7 @@ pub type Complex = native::Complex;
 
 #[derive(Clone, Debug)]
 pub struct ComplexObject {
-    value: Complex
+    value: Complex,
 }
 
 
@@ -40,7 +40,7 @@ impl ComplexObject {
 //        stdlib Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl objectref::RtObject for ComplexObject{}
+impl objectref::RtObject for ComplexObject {}
 impl object::model::PyObject for ComplexObject {}
 impl object::model::PyBehavior for ComplexObject {}
 

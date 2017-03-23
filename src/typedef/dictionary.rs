@@ -20,7 +20,7 @@ use object;
 
 #[derive(Clone, Debug)]
 pub struct DictionaryObject {
-    value: RefCell<Dictionary>
+    value: RefCell<Dictionary>,
 }
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -28,10 +28,8 @@ pub struct DictionaryObject {
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl DictionaryObject {
-    fn new () -> Self {
-        return DictionaryObject {
-            value: RefCell::new(Dictionary::new())
-        }
+    fn new() -> Self {
+        return DictionaryObject { value: RefCell::new(Dictionary::new()) };
     }
 }
 
@@ -41,7 +39,6 @@ impl DictionaryObject {
 impl typedef::objectref::RtObject for DictionaryObject {}
 impl object::model::PyObject for DictionaryObject {}
 impl object::model::PyBehavior for DictionaryObject {
-
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         Err(Error::typerr("Unhashable type dict"))
     }
@@ -51,7 +48,11 @@ impl object::model::PyBehavior for DictionaryObject {
     }
 
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        Ok(if self.native_bool().unwrap() {rt.True()} else {rt.False()})
+        Ok(if self.native_bool().unwrap() {
+               rt.True()
+           } else {
+               rt.False()
+           })
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
@@ -61,27 +62,27 @@ impl object::model::PyBehavior for DictionaryObject {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_len() {
             Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
-            Err(_) => unreachable!()
+            Err(_) => unreachable!(),
         }
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
         match Integer::from_usize(self.value.borrow().len()) {
             Some(int) => Ok(int),
-            None => Err(Error::value("ValueError converting native integer"))
+            None => Err(Error::value("ValueError converting native integer")),
         }
     }
 
     fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
-        let key_value: &Box<Builtin>  = keyref.borrow();
+        let key_value: &Box<Builtin> = keyref.borrow();
         match key_value.native_hash() {
             Ok(hash) => {
                 let key = Key(hash, keyref.clone());
                 let result = self.value.borrow_mut().insert(key, valueref.clone());
                 //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
                 Ok(rt.None())
-            },
-            Err(err) => Err(Error::typerr("TypeError: Unhashable key type"))
+            }
+            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
 
@@ -94,7 +95,7 @@ impl object::model::PyBehavior for DictionaryObject {
     }
 
     fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
-        let key_box: &Box<Builtin>  = keyref.borrow();
+        let key_box: &Box<Builtin> = keyref.borrow();
         match key_box.native_hash() {
             Ok(hash) => {
                 let key = Key(hash, keyref.clone());
@@ -105,11 +106,10 @@ impl object::model::PyBehavior for DictionaryObject {
                         Err(Error::key("KeyError: no such key"))
                     }
                 }
-            },
-            Err(err) => Err(Error::typerr("TypeError: Unhashable key type"))
+            }
+            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
-
 }
 
 
@@ -121,7 +121,7 @@ impl typedef::objectref::ToRtWrapperType<Builtin> for DictionaryObject {
 
 
 impl typedef::objectref::ToRtWrapperType<ObjectRef> for DictionaryObject {
-    fn to(self) -> ObjectRef{
+    fn to(self) -> ObjectRef {
         ObjectRef::new(Builtin::Dictionary(self))
     }
 }

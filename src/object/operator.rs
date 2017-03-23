@@ -17,7 +17,7 @@ method::Modulus +
 method::Multiply+
 method::MatrixMultiply +
 method::BitwiseOr +
-method::Pow +  // Not exactly a binary op
+method::Pow + // Not exactly a binary op
 method::RightShift +
 method::Subtract +
 method::TrueDivision +

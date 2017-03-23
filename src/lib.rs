@@ -143,8 +143,7 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2: Vec<ObjectRef> = vec![StringObject::from_str("Hello").to(),
-                                              StringObject::from_str("World").to()];
+            let mut t2: Vec<ObjectRef> = vec![StringObject::from_str("Hello").to(), StringObject::from_str("World").to()];
 
             t2 = t2.iter().map(|objref| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
@@ -193,11 +192,8 @@ mod tests {
 
         let mut tuple_3: ObjectRef;
         {
-            let mut t2: Vec<ObjectRef> = vec![StringObject::from_str("Hello").to(),
-                                              StringObject::from_str("World").to()];
-            t2 = t2.iter()
-                .map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap())
-                .collect();
+            let mut t2: Vec<ObjectRef> = vec![StringObject::from_str("Hello").to(), StringObject::from_str("World").to()];
+            t2 = t2.iter().map(|objref: &ObjectRef| runtime.alloc(objref.clone()).unwrap()).collect();
             assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 1);
 
             let tuple2 = runtime.alloc(ListObject::new(&t2).to()).unwrap();
@@ -206,9 +202,7 @@ mod tests {
             let x: &Box<Builtin> = tuple2.0.borrow();
             tuple_3 = x.deref().op_add(&mut runtime, &tuple).unwrap();
 
-            assert_eq!(runtime.heap_size(),
-                       t1.len() + t2.len() + 2,
-                       "list+list unexpectedly allocated extra heap");
+            assert_eq!(runtime.heap_size(), t1.len() + t2.len() + 2, "list+list unexpectedly allocated extra heap");
         }
 
         println!("{}", tuple_3);

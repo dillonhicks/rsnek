@@ -34,9 +34,7 @@ pub struct NoneType(());
 //    Struct Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl NoneType {
-
-}
+impl NoneType {}
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -56,19 +54,19 @@ impl object::model::PyBehavior for NoneType {
     fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         match rhs {
             &Builtin::None(ref obj) => Ok(true),
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
     fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         match rhs {
             &Builtin::None(ref obj) => Ok(true),
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        return Ok(false)
+        return Ok(false);
     }
 
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
@@ -119,7 +117,7 @@ impl object::model::PyBehavior for NoneType {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr()
+        return self.native_repr();
     }
 }
 
@@ -127,7 +125,7 @@ impl object::model::PyBehavior for NoneType {
 impl objectref::ToRtWrapperType<Builtin> for NoneType {
     #[inline]
     fn to(self) -> Builtin {
-        return Builtin::None(self)
+        return Builtin::None(self);
     }
 }
 
@@ -199,7 +197,7 @@ mod impl_pybehavior {
         assert_eq!(result, rt.False());
     }
 
-    
+
     /// None == None
     #[test]
     fn __eq__() {

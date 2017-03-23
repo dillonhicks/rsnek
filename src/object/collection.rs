@@ -15,31 +15,19 @@ pub trait Iterator: method::Iter + method::Next {}
 
 pub trait Reverse: method::Iter + method::Reversed {}
 
-pub trait Generator:
-    Iterator +
-    method::Close +
-    method::Send +
-    method::Throw {}
+pub trait Generator: Iterator + method::Close + method::Send + method::Throw {}
 
 pub trait Collection: method::Length + method::Iter + method::Contains {}
 
-pub trait Sequence:
-    Reverse +
-    Collection +
-    method::GetItem +
-    method::Length +
-    method::Index +
-    method::Count {}
+pub trait Sequence
+    : Reverse + Collection + method::GetItem + method::Length + method::Index + method::Count {
+}
 
 pub trait ByteString: Sequence {}
 
-pub trait MutableSequence:
-    Sequence +
-    method::Append +
-    method::Extend +
-    method::Pop +
-    method::Remove +
-    method::InPlaceAdd {}
+pub trait MutableSequence
+    : Sequence + method::Append + method::Extend + method::Pop + method::Remove + method::InPlaceAdd {
+}
 
 pub trait Set:
     Collection +
@@ -68,25 +56,12 @@ pub trait MutableSet:
     method::InPlaceXOr +
     method::InPlaceSubtract {}
 
-pub trait Mapping:
-    Collection +
-    method::GetItem +
-    method::Keys +
-    method::Values +
-    method::Items +
-    method::Get +
-    method::Equal +
-    method::NotEqual {}
+pub trait Mapping
+    : Collection + method::GetItem + method::Keys + method::Values + method::Items + method::Get + method::Equal + method::NotEqual
+    {
+}
 
-pub trait MutableMapping:
-    Mapping +
-    method::SetItem +
-    method::DeleteItem +
-    method::Pop +
-    method::PopItem +
-    method::Clear +
-    method::Update +
-    method::SetDefault {}
-
-
-
+pub trait MutableMapping
+    : Mapping + method::SetItem + method::DeleteItem + method::Pop + method::PopItem + method::Clear + method::Update + method::SetDefault
+    {
+}

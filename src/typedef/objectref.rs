@@ -40,7 +40,6 @@ pub struct WeakObjectRef(pub native::RuntimeWeakRef);
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl ObjectRef {
-
     #[inline]
     pub fn new(value: Builtin) -> ObjectRef {
         ObjectRef(Rc::new(Box::new(value)))
@@ -58,7 +57,6 @@ impl ObjectRef {
     pub fn weak_count(&self) -> native::Integer {
         native::Integer::from_usize(Rc::weak_count(&self.0)).unwrap()
     }
-
 }
 
 
@@ -75,7 +73,7 @@ impl WeakObjectRef {
         {
             let objref = match self.upgrade() {
                 Ok(strong) => strong,
-                Err(_) => return native::Integer::zero()
+                Err(_) => return native::Integer::zero(),
             };
 
             count = objref.weak_count();
@@ -90,7 +88,7 @@ impl WeakObjectRef {
         {
             let objref = match self.upgrade() {
                 Ok(strong) => strong,
-                Err(_) => return native::Integer::zero()
+                Err(_) => return native::Integer::zero(),
             };
 
             count = objref.strong_count();
@@ -103,7 +101,7 @@ impl WeakObjectRef {
     pub fn upgrade(&self) -> RuntimeResult {
         match Weak::upgrade(&self.0) {
             None => Err(Error::runtime("Attempted to create a strong ref to a an object with no existing refs")),
-            Some(objref) => Ok(ObjectRef(objref))
+            Some(objref) => Ok(ObjectRef(objref)),
         }
     }
 }
@@ -165,18 +163,10 @@ impl std::fmt::Display for ObjectRef {
         let builtin: &Box<Builtin> = self.0.borrow();
 
         match builtin.deref() {
-            &Builtin::Integer(ref obj) => {
-                write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
-            }
-            &Builtin::Float(ref obj) => {
-                write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject)
-            }
-            &Builtin::String(ref obj) => {
-                write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject)
-            }
-            &Builtin::Tuple(ref obj) => {
-                write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject)
-            }
+            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
+            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
+            &Builtin::String(ref obj) => write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject),
+            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
             &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
             other => write!(f, "<{:?} {:?}>", other, other.native_identity()),
         }
@@ -188,18 +178,10 @@ impl std::fmt::Debug for ObjectRef {
         let builtin: &Box<Builtin> = self.0.borrow();
 
         match builtin.deref() {
-            &Builtin::Integer(ref obj) => {
-                write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject)
-            }
-            &Builtin::Float(ref obj) => {
-                write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject)
-            }
-            &Builtin::String(ref obj) => {
-                write!(f, "<String({}) {:?}>", obj, obj as *const StringObject)
-            }
-            &Builtin::Tuple(ref obj) => {
-                write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject)
-            }
+            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
+            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
+            &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
+            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
             &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
             other => write!(f, "<{:?} {:?}>", other, other as *const _),
         }
@@ -218,10 +200,8 @@ pub trait TypeInfo {}
 
 
 // TODO: Move me to object::api
-pub trait RtObject:
-    object::model::PyBehavior +
-    ToRtWrapperType<ObjectRef> +
-    ToRtWrapperType<Builtin> +
-    Display where Self: std::marker::Sized {
-
+pub trait RtObject
+    : object::model::PyBehavior + ToRtWrapperType<ObjectRef> + ToRtWrapperType<Builtin> + Display
+    where Self: std::marker::Sized
+{
 }

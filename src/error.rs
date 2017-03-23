@@ -17,37 +17,37 @@ pub enum ErrorType {
     NotImplemented,
     Attribute,
     Value,
-    Key
+    Key,
 }
 
 
 impl Error {
     pub fn runtime(message: &'static str) -> Error {
-        return Error(ErrorType::Runtime, message)
+        return Error(ErrorType::Runtime, message);
     }
 
     pub fn typerr(message: &'static str) -> Error {
-        return Error(ErrorType::Type, message)
+        return Error(ErrorType::Type, message);
     }
 
     pub fn overflow(message: &'static str) -> Error {
-        return Error(ErrorType::Overflow, message)
+        return Error(ErrorType::Overflow, message);
     }
 
     pub fn not_implemented() -> Error {
-        return Error(ErrorType::NotImplemented, "Not Implemented")
+        return Error(ErrorType::NotImplemented, "Not Implemented");
     }
 
     pub fn attribute() -> Error {
-        return Error(ErrorType::Attribute, "Attribute is not defined for type")
+        return Error(ErrorType::Attribute, "Attribute is not defined for type");
     }
 
     pub fn value(message: &'static str) -> Self {
-        return Error(ErrorType::Value, message)
+        return Error(ErrorType::Value, message);
     }
 
     pub fn key(message: &'static str) -> Error {
-        return Error(ErrorType::Key, message)
+        return Error(ErrorType::Key, message);
     }
 }
 

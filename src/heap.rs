@@ -98,4 +98,3 @@ impl std::fmt::Debug for Heap {
         write!(f, "Heap(size={}, max={})", self.object_count.get(), self.capacity)
     }
 }
-
