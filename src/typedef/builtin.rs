@@ -111,6 +111,13 @@ impl Builtin {
 /// For the BuiltinObject this should mean just proxy dispatching the
 /// underlying associated function using the foreach macros.
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::identity::DefaultIdentity for Builtin {}
+impl object::method::Id for Builtin {}
+impl object::method::Is for Builtin {}
+impl object::method::IsNot for Builtin {}
+
+
+/// old
 impl objectref::RtObject for Builtin {}
 impl object::model::PyObject for Builtin {}
 impl object::model::PyBehavior for Builtin {

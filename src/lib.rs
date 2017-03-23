@@ -16,10 +16,8 @@
 ///  - TODO: Consider a lighter weight NativeBuiltin union/enum for polymorphic native type cases
 ///
 extern crate num;
-extern crate arena;
-#[macro_use]
-extern crate serde_derive;
-
+//#[macro_use]
+//extern crate serde_derive;
 
 #[macro_use]
 pub mod macros;

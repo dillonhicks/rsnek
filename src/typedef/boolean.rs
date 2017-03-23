@@ -4,14 +4,15 @@ use std::cell::RefCell;
 use std::ops::Deref;
 use std::borrow::Borrow;
 
-use object;
-use object::model::{Type, PyBehavior, RefCount};
+use object::{self, RtValue};
+use object::model::PyBehavior;
+use object::typing::Type;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::integer::IntegerObject;
 use typedef::objectref::ToRtWrapperType;
 use typedef::float::FloatObject;
-use object::model::SelfRef;
+use object::selfref::{RefCount, SelfRef};
 use runtime::PythonType;
 
 use typedef::builtin;
@@ -44,7 +45,7 @@ pub struct BooleanType {
 }
 
 
-pub type PyBoolean = object::model::RtValue<native::Integer>;
+pub type PyBoolean = RtValue<native::Integer>;
 
 impl std::fmt::Debug for PyBoolean {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -114,8 +115,55 @@ impl Type for BooleanType {
     fn native_name(&self) -> NativeResult<native::String> {
         Ok("Boolean".to_string())
     }
-
 }
+
+impl object::identity::DefaultIdentity for PyBoolean {}
+impl object::method::Id for PyBoolean {}
+impl object::method::Is for PyBoolean {}
+impl object::method::IsNot for PyBoolean {}
+impl object::method::Add for PyBoolean {}
+impl object::method::BitwiseAnd for PyBoolean {}
+impl object::method::DivMod for PyBoolean {}
+impl object::method::FloorDivision for PyBoolean {}
+impl object::method::LeftShift for PyBoolean {}
+impl object::method::Modulus for PyBoolean {}
+impl object::method::Multiply for PyBoolean {}
+impl object::method::MatrixMultiply for PyBoolean {}
+impl object::method::BitwiseOr for PyBoolean {}
+impl object::method::Pow for PyBoolean {}  // Not exactly a binary op
+impl object::method::RightShift for PyBoolean {}
+impl object::method::Subtract for PyBoolean {}
+impl object::method::TrueDivision for PyBoolean {}
+impl object::method::XOr for PyBoolean {}
+impl object::method::ReflectedAdd for PyBoolean {}
+impl object::method::ReflectedBitwiseAnd for PyBoolean {}
+impl object::method::ReflectedDivMod for PyBoolean {}
+impl object::method::ReflectedFloorDivision for PyBoolean {}
+impl object::method::ReflectedLeftShift for PyBoolean {}
+impl object::method::ReflectedModulus for PyBoolean {}
+impl object::method::ReflectedMultiply for PyBoolean {}
+impl object::method::ReflectedMatrixMultiply for PyBoolean {}
+impl object::method::ReflectedBitwiseOr for PyBoolean {}
+impl object::method::ReflectedPow for PyBoolean {} // Not exactly a binary op
+impl object::method::ReflectedRightShift for PyBoolean {}
+impl object::method::ReflectedSubtract for PyBoolean {}
+impl object::method::ReflectedTrueDivision for PyBoolean {}
+impl object::method::ReflectedXOr for PyBoolean {}
+impl object::method::InPlaceAdd for PyBoolean {}
+impl object::method::InPlaceBitwiseAnd for PyBoolean {}
+impl object::method::InPlaceDivMod for PyBoolean {}
+impl object::method::InPlaceFloorDivision for PyBoolean {}
+impl object::method::InPlaceLeftShift for PyBoolean {}
+impl object::method::InPlaceModulus for PyBoolean {}
+impl object::method::InPlaceMultiply for PyBoolean {}
+impl object::method::InPlaceMatrixMultiply for PyBoolean {}
+impl object::method::InPlaceBitwiseOr for PyBoolean {}
+impl object::method::InPlacePow for PyBoolean {} // Not exactly a binary op
+impl object::method::InPlaceRightShift for PyBoolean {}
+impl object::method::InPlaceSubtract for PyBoolean {}
+impl object::method::InPlaceTrueDivision for PyBoolean {}
+impl object::method::InPlaceXOr for PyBoolean {} 
+
 
 impl ToRtWrapperType<builtin::Builtin> for PyBoolean {
     fn to(self) -> builtin::Builtin {
@@ -130,6 +178,8 @@ impl ToRtWrapperType<objectref::ObjectRef> for PyBoolean {
 }
 
 
+/// old
+///
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BooleanObject {
     value: native::Integer,

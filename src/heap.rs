@@ -7,8 +7,6 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 use std::borrow::Borrow;
 
-use arena::TypedArena;
-
 use error::{Error, ErrorType};
 use result::RuntimeResult;
 
