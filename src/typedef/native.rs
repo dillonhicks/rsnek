@@ -31,6 +31,8 @@ pub type NoneValue = ();
 // Collection Primitive Types
 //
 pub type List = Vec<typedef::objectref::ObjectRef>;
+pub type Tuple = Vec<typedef::objectref::ObjectRef>;
+
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Key(pub HashId, pub typedef::objectref::ObjectRef);
@@ -44,3 +46,13 @@ pub type Dictionary = std::collections::HashMap<Key, typedef::objectref::ObjectR
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct SetElement(pub HashId, pub typedef::objectref::ObjectRef);
 pub type Set = std::collections::HashSet<SetElement>;
+
+
+pub type KWDictionary = std::collections::HashMap<String, typedef::objectref::ObjectRef>;
+
+
+pub struct Type {
+    name: String,
+    dict: KWDictionary,
+    bases: Tuple,
+}

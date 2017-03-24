@@ -8,7 +8,8 @@ use std::hash::{Hash, SipHasher, Hasher};
 
 use num::{Zero, FromPrimitive, ToPrimitive, BigInt};
 
-use object;
+use object::{self, RtValue};
+use object::method;
 use error::{Error, ErrorType};
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
@@ -25,6 +26,129 @@ use typedef::string::StringObject;
 
 pub use typedef::native::Integer;
 
+
+#[derive(Clone)]
+pub struct IntegerType;
+
+pub struct IntValue(pub RtValue<native::Integer>);
+pub type PyInteger = RtValue<IntValue>;
+
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::PyAPI for PyInteger {}
+impl method::New for PyInteger {}
+impl method::Init for PyInteger {}
+impl method::Delete for PyInteger {}
+impl method::GetAttr for PyInteger {}
+impl method::GetAttribute for PyInteger {}
+impl method::SetAttr for PyInteger {}
+impl method::DelAttr for PyInteger {}
+impl method::Id for PyInteger {}
+impl method::Is for PyInteger {}
+impl method::IsNot for PyInteger {}
+impl method::Hashed for PyInteger {}
+impl method::Equal for PyInteger {}
+impl method::NotEqual for PyInteger {}
+impl method::LessThan for PyInteger {}
+impl method::LessOrEqual for PyInteger {}
+impl method::GreaterOrEqual for PyInteger {}
+impl method::GreaterThan for PyInteger {}
+impl method::BooleanCast for PyInteger {}
+impl method::IntegerCast for PyInteger {}
+impl method::FloatCast for PyInteger {}
+impl method::ComplexCast for PyInteger {}
+impl method::Rounding for PyInteger {}
+impl method::Index for PyInteger {}
+impl method::NegateValue for PyInteger {}
+impl method::AbsValue for PyInteger {}
+impl method::PositiveValue for PyInteger {}
+impl method::InvertValue for PyInteger {}
+impl method::Add for PyInteger {}
+impl method::BitwiseAnd for PyInteger {}
+impl method::DivMod for PyInteger {}
+impl method::FloorDivision for PyInteger {}
+impl method::LeftShift for PyInteger {}
+impl method::Modulus for PyInteger {}
+impl method::Multiply for PyInteger {}
+impl method::MatrixMultiply for PyInteger {}
+impl method::BitwiseOr for PyInteger {}
+impl method::Pow for PyInteger {}
+impl method::RightShift for PyInteger {}
+impl method::Subtract for PyInteger {}
+impl method::TrueDivision for PyInteger {}
+impl method::XOr for PyInteger {}
+impl method::ReflectedAdd for PyInteger {}
+impl method::ReflectedBitwiseAnd for PyInteger {}
+impl method::ReflectedDivMod for PyInteger {}
+impl method::ReflectedFloorDivision for PyInteger {}
+impl method::ReflectedLeftShift for PyInteger {}
+impl method::ReflectedModulus for PyInteger {}
+impl method::ReflectedMultiply for PyInteger {}
+impl method::ReflectedMatrixMultiply for PyInteger {}
+impl method::ReflectedBitwiseOr for PyInteger {}
+impl method::ReflectedPow for PyInteger {}
+impl method::ReflectedRightShift for PyInteger {}
+impl method::ReflectedSubtract for PyInteger {}
+impl method::ReflectedTrueDivision for PyInteger {}
+impl method::ReflectedXOr for PyInteger {}
+impl method::InPlaceAdd for PyInteger {}
+impl method::InPlaceBitwiseAnd for PyInteger {}
+impl method::InPlaceDivMod for PyInteger {}
+impl method::InPlaceFloorDivision for PyInteger {}
+impl method::InPlaceLeftShift for PyInteger {}
+impl method::InPlaceModulus for PyInteger {}
+impl method::InPlaceMultiply for PyInteger {}
+impl method::InPlaceMatrixMultiply for PyInteger {}
+impl method::InPlaceBitwiseOr for PyInteger {}
+impl method::InPlacePow for PyInteger {}
+impl method::InPlaceRightShift for PyInteger {}
+impl method::InPlaceSubtract for PyInteger {}
+impl method::InPlaceTrueDivision for PyInteger {}
+impl method::InPlaceXOr for PyInteger {}
+impl method::Contains for PyInteger {}
+impl method::Iter for PyInteger {}
+impl method::Call for PyInteger {}
+impl method::Length for PyInteger {}
+impl method::LengthHint for PyInteger {}
+impl method::Next for PyInteger {}
+impl method::Reversed for PyInteger {}
+impl method::GetItem for PyInteger {}
+impl method::SetItem for PyInteger {}
+impl method::DeleteItem for PyInteger {}
+impl method::Count for PyInteger {}
+impl method::Append for PyInteger {}
+impl method::Extend for PyInteger {}
+impl method::Pop for PyInteger {}
+impl method::Remove for PyInteger {}
+impl method::IsDisjoint for PyInteger {}
+impl method::AddItem for PyInteger {}
+impl method::Discard for PyInteger {}
+impl method::Clear for PyInteger {}
+impl method::Get for PyInteger {}
+impl method::Keys for PyInteger {}
+impl method::Values for PyInteger {}
+impl method::Items for PyInteger {}
+impl method::PopItem for PyInteger {}
+impl method::Update for PyInteger {}
+impl method::SetDefault for PyInteger {}
+impl method::Await for PyInteger {}
+impl method::Send for PyInteger {}
+impl method::Throw for PyInteger {}
+impl method::Close for PyInteger {}
+impl method::Exit for PyInteger {}
+impl method::Enter for PyInteger {}
+impl method::DescriptorGet for PyInteger {}
+impl method::DescriptorSet for PyInteger {}
+impl method::DescriptorSetName for PyInteger {}
+
+
+
+// ---
+// OLD
+// ---
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct IntegerObject {
@@ -57,8 +181,9 @@ impl IntegerObject {
     }
 }
 
+
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
+//    Python Object Traits - old
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl objectref::RtObject for IntegerObject {}

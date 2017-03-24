@@ -9,7 +9,9 @@ use std::hash::{Hash, SipHasher, Hasher};
 
 use num::{BigInt, FromPrimitive};
 
-use object;
+use object::{self, RtValue};
+use object::selfref;
+use object::method::Hashed;
 use typedef::native;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
@@ -21,6 +23,12 @@ use super::objectref;
 use super::objectref::ObjectRef;
 use super::builtin::Builtin;
 use super::float::FloatObject;
+
+
+#[derive(Clone)]
+pub struct StringValue(pub native::String);
+
+pub type PyString = RtValue<StringValue>;
 
 
 #[derive(Clone, Debug, Hash)]

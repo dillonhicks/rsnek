@@ -15,6 +15,35 @@ use typedef::integer::IntegerObject;
 /// Big index of all traits used to define builtin objects
 
 // ----------------------------------
+//  Types and Initialization
+// ----------------------------------
+/// Metaclass instance creator
+api_trait!(4ary, self, __new__, New, op_new, native_new);
+/// Class constructor generally gets passed the instance created in __new__
+api_trait!(4ary, self, __init__, Init, op_init, native_init);
+
+/// Trait to define a destructor.
+///
+/// Shared with descriptor
+api_trait!(binary, self, __del__, Delete, op_del, native_del);
+
+// API Properties?
+// api_trait!(4ary, self, __bases___, Bases, op_bases, native_bases);
+// __module__
+// __code__
+// __doc__
+// __class__
+
+// ----------------------------------
+//  Object
+// ----------------------------------
+api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr);
+api_trait!(binary, self, __getattribute__, GetAttribute, op_getattribute, native_getattribute);
+api_trait!(binary, self, __setattr__, SetAttr, op_setattr, native_setattr);
+api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
+
+
+// ----------------------------------
 // Identity and Hashing
 //
 //  Note that the Id and Is(Not?) are not directly
@@ -165,5 +194,4 @@ api_trait!(unary, self, __enter__, Enter, op_enter, native_enter);
 // -----------------------------------
 api_trait!(ternary, self, __get__, DescriptorGet, op_get, native_get);
 api_trait!(ternary, self, __set__, DescriptorSet, op_set, native_set);
-api_trait!(binary, self, __del__, DescriptorDelete, op_del, native_del);
 api_trait!(ternary, self, __set_name__, DescriptorSetName, op_set_name, native_set_name);

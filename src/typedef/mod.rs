@@ -15,3 +15,4 @@ pub mod complex;
 pub mod native;
 pub mod boolean;
 pub mod none;
+pub mod object;

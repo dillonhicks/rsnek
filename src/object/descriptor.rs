@@ -9,9 +9,10 @@ use typedef::native;
 use typedef::objectref::ObjectRef;
 use object::method;
 
-
+// Descriptor protocol
 pub trait Descriptor:
     method::DescriptorGet +
     method::DescriptorSet +
-    method::DescriptorDelete +
-    method::DescriptorSetName {}
+    method::DescriptorSetName +
+    method::Delete
+    {}

@@ -94,6 +94,7 @@ impl object::model::PyBehavior for DictionaryObject {
         Err(Error::not_implemented())
     }
 
+    /// native getitem now that we have self refs?
     fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
         let key_box: &Box<Builtin> = keyref.borrow();
         match key_box.native_hash() {

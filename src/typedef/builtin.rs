@@ -16,7 +16,7 @@ use typedef::objectref::{RtObject, ObjectRef};
 use typedef::boolean::{PyBoolean, BooleanObject};
 use typedef::integer::IntegerObject;
 use typedef::float::FloatObject;
-use typedef::string::StringObject;
+use typedef::string::{PyString, StringObject};
 use typedef::tuple::TupleObject;
 use typedef::list::ListObject;
 use typedef::complex::ComplexObject;
@@ -44,7 +44,7 @@ pub enum Builtin {
     Dictionary(DictionaryObject),
     Complex(ComplexObject),
 
-    Bool(PyBoolean),
+
     // Not yet implemented
     Object(()),
     Function(()),
@@ -52,6 +52,11 @@ pub enum Builtin {
     Module(()), /*    Type(TypeObject),
                  *    Meta(MetaObject),
                  *    None(NoneObject) */
+
+
+    Bool(PyBoolean),
+    Str(PyString),
+
 }
 
 
@@ -95,12 +100,23 @@ impl Builtin {
         }
     }
 
+    pub fn dict(&self) -> CastResult<&DictionaryObject> {
+        match *self {
+            Builtin::Dictionary(ref obj) => Ok(obj),
+            _ => Err(Error::typerr("Not a DictionaryObject")),
+        }
+    }
+
+    //
+    // new trait based methods
+    //
     pub fn bool(&self) -> CastResult<&PyBoolean> {
         match *self {
             Builtin::Bool(ref obj) => Ok(obj),
             _ => Err(Error::typerr("Not a PyBoolean")),
         }
     }
+
 }
 
 

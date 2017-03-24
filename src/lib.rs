@@ -28,6 +28,7 @@ pub mod heap;
 pub mod runtime;
 pub mod error;
 pub mod object;
+pub mod builtin;
 
 
 #[allow(unused_variables,non_snake_case,unused_imports,unused_mut)]

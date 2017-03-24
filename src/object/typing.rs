@@ -4,6 +4,8 @@ use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 
+use object::method;
+
 
 // TODO: Allow arguments to new and init
 // TODO: Inheritance? Missing bases, mro, etc.
@@ -16,8 +18,8 @@ pub trait Type {
     fn native_new(&self) -> NativeResult<Self::T>;
 
     /// __init___
-    fn op_init(&self, &Runtime) -> RuntimeResult;
-    fn native_init(&self) -> NativeResult<Self::T>;
+    fn op_init(&mut self, &Runtime) -> RuntimeResult;
+    fn native_init(&mut self) -> NativeResult<native::NoneValue>;
 
     /// __name__ (e.g. self.__class__.__name__)
     fn op_name(&self, &Runtime) -> RuntimeResult;
@@ -26,3 +28,5 @@ pub trait Type {
     api_method!(unary, self, __bases__, HasBases, op_bases, native_bases);
     api_method!(unary, self, __del__, Delete, op_del, native_del);
 }
+
+//pub trait TypeAPI: method::
