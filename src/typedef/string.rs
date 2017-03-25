@@ -9,8 +9,9 @@ use std::hash::{Hash, SipHasher, Hasher};
 
 use num::{BigInt, FromPrimitive};
 
-use object::{self, RtValue};
+use object::{self, RtValue, PyAPI};
 use object::selfref;
+use object::method;
 use object::method::Hashed;
 use typedef::native;
 use result::{RuntimeResult, NativeResult};
@@ -25,10 +26,130 @@ use super::builtin::Builtin;
 use super::float::FloatObject;
 
 
+
 #[derive(Clone)]
 pub struct StringValue(pub native::String);
 
 pub type PyString = RtValue<StringValue>;
+
+
+impl fmt::Debug for PyString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value.0)
+    }
+}
+
+
+
+
+impl object::PyAPI for PyString {}
+impl method::New for PyString {}
+impl method::Init for PyString {}
+impl method::Delete for PyString {}
+impl method::GetAttr for PyString  {}
+impl method::GetAttribute for PyString {}
+impl method::SetAttr for PyString {}
+impl method::DelAttr for PyString {}
+impl method::Id for PyString {}
+impl method::Is for PyString {}
+impl method::IsNot for PyString {}
+impl method::Hashed for PyString {}
+impl method::Equal for PyString {}
+impl method::NotEqual for PyString {}
+impl method::LessThan for PyString {}
+impl method::LessOrEqual for PyString {}
+impl method::GreaterOrEqual for PyString {}
+impl method::GreaterThan for PyString {}
+impl method::BooleanCast for PyString {}
+impl method::IntegerCast for PyString {}
+impl method::FloatCast for PyString {}
+impl method::ComplexCast for PyString {}
+impl method::Rounding for PyString {}
+impl method::Index for PyString {}
+impl method::NegateValue for PyString {}
+impl method::AbsValue for PyString {}
+impl method::PositiveValue for PyString {}
+impl method::InvertValue for PyString {}
+impl method::Add for PyString {}
+impl method::BitwiseAnd for PyString {}
+impl method::DivMod for PyString {}
+impl method::FloorDivision for PyString {}
+impl method::LeftShift for PyString {}
+impl method::Modulus for PyString {}
+impl method::Multiply for PyString {}
+impl method::MatrixMultiply for PyString {}
+impl method::BitwiseOr for PyString {}
+impl method::Pow for PyString {}
+impl method::RightShift for PyString {}
+impl method::Subtract for PyString {}
+impl method::TrueDivision for PyString {}
+impl method::XOr for PyString {}
+impl method::ReflectedAdd for PyString {}
+impl method::ReflectedBitwiseAnd for PyString {}
+impl method::ReflectedDivMod for PyString {}
+impl method::ReflectedFloorDivision for PyString {}
+impl method::ReflectedLeftShift for PyString {}
+impl method::ReflectedModulus for PyString {}
+impl method::ReflectedMultiply for PyString {}
+impl method::ReflectedMatrixMultiply for PyString {}
+impl method::ReflectedBitwiseOr for PyString {}
+impl method::ReflectedPow for PyString {}
+impl method::ReflectedRightShift for PyString {}
+impl method::ReflectedSubtract for PyString {}
+impl method::ReflectedTrueDivision for PyString {}
+impl method::ReflectedXOr for PyString {}
+impl method::InPlaceAdd for PyString {}
+impl method::InPlaceBitwiseAnd for PyString {}
+impl method::InPlaceDivMod for PyString {}
+impl method::InPlaceFloorDivision for PyString {}
+impl method::InPlaceLeftShift for PyString {}
+impl method::InPlaceModulus for PyString {}
+impl method::InPlaceMultiply for PyString {}
+impl method::InPlaceMatrixMultiply for PyString {}
+impl method::InPlaceBitwiseOr for PyString {}
+impl method::InPlacePow for PyString {}
+impl method::InPlaceRightShift for PyString {}
+impl method::InPlaceSubtract for PyString {}
+impl method::InPlaceTrueDivision for PyString {}
+impl method::InPlaceXOr for PyString {}
+impl method::Contains for PyString {}
+impl method::Iter for PyString {}
+impl method::Call for PyString {}
+impl method::Length for PyString {}
+impl method::LengthHint for PyString {}
+impl method::Next for PyString {}
+impl method::Reversed for PyString {}
+impl method::GetItem for PyString {}
+impl method::SetItem for PyString {}
+impl method::DeleteItem for PyString {}
+impl method::Count for PyString {}
+impl method::Append for PyString {}
+impl method::Extend for PyString {}
+impl method::Pop for PyString {}
+impl method::Remove for PyString {}
+impl method::IsDisjoint for PyString {}
+impl method::AddItem for PyString {}
+impl method::Discard for PyString {}
+impl method::Clear for PyString {}
+impl method::Get for PyString {}
+impl method::Keys for PyString {}
+impl method::Values for PyString {}
+impl method::Items for PyString {}
+impl method::PopItem for PyString {}
+impl method::Update for PyString {}
+impl method::SetDefault for PyString {}
+impl method::Await for PyString {}
+impl method::Send for PyString {}
+impl method::Throw for PyString {}
+impl method::Close for PyString {}
+impl method::Exit for PyString {}
+impl method::Enter for PyString {}
+impl method::DescriptorGet for PyString {}
+impl method::DescriptorSet for PyString {}
+impl method::DescriptorSetName for PyString {}
+
+
+
 
 
 #[derive(Clone, Debug, Hash)]

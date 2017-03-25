@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 
 use error::Error;
 use result::{NativeResult, RuntimeResult};
@@ -57,8 +58,8 @@ macro_rules! resolve_inner {
     )
 }
 
-impl attribute::InternalDictAccess for PyObject {
-    fn intern_dict(&self) -> &DictionaryObject {
+impl attribute::HasDict for PyObject {
+    fn get_dict(&self) -> &DictionaryObject {
         resolve_inner!(dictobj, self.value.dict, &DictionaryObject, dict);
         dictobj
     }

@@ -15,21 +15,190 @@ use typedef::integer::IntegerObject;
 use typedef::objectref::ToRtWrapperType;
 use typedef::builtin::Builtin;
 
-use object;
+use object::{self, RtValue};
+use object::method;
+
+
+
+#[derive(Clone)]
+pub struct DictValue(pub RefCell<native::Dict>);
+
+pub type PyDict = RtValue<DictValue>;
+
+
+
+impl fmt::Debug for PyDict {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value.0.borrow())
+    }
+}
+
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//       New Style Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+
+impl object::PyAPI for PyDict {}
+impl method::New for PyDict {}
+impl method::Init for PyDict {}
+impl method::Delete for PyDict {}
+impl method::GetAttr for PyDict  {}
+impl method::GetAttribute for PyDict {}
+impl method::SetAttr for PyDict {}
+impl method::DelAttr for PyDict {}
+impl method::Id for PyDict {}
+impl method::Is for PyDict {}
+impl method::IsNot for PyDict {}
+impl method::Hashed for PyDict {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        Err(Error::typerr("Unhashable type dict"))
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        Err(Error::typerr("Unhashable type dict"))
+    }
+}
+impl method::Equal for PyDict {}
+impl method::NotEqual for PyDict {}
+impl method::LessThan for PyDict {}
+impl method::LessOrEqual for PyDict {}
+impl method::GreaterOrEqual for PyDict {}
+impl method::GreaterThan for PyDict {}
+impl method::BooleanCast for PyDict {
+
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(if self.native_bool().unwrap() {
+            rt.True()
+        } else {
+            rt.False()
+        })
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(!self.value.0.borrow().is_empty())
+    }
+
+}
+impl method::IntegerCast for PyDict {}
+impl method::FloatCast for PyDict {}
+impl method::ComplexCast for PyDict {}
+impl method::Rounding for PyDict {}
+impl method::Index for PyDict {}
+impl method::NegateValue for PyDict {}
+impl method::AbsValue for PyDict {}
+impl method::PositiveValue for PyDict {}
+impl method::InvertValue for PyDict {}
+impl method::Add for PyDict {}
+impl method::BitwiseAnd for PyDict {}
+impl method::DivMod for PyDict {}
+impl method::FloorDivision for PyDict {}
+impl method::LeftShift for PyDict {}
+impl method::Modulus for PyDict {}
+impl method::Multiply for PyDict {}
+impl method::MatrixMultiply for PyDict {}
+impl method::BitwiseOr for PyDict {}
+impl method::Pow for PyDict {}
+impl method::RightShift for PyDict {}
+impl method::Subtract for PyDict {}
+impl method::TrueDivision for PyDict {}
+impl method::XOr for PyDict {}
+impl method::ReflectedAdd for PyDict {}
+impl method::ReflectedBitwiseAnd for PyDict {}
+impl method::ReflectedDivMod for PyDict {}
+impl method::ReflectedFloorDivision for PyDict {}
+impl method::ReflectedLeftShift for PyDict {}
+impl method::ReflectedModulus for PyDict {}
+impl method::ReflectedMultiply for PyDict {}
+impl method::ReflectedMatrixMultiply for PyDict {}
+impl method::ReflectedBitwiseOr for PyDict {}
+impl method::ReflectedPow for PyDict {}
+impl method::ReflectedRightShift for PyDict {}
+impl method::ReflectedSubtract for PyDict {}
+impl method::ReflectedTrueDivision for PyDict {}
+impl method::ReflectedXOr for PyDict {}
+impl method::InPlaceAdd for PyDict {}
+impl method::InPlaceBitwiseAnd for PyDict {}
+impl method::InPlaceDivMod for PyDict {}
+impl method::InPlaceFloorDivision for PyDict {}
+impl method::InPlaceLeftShift for PyDict {}
+impl method::InPlaceModulus for PyDict {}
+impl method::InPlaceMultiply for PyDict {}
+impl method::InPlaceMatrixMultiply for PyDict {}
+impl method::InPlaceBitwiseOr for PyDict {}
+impl method::InPlacePow for PyDict {}
+impl method::InPlaceRightShift for PyDict {}
+impl method::InPlaceSubtract for PyDict {}
+impl method::InPlaceTrueDivision for PyDict {}
+impl method::InPlaceXOr for PyDict {}
+impl method::Contains for PyDict {}
+impl method::Iter for PyDict {}
+impl method::Call for PyDict {}
+impl method::Length for PyDict {
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_len() {
+            Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
+            Err(_) => unreachable!(),
+        }
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        match Integer::from_usize(self.value.0.borrow().len()) {
+            Some(int) => Ok(int),
+            None => Err(Error::value("ValueError converting native integer")),
+        }
+    }
+}
+impl method::LengthHint for PyDict {}
+impl method::Next for PyDict {}
+impl method::Reversed for PyDict {}
+impl method::GetItem for PyDict {}
+impl method::SetItem for PyDict {}
+impl method::DeleteItem for PyDict {}
+impl method::Count for PyDict {}
+impl method::Append for PyDict {}
+impl method::Extend for PyDict {}
+impl method::Pop for PyDict {}
+impl method::Remove for PyDict {}
+impl method::IsDisjoint for PyDict {}
+impl method::AddItem for PyDict {}
+impl method::Discard for PyDict {}
+impl method::Clear for PyDict {}
+impl method::Get for PyDict {}
+impl method::Keys for PyDict {}
+impl method::Values for PyDict {}
+impl method::Items for PyDict {}
+impl method::PopItem for PyDict {}
+impl method::Update for PyDict {}
+impl method::SetDefault for PyDict {}
+impl method::Await for PyDict {}
+impl method::Send for PyDict {}
+impl method::Throw for PyDict {}
+impl method::Close for PyDict {}
+impl method::Exit for PyDict {}
+impl method::Enter for PyDict {}
+impl method::DescriptorGet for PyDict {}
+impl method::DescriptorSet for PyDict {}
+impl method::DescriptorSetName for PyDict {}
+
+
+
 
 
 #[derive(Clone, Debug)]
 pub struct DictionaryObject {
-    value: RefCell<Dictionary>,
+    value: RefCell<Dict>,
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///       Struct Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//       Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl DictionaryObject {
     fn new() -> Self {
-        return DictionaryObject { value: RefCell::new(Dictionary::new()) };
+        return DictionaryObject { value: RefCell::new(Dict::new()) };
     }
 }
 
@@ -77,7 +246,7 @@ impl object::model::PyBehavior for DictionaryObject {
         let key_value: &Box<Builtin> = keyref.borrow();
         match key_value.native_hash() {
             Ok(hash) => {
-                let key = Key(hash, keyref.clone());
+                let key = DictKey(hash, keyref.clone());
                 let result = self.value.borrow_mut().insert(key, valueref.clone());
                 //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
                 Ok(rt.None())
@@ -99,7 +268,7 @@ impl object::model::PyBehavior for DictionaryObject {
         let key_box: &Box<Builtin> = keyref.borrow();
         match key_box.native_hash() {
             Ok(hash) => {
-                let key = Key(hash, keyref.clone());
+                let key = DictKey(hash, keyref.clone());
                 match self.value.borrow().get(&key) {
                     Some(value) => Ok(value.clone()),
                     None => {

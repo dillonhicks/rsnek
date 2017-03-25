@@ -15,12 +15,12 @@ use object::selfref::SelfRef;
 use object::model::PyBehavior;
 
 
-pub trait InternalDictAccess {
-    fn intern_dict(&self) -> &DictionaryObject;
+pub trait HasDict {
+    fn get_dict(&self) -> &DictionaryObject;
 }
 
 
-pub trait DefaultGetAttr: method::GetAttr + InternalDictAccess {
+pub trait DefaultGetAttr: method::GetAttr + HasDict {
     // TODO: Need to search the base classes dicts as well, maybe need MRO
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = name.0.borrow();
@@ -35,12 +35,11 @@ pub trait DefaultGetAttr: method::GetAttr + InternalDictAccess {
                     Err(err) => return Err(err)
                 };
 
-                let dict: &DictionaryObject = self.intern_dict();
-                let key = native::Key(string.native_hash().unwrap(), stringref);
-                match dict.native_getitem(&key) {
+                let dict: &DictionaryObject = self.get_dict();
+                let key = native::DictKey(string.native_hash().unwrap(), stringref);
+                match dict.native_getitem(&Builtin::DictKey(key)) {
                     // TODO: Fixme
-                    Ok(objref) => Ok(objref.clone()),
-                    Err(Error(0: ErrorType::KeyError, 1: _)) => Err(Error::attribute()),
+                    Ok(builtin) => builtin.upgrade(),
                     Err(err) => Err(err)
                 }
             },

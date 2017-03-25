@@ -35,8 +35,8 @@ pub type Tuple = Vec<typedef::objectref::ObjectRef>;
 
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Key(pub HashId, pub typedef::objectref::ObjectRef);
-pub type Dictionary = std::collections::HashMap<Key, typedef::objectref::ObjectRef>;
+pub struct DictKey(pub HashId, pub typedef::objectref::ObjectRef);
+pub type Dict = std::collections::HashMap<DictKey, typedef::objectref::ObjectRef>;
 
 /*struct {
     key_set: Set,

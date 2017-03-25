@@ -6,13 +6,14 @@ use std::rc::Rc;
 use std::fmt;
 
 use object;
+use object::selfref::SelfRef;
 use runtime::Runtime;
 use result::{NativeResult, RuntimeResult};
 use error::{Error, ErrorType};
 use object::model::PyBehavior;
 
 use typedef::objectref;
-use typedef::objectref::{RtObject, ObjectRef};
+use typedef::objectref::{RtObject, ObjectRef, WeakObjectRef};
 use typedef::boolean::{PyBoolean, BooleanObject};
 use typedef::integer::IntegerObject;
 use typedef::float::FloatObject;
@@ -56,13 +57,13 @@ pub enum Builtin {
 
     Bool(PyBoolean),
     Str(PyString),
-
+    DictKey(native::DictKey),
 }
 
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///     Struct Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//     Struct Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 impl Builtin {
     pub fn int(&self) -> CastResult<&IntegerObject> {
@@ -119,20 +120,68 @@ impl Builtin {
 
 }
 
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//     New Object Traits
+//
+// For the BuiltinObject this should mean just proxy dispatching the
+// underlying associated function using the foreach macros.
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///     Python Object Traits
-///
-/// For the BuiltinObject this should mean just proxy dispatching the
-/// underlying associated function using the foreach macros.
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl SelfRef for Builtin {
+    fn strong_count(&self) -> native::Integer {
+        match *self {
+            Builtin::Bool(ref obj) => obj.rc.strong_count(),
+            Builtin::Str(ref obj) => obj.rc.strong_count(),
+            _ => panic!("Invalid type")
+        }
+    }
+
+    fn weak_count(&self) -> native::Integer {
+        match *self {
+            Builtin::Bool(ref obj) => obj.rc.weak_count(),
+            Builtin::Str(ref obj) => obj.rc.weak_count(),
+            _ => panic!("Invalid type")
+        }
+    }
+
+    fn set(&self, objref: &ObjectRef) {
+        match *self {
+            Builtin::Bool(ref obj) => obj.rc.set(objref),
+            Builtin::Str(ref obj) => obj.rc.set(objref),
+            _ => panic!("Invalid type")
+        }
+    }
+
+    fn get(&self) -> WeakObjectRef {
+        match *self {
+            Builtin::Bool(ref obj) => obj.rc.get(),
+            Builtin::Str(ref obj) => obj.rc.get(),
+            _ => panic!("Invalid type")
+        }
+    }
+
+    fn upgrade(&self) -> RuntimeResult {
+        match *self {
+            Builtin::Bool(ref obj) => obj.rc.upgrade(),
+            Builtin::Str(ref obj) => obj.rc.upgrade(),
+            _ => Err(Error::typerr("Invald type"))
+        }
+    }
+}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//     Python Object Traits
+//
+// For the BuiltinObject this should mean just proxy dispatching the
+// underlying associated function using the foreach macros.
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 impl object::identity::DefaultIdentity for Builtin {}
 impl object::method::Id for Builtin {}
 impl object::method::Is for Builtin {}
 impl object::method::IsNot for Builtin {}
 
 
-/// old
+// old
 impl objectref::RtObject for Builtin {}
 impl object::model::PyObject for Builtin {}
 impl object::model::PyBehavior for Builtin {
