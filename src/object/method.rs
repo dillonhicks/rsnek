@@ -55,16 +55,23 @@ api_trait!(binary, self, is_, Is, op_is, native_is, native::Boolean);
 api_trait!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
 api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
 
+// ----------------------------------
+//  String Formatting
+// -----------------------------------
+api_trait!(unary, self, __string__, StringCast, op_string, native_string, native::String);
+api_trait!(unary, self, __bytes__, BytesCast, op_bytes, native_bytes, native::Bytes);
+api_trait!(unary, self, __repr__, StringRepresentation, op_repr, native_repr, native::Repr);
+api_trait!(unary, self, __format__, StringFormat, op_format, native_format, native::String);
 
 // ----------------------------------
 //  Rich Comparisons
 // -----------------------------------
-api_trait!(binary, self, __eq__, Equal, op_eq, native_eq);
-api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne);
-api_trait!(binary, self, __lt__, LessThan, op_lt, native_lt);
-api_trait!(binary, self, __le__, LessOrEqual, op_le, native_le);
-api_trait!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge);
-api_trait!(binary, self, __gt__, GreaterThan, op_gt, native_gt);
+api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);
+api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);
+api_trait!(binary, self, __lt__, LessThan, op_lt, native_lt, native::Boolean);
+api_trait!(binary, self, __le__, LessOrEqual, op_le, native_le, native::Boolean);
+api_trait!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge, native::Boolean);
+api_trait!(binary, self, __gt__, GreaterThan, op_gt, native_gt, native::Boolean);
 
 // ----------------------------------
 //  Numeric Casts

@@ -29,6 +29,10 @@ method::Id +
 method::Is +
 method::IsNot +
 method::Hashed +
+method::StringCast +
+method::BytesCast +
+method::StringFormat +
+method::StringRepresentation +
 method::Equal +
 method::NotEqual +
 method::LessThan +
@@ -125,14 +129,22 @@ method::DescriptorSetName {}
 
 macro_rules! object_api {
     ($typename:ident) => {
-        impl object::PyAPI for $typename {}
+        impl PyAPI for $typename {}
         impl method::New for $typename {}
         impl method::Init for $typename {}
         impl method::Delete for $typename {}
+        impl method::GetAttr for $typename {}
+        impl method::GetAttribute for $typename {}
+        impl method::SetAttr for $typename {}
+        impl method::DelAttr for $typename {}
         impl method::Id for $typename {}
         impl method::Is for $typename {}
         impl method::IsNot for $typename {}
         impl method::Hashed for $typename {}
+        impl method::StringCast for $typename {}
+        impl method::BytesCast for $typename {}
+        impl method::StringFormat for $typename {}
+        impl method::StringRepresentation for $typename {}
         impl method::Equal for $typename {}
         impl method::NotEqual for $typename {}
         impl method::LessThan for $typename {}
@@ -229,12 +241,9 @@ macro_rules! object_api {
 
     }
 }
-//
-//struct PyBoolean;
-//struct PyInteger;
-//
-//object_api!(PyInteger);
-//object_api!(PyBoolean);
+
+struct PyNewType;
+object_api!(PyNewType);
 
 
 #[cfg(test)]

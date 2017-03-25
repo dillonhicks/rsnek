@@ -15,6 +15,7 @@ use typedef::integer::IntegerObject;
 use typedef::objectref::ToRtWrapperType;
 use typedef::builtin::Builtin;
 
+use object::method::Hashed;
 use object::{self, RtValue};
 use object::method;
 
@@ -154,8 +155,49 @@ impl method::Length for PyDict {
 impl method::LengthHint for PyDict {}
 impl method::Next for PyDict {}
 impl method::Reversed for PyDict {}
-impl method::GetItem for PyDict {}
-impl method::SetItem for PyDict {}
+impl method::GetItem for PyDict {
+
+    /// native getitem now that we have self refs?
+    fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
+        let key_box: &Box<Builtin> = keyref.borrow();
+        match key_box.native_hash() {
+            Ok(hash) => {
+                let key = DictKey(hash, keyref.clone());
+                match self.value.0.borrow().get(&key) {
+                    Some(DictValue(_, objref)) => Ok(objref.clone()),
+                    None => {
+                        // TODO: use repr for this as per cPython default
+                        Err(Error::key("KeyError: no such key"))
+                    }
+                }
+            }
+            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
+        }
+    }
+}
+impl method::SetItem for PyDict {
+
+    fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
+        let key_value: &Box<Builtin> = keyref.borrow();
+        match key_value.native_hash() {
+            Ok(hash) => {
+                let key = DictKey(hash, keyref.clone());
+                let result = self.value.0.borrow_mut().insert(key, valueref.clone());
+                //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
+                Ok(rt.None())
+            }
+            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
+        }
+    }
+
+    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
+        // TODO: enforce all objects containing a weakref to itself so we can support
+        // the clone and upgrade here for the native map api. Should check if the strong count
+        // exists or otherwise return Err because it would mean the value is unmanaged which
+        // leads to memory leaks and such.
+        Err(Error::not_implemented())
+    }
+}
 impl method::DeleteItem for PyDict {}
 impl method::Count for PyDict {}
 impl method::Append for PyDict {}
@@ -182,7 +224,6 @@ impl method::Enter for PyDict {}
 impl method::DescriptorGet for PyDict {}
 impl method::DescriptorSet for PyDict {}
 impl method::DescriptorSetName for PyDict {}
-
 
 
 

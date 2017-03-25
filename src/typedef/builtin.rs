@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::fmt;
 
 use object;
+use object::method;
 use object::selfref::SelfRef;
 use runtime::Runtime;
 use result::{NativeResult, RuntimeResult};
@@ -169,19 +170,295 @@ impl SelfRef for Builtin {
     }
 }
 
+
+impl object::PyAPI for Builtin {}
+impl method::New for Builtin {}
+impl method::Init for Builtin {}
+impl method::Delete for Builtin {}
+impl method::GetAttr for Builtin  {}
+impl method::GetAttribute for Builtin {}
+impl method::SetAttr for Builtin {}
+impl method::DelAttr for Builtin {}
+impl method::Id for Builtin {
+
+    fn identity(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, identity, lhs)
+    }
+
+    // Short circuit the ident to hit the wrapper since
+    // the macro unwrapping causes an extra layer of indirection
+    // and makes comparing porinters at the Object level harder.
+    //
+    //     fn native_identity(&self) -> native::ObjectId {
+    //        native_foreach_builtin!(self, native_identity, lhs)
+    //        //return (&self as *const _) as native::ObjectId;
+    //     }
+}
+
+
+impl method::Is for Builtin {
+    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_is, lhs, rhs)
+    }
+
+
+    fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_is, lhs, rhs)
+    }
+
+}
+
+impl method::IsNot for Builtin {
+    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_is_not, lhs, rhs)
+    }
+
+    fn native_is_not(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_is_not, lhs, rhs)
+    }
+}
+
+impl method::Hashed for Builtin {
+    //
+    // Hash
+    //
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_hash, obj)
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        native_foreach_builtin!(self, native_hash, obj)
+    }
+}
+impl method::Equal for Builtin {
+    /// Default implementation of equals fallsbacks to op_is.
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_eq, lhs, rhs)
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_eq, lhs, rhs)
+    }
+
+}
+impl method::NotEqual for Builtin {
+
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_ne, lhs, rhs)
+    }
+
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_ne, lhs, rhs)
+    }
+}
+
+impl method::LessThan for Builtin {
+    fn op_lt(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_lt, lhs, rhs)
+    }
+
+    fn native_lt(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_lt, lhs, rhs)
+    }
+}
+impl method::LessOrEqual for Builtin {
+    fn op_le(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_le, lhs, rhs)
+    }
+
+    fn native_le(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_le, lhs, rhs)
+    }
+}
+impl method::GreaterOrEqual for Builtin {
+    fn op_ge(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_ge, lhs, rhs)
+    }
+
+    fn native_ge(&self, rhs: &Builtin) -> NativeResult<native::Boogean> {
+        native_foreach_builtin!(self, native_ge, lhs, rhs)
+    }
+}
+impl method::GreaterThan for Builtin {
+    fn op_gt(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_gt, lhs, rhs)
+    }
+
+    fn native_gt(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_gt, lhs, rhs)
+    }
+}
+impl method::BooleanCast for Builtin {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_bool, obj)
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_bool, obj)
+    }
+}
+
+impl method::IntegerCast for Builtin {
+
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_int, obj)
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        native_foreach_builtin!(self, native_int, obj)
+    }
+
+}
+
+impl method::FloatCast for Builtin {
+    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_float, obj)
+    }
+
+    fn native_float(&self) -> NativeResult<native::Float> {
+        native_foreach_builtin!(self, native_float, obj)
+    }
+}
+
+impl method::ComplexCast for Builtin {
+
+    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_complex, obj)
+    }
+
+    fn native_complex(&self) -> NativeResult<native::Complex> {
+        native_foreach_builtin!(self, native_complex, obj)
+    }
+
+}
+
+impl method::Rounding for Builtin {}
+impl method::Index for Builtin {
+
+    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_index, obj)
+    }
+
+    fn native_index(&self) -> NativeResult<native::Integer> {
+        native_foreach_builtin!(self, native_index, obj)
+    }
+}
+impl method::NegateValue for Builtin {}
+impl method::AbsValue for Builtin {}
+impl method::PositiveValue for Builtin {}
+impl method::InvertValue for Builtin {}
+impl method::Add for Builtin {}
+impl method::BitwiseAnd for Builtin {}
+impl method::DivMod for Builtin {}
+impl method::FloorDivision for Builtin {}
+impl method::LeftShift for Builtin {}
+impl method::Modulus for Builtin {}
+impl method::Multiply for Builtin {}
+impl method::MatrixMultiply for Builtin {}
+impl method::BitwiseOr for Builtin {}
+impl method::Pow for Builtin {}
+impl method::RightShift for Builtin {}
+impl method::Subtract for Builtin {}
+impl method::TrueDivision for Builtin {}
+impl method::XOr for Builtin {}
+impl method::ReflectedAdd for Builtin {}
+impl method::ReflectedBitwiseAnd for Builtin {}
+impl method::ReflectedDivMod for Builtin {}
+impl method::ReflectedFloorDivision for Builtin {}
+impl method::ReflectedLeftShift for Builtin {}
+impl method::ReflectedModulus for Builtin {}
+impl method::ReflectedMultiply for Builtin {}
+impl method::ReflectedMatrixMultiply for Builtin {}
+impl method::ReflectedBitwiseOr for Builtin {}
+impl method::ReflectedPow for Builtin {}
+impl method::ReflectedRightShift for Builtin {}
+impl method::ReflectedSubtract for Builtin {}
+impl method::ReflectedTrueDivision for Builtin {}
+impl method::ReflectedXOr for Builtin {}
+impl method::InPlaceAdd for Builtin {}
+impl method::InPlaceBitwiseAnd for Builtin {}
+impl method::InPlaceDivMod for Builtin {}
+impl method::InPlaceFloorDivision for Builtin {}
+impl method::InPlaceLeftShift for Builtin {}
+impl method::InPlaceModulus for Builtin {}
+impl method::InPlaceMultiply for Builtin {}
+impl method::InPlaceMatrixMultiply for Builtin {}
+impl method::InPlaceBitwiseOr for Builtin {}
+impl method::InPlacePow for Builtin {}
+impl method::InPlaceRightShift for Builtin {}
+impl method::InPlaceSubtract for Builtin {}
+impl method::InPlaceTrueDivision for Builtin {}
+impl method::InPlaceXOr for Builtin {}
+impl method::Contains for Builtin {}
+impl method::Iter for Builtin {}
+impl method::Call for Builtin {}
+impl method::Length for Builtin {
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_len, lhs)
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        native_foreach_builtin!(self, native_len, lhs)
+    }
+}
+impl method::LengthHint for Builtin {}
+impl method::Next for Builtin {}
+impl method::Reversed for Builtin {}
+impl method::GetItem for Builtin {
+    fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_getitem, object, name)
+    }
+
+    fn native_getitem(&self, name: &Builtin) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_getitem, object, name)
+    }
+}
+impl method::SetItem for Builtin {
+
+    fn op_setitem(&self, rt: &Runtime, name: &ObjectRef, item: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_setitem, object, name, item)
+    }
+
+    fn native_setitem(&self, name: &Builtin, item: &Builtin) -> NativeResult<native::NoneValue> {
+        native_foreach_builtin!(self, native_setitem, object, name, item)
+    }
+
+}
+impl method::DeleteItem for Builtin {}
+impl method::Count for Builtin {}
+impl method::Append for Builtin {}
+impl method::Extend for Builtin {}
+impl method::Pop for Builtin {}
+impl method::Remove for Builtin {}
+impl method::IsDisjoint for Builtin {}
+impl method::AddItem for Builtin {}
+impl method::Discard for Builtin {}
+impl method::Clear for Builtin {}
+impl method::Get for Builtin {}
+impl method::Keys for Builtin {}
+impl method::Values for Builtin {}
+impl method::Items for Builtin {}
+impl method::PopItem for Builtin {}
+impl method::Update for Builtin {}
+impl method::SetDefault for Builtin {}
+impl method::Await for Builtin {}
+impl method::Send for Builtin {}
+impl method::Throw for Builtin {}
+impl method::Close for Builtin {}
+impl method::Exit for Builtin {}
+impl method::Enter for Builtin {}
+impl method::DescriptorGet for Builtin {}
+impl method::DescriptorSet for Builtin {}
+impl method::DescriptorSetName for Builtin {}
+
+
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //     Python Object Traits
 //
 // For the BuiltinObject this should mean just proxy dispatching the
 // underlying associated function using the foreach macros.
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl object::identity::DefaultIdentity for Builtin {}
-impl object::method::Id for Builtin {}
-impl object::method::Is for Builtin {}
-impl object::method::IsNot for Builtin {}
-
-
-// old
 impl objectref::RtObject for Builtin {}
 impl object::model::PyObject for Builtin {}
 impl object::model::PyBehavior for Builtin {
@@ -215,10 +492,19 @@ impl object::model::PyBehavior for Builtin {
         foreach_builtin!(self, rt, op_eq, lhs, rhs)
     }
 
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_eq, lhs, rhs)
+    }
+
     fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ne, lhs, rhs)
     }
-
+    
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_ne, lhs, rhs)
+    }
+    
     fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_is, lhs, rhs)
     }
@@ -227,14 +513,6 @@ impl object::model::PyBehavior for Builtin {
         native_foreach_builtin!(self, native_is_not, lhs, rhs)
     }
 
-    /// Default implementation of equals fallsbacks to op_is.
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_eq, lhs, rhs)
-    }
-
-    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_ne, lhs, rhs)
-    }
 
 
     //
