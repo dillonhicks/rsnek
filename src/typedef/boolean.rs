@@ -6,8 +6,9 @@ use std::borrow::Borrow;
 
 use object::{self, RtValue};
 use object::model::PyBehavior;
-use object::typing::Type;
+use object::typing;
 use object::method;
+use error::Error;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::integer::IntegerObject;
@@ -31,6 +32,8 @@ use num::ToPrimitive;
 
 pub const TRUE_STR: &'static str = "True";
 pub const FALSE_STR: &'static str = "False";
+pub const TRUE_BYTES: &'static [u8] = &[1];
+pub const FALSE_BYTES: &'static [u8] = &[0];
 
 
 #[allow(non_snake_case)]
@@ -59,10 +62,16 @@ impl std::fmt::Debug for PyBoolean {
 }
 
 
-impl Type for BooleanType {
-    type T = PyBoolean;
+impl typing::Type for BooleanType {}
 
+impl typing::HasName for BooleanType {
+    #[inline]
+    fn get_name(&self) -> native::String {
+        "bool".to_string()
+    }
+}
 
+impl method::New for BooleanType {
     fn op_new(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_new() {
             Ok(inst) => {
@@ -87,11 +96,13 @@ impl Type for BooleanType {
 
     fn native_new(&self) -> NativeResult<Self::T> {
         Ok(PyBoolean {
-               value: BoolValue(native::Integer::zero()),
-               rc: RefCount::default(),
-           })
+            value: BoolValue(native::Integer::zero()),
+            rc: RefCount::default(),
+        })
     }
+}
 
+impl method::Init for BooleanType {
     fn op_init(&mut self, rt: &Runtime) -> RuntimeResult {
         self.op_new(&rt)
     }
@@ -100,29 +111,117 @@ impl Type for BooleanType {
     fn native_init(&mut self) -> NativeResult<()> {
         Ok(())
     }
-
-    fn op_name(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_name() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => Err(err),
-        }
-    }
-
-    #[inline]
-    fn native_name(&self) -> NativeResult<native::String> {
-        Ok("Boolean".to_string())
-    }
 }
 
-
+impl object::PyAPI for PyBoolean {}
+impl method::New for PyBoolean {}
+impl method::Init for PyBoolean {}
+impl method::Delete for PyBoolean {}
 impl method::GetAttr for PyBoolean {}
 impl method::GetAttribute for PyBoolean {}
 impl method::SetAttr for PyBoolean {}
 impl method::DelAttr for PyBoolean {}
-impl object::identity::DefaultIdentity for PyBoolean {}
 impl method::Id for PyBoolean {}
 impl method::Is for PyBoolean {}
 impl method::IsNot for PyBoolean {}
+impl method::Hashed for PyBoolean {}
+impl method::StringCast for PyBoolean {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        self.op_repr(rt)
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        return self.native_repr();
+    }
+}
+impl method::BytesCast for PyBoolean {
+    fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
+        // TODO: Fix after PyBytes is implemented
+        Err(Error::unimplemented())
+    }
+
+    fn native_bytes(&self) -> NativeResult<native::Bytes> {
+        let result = if self.value.0.is_zero() {FALSE_BYTES.to_vec()} else {TRUE_BYTES.to_vec()};
+        Ok(result)
+    }
+}
+impl method::StringFormat for PyBoolean {}
+impl method::StringRepresentation for PyBoolean {
+
+    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_repr() {
+            Ok(string) => rt.alloc(StringObject::new(string).to()),
+            Err(err) => unreachable!(),
+        }
+    }
+
+    fn native_repr(&self) -> NativeResult<native::String> {
+        let value = if self.value.is_zero() {
+            FALSE_STR
+        } else {
+            TRUE_STR
+        };
+        Ok(value.to_string())
+    }
+
+}
+impl method::Equal for PyBoolean {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match self.native_eq(builtin.deref()) {
+            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs.native_bool() {
+            Ok(value) => Ok(self.native_bool().unwrap() == value),
+            Err(err) => Err(err),
+        }
+    }
+}
+impl method::NotEqual for PyBoolean {}
+impl method::LessThan for PyBoolean {}
+impl method::LessOrEqual for PyBoolean {}
+impl method::GreaterOrEqual for PyBoolean {}
+impl method::GreaterThan for PyBoolean {}
+impl method::BooleanCast for PyBoolean {}
+impl method::IntegerCast for PyBoolean {}
+impl method::FloatCast for PyBoolean {
+
+    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_float() {
+            Ok(float) => rt.alloc(FloatObject::new(float).to()),
+            Err(err) => Err(err),
+        }
+
+    }
+
+    fn native_float(&self) -> NativeResult<native::Float> {
+        return Ok(self.value.to_f64().unwrap());
+    }
+}
+impl method::ComplexCast for PyBoolean {
+    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_complex() {
+            Ok(value) => return rt.alloc(ComplexObject::from_native(value).to()),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_complex(&self) -> NativeResult<native::Complex> {
+        return Ok(native::Complex::new(self.value.to_f64().unwrap(), 0.));
+    }
+
+}
+impl method::Rounding for PyBoolean {}
+impl method::Index for PyBoolean {}
+impl method::NegateValue for PyBoolean {}
+impl method::AbsValue for PyBoolean {}
+impl method::PositiveValue for PyBoolean {}
+impl method::InvertValue for PyBoolean {}
 impl method::Add for PyBoolean {}
 impl method::BitwiseAnd for PyBoolean {}
 impl method::DivMod for PyBoolean {}
@@ -132,7 +231,7 @@ impl method::Modulus for PyBoolean {}
 impl method::Multiply for PyBoolean {}
 impl method::MatrixMultiply for PyBoolean {}
 impl method::BitwiseOr for PyBoolean {}
-impl method::Pow for PyBoolean {} // Not exactly a binary op
+impl method::Pow for PyBoolean {}
 impl method::RightShift for PyBoolean {}
 impl method::Subtract for PyBoolean {}
 impl method::TrueDivision for PyBoolean {}
@@ -146,7 +245,7 @@ impl method::ReflectedModulus for PyBoolean {}
 impl method::ReflectedMultiply for PyBoolean {}
 impl method::ReflectedMatrixMultiply for PyBoolean {}
 impl method::ReflectedBitwiseOr for PyBoolean {}
-impl method::ReflectedPow for PyBoolean {} // Not exactly a binary op
+impl method::ReflectedPow for PyBoolean {}
 impl method::ReflectedRightShift for PyBoolean {}
 impl method::ReflectedSubtract for PyBoolean {}
 impl method::ReflectedTrueDivision for PyBoolean {}
@@ -160,11 +259,47 @@ impl method::InPlaceModulus for PyBoolean {}
 impl method::InPlaceMultiply for PyBoolean {}
 impl method::InPlaceMatrixMultiply for PyBoolean {}
 impl method::InPlaceBitwiseOr for PyBoolean {}
-impl method::InPlacePow for PyBoolean {} // Not exactly a binary op
+impl method::InPlacePow for PyBoolean {}
 impl method::InPlaceRightShift for PyBoolean {}
 impl method::InPlaceSubtract for PyBoolean {}
 impl method::InPlaceTrueDivision for PyBoolean {}
 impl method::InPlaceXOr for PyBoolean {}
+impl method::Contains for PyBoolean {}
+impl method::Iter for PyBoolean {}
+impl method::Call for PyBoolean {}
+impl method::Length for PyBoolean {}
+impl method::LengthHint for PyBoolean {}
+impl method::Next for PyBoolean {}
+impl method::Reversed for PyBoolean {}
+impl method::GetItem for PyBoolean {}
+impl method::SetItem for PyBoolean {}
+impl method::DeleteItem for PyBoolean {}
+impl method::Count for PyBoolean {}
+impl method::Append for PyBoolean {}
+impl method::Extend for PyBoolean {}
+impl method::Pop for PyBoolean {}
+impl method::Remove for PyBoolean {}
+impl method::IsDisjoint for PyBoolean {}
+impl method::AddItem for PyBoolean {}
+impl method::Discard for PyBoolean {}
+impl method::Clear for PyBoolean {}
+impl method::Get for PyBoolean {}
+impl method::Keys for PyBoolean {}
+impl method::Values for PyBoolean {}
+impl method::Items for PyBoolean {}
+impl method::PopItem for PyBoolean {}
+impl method::Update for PyBoolean {}
+impl method::SetDefault for PyBoolean {}
+impl method::Await for PyBoolean {}
+impl method::Send for PyBoolean {}
+impl method::Throw for PyBoolean {}
+impl method::Close for PyBoolean {}
+impl method::Exit for PyBoolean {}
+impl method::Enter for PyBoolean {}
+impl method::DescriptorGet for PyBoolean {}
+impl method::DescriptorSet for PyBoolean {}
+impl method::DescriptorSetName for PyBoolean {}
+
 
 
 impl ToRtWrapperType<builtin::Builtin> for PyBoolean {

@@ -157,35 +157,35 @@ api_trait!(unary, self, __reversed__, Reversed, op_reversed, native_reversed);
 api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
 api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::NoneValue);
 api_trait!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
-api_trait!(binary, self, count, Count, count, native_count, native::Integer);
-api_trait!(binary, self, append, Append, append, native_append, native::NoneValue);
-api_trait!(binary, self, extend, Extend, extend, native_extend, native::NoneValue);
-api_trait!(binary, self, pop, Pop, pop, native_pop);
-api_trait!(binary, self, remove, Remove, remove, native_remove);
+api_trait!(binary, self, count, Count, meth_count, native_meth_count, native::Integer);
+api_trait!(binary, self, append, Append, meth_append, native_meth_append, native::NoneValue);
+api_trait!(binary, self, extend, Extend, meth_extend, native_meth_extend, native::NoneValue);
+api_trait!(binary, self, pop, Pop, meth_pop, native_meth_pop);
+api_trait!(binary, self, remove, Remove, meth_remove, native_meth_remove);
 
 
 // Sets
-api_trait!(unary, self, isdisjoint, IsDisjoint, isdisjoint, native_isdisjoint, native::Boolean);
-api_trait!(binary, self, add, AddItem, add, native_add);
-api_trait!(unary, self, discard, Discard, discard, native_discard);
-api_trait!(unary, self, clear, Clear, clear, native_clear);
+api_trait!(binary, self, isdisjoint, IsDisjoint, isdisjoint, native_isdisjoint, native::Boolean);
+api_trait!(binary, self, add, AddItem, meth_add, native_add);
+api_trait!(unary, self, discard, Discard, meth_discard, native_meth_discard);
+api_trait!(unary, self, clear, Clear, meth_clear, native_meth_clear);
 
 
 // Mapping
-api_trait!(binary, self, get, Get, get, native_get);
-api_trait!(unary, self, keys, Keys, keys, native_keys);
-api_trait!(unary, self, values, Values, values, native_values);
-api_trait!(unary, self, items, Items, items, native_items);
-api_trait!(binary, self, popitem, PopItem, popitem, native_popitem);
-api_trait!(binary, self, update, Update, update, native_update);
-api_trait!(ternary, self, setdefault, SetDefault, setdefault, native_setdefault);
+api_trait!(binary, self, get, Get, meth_get, native_meth_get);
+api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys);
+api_trait!(unary, self, values, Values, meth_values, native_meth_values);
+api_trait!(unary, self, items, Items, meth_items, native_meth_items);
+api_trait!(binary, self, popitem, PopItem, meth_popitem, native_meth_popitem);
+api_trait!(binary, self, update, Update, meth_update, native_meth_update);
+api_trait!(ternary, self, setdefault, SetDefault, meth_setdefault, native_meth_setdefault);
 
 
 // Generators and Coroutines
 api_trait!(unary, self, __await__, Await, op_await, native_await);
-api_trait!(binary, self, send, Send, send, native_send);
-api_trait!(binary, self, throw, Throw, throw, native_throw);
-api_trait!(unary, self, close, Close, close, native_close);
+api_trait!(binary, self, send, Send, meth_send, native_meth_send);
+api_trait!(binary, self, throw, Throw, meth_throw, native_meth_throw);
+api_trait!(unary, self, close, Close, meth_close, native_meth_close);
 
 
 // -----------------------------------

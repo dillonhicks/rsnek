@@ -7,7 +7,7 @@ use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::ObjectRef;
-use typedef::dictionary::DictionaryObject;
+use typedef::dictionary::PyDict;
 
 use object::method;
 use object::method::Hashed;
@@ -16,7 +16,7 @@ use object::model::PyBehavior;
 
 
 pub trait HasDict {
-    fn get_dict(&self) -> &DictionaryObject;
+    fn get_dict(&self) -> &PyDict;
 }
 
 
@@ -35,7 +35,7 @@ pub trait DefaultGetAttr: method::GetAttr + HasDict {
                     Err(err) => return Err(err),
                 };
 
-                let dict: &DictionaryObject = self.get_dict();
+                let dict: &PyDict = self.get_dict();
                 let key = native::DictKey(string.native_hash().unwrap(), stringref);
                 match dict.native_getitem(&Builtin::DictKey(key)) {
                     // TODO: Fixme

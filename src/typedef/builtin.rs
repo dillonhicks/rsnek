@@ -739,7 +739,7 @@ impl method::IsDisjoint for Builtin {
         foreach_builtin!(self, rt, op_isdisjoint, object, name)
     }
 
-    fn native_isdisjoint(&self, name: &Builtin) -> NativeResult<Builtin> {
+    fn native_isdisjoint(&self, name: &Builtin) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_isdisjoint, object, name)
     }
 }
