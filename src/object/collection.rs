@@ -59,7 +59,6 @@ pub trait MutableSet:
 pub trait Mapping
     : Collection + method::GetItem + method::Keys + method::Values + method::Items + method::Get + method::Equal + method::NotEqual
     {
-
 }
 
 pub trait MutableMapping

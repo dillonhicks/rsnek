@@ -46,7 +46,7 @@ impl object::PyAPI for PyDict {}
 impl method::New for PyDict {}
 impl method::Init for PyDict {}
 impl method::Delete for PyDict {}
-impl method::GetAttr for PyDict  {}
+impl method::GetAttr for PyDict {}
 impl method::GetAttribute for PyDict {}
 impl method::SetAttr for PyDict {}
 impl method::DelAttr for PyDict {}
@@ -73,19 +73,20 @@ impl method::LessOrEqual for PyDict {}
 impl method::GreaterOrEqual for PyDict {}
 impl method::GreaterThan for PyDict {}
 impl method::BooleanCast for PyDict {
-
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         Ok(if self.native_bool().unwrap() {
-            rt.True()
-        } else {
-            rt.False()
-        })
+               rt.True()
+           } else {
+               rt.False()
+           })
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        Ok(!self.value.0.borrow().is_empty())
+        Ok(!self.value
+                .0
+                .borrow()
+                .is_empty())
     }
-
 }
 impl method::IntegerCast for PyDict {}
 impl method::FloatCast for PyDict {}
@@ -150,7 +151,10 @@ impl method::Length for PyDict {
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
-        match Integer::from_usize(self.value.0.borrow().len()) {
+        match Integer::from_usize(self.value
+                                      .0
+                                      .borrow()
+                                      .len()) {
             Some(int) => Ok(int),
             None => Err(Error::value("ValueError converting native integer")),
         }
@@ -160,14 +164,16 @@ impl method::LengthHint for PyDict {}
 impl method::Next for PyDict {}
 impl method::Reversed for PyDict {}
 impl method::GetItem for PyDict {
-
     /// native getitem now that we have self refs?
     fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
         let key_box: &Box<Builtin> = keyref.borrow();
         match key_box.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
-                match self.value.0.borrow().get(&key) {
+                match self.value
+                          .0
+                          .borrow()
+                          .get(&key) {
                     Some(DictValue(_, objref)) => Ok(objref.clone()),
                     None => {
                         // TODO: use repr for this as per cPython default
@@ -180,13 +186,15 @@ impl method::GetItem for PyDict {
     }
 }
 impl method::SetItem for PyDict {
-
     fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
         let key_value: &Box<Builtin> = keyref.borrow();
         match key_value.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
-                let result = self.value.0.borrow_mut().insert(key, valueref.clone());
+                let result = self.value
+                    .0
+                    .borrow_mut()
+                    .insert(key, valueref.clone());
                 //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
                 Ok(rt.None())
             }

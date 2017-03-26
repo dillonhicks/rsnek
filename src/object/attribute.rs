@@ -32,7 +32,7 @@ pub trait DefaultGetAttr: method::GetAttr + HasDict {
             &Builtin::Str(ref string) => {
                 let stringref = match string.rc.upgrade() {
                     Ok(objref) => objref,
-                    Err(err) => return Err(err)
+                    Err(err) => return Err(err),
                 };
 
                 let dict: &DictionaryObject = self.get_dict();
@@ -40,10 +40,10 @@ pub trait DefaultGetAttr: method::GetAttr + HasDict {
                 match dict.native_getitem(&Builtin::DictKey(key)) {
                     // TODO: Fixme
                     Ok(builtin) => builtin.upgrade(),
-                    Err(err) => Err(err)
+                    Err(err) => Err(err),
                 }
-            },
-            _ => Err(Error::typerr("getattr(): attribute name must be string"))
+            }
+            _ => Err(Error::typerr("getattr(): attribute name must be string")),
         }
     }
 }

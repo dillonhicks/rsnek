@@ -46,7 +46,6 @@ pub enum Builtin {
     Dictionary(DictionaryObject),
     Complex(ComplexObject),
 
-
     // Not yet implemented
     Object(()),
     Function(()),
@@ -55,10 +54,9 @@ pub enum Builtin {
                  *    Meta(MetaObject),
                  *    None(NoneObject) */
 
-
     Bool(PyBoolean),
     Str(PyString),
-    
+
     DictKey(native::DictKey),
 }
 
@@ -119,7 +117,6 @@ impl Builtin {
             _ => Err(Error::typerr("Not a PyBoolean")),
         }
     }
-
 }
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -134,7 +131,7 @@ impl SelfRef for Builtin {
         match *self {
             Builtin::Bool(ref obj) => obj.rc.strong_count(),
             Builtin::Str(ref obj) => obj.rc.strong_count(),
-            _ => panic!("Invalid type")
+            _ => panic!("Invalid type"),
         }
     }
 
@@ -142,7 +139,7 @@ impl SelfRef for Builtin {
         match *self {
             Builtin::Bool(ref obj) => obj.rc.weak_count(),
             Builtin::Str(ref obj) => obj.rc.weak_count(),
-            _ => panic!("Invalid type")
+            _ => panic!("Invalid type"),
         }
     }
 
@@ -150,7 +147,7 @@ impl SelfRef for Builtin {
         match *self {
             Builtin::Bool(ref obj) => obj.rc.set(objref),
             Builtin::Str(ref obj) => obj.rc.set(objref),
-            _ => panic!("Invalid type")
+            _ => panic!("Invalid type"),
         }
     }
 
@@ -158,7 +155,7 @@ impl SelfRef for Builtin {
         match *self {
             Builtin::Bool(ref obj) => obj.rc.get(),
             Builtin::Str(ref obj) => obj.rc.get(),
-            _ => panic!("Invalid type")
+            _ => panic!("Invalid type"),
         }
     }
 
@@ -166,7 +163,7 @@ impl SelfRef for Builtin {
         match *self {
             Builtin::Bool(ref obj) => obj.rc.upgrade(),
             Builtin::Str(ref obj) => obj.rc.upgrade(),
-            _ => Err(Error::typerr("Invald type"))
+            _ => Err(Error::typerr("Invald type")),
         }
     }
 }
@@ -176,12 +173,11 @@ impl object::PyAPI for Builtin {}
 impl method::New for Builtin {}
 impl method::Init for Builtin {}
 impl method::Delete for Builtin {}
-impl method::GetAttr for Builtin  {}
+impl method::GetAttr for Builtin {}
 impl method::GetAttribute for Builtin {}
 impl method::SetAttr for Builtin {}
 impl method::DelAttr for Builtin {}
 impl method::Id for Builtin {
-
     fn identity(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, identity, lhs)
     }
@@ -206,7 +202,6 @@ impl method::Is for Builtin {
     fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_is, lhs, rhs)
     }
-
 }
 
 impl method::IsNot for Builtin {
@@ -277,10 +272,8 @@ impl method::Equal for Builtin {
     fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         native_foreach_builtin!(self, native_eq, lhs, rhs)
     }
-
 }
 impl method::NotEqual for Builtin {
-
     fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ne, lhs, rhs)
     }
@@ -337,7 +330,6 @@ impl method::BooleanCast for Builtin {
 }
 
 impl method::IntegerCast for Builtin {
-
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_int, obj)
     }
@@ -345,7 +337,6 @@ impl method::IntegerCast for Builtin {
     fn native_int(&self) -> NativeResult<native::Integer> {
         native_foreach_builtin!(self, native_int, obj)
     }
-
 }
 
 impl method::FloatCast for Builtin {
@@ -359,7 +350,6 @@ impl method::FloatCast for Builtin {
 }
 
 impl method::ComplexCast for Builtin {
-
     fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_complex, obj)
     }
@@ -367,12 +357,10 @@ impl method::ComplexCast for Builtin {
     fn native_complex(&self) -> NativeResult<native::Complex> {
         native_foreach_builtin!(self, native_complex, obj)
     }
-
 }
 
 impl method::Rounding for Builtin {}
 impl method::Index for Builtin {
-
     fn op_index(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_index, obj)
     }
@@ -577,7 +565,7 @@ impl method::InPlaceModulus for Builtin {
 
     fn native_imod(&self, rhs: &Builtin) -> NativeResult<Builtin> {
         native_foreach_builtin!(self, native_imod, lhs, rhs)
-    }    
+    }
 }
 impl method::InPlaceMultiply for Builtin {
     fn op_imul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
@@ -614,7 +602,6 @@ impl method::InPlacePow for Builtin {
     fn native_ipow(&self, power: &Builtin, modulus: &Builtin) -> NativeResult<Builtin> {
         native_foreach_builtin!(self, native_ipow, base, power, modulus)
     }
-    
 }
 impl method::InPlaceRightShift for Builtin {
     fn op_irshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
@@ -661,9 +648,7 @@ impl method::Contains for Builtin {
         native_foreach_builtin!(self, native_contains, lhs, rhs)
     }
 }
-impl method::Iter for Builtin {
-    
-}
+impl method::Iter for Builtin {}
 impl method::Call for Builtin {}
 impl method::Length for Builtin {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
@@ -687,7 +672,6 @@ impl method::GetItem for Builtin {
     }
 }
 impl method::SetItem for Builtin {
-
     fn op_setitem(&self, rt: &Runtime, name: &ObjectRef, item: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_setitem, object, name, item)
     }
@@ -695,7 +679,6 @@ impl method::SetItem for Builtin {
     fn native_setitem(&self, name: &Builtin, item: &Builtin) -> NativeResult<native::NoneValue> {
         native_foreach_builtin!(self, native_setitem, object, name, item)
     }
-
 }
 impl method::DeleteItem for Builtin {
     fn op_delitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
@@ -713,7 +696,7 @@ impl method::Count for Builtin {
 
     fn native_count(&self, name: &Builtin) -> NativeResult<native::Integer> {
         native_foreach_builtin!(self, native_count, object, name)
-    }    
+    }
 }
 impl method::Append for Builtin {
     fn append(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {

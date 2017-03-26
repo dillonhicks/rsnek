@@ -51,7 +51,6 @@ pub struct RefCount(pub RefCell<Option<WeakObjectRef>>);
 
 
 impl SelfRef for RefCount {
-
     /// Unwrap the optional type and proxy to the underlying WeakObjectRef if present
     /// otherwise return 0.
     fn strong_count(&self) -> native::Integer {

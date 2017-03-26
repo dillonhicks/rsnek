@@ -13,7 +13,6 @@ use typedef::integer::IntegerObject;
 
 
 /// Big index of all traits used to define builtin objects
-
 // ----------------------------------
 //  Types and Initialization
 // ----------------------------------

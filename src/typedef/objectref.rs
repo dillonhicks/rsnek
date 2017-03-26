@@ -57,7 +57,6 @@ impl ObjectRef {
     pub fn weak_count(&self) -> native::Integer {
         native::Integer::from_usize(Rc::weak_count(&self.0)).unwrap()
     }
-
 }
 
 

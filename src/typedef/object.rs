@@ -70,9 +70,9 @@ impl object::PyAPI for PyObject {}
 impl method::New for PyObject {}
 impl method::Init for PyObject {}
 impl method::Delete for PyObject {}
-impl method::GetAttr for PyObject  {}
+impl method::GetAttr for PyObject {}
 
-    //
+//
 //    // TODO: Need to search the base classes dicts as well, maybe need MRO
 //    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
 //        let boxed: &Box<Builtin> = name.0.borrow();

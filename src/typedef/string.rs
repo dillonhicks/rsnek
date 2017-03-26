@@ -46,7 +46,7 @@ impl object::PyAPI for PyString {}
 impl method::New for PyString {}
 impl method::Init for PyString {}
 impl method::Delete for PyString {}
-impl method::GetAttr for PyString  {}
+impl method::GetAttr for PyString {}
 impl method::GetAttribute for PyString {}
 impl method::SetAttr for PyString {}
 impl method::DelAttr for PyString {}
