@@ -50,6 +50,10 @@ impl method::Id for PyInteger {}
 impl method::Is for PyInteger {}
 impl method::IsNot for PyInteger {}
 impl method::Hashed for PyInteger {}
+impl method::StringCast for PyInteger {}
+impl method::BytesCast for PyInteger {}
+impl method::StringFormat for PyInteger {}
+impl method::StringRepresentation for PyInteger {}
 impl method::Equal for PyInteger {}
 impl method::NotEqual for PyInteger {}
 impl method::LessThan for PyInteger {}

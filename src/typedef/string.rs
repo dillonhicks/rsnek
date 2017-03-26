@@ -54,6 +54,10 @@ impl method::Id for PyString {}
 impl method::Is for PyString {}
 impl method::IsNot for PyString {}
 impl method::Hashed for PyString {}
+impl method::StringCast for PyString {}
+impl method::BytesCast for PyString {}
+impl method::StringFormat for PyString {}
+impl method::StringRepresentation for PyString {}
 impl method::Equal for PyString {}
 impl method::NotEqual for PyString {}
 impl method::LessThan for PyString {}

@@ -62,6 +62,10 @@ impl method::Hashed for PyDict {
         Err(Error::typerr("Unhashable type dict"))
     }
 }
+impl method::StringCast for PyDict {}
+impl method::BytesCast for PyDict {}
+impl method::StringFormat for PyDict {}
+impl method::StringRepresentation for PyDict {}
 impl method::Equal for PyDict {}
 impl method::NotEqual for PyDict {}
 impl method::LessThan for PyDict {}

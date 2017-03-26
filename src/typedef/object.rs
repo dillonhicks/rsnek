@@ -108,6 +108,10 @@ impl method::Id for PyObject {}
 impl method::Is for PyObject {}
 impl method::IsNot for PyObject {}
 impl method::Hashed for PyObject {}
+impl method::StringCast for PyObject {}
+impl method::BytesCast for PyObject {}
+impl method::StringFormat for PyObject {}
+impl method::StringRepresentation for PyObject {}
 impl method::Equal for PyObject {}
 impl method::NotEqual for PyObject {}
 impl method::LessThan for PyObject {}

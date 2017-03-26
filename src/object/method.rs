@@ -58,9 +58,9 @@ api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
 // ----------------------------------
 //  String Formatting
 // -----------------------------------
-api_trait!(unary, self, __string__, StringCast, op_string, native_string, native::String);
+api_trait!(unary, self, __string__, StringCast, op_str, native_str, native::String);
 api_trait!(unary, self, __bytes__, BytesCast, op_bytes, native_bytes, native::Bytes);
-api_trait!(unary, self, __repr__, StringRepresentation, op_repr, native_repr, native::Repr);
+api_trait!(unary, self, __repr__, StringRepresentation, op_repr, native_repr, native::String);
 api_trait!(unary, self, __format__, StringFormat, op_format, native_format, native::String);
 
 // ----------------------------------
@@ -159,9 +159,9 @@ api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
 api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::NoneValue);
 api_trait!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
 api_trait!(binary, self, count, Count, count, native_count, native::Integer);
-api_trait!(binary, self, append, Append, append, native_append);
-api_trait!(binary, self, extend, Extend, extend, native_extend);
-api_trait!(binary, self, pop, Pop, pop, native_pop, native::Integer);
+api_trait!(binary, self, append, Append, append, native_append, native::NoneValue);
+api_trait!(binary, self, extend, Extend, extend, native_extend, native::NoneValue);
+api_trait!(binary, self, pop, Pop, pop, native_pop);
 api_trait!(binary, self, remove, Remove, remove, native_remove);
 
 
