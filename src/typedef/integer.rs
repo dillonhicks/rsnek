@@ -10,6 +10,7 @@ use num::{Zero, FromPrimitive, ToPrimitive, BigInt};
 
 use object::{self, RtValue};
 use object::method;
+use object::typing;
 use error::{Error, ErrorType};
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
@@ -24,13 +25,45 @@ use typedef::complex::ComplexObject;
 use typedef::string::StringObject;
 
 
-pub use typedef::native::Integer;
+pub const STATIC_INT_IDX_OFFSET: usize = 5;
+pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
+pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
 
 
 #[derive(Clone)]
-pub struct IntegerType;
+pub struct PyIntegerType;
 
-pub struct IntValue(pub RtValue<native::Integer>);
+impl typing::BuiltinTypeAPI for PyIntegerType {
+    type T = PyInteger;
+    type V = native::Integer;
+
+    fn new(rt: &Runtime, value: Self::V) -> ObjectRef {
+        let rtvalue = PyIntegerType::alloc(value);
+        let objref = ObjectRef::new(Builtin::Int(rtvalue));
+
+        let new = objref.clone();
+        let builtin: &Box<Builtin> = objref.0.borrow();
+        let object: &Self::T = builtin.int().unwrap();
+        object.rc.set(&objref.clone());
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyInteger {
+            value: IntValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+
+}
+
+
+impl method::New for PyIntegerType {}
+impl method::Init for PyIntegerType {}
+impl method::Delete for PyIntegerType {}
+
+
+pub struct IntValue(native::Integer);
 pub type PyInteger = RtValue<IntValue>;
 
 

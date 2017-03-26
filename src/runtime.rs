@@ -8,8 +8,9 @@ use heap::Heap;
 use typedef::native::ObjectId;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::boolean::{BooleanObject, BooleanSingletons, BooleanType};
-use typedef::integer::IntegerObject;
+use typedef::boolean::{BooleanObject, BooleanSingletons, PyBoolean, PyBooleanType};
+use typedef::integer::{IntegerObject, IntegerSingletons, PyInteger, PyIntegerType};
+use typedef::dictionary::{PyDict, PyDictType};
 use typedef::objectref::ToRtWrapperType;
 use typedef::none::NONE_TYPE;
 
@@ -26,17 +27,20 @@ pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
 pub struct Runtime(RuntimeRef);
 
 
+pub struct BuiltinTypes {
+    int: PyIntegerType,
+    bool: PyBooleanType,
+    dict: PyDictType,
+}
+
 /// Concrete struct that holds the current runtime state, heap, etc.
 struct RuntimeInternal {
     heap: Heap,
     singletons: SingletonIndex,
-    types: RefCell<Vec<PythonType>>,
+    builtins: BuiltinTypes
 }
 
 
-pub enum PythonType {
-    Bool(BooleanType),
-}
 
 //noinspection RsFieldNaming
 struct SingletonIndex {
@@ -52,6 +56,9 @@ pub enum Singleton {
     False,
     None,
 }
+
+
+
 
 
 /// Type that is the Reference Counted wrapper around the actual runtime
@@ -93,10 +100,16 @@ impl Runtime {
             integers: range.into(),
         };
 
+        let builtins = BuiltinTypes {
+            bool: PyBooleanType{},
+            int: PyIntegerType{},
+            dict: PyDictType{},
+        };
+
         let internal = RuntimeInternal {
             heap: heap,
             singletons: singletons,
-            types: RefCell::new(Vec::new()),
+            builtins: builtins,
         };
 
 
@@ -178,6 +191,7 @@ impl Runtime {
         }
     }
 
+
     #[allow(non_snake_case)]
     pub fn Zero(&self) -> ObjectRef {
         return self.Int(0).unwrap();
@@ -187,6 +201,8 @@ impl Runtime {
     pub fn One(&self) -> ObjectRef {
         return self.Int(1).unwrap();
     }
+
+
 }
 
 impl std::fmt::Debug for Runtime {

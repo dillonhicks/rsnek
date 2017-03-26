@@ -20,6 +20,9 @@ use object::{self, RtValue};
 use object::method;
 
 
+#[derive(Clone)]
+pub struct PyDictType;
+
 
 #[derive(Clone)]
 pub struct DictValue(pub RefCell<native::Dict>);

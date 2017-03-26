@@ -9,7 +9,7 @@ use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::{ObjectRef, ToRtWrapperType};
-use typedef::integer::IntegerObject;
+use typedef::integer::{IntegerObject, PyInteger};
 
 
 /// Big index of all traits used to define builtin objects
@@ -19,8 +19,15 @@ use typedef::integer::IntegerObject;
 /// Metaclass instance creator
 api_trait!(4ary, self, __new__, New, op_new, native_new);
 /// Class constructor generally gets passed the instance created in __new__
-api_trait!(4ary, self, __init__, Init, op_init, native_init);
-
+//api_trait!(4ary, self, __init__, Init, op_init, native_init);
+pub trait Init{
+    fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+        Err(Error::unimplemented())
+    }
+    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<()> {
+        Err(Error::unimplemented())
+    }
+}
 /// Trait to define a destructor.
 ///
 /// Shared with descriptor
@@ -50,6 +57,16 @@ api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 //  and `is / is not` keyword operators.
 // ----------------------------------
 api_trait!(unary, self, id, Id, op_id, native_id, native::ObjectId);
+pub trait Id {
+    fn op_id(&self, rt: &Runtime) -> RuntimeResult {
+        let objref: ObjectRef = rt.Int(self.native_id(self)).to();
+        return rt.alloc(objref);
+    }
+
+    fn native_id(&self) -> native::ObjectId {
+        return (&self as *const _) as native::ObjectId;
+    }
+}
 api_trait!(binary, self, is_, Is, op_is, native_is, native::Boolean);
 api_trait!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
 api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);

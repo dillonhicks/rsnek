@@ -16,7 +16,7 @@ use object::model::PyBehavior;
 use typedef::objectref;
 use typedef::objectref::{RtObject, ObjectRef, WeakObjectRef};
 use typedef::boolean::{PyBoolean, BooleanObject};
-use typedef::integer::IntegerObject;
+use typedef::integer::{PyInteger, IntegerObject};
 use typedef::float::FloatObject;
 use typedef::string::{PyString, StringObject};
 use typedef::tuple::TupleObject;
@@ -26,6 +26,7 @@ use typedef::set::SetObject;
 use typedef::frozenset::FrozenSetObject;
 use typedef::dictionary::DictionaryObject;
 use typedef::none::NoneType;
+use typedef::object::PyObject;
 use typedef::native;
 
 
@@ -46,16 +47,17 @@ pub enum Builtin {
     Dictionary(DictionaryObject),
     Complex(ComplexObject),
 
-    // Not yet implemented
-    Object(()),
+    // Not yet implementeds
     Function(()),
     Method(()),
     Module(()), /*    Type(TypeObject),
                  *    Meta(MetaObject),
                  *    None(NoneObject) */
 
+    Object(PyObject),
     Bool(PyBoolean),
     Str(PyString),
+    Int(PyInteger),
 
     DictKey(native::DictKey),
 }
@@ -739,17 +741,17 @@ impl method::IsDisjoint for Builtin {
         foreach_builtin!(self, rt, op_isdisjoint, object, name)
     }
 
-    fn native_isdisjoint(&self, name: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_isdisjoint, object, name)
+    fn native_meth_isdisjoint(&self, name: &Builtin) -> NativeResult<native::Boolean> {
+        native_foreach_builtin!(self, native_meth_isdisjoint, object, name)
     }
 }
 impl method::AddItem for Builtin {
-    fn pop(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_pop, object, name)
+    fn meth_add(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_meth_add, object, name)
     }
 
-    fn native_pop(&self, name: &Builtin) -> NativeResult<Builtin> {
-        native_foreach_builtin!(self, native_pop, object, name)
+    fn native_meth_add(&self, name: &Builtin) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_meth_add, object, name)
     }
 }
 impl method::Discard for Builtin {}

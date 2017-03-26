@@ -9,7 +9,8 @@ use std::marker::Copy;
 
 use num::{BigInt, FromPrimitive};
 
-use object;
+use object::{self, RtValue, PyAPI};
+use object::method;
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
 use error::{Error, ErrorType};
@@ -24,7 +25,123 @@ use super::float::FloatObject;
 
 
 pub const NONE_TYPE: NoneType = NoneType(());
-const NONE_STR: &'static str = "None";
+pub const NONE_STR: &'static str = "None";
+
+pub struct NoneValue;
+pub type PyNone = RtValue<NoneValue>;
+
+
+impl PyAPI for PyNone {}
+impl method::New for PyNone {}
+impl method::Init for PyNone {}
+impl method::Delete for PyNone {}
+impl method::GetAttr for PyNone {}
+impl method::GetAttribute for PyNone {}
+impl method::SetAttr for PyNone {}
+impl method::DelAttr for PyNone {}
+impl method::Id for PyNone {}
+impl method::Is for PyNone {}
+impl method::IsNot for PyNone {}
+impl method::Hashed for PyNone {}
+impl method::StringCast for PyNone {}
+impl method::BytesCast for PyNone {}
+impl method::StringFormat for PyNone {}
+impl method::StringRepresentation for PyNone {}
+impl method::Equal for PyNone {}
+impl method::NotEqual for PyNone {}
+impl method::LessThan for PyNone {}
+impl method::LessOrEqual for PyNone {}
+impl method::GreaterOrEqual for PyNone {}
+impl method::GreaterThan for PyNone {}
+impl method::BooleanCast for PyNone {}
+impl method::IntegerCast for PyNone {}
+impl method::FloatCast for PyNone {}
+impl method::ComplexCast for PyNone {}
+impl method::Rounding for PyNone {}
+impl method::Index for PyNone {}
+impl method::NegateValue for PyNone {}
+impl method::AbsValue for PyNone {}
+impl method::PositiveValue for PyNone {}
+impl method::InvertValue for PyNone {}
+impl method::Add for PyNone {}
+impl method::BitwiseAnd for PyNone {}
+impl method::DivMod for PyNone {}
+impl method::FloorDivision for PyNone {}
+impl method::LeftShift for PyNone {}
+impl method::Modulus for PyNone {}
+impl method::Multiply for PyNone {}
+impl method::MatrixMultiply for PyNone {}
+impl method::BitwiseOr for PyNone {}
+impl method::Pow for PyNone {}
+impl method::RightShift for PyNone {}
+impl method::Subtract for PyNone {}
+impl method::TrueDivision for PyNone {}
+impl method::XOr for PyNone {}
+impl method::ReflectedAdd for PyNone {}
+impl method::ReflectedBitwiseAnd for PyNone {}
+impl method::ReflectedDivMod for PyNone {}
+impl method::ReflectedFloorDivision for PyNone {}
+impl method::ReflectedLeftShift for PyNone {}
+impl method::ReflectedModulus for PyNone {}
+impl method::ReflectedMultiply for PyNone {}
+impl method::ReflectedMatrixMultiply for PyNone {}
+impl method::ReflectedBitwiseOr for PyNone {}
+impl method::ReflectedPow for PyNone {}
+impl method::ReflectedRightShift for PyNone {}
+impl method::ReflectedSubtract for PyNone {}
+impl method::ReflectedTrueDivision for PyNone {}
+impl method::ReflectedXOr for PyNone {}
+impl method::InPlaceAdd for PyNone {}
+impl method::InPlaceBitwiseAnd for PyNone {}
+impl method::InPlaceDivMod for PyNone {}
+impl method::InPlaceFloorDivision for PyNone {}
+impl method::InPlaceLeftShift for PyNone {}
+impl method::InPlaceModulus for PyNone {}
+impl method::InPlaceMultiply for PyNone {}
+impl method::InPlaceMatrixMultiply for PyNone {}
+impl method::InPlaceBitwiseOr for PyNone {}
+impl method::InPlacePow for PyNone {}
+impl method::InPlaceRightShift for PyNone {}
+impl method::InPlaceSubtract for PyNone {}
+impl method::InPlaceTrueDivision for PyNone {}
+impl method::InPlaceXOr for PyNone {}
+impl method::Contains for PyNone {}
+impl method::Iter for PyNone {}
+impl method::Call for PyNone {}
+impl method::Length for PyNone {}
+impl method::LengthHint for PyNone {}
+impl method::Next for PyNone {}
+impl method::Reversed for PyNone {}
+impl method::GetItem for PyNone {}
+impl method::SetItem for PyNone {}
+impl method::DeleteItem for PyNone {}
+impl method::Count for PyNone {}
+impl method::Append for PyNone {}
+impl method::Extend for PyNone {}
+impl method::Pop for PyNone {}
+impl method::Remove for PyNone {}
+impl method::IsDisjoint for PyNone {}
+impl method::AddItem for PyNone {}
+impl method::Discard for PyNone {}
+impl method::Clear for PyNone {}
+impl method::Get for PyNone {}
+impl method::Keys for PyNone {}
+impl method::Values for PyNone {}
+impl method::Items for PyNone {}
+impl method::PopItem for PyNone {}
+impl method::Update for PyNone {}
+impl method::SetDefault for PyNone {}
+impl method::Await for PyNone {}
+impl method::Send for PyNone {}
+impl method::Throw for PyNone {}
+impl method::Close for PyNone {}
+impl method::Exit for PyNone {}
+impl method::Enter for PyNone {}
+impl method::DescriptorGet for PyNone {}
+impl method::DescriptorSet for PyNone {}
+impl method::DescriptorSetName for PyNone {}
+
+
 
 
 #[derive(Clone,Hash,Eq,PartialEq,PartialOrd,Ord)]

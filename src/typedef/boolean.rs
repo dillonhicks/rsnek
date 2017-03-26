@@ -44,7 +44,8 @@ pub struct BooleanSingletons {
 
 
 #[derive(Clone)]
-pub struct BooleanType;
+pub struct PyBooleanType;
+
 
 #[derive(Clone)]
 pub struct BoolValue(pub native::Integer);
@@ -72,7 +73,7 @@ impl typing::HasName for BooleanType {
 }
 
 impl method::New for BooleanType {
-    fn op_new(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_new(&self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match self.native_new() {
             Ok(inst) => {
                 let objref: ObjectRef = ObjectRef::new(Builtin::Bool(inst));
@@ -94,21 +95,21 @@ impl method::New for BooleanType {
         }
     }
 
-    fn native_new(&self) -> NativeResult<Self::T> {
-        Ok(PyBoolean {
+    fn native_new(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<Builtin> {
+        Ok(Builtin::Bool(PyBoolean {
             value: BoolValue(native::Integer::zero()),
             rc: RefCount::default(),
-        })
+        }))
     }
 }
 
 impl method::Init for BooleanType {
-    fn op_init(&mut self, rt: &Runtime) -> RuntimeResult {
+    fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         self.op_new(&rt)
     }
 
     #[inline]
-    fn native_init(&mut self) -> NativeResult<()> {
+    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<()> {
         Ok(())
     }
 }

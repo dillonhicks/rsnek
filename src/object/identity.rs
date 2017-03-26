@@ -10,16 +10,9 @@ use typedef::objectref::{ObjectRef, ToRtWrapperType};
 use typedef::integer::IntegerObject;
 
 use object::method;
+use object::method::Id;
 
 pub trait DefaultIdentity: method::Id + method::Is + method::IsNot {
-    fn op_id(&self, rt: &Runtime) -> RuntimeResult {
-        let objref: ObjectRef = IntegerObject::new_u64(DefaultIdentity::native_id(self)).to();
-        return rt.alloc(objref);
-    }
-
-    fn native_id(&self) -> native::ObjectId {
-        return (&self as *const _) as native::ObjectId;
-    }
 
     fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();

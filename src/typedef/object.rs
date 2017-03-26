@@ -7,7 +7,7 @@ use object::{self, RtValue};
 use object::method;
 use object::attribute;
 
-use typedef::dictionary::DictionaryObject;
+use typedef::dictionary::PyDict;
 use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
@@ -59,8 +59,8 @@ macro_rules! resolve_inner {
 }
 
 impl attribute::HasDict for PyObject {
-    fn get_dict(&self) -> &DictionaryObject {
-        resolve_inner!(dictobj, self.value.dict, &DictionaryObject, dict);
+    fn get_dict(&self) -> &PyDict {
+        resolve_inner!(dictobj, self.value.dict, &PyDict, dict);
         dictobj
     }
 }
