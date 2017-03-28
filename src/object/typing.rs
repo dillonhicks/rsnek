@@ -16,14 +16,22 @@ pub trait HasName {
 // TODO: Inheritance? Missing bases, mro, etc.
 /// __builtins__.type: Defines how types are created
 pub trait Type: method::New + method::Init + HasName {}
-pub trait BuiltinTypeAPI {
+
+
+pub trait BuiltinType {
     type T;
     type V;
 
-    /// Create a new instance of the primitve type that his reference counted
-    fn new(rt: &Runtime, value: Self::V) -> ObjectRef;
+    /// Create the type and do any static initialization that may be needed
+    fn init_type() -> Self;
+
+    fn inject_selfref(Self::T) -> ObjectRef;
 
     /// Create an instance of the type ane return the struct that contains
     /// the state but is not yet reference counted.
     fn alloc(value: Self::V) -> Self::T;
+
+    /// Create a new instance of the primitve type that his reference counted
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef;
+
 }

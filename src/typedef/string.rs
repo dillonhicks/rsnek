@@ -12,6 +12,7 @@ use num::{BigInt, FromPrimitive};
 use object::{self, RtValue, PyAPI};
 use object::selfref;
 use object::method;
+use object::typing;
 use object::method::Hashed;
 use typedef::native;
 use result::{RuntimeResult, NativeResult};
@@ -27,8 +28,50 @@ use super::float::FloatObject;
 
 
 
+pub struct PyStringType {
+    pub empty: ObjectRef
+}
+
+
+impl typing::BuiltinType for PyStringType {
+    type T = PyString;
+    type V = native::String;
+
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyStringType::inject_selfref(PyString::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyStringType{
+            empty: PyString::inject_selfref(PyStringType::alloc("".to_string()))
+        }
+    }
+
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Str(value));
+
+        let new = objref.clone();
+        let mut string;
+        try_cast!(string, objref, Builtin::Str);
+        string.rc.set(&objref.clone());
+        new
+    }
+
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyString {
+            value: StringValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+
+}
+
+
 #[derive(Clone)]
 pub struct StringValue(pub native::String);
+
 
 pub type PyString = RtValue<StringValue>;
 
@@ -200,7 +243,7 @@ impl object::model::PyBehavior for StringObject {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
             _ => unreachable!(),
         }
     }

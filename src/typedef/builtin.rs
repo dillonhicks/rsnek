@@ -24,7 +24,7 @@ use typedef::list::ListObject;
 use typedef::complex::ComplexObject;
 use typedef::set::SetObject;
 use typedef::frozenset::FrozenSetObject;
-use typedef::dictionary::DictionaryObject;
+use typedef::dictionary::{DictionaryObject, PyDict};
 use typedef::none::NoneType;
 use typedef::object::PyObject;
 use typedef::native;
@@ -58,6 +58,7 @@ pub enum Builtin {
     Bool(PyBoolean),
     Str(PyString),
     Int(PyInteger),
+    Dict(PyDict),
 
     DictKey(native::DictKey),
 }
@@ -180,8 +181,9 @@ impl method::GetAttribute for Builtin {}
 impl method::SetAttr for Builtin {}
 impl method::DelAttr for Builtin {}
 impl method::Id for Builtin {
-    fn identity(&self, rt: &Runtime) -> RuntimeResult {
-        foreach_builtin!(self, rt, identity, lhs)
+
+    fn op_id(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, id, lhs)
     }
 
     // Short circuit the ident to hit the wrapper since
@@ -692,53 +694,53 @@ impl method::DeleteItem for Builtin {
     }
 }
 impl method::Count for Builtin {
-    fn count(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_count(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_count, object, name)
     }
 
-    fn native_count(&self, name: &Builtin) -> NativeResult<native::Integer> {
+    fn native_meth_count(&self, name: &Builtin) -> NativeResult<native::Integer> {
         native_foreach_builtin!(self, native_count, object, name)
     }
 }
 impl method::Append for Builtin {
-    fn append(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_append(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_append, object, name)
     }
 
-    fn native_append(&self, name: &Builtin) -> NativeResult<native::NoneValue> {
+    fn native_meth_append(&self, name: &Builtin) -> NativeResult<native::NoneValue> {
         native_foreach_builtin!(self, native_append, object, name)
     }
 }
 impl method::Extend for Builtin {
-    fn extend(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_extend, object, name)
+    fn meth_extend(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, meth_extend, object, name)
     }
 
-    fn native_extend(&self, name: &Builtin) -> NativeResult<native::NoneValue> {
-        native_foreach_builtin!(self, native_extend, object, name)
+    fn native_meth_extend(&self, name: &Builtin) -> NativeResult<native::NoneValue> {
+        native_foreach_builtin!(self, native_meth_extend, object, name)
     }
 }
 impl method::Pop for Builtin {
-    fn pop(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_pop, object, name)
+    fn meth_pop(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, meth_pop, object, name)
     }
 
-    fn native_pop(&self, name: &Builtin) -> NativeResult<Builtin> {
-        native_foreach_builtin!(self, native_pop, object, name)
+    fn native_meth_pop(&self, name: &Builtin) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_meth_pop, object, name)
     }
 }
 impl method::Remove for Builtin {
-    fn remove(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_remove(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_remove, object, name)
     }
 
-    fn native_remove(&self, name: &Builtin) -> NativeResult<Builtin> {
-        native_foreach_builtin!(self, native_remove, object, name)
+    fn native_meth_remove(&self, name: &Builtin) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_meth_remove, object, name)
     }
 }
 impl method::IsDisjoint for Builtin {
-    fn isdisjoint(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_isdisjoint, object, name)
+    fn meth_isdisjoint(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, meth_isdisjoint, object, name)
     }
 
     fn native_meth_isdisjoint(&self, name: &Builtin) -> NativeResult<native::Boolean> {

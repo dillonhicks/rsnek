@@ -2,17 +2,23 @@
 use std;
 use std::rc::Rc;
 use std::cell::RefCell;
+use num::FromPrimitive;
+use num::Zero;
+
 pub use result::RuntimeResult;
 use heap::Heap;
+use object::typing::BuiltinType;
 
 use typedef::native::ObjectId;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::boolean::{BooleanObject, BooleanSingletons, PyBoolean, PyBooleanType};
-use typedef::integer::{IntegerObject, IntegerSingletons, PyInteger, PyIntegerType};
+use typedef::boolean::{BooleanObject, PyBoolean, PyBooleanType};
+use typedef::integer::{IntegerObject, PyInteger, PyIntegerType};
+use typedef::string::{PyStringType};
 use typedef::dictionary::{PyDict, PyDictType};
 use typedef::objectref::ToRtWrapperType;
 use typedef::none::NONE_TYPE;
+use typedef::native;
 
 /// If not size is given, fallback to 256kb.
 pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
@@ -31,34 +37,26 @@ pub struct BuiltinTypes {
     int: PyIntegerType,
     bool: PyBooleanType,
     dict: PyDictType,
+    string: PyStringType
 }
 
 /// Concrete struct that holds the current runtime state, heap, etc.
 struct RuntimeInternal {
     heap: Heap,
     singletons: SingletonIndex,
-    builtins: BuiltinTypes
+    types: BuiltinTypes
 }
 
 
 
 //noinspection RsFieldNaming
+#[deprecated]
 struct SingletonIndex {
     True: ObjectRef,
     False: ObjectRef,
     None: ObjectRef,
     integers: Box<[ObjectRef]>,
 }
-
-
-pub enum Singleton {
-    True,
-    False,
-    None,
-}
-
-
-
 
 
 /// Type that is the Reference Counted wrapper around the actual runtime
@@ -101,27 +99,21 @@ impl Runtime {
         };
 
         let builtins = BuiltinTypes {
-            bool: PyBooleanType{},
-            int: PyIntegerType{},
-            dict: PyDictType{},
+            bool: PyBooleanType::init_type(),
+            int: PyIntegerType::init_type(),
+            dict: PyDictType::init_type(),
+            string: PyStringType::init_type()
         };
 
         let internal = RuntimeInternal {
             heap: heap,
             singletons: singletons,
-            builtins: builtins,
+            types: builtins,
         };
 
 
         Runtime(Rc::new(Box::new(internal)))
     }
-    //
-    //    pub fn register_type(&self, pytype: PythonType) {
-    //        let mut types = self.0.types.borrow_mut();
-    //        let boxed = Box::new(pytype);
-    //        types.push(boxed);
-    //
-    //    }
 
     /// Alloc a spot for the object ref in the `Heap` for the `Runtime` this will
     /// mean that there will be at one single strong reference to the `ObjectRef`
@@ -155,7 +147,7 @@ impl Runtime {
     //
 
     #[allow(non_snake_case)]
-    pub fn True(&self) -> ObjectRef {
+    pub fn OldTrue(&self) -> ObjectRef {
         self.0
             .singletons
             .True
@@ -163,7 +155,7 @@ impl Runtime {
     }
 
     #[allow(non_snake_case)]
-    pub fn False(&self) -> ObjectRef {
+    pub fn OldFalse(&self) -> ObjectRef {
         self.0
             .singletons
             .False
@@ -181,7 +173,7 @@ impl Runtime {
     // Statically allocated integers to make
     // often created values like 0 and 1 a shortcut.
     #[allow(non_snake_case)]
-    pub fn Int(&self, idx: isize) -> Option<ObjectRef> {
+    pub fn IntOld(&self, idx: isize) -> Option<ObjectRef> {
         match (idx + (STATIC_INT_IDX_OFFSET as isize)) as usize {
             checked_idx @ 0...STATIC_INT_RANGE_MAX => {
                 let static_ref = self.0.singletons.integers[checked_idx as usize].clone();
@@ -193,17 +185,52 @@ impl Runtime {
 
 
     #[allow(non_snake_case)]
-    pub fn Zero(&self) -> ObjectRef {
-        return self.Int(0).unwrap();
+    pub fn ZeroOld(&self) -> ObjectRef {
+        return self.IntOld(0).unwrap();
     }
 
     #[allow(non_snake_case)]
-    pub fn One(&self) -> ObjectRef {
-        return self.Int(1).unwrap();
+    pub fn OneOld(&self) -> ObjectRef {
+        return self.IntOld(1).unwrap();
     }
 
+    // Integer
+    pub fn int(&self, value: native::Integer) -> ObjectRef {
+        self.0.types.int.new(&self, value)
+    }
+
+    pub fn int_zero(&self) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::zero())
+    }
+
+    pub fn int_one(&self) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::from_usize(1).unwrap())
+    }
+
+    // Boolean
+    pub fn bool(&self, value: native::Boolean) -> ObjectRef {
+        self.0.types.bool.new(&self, value)
+    }
+
+    pub fn bool_true(&self) -> ObjectRef {
+        self.bool(true)
+    }
+
+    pub fn bool_false(&self) -> ObjectRef {
+        self.bool(false)
+    }
+
+    // String
+    pub fn str(&self, value: native::String) -> ObjectRef {
+        self.0.types.string.new(&self, value)
+    }
+
+    pub fn str_empty(&self) -> ObjectRef {
+        return self.0.types.string.empty.clone()
+    }
 
 }
+
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -220,28 +247,28 @@ mod impl_runtime {
     #[allow(non_snake_case)]
     fn static_integers_Zero_and_One() {
         let mut rt = Runtime::new(None);
-        assert_eq!(rt.Zero(), rt.Zero());
-        assert_eq!(rt.One(), rt.One());
+        assert_eq!(rt.ZeroOld(), rt.ZeroOld());
+        assert_eq!(rt.OneOld(), rt.OneOld());
     }
 
     #[test]
     fn static_int_full_range() {
         let mut rt = Runtime::new(None);
         for idx in STATIC_INT_RANGE {
-            assert!(rt.Int(idx).is_some());
+            assert!(rt.IntOld(idx).is_some());
         }
     }
 
     #[test]
     fn static_int_bad_idx_lower_bound() {
         let mut rt = Runtime::new(None);
-        assert!(rt.Int(-(1 + STATIC_INT_IDX_OFFSET as isize)).is_none());
+        assert!(rt.IntOld(-(1 + STATIC_INT_IDX_OFFSET as isize)).is_none());
     }
 
     #[test]
     fn static_int_bad_idx_upper_bound() {
         let mut rt = Runtime::new(None);
-        assert!(rt.Int(1 + (STATIC_INT_RANGE_MAX as isize)).is_none());
+        assert!(rt.IntOld(1 + (STATIC_INT_RANGE_MAX as isize)).is_none());
     }
 
 }

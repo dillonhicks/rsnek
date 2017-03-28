@@ -18,11 +18,45 @@ use typedef::builtin::Builtin;
 use object::method::Hashed;
 use object::{self, RtValue};
 use object::method;
+use object::typing;
+use object::selfref;
 
 
 #[derive(Clone)]
 pub struct PyDictType;
 
+impl typing::BuiltinType for PyDictType {
+    type T = PyDict;
+    type V = native::Dict;
+
+
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        // TODO: Add check for static range
+        PyDictType::inject_selfref(PyDictType::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyDictType{}
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Dict(value));
+
+        let new = objref.clone();
+        let mut dict;
+        try_cast!(dict, objref, Builtin::Dict);
+        dict.rc.set(&objref.clone());
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyDict {
+            value: DictValue(RefCell::new(native::Dict::new())),
+            rc: selfref::RefCount::default(),
+        }
+    }
+
+}
 
 #[derive(Clone)]
 pub struct DictValue(pub RefCell<native::Dict>);
@@ -78,9 +112,9 @@ impl method::GreaterThan for PyDict {}
 impl method::BooleanCast for PyDict {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         Ok(if self.native_bool().unwrap() {
-               rt.True()
+               rt.OldTrue()
            } else {
-               rt.False()
+               rt.OldFalse()
            })
     }
 
@@ -274,9 +308,9 @@ impl object::model::PyBehavior for DictionaryObject {
 
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         Ok(if self.native_bool().unwrap() {
-               rt.True()
+               rt.OldTrue()
            } else {
-               rt.False()
+               rt.OldFalse()
            })
     }
 
@@ -404,7 +438,7 @@ mod impl_pybehavior {
         let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
 
         let result = dict_ref.op_is(&rt, &empty_dict).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
     }
 
     /// Ensure that the dictionary reference equality does not
@@ -418,7 +452,7 @@ mod impl_pybehavior {
         let dict_ref: &Box<Builtin> = empty_dict.0.borrow();
 
         let result = dict_ref.op_is_not(&rt, &another_dict).unwrap();
-        assert_eq!(result, rt.False());
+        assert_eq!(result, rt.OldFalse());
     }
 
     /// Mutable collection types should not be hashable
@@ -609,7 +643,7 @@ mod impl_mappingpybehavior {
         assert_eq!(result, rt.None());
 
         let result = dict_ref.op_len(&rt).unwrap();
-        assert_eq!(result, rt.One());
+        assert_eq!(result, rt.OneOld());
     }
 
     #[test]

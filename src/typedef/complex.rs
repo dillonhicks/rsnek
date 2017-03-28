@@ -103,7 +103,7 @@ mod impl_pybehavior {
         let mut rt = Runtime::new(None);
         assert_eq!(rt.heap_size(), 0);
 
-        let False = rt.False();
+        let False = rt.OldFalse();
         let False2 = False.clone();
 
         let False_ref: &Box<Builtin> = False.0.borrow();
@@ -112,7 +112,7 @@ mod impl_pybehavior {
         assert_eq!(result, true, "BooleanObject native is(native_is)");
 
         let result = False_ref.op_is(&mut rt, &False2).unwrap();
-        assert_eq!(result, rt.True(), "BooleanObject is(op_is)");
+        assert_eq!(result, rt.OldTrue(), "BooleanObject is(op_is)");
 
     }
 
@@ -130,16 +130,16 @@ mod impl_pybehavior {
         let boxed: &Box<Builtin> = lhs.0.borrow();
 
         let result = boxed.op_eq(&rt, &rhs_eq).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
 
         let result = boxed.op_ne(&rt, &rhs_eq).unwrap();
-        assert_eq!(result, rt.False());
+        assert_eq!(result, rt.OldFalse());
 
         let result = boxed.op_eq(&rt, &rhs_ne).unwrap();
-        assert_eq!(result, rt.False());
+        assert_eq!(result, rt.OldFalse());
 
         let result = boxed.op_ne(&rt, &rhs_ne).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
     }
 
     #[test]
@@ -152,7 +152,7 @@ mod impl_pybehavior {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         let result = boxed.op_bool(&rt).unwrap();
 
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
     }
 
     #[test]

@@ -8,6 +8,7 @@ use object::{self, RtValue};
 use object::model::PyBehavior;
 use object::typing;
 use object::method;
+use object::selfref;
 use error::Error;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
@@ -15,7 +16,6 @@ use typedef::integer::IntegerObject;
 use typedef::objectref::ToRtWrapperType;
 use typedef::float::FloatObject;
 use object::selfref::{RefCount, SelfRef};
-use runtime::PythonType;
 
 use typedef::builtin;
 use typedef::builtin::Builtin;
@@ -36,15 +36,51 @@ pub const TRUE_BYTES: &'static [u8] = &[1];
 pub const FALSE_BYTES: &'static [u8] = &[0];
 
 
-#[allow(non_snake_case)]
-pub struct BooleanSingletons {
-    True: ObjectRef,
-    False: ObjectRef,
+
+#[derive(Clone)]
+pub struct PyBooleanType {
+    singleton_true: ObjectRef,
+    singleton_false: ObjectRef
 }
 
 
-#[derive(Clone)]
-pub struct PyBooleanType;
+impl typing::BuiltinType for PyBooleanType {
+    type T = PyBoolean;
+    type V = native::Boolean;
+
+
+    fn init_type() -> Self {
+        PyBooleanType {
+            singleton_true: PyBooleanType::inject_selfref(PyBooleanType::alloc(true)),
+            singleton_false: PyBooleanType::inject_selfref(PyBooleanType::alloc(false)),
+        }
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Bool(value));
+
+        let new = objref.clone();
+
+        let mut boolean;
+        try_cast!(boolean, objref, Builtin::Bool);
+        boolean.rc.set(&objref.clone());
+        new
+    }
+
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        if value {self.singleton_true.clone()} else {self.singleton_false.clone()}
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        let int = if value {native::Integer::from_usize(1).unwrap()} else {native::Integer::zero()};
+        PyBoolean {
+            value: BoolValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+
+
+}
 
 
 #[derive(Clone)]
@@ -62,57 +98,6 @@ impl std::fmt::Debug for PyBoolean {
     }
 }
 
-
-impl typing::Type for BooleanType {}
-
-impl typing::HasName for BooleanType {
-    #[inline]
-    fn get_name(&self) -> native::String {
-        "bool".to_string()
-    }
-}
-
-impl method::New for BooleanType {
-    fn op_new(&self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-        match self.native_new() {
-            Ok(inst) => {
-                let objref: ObjectRef = ObjectRef::new(Builtin::Bool(inst));
-                let result = rt.alloc(objref.clone());
-                match result {
-                    Ok(selfref) => {
-                        // TODO: This looks gross but might be the only way
-                        // to set the selfref unless the heap can pass back mut
-                        // boxes.
-                        let builtin: &Box<Builtin> = objref.0.borrow();
-                        let bool: &PyBoolean = builtin.bool().unwrap();
-                        bool.rc.set(&selfref.clone());
-                        Ok(selfref)
-                    }
-                    Err(err) => Err(err),
-                }
-            }
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_new(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<Builtin> {
-        Ok(Builtin::Bool(PyBoolean {
-            value: BoolValue(native::Integer::zero()),
-            rc: RefCount::default(),
-        }))
-    }
-}
-
-impl method::Init for BooleanType {
-    fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-        self.op_new(&rt)
-    }
-
-    #[inline]
-    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<()> {
-        Ok(())
-    }
-}
 
 impl object::PyAPI for PyBoolean {}
 impl method::New for PyBoolean {}
@@ -171,7 +156,7 @@ impl method::Equal for PyBoolean {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
             Err(err) => Err(err),
         }
     }
@@ -349,7 +334,7 @@ impl object::model::PyBehavior for BooleanObject {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
             Err(err) => Err(err),
         }
     }
@@ -494,7 +479,7 @@ mod impl_pybehavior {
         let mut rt = Runtime::new(None);
         assert_eq!(rt.heap_size(), 0);
 
-        let False = rt.False();
+        let False = rt.OldFalse();
         let False2 = False.clone();
 
         let False_ref: &Box<Builtin> = False.0.borrow();
@@ -503,7 +488,7 @@ mod impl_pybehavior {
         assert_eq!(result, true, "BooleanObject native is(native_is)");
 
         let result = False_ref.op_is(&mut rt, &False2).unwrap();
-        assert_eq!(result, rt.True(), "BooleanObject is(op_is)");
+        assert_eq!(result, rt.OldTrue(), "BooleanObject is(op_is)");
 
     }
 
@@ -514,8 +499,8 @@ mod impl_pybehavior {
         let mut rt = Runtime::new(None);
         assert_eq!(rt.heap_size(), 0);
 
-        let False = rt.False();
-        let True = rt.True();
+        let False = rt.OldFalse();
+        let True = rt.OldTrue();
 
         let thing1 = rt.alloc(False.clone()).unwrap();
         let False2 = rt.alloc(False.clone()).unwrap();
@@ -535,11 +520,11 @@ mod impl_pybehavior {
     fn __bool__() {
         let mut rt = Runtime::new(None);
 
-        let True = rt.True();
+        let True = rt.OldTrue();
         let True_ref: &Box<Builtin> = True.0.borrow();
 
         let result = True_ref.op_bool(&rt).unwrap();
-        assert_eq!(rt.True(), result);
+        assert_eq!(rt.OldTrue(), result);
 
         let result = True_ref.native_bool().unwrap();
         assert_eq!(result, true);
@@ -552,7 +537,7 @@ mod impl_pybehavior {
 
         let one: ObjectRef = IntegerObject::new_u64(1).to();
 
-        let True = rt.True();
+        let True = rt.OldTrue();
         let True_ref: &Box<Builtin> = True.0.borrow();
 
         let result = True_ref.op_int(&rt).unwrap();
@@ -566,14 +551,14 @@ mod impl_pybehavior {
         let one_complex: ObjectRef = ComplexObject::from_f64(1.0, 0.0).to();
         let zero_complex: ObjectRef = ComplexObject::from_f64(0.0, 0.0).to();
 
-        let True = rt.True();
-        let True = rt.True();
+        let True = rt.OldTrue();
+        let True = rt.OldTrue();
         let True_ref: &Box<Builtin> = True.0.borrow();
 
         let result = True_ref.op_complex(&rt).unwrap();
         assert_eq!(result, one_complex);
 
-        let False = rt.False();
+        let False = rt.OldFalse();
         let False_ref: &Box<Builtin> = False.0.borrow();
 
         let result = False_ref.op_complex(&rt).unwrap();
@@ -587,13 +572,13 @@ mod impl_pybehavior {
         let one_float: ObjectRef = FloatObject::new(1.0).to();
         let zero_float: ObjectRef = FloatObject::new(0.0).to();
 
-        let True = rt.True();
+        let True = rt.OldTrue();
         let True_ref: &Box<Builtin> = True.0.borrow();
 
         let result = True_ref.op_float(&rt).unwrap();
         assert_eq!(result, one_float);
 
-        let False = rt.False();
+        let False = rt.OldFalse();
         let False_ref: &Box<Builtin> = False.0.borrow();
 
         let result = False_ref.op_float(&rt).unwrap();
@@ -607,13 +592,13 @@ mod impl_pybehavior {
         let zero: ObjectRef = IntegerObject::new_u64(0).to();
         let one: ObjectRef = IntegerObject::new_u64(1).to();
 
-        let True = rt.True();
+        let True = rt.OldTrue();
         let True_ref: &Box<Builtin> = True.0.borrow();
 
         let result = True_ref.op_index(&rt).unwrap();
         assert_eq!(result, one);
 
-        let False = rt.False();
+        let False = rt.OldFalse();
         let False_ref: &Box<Builtin> = False.0.borrow();
 
         let result = False_ref.op_index(&rt).unwrap();
@@ -627,8 +612,8 @@ mod impl_pybehavior {
         let true_str: ObjectRef = rt.alloc(StringObject::from_str(TRUE_STR).to()).unwrap();
         let false_str: ObjectRef = rt.alloc(StringObject::from_str(FALSE_STR).to()).unwrap();
 
-        let True = rt.True();
-        let False = rt.False();
+        let True = rt.OldTrue();
+        let False = rt.OldFalse();
 
         let true_ref: &Box<Builtin> = True.0.borrow();
         let result = true_ref.op_repr(&rt).unwrap();
@@ -646,8 +631,8 @@ mod impl_pybehavior {
         let true_str: ObjectRef = rt.alloc(StringObject::from_str(TRUE_STR).to()).unwrap();
         let false_str: ObjectRef = rt.alloc(StringObject::from_str(FALSE_STR).to()).unwrap();
 
-        let True = rt.True();
-        let False = rt.False();
+        let True = rt.OldTrue();
+        let False = rt.OldFalse();
 
         let true_ref: &Box<Builtin> = True.0.borrow();
         let result = true_ref.op_str(&rt).unwrap();

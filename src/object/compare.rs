@@ -8,27 +8,25 @@ use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::ObjectRef;
 
-use object::identity::DefaultIdentity;
 use object::method;
 
 
 pub trait RichComparison
     : DefaultEqual + DefaultNotEqual + method::LessThan + method::LessOrEqual + method::GreaterThan + method::GreaterOrEqual
-    {
-}
+    {}
 
 
 /// The object comparison functions are useful for all objects,
 /// and are named after the rich comparison operators they support
-pub trait DefaultEqual: DefaultIdentity + method::Equal {
+pub trait DefaultEqual: method::Equal {
     /// Default implementation of equals fallsbacks to op_is.
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if DefaultEqual::native_eq(self, rhs_builtin).unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 
@@ -45,9 +43,9 @@ pub trait DefaultNotEqual: DefaultEqual + method::NotEqual {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if DefaultNotEqual::native_ne(self, rhs_builtin).unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 

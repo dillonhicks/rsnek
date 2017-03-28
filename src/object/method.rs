@@ -22,10 +22,10 @@ api_trait!(4ary, self, __new__, New, op_new, native_new);
 //api_trait!(4ary, self, __init__, Init, op_init, native_init);
 pub trait Init{
     fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-        Err(Error::unimplemented())
+        Err(Error::not_implemented())
     }
     fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<()> {
-        Err(Error::unimplemented())
+        Err(Error::not_implemented())
     }
 }
 /// Trait to define a destructor.
@@ -56,20 +56,77 @@ api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 //  represented at runtime except through the `id()`
 //  and `is / is not` keyword operators.
 // ----------------------------------
-api_trait!(unary, self, id, Id, op_id, native_id, native::ObjectId);
+// api_trait!(unary, self, id, Id, op_id, native_id, native::ObjectId);
 pub trait Id {
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
-        let objref: ObjectRef = rt.Int(self.native_id(self)).to();
-        return rt.alloc(objref);
+        Ok(rt.int(native::Integer::from_u64(self.native_id()).unwrap()))
     }
 
     fn native_id(&self) -> native::ObjectId {
         return (&self as *const _) as native::ObjectId;
     }
 }
-api_trait!(binary, self, is_, Is, op_is, native_is, native::Boolean);
-api_trait!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
-api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
+
+pub trait Is where Self: Id  {
+    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is(rhs_builtin).unwrap() {
+            Ok(rt.bool_true())
+        } else {
+            Ok(rt.bool_false())
+        }
+    }
+
+    fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(self.native_id() == other.native_id())
+    }
+}
+
+pub trait IsNot where Self: Id {
+    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is_not(rhs_builtin).unwrap() {
+            Ok(rt.bool_true())
+        } else {
+            Ok(rt.bool_false())
+        }
+    }
+
+
+    fn native_is_not(&self, other: &Builtin) -> NativeResult<native::Boolean>  {
+        Ok(self.native_id() != other.native_id())
+    }
+}
+
+pub trait Hashed where Self: Id{
+    // Called by built-in function hash() and for operations on members of hashed collections including
+    // set, frozenset, and dict. __hash__() should return an integer. The only required property is
+    // that objects which compare equal have the same hash value; it is advised to mix together
+    // the hash values of the components of the object that also play a part in comparison
+    // of objects by packing them into a tuple and hashing the tuple. Example:
+    // api_method!(unary, self, __hash__, Hashable, op_hash, native_hash);
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(value) => Ok(rt.int(native::Integer::from_u64(value).unwrap())),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Default implementation of the native hash is to
+    /// use the ptr identity and hash that.
+    /// Numerical types especially should override
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        let mut s = SipHasher::new();
+        self.native_id().hash(&mut s);
+        Ok(s.finish())
+    }
+}
+
+//api_trait!(binary, self, is_, Is, op_is, native_is, native::Boolean);
+//api_trait!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
+//api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
 
 // ----------------------------------
 //  String Formatting
@@ -182,8 +239,8 @@ api_trait!(binary, self, remove, Remove, meth_remove, native_meth_remove);
 
 
 // Sets
-api_trait!(binary, self, isdisjoint, IsDisjoint, isdisjoint, native_isdisjoint, native::Boolean);
-api_trait!(binary, self, add, AddItem, meth_add, native_add);
+api_trait!(binary, self, isdisjoint, IsDisjoint, meth_isdisjoint, native_meth_isdisjoint, native::Boolean);
+api_trait!(binary, self, add, AddItem, meth_add, native_meth_add);
 api_trait!(unary, self, discard, Discard, meth_discard, native_meth_discard);
 api_trait!(unary, self, clear, Clear, meth_clear, native_meth_clear);
 

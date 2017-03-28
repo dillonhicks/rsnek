@@ -163,7 +163,7 @@ impl object::model::PyBehavior for NoneType {
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
             Err(err) => Err(err),
         }
     }
@@ -305,13 +305,13 @@ mod impl_pybehavior {
         let boxed: &Box<Builtin> = none.0.borrow();
 
         let result = boxed.op_is(&rt, &rt.None()).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
 
-        let result = boxed.op_is(&rt, &rt.False()).unwrap();
-        assert_eq!(result, rt.False());
+        let result = boxed.op_is(&rt, &rt.OldFalse()).unwrap();
+        assert_eq!(result, rt.OldFalse());
 
-        let result = boxed.op_is(&rt, &rt.True()).unwrap();
-        assert_eq!(result, rt.False());
+        let result = boxed.op_is(&rt, &rt.OldTrue()).unwrap();
+        assert_eq!(result, rt.OldFalse());
     }
 
 
@@ -323,13 +323,13 @@ mod impl_pybehavior {
         let boxed: &Box<Builtin> = none.0.borrow();
 
         let result = boxed.op_eq(&rt, &rt.None()).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
 
-        let result = boxed.op_eq(&rt, &rt.False()).unwrap();
-        assert_eq!(result, rt.False());
+        let result = boxed.op_eq(&rt, &rt.OldFalse()).unwrap();
+        assert_eq!(result, rt.OldFalse());
 
-        let result = boxed.op_eq(&rt, &rt.True()).unwrap();
-        assert_eq!(result, rt.False());
+        let result = boxed.op_eq(&rt, &rt.OldTrue()).unwrap();
+        assert_eq!(result, rt.OldFalse());
     }
 
     #[test]
@@ -339,7 +339,7 @@ mod impl_pybehavior {
         let boxed: &Box<Builtin> = none.0.borrow();
         let result = boxed.op_bool(&rt).unwrap();
 
-        assert_eq!(result, rt.False());
+        assert_eq!(result, rt.OldFalse());
     }
 
     #[test]

@@ -50,9 +50,9 @@ pub trait PyBehavior {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is(rhs_builtin).unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 
@@ -60,9 +60,9 @@ pub trait PyBehavior {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is_not(rhs_builtin).unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 
@@ -76,9 +76,9 @@ pub trait PyBehavior {
 
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         if self.native_bool().unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 
@@ -125,9 +125,9 @@ pub trait PyBehavior {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_eq(rhs_builtin).unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 
@@ -136,9 +136,9 @@ pub trait PyBehavior {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_ne(rhs_builtin).unwrap() {
-            Ok(rt.True())
+            Ok(rt.OldTrue())
         } else {
-            Ok(rt.False())
+            Ok(rt.OldFalse())
         }
     }
 

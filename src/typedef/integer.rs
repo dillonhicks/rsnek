@@ -1,3 +1,4 @@
+use std;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::ops::DerefMut;
@@ -11,6 +12,7 @@ use num::{Zero, FromPrimitive, ToPrimitive, BigInt};
 use object::{self, RtValue};
 use object::method;
 use object::typing;
+use object::selfref;
 use error::{Error, ErrorType};
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
@@ -22,7 +24,7 @@ use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 use typedef::float::FloatObject;
 use typedef::complex::ComplexObject;
-use typedef::string::StringObject;
+use typedef::string::PyStringType;
 
 
 pub const STATIC_INT_IDX_OFFSET: usize = 5;
@@ -31,20 +33,46 @@ pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
 
 
 #[derive(Clone)]
-pub struct PyIntegerType;
+pub struct PyIntegerType {
+    pub static_integers: Vec<PyInteger>
+}
 
-impl typing::BuiltinTypeAPI for PyIntegerType {
+
+impl typing::BuiltinType for PyIntegerType {
     type T = PyInteger;
     type V = native::Integer;
 
-    fn new(rt: &Runtime, value: Self::V) -> ObjectRef {
-        let rtvalue = PyIntegerType::alloc(value);
-        let objref = ObjectRef::new(Builtin::Int(rtvalue));
+
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        // TODO: Add check for static range
+        PyIntegerType::inject_selfref(PyIntegerType::alloc(value))
+    }
+
+
+    fn init_type() -> Self {
+        let range: Vec<ObjectRef> =
+            STATIC_INT_RANGE
+                .map(|int| native::Integer::from(int))
+                .map(|result| result.unwrap())
+                .map(|value| {
+                    let int = PyIntegerType::alloc(value);
+                    PyIntegerType::inject_selfref(int)
+                })
+                .collect();
+                //.map(|obj| heap.alloc_static(obj.to()).unwrap()).collect();
+
+        PyIntegerType {
+            static_integers: range
+        }
+    }
+
+    fn inject_selfref(value: PyInteger) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Int(value));
 
         let new = objref.clone();
-        let builtin: &Box<Builtin> = objref.0.borrow();
-        let object: &Self::T = builtin.int().unwrap();
-        object.rc.set(&objref.clone());
+        let mut int;
+        try_cast!(int, objref, Builtin::Int);
+        int.rc.set(&objref.clone());
         new
     }
 
@@ -66,8 +94,6 @@ impl method::Delete for PyIntegerType {}
 pub struct IntValue(native::Integer);
 pub type PyInteger = RtValue<IntValue>;
 
-
-
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -82,18 +108,81 @@ impl method::DelAttr for PyInteger {}
 impl method::Id for PyInteger {}
 impl method::Is for PyInteger {}
 impl method::IsNot for PyInteger {}
-impl method::Hashed for PyInteger {}
-impl method::StringCast for PyInteger {}
+impl method::Hashed for PyInteger {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(value) => rt.int(native::Integer::from_u64(value).unwrap()),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        let mut s = SipHasher::new();
+        self.hash(&mut s);
+        Ok(s.finish())
+    }
+
+}
+
+impl method::StringCast for PyInteger {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        self.op_repr(rt)
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        return self.native_repr();
+    }
+}
+
 impl method::BytesCast for PyInteger {}
 impl method::StringFormat for PyInteger {}
-impl method::StringRepresentation for PyInteger {}
-impl method::Equal for PyInteger {}
+impl method::StringRepresentation for PyInteger {
+    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_repr() {
+            Ok(string) => rt.alloc(PyStringType::new(string)),
+            Err(err) => unreachable!(),
+        }
+    }
+
+    fn native_repr(&self) -> NativeResult<native::String> {
+        Ok(format!("{}", self.value.0))
+    }
+}
+impl method::Equal for PyInteger {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match self.native_eq(builtin.deref()) {
+            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        match *other {
+            Builtin::Int(ref obj) => Ok(self.value.0 == obj.value.0),
+            _ => Ok(false),
+        }
+    }
+}
 impl method::NotEqual for PyInteger {}
 impl method::LessThan for PyInteger {}
 impl method::LessOrEqual for PyInteger {}
 impl method::GreaterOrEqual for PyInteger {}
 impl method::GreaterThan for PyInteger {}
-impl method::BooleanCast for PyInteger {}
+impl method::BooleanCast for PyInteger {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        if self.native_bool() {
+            Ok(rt.bool_true())
+        } else {
+            Ok(rt.bool_false())
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        return Ok(!self.value.0.is_zero());
+    }
+}
 impl method::IntegerCast for PyInteger {}
 impl method::FloatCast for PyInteger {}
 impl method::ComplexCast for PyInteger {}
@@ -103,7 +192,21 @@ impl method::NegateValue for PyInteger {}
 impl method::AbsValue for PyInteger {}
 impl method::PositiveValue for PyInteger {}
 impl method::InvertValue for PyInteger {}
-impl method::Add for PyInteger {}
+impl method::Add for PyInteger {
+    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref obj) => {
+                let new_number: ObjectRef = PyIntegerType::new(&self.value.0 + &obj.value.0);
+                runtime.alloc(new_number)
+            }
+            _ => Err(Error::typerr("TypeError cannot add to int"))s,
+        }
+    }
+
+}
+
 impl method::BitwiseAnd for PyInteger {}
 impl method::DivMod for PyInteger {}
 impl method::FloorDivision for PyInteger {}
@@ -182,6 +285,17 @@ impl method::DescriptorSet for PyInteger {}
 impl method::DescriptorSetName for PyInteger {}
 
 
+// ---------------
+//  stdlib traits
+// ---------------
+
+
+impl fmt::Display for PyInteger {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value.0)
+    }
+}
+
 
 // ---
 // OLD
@@ -189,7 +303,7 @@ impl method::DescriptorSetName for PyInteger {}
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct IntegerObject {
-    pub value: Integer,
+    pub value: native::Integer,
 }
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -199,20 +313,20 @@ pub struct IntegerObject {
 impl IntegerObject {
     #[inline]
     pub fn new_i64(value: i64) -> IntegerObject {
-        let integer = IntegerObject { value: Integer::from(value) };
+        let integer = IntegerObject { value: native::Integer::from(value) };
 
         return integer;
     }
 
     #[inline]
     pub fn new_u64(value: u64) -> IntegerObject {
-        let integer = IntegerObject { value: Integer::from(value) };
+        let integer = IntegerObject { value: native::Integer::from(value) };
 
         return integer;
     }
 
-    pub fn new_bigint(value: Integer) -> IntegerObject {
-        let integer = IntegerObject { value: Integer::from(value) };
+    pub fn new_bigint(value: native::Integer) -> IntegerObject {
+        let integer = IntegerObject { value: native::Integer::from(value) };
 
         return integer;
     }
@@ -260,7 +374,7 @@ impl object::model::PyBehavior for IntegerObject {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.True()) } else { Ok(rt.False()) },
+            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
             Err(err) => Err(err),
         }
     }
@@ -324,7 +438,7 @@ impl object::model::PyBehavior for IntegerObject {
 
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
+            Ok(string) => Ok(rt.str(string)),
             Err(err) => unreachable!(),
         }
     }
@@ -467,7 +581,7 @@ mod impl_pybehavior {
         let one_builtin: &Box<Builtin> = one.0.borrow();
         let result = one_builtin.op_eq(&mut rt, &one2).unwrap();
 
-        assert_eq!(result, rt.True())
+        assert_eq!(result, rt.OldTrue())
     }
 
     #[test]
@@ -481,15 +595,15 @@ mod impl_pybehavior {
 
         let test_case: &Box<Builtin> = neg_one.0.borrow();
         let result = test_case.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
 
         let test_case: &Box<Builtin> = zero.0.borrow();
         let result = test_case.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.False());
+        assert_eq!(result, rt.OldFalse());
 
         let test_case: &Box<Builtin> = pos_one.0.borrow();
         let result = test_case.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.True());
+        assert_eq!(result, rt.OldTrue());
     }
 
     #[test]
