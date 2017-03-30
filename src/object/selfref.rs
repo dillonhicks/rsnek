@@ -36,19 +36,25 @@ pub trait SelfRef: Sized {
 
 /// A wrapper around a value with its own reference count
 /// in the runtime.
-#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct RefCountedValue<T, V: SelfRef> {
     pub value: T,
     pub rc: V,
 }
 
-
 /// RefCount struct that holds a mutable and optional weakref
 /// this is so instances can have a reference to their own RefCount
 ///
-#[derive(Clone)]
 pub struct RefCount(pub RefCell<Option<WeakObjectRef>>);
 
+impl Clone for RefCount {
+    fn clone(&self) -> Self {
+        match *self.0.borrow().deref() {
+            Some(ref weak) => RefCount(RefCell::new(Some(weak.clone()))),
+            None => RefCount(RefCell::new(None)),
+        }
+    }
+}
 
 impl SelfRef for RefCount {
     /// Unwrap the optional type and proxy to the underlying WeakObjectRef if present

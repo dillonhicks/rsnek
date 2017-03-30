@@ -6,8 +6,10 @@ use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use typedef::objectref::{ObjectRef, ToRtWrapperType};
+use typedef::objectref::ObjectRef;
+
 use object::method;
+
 
 /// Cohesive Number trait for convenience
 pub trait Number:

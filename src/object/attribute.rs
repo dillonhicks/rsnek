@@ -13,7 +13,6 @@ use object::method;
 use object::method::Hashed;
 use object::method::GetItem;
 use object::selfref::SelfRef;
-use object::model::PyBehavior;
 
 
 pub trait HasDict {

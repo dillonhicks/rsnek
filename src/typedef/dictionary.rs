@@ -7,23 +7,18 @@ use result::{NativeResult, RuntimeResult};
 
 use runtime::Runtime;
 use error::Error;
-use super::objectref::{self, ObjectRef};
-use typedef;
-use typedef::native::*;
-use typedef::native;
-use typedef::integer::IntegerObject;
-use typedef::objectref::ToRtWrapperType;
+use typedef::objectref::{self, ObjectRef};
+use typedef::native::{self, DictKey};
 use typedef::builtin::Builtin;
 
-use object::method::Hashed;
-use object::{self, RtValue};
-use object::method;
-use object::typing;
-use object::selfref;
+use object::{self, RtValue, typing};
+use object::method::{self, Hashed};
+use object::selfref::{self, SelfRef};
 
 
 #[derive(Clone)]
 pub struct PyDictType;
+
 
 impl typing::BuiltinType for PyDictType {
     type T = PyDict;
@@ -41,11 +36,15 @@ impl typing::BuiltinType for PyDictType {
 
     fn inject_selfref(value: Self::T) -> ObjectRef {
         let objref = ObjectRef::new(Builtin::Dict(value));
-
         let new = objref.clone();
-        let mut dict;
-        try_cast!(dict, objref, Builtin::Dict);
-        dict.rc.set(&objref.clone());
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Dict(ref dict) => {
+                dict.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
         new
     }
 
@@ -58,11 +57,9 @@ impl typing::BuiltinType for PyDictType {
 
 }
 
-#[derive(Clone)]
+
 pub struct DictValue(pub RefCell<native::Dict>);
-
 pub type PyDict = RtValue<DictValue>;
-
 
 
 impl fmt::Debug for PyDict {
@@ -112,19 +109,17 @@ impl method::GreaterThan for PyDict {}
 impl method::BooleanCast for PyDict {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         Ok(if self.native_bool().unwrap() {
-               rt.OldTrue()
+               rt.bool_true()
            } else {
-               rt.OldFalse()
+               rt.bool_false()
            })
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        Ok(!self.value
-                .0
-                .borrow()
-                .is_empty())
+        Ok(!self.value.0.borrow().is_empty())
     }
 }
+
 impl method::IntegerCast for PyDict {}
 impl method::FloatCast for PyDict {}
 impl method::ComplexCast for PyDict {}
@@ -182,19 +177,13 @@ impl method::Call for PyDict {}
 impl method::Length for PyDict {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_len() {
-            Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
+            Ok(int) => Ok(rt.int(int)),
             Err(_) => unreachable!(),
         }
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
-        match Integer::from_usize(self.value
-                                      .0
-                                      .borrow()
-                                      .len()) {
-            Some(int) => Ok(int),
-            None => Err(Error::value("ValueError converting native integer")),
-        }
+        Ok(native::Integer::from(self.value.0.borrow().len()))
     }
 }
 impl method::LengthHint for PyDict {}
@@ -203,15 +192,12 @@ impl method::Reversed for PyDict {}
 impl method::GetItem for PyDict {
     /// native getitem now that we have self refs?
     fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
-        let key_box: &Box<Builtin> = keyref.borrow();
+        let key_box: &Box<Builtin> = keyref.0.borrow();
         match key_box.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
-                match self.value
-                          .0
-                          .borrow()
-                          .get(&key) {
-                    Some(DictValue(_, objref)) => Ok(objref.clone()),
+                match self.value.0.borrow().get(&key) {
+                    Some(objref) => Ok(objref.clone()),
                     None => {
                         // TODO: use repr for this as per cPython default
                         Err(Error::key("KeyError: no such key"))
@@ -224,7 +210,7 @@ impl method::GetItem for PyDict {
 }
 impl method::SetItem for PyDict {
     fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
-        let key_value: &Box<Builtin> = keyref.borrow();
+        let key_value: &Box<Builtin> = keyref.0.borrow();
         match key_value.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
@@ -233,13 +219,13 @@ impl method::SetItem for PyDict {
                     .borrow_mut()
                     .insert(key, valueref.clone());
                 //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
-                Ok(rt.None())
+                Ok(rt.none())
             }
             Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
 
-    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
+    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::None> {
         // TODO: enforce all objects containing a weakref to itself so we can support
         // the clone and upgrade here for the native map api. Should check if the strong count
         // exists or otherwise return Err because it would mean the value is unmanaged which
@@ -275,121 +261,124 @@ impl method::DescriptorSet for PyDict {}
 impl method::DescriptorSetName for PyDict {}
 
 
-
-
-#[derive(Clone, Debug)]
-pub struct DictionaryObject {
-    value: RefCell<Dict>,
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl DictionaryObject {
-    fn new() -> Self {
-        return DictionaryObject { value: RefCell::new(Dict::new()) };
-    }
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl typedef::objectref::RtObject for DictionaryObject {}
-impl object::model::PyObject for DictionaryObject {}
-impl object::model::PyBehavior for DictionaryObject {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        Err(Error::typerr("Unhashable type dict"))
+#[cfg(test)]
+mod old {
+    #[derive(Clone, Debug)]
+    pub struct DictionaryObject {
+        value: RefCell<Dict>,
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
-        Err(Error::typerr("Unhashable type dict"))
-    }
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //       Struct Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        Ok(if self.native_bool().unwrap() {
-               rt.OldTrue()
-           } else {
-               rt.OldFalse()
-           })
-    }
-
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
-        Ok(!self.value.borrow().is_empty())
-    }
-
-    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_len() {
-            Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
-            Err(_) => unreachable!(),
+    impl DictionaryObject {
+        fn new() -> Self {
+            return DictionaryObject { value: RefCell::new(Dict::new()) };
         }
     }
 
-    fn native_len(&self) -> NativeResult<native::Integer> {
-        match Integer::from_usize(self.value.borrow().len()) {
-            Some(int) => Ok(int),
-            None => Err(Error::value("ValueError converting native integer")),
-        }
-    }
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //    Python Object Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    impl typedef::objectref::RtObject for DictionaryObject {}
 
-    fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
-        let key_value: &Box<Builtin> = keyref.borrow();
-        match key_value.native_hash() {
-            Ok(hash) => {
-                let key = DictKey(hash, keyref.clone());
-                let result = self.value.borrow_mut().insert(key, valueref.clone());
-                //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
-                Ok(rt.None())
+    impl object::model::PyObject for DictionaryObject {}
+
+    impl object::model::PyBehavior for DictionaryObject {
+        fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+            Err(Error::typerr("Unhashable type dict"))
+        }
+
+        fn native_hash(&self) -> NativeResult<native::HashId> {
+            Err(Error::typerr("Unhashable type dict"))
+        }
+
+        fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+            Ok(if self.native_bool().unwrap() {
+                rt.OldTrue()
+            } else {
+                rt.OldFalse()
+            })
+        }
+
+        fn native_bool(&self) -> NativeResult<native::Boolean> {
+            Ok(!self.value.borrow().is_empty())
+        }
+
+        fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_len() {
+                Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
+                Err(_) => unreachable!(),
             }
-            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
-    }
 
-    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
-        // TODO: enforce all objects containing a weakref to itself so we can support
-        // the clone and upgrade here for the native map api. Should check if the strong count
-        // exists or otherwise return Err because it would mean the value is unmanaged which
-        // leads to memory leaks and such.
-        Err(Error::not_implemented())
-    }
+        fn native_len(&self) -> NativeResult<native::Integer> {
+            match Integer::from_usize(self.value.borrow().len()) {
+                Some(int) => Ok(int),
+                None => Err(Error::value("ValueError converting native integer")),
+            }
+        }
 
-    /// native getitem now that we have self refs?
-    fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
-        let key_box: &Box<Builtin> = keyref.borrow();
-        match key_box.native_hash() {
-            Ok(hash) => {
-                let key = DictKey(hash, keyref.clone());
-                match self.value.borrow().get(&key) {
-                    Some(value) => Ok(value.clone()),
-                    None => {
-                        // TODO: use repr for this as per cPython default
-                        Err(Error::key("KeyError: no such key"))
+        fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
+            let key_value: &Box<Builtin> = keyref.borrow();
+            match key_value.native_hash() {
+                Ok(hash) => {
+                    let key = DictKey(hash, keyref.clone());
+                    let result = self.value.borrow_mut().insert(key, valueref.clone());
+                    //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
+                    Ok(rt.None())
+                }
+                Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
+            }
+        }
+
+        fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
+            // TODO: enforce all objects containing a weakref to itself so we can support
+            // the clone and upgrade here for the native map api. Should check if the strong count
+            // exists or otherwise return Err because it would mean the value is unmanaged which
+            // leads to memory leaks and such.
+            Err(Error::not_implemented())
+        }
+
+        /// native getitem now that we have self refs?
+        fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
+            let key_box: &Box<Builtin> = keyref.borrow();
+            match key_box.native_hash() {
+                Ok(hash) => {
+                    let key = DictKey(hash, keyref.clone());
+                    match self.value.borrow().get(&key) {
+                        Some(value) => Ok(value.clone()),
+                        None => {
+                            // TODO: use repr for this as per cPython default
+                            Err(Error::key("KeyError: no such key"))
+                        }
                     }
                 }
+                Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
             }
-            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
-}
 
 
-impl typedef::objectref::ToRtWrapperType<Builtin> for DictionaryObject {
-    fn to(self) -> Builtin {
-        Builtin::Dictionary(self)
+    impl typedef::objectref::ToRtWrapperType<Builtin> for DictionaryObject {
+        fn to(self) -> Builtin {
+            Builtin::Dictionary(self)
+        }
     }
-}
 
 
-impl typedef::objectref::ToRtWrapperType<ObjectRef> for DictionaryObject {
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(Builtin::Dictionary(self))
+    impl typedef::objectref::ToRtWrapperType<ObjectRef> for DictionaryObject {
+        fn to(self) -> ObjectRef {
+            ObjectRef::new(Builtin::Dictionary(self))
+        }
     }
-}
 
 
-impl fmt::Display for DictionaryObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.value)
+    impl fmt::Display for DictionaryObject {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{:?}", self.value)
+        }
     }
 }
 

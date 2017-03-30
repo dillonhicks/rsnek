@@ -15,16 +15,11 @@ use error::Error;
 use runtime::Runtime;
 use result::RuntimeResult;
 use object;
-use object::model::PyBehavior;
+use object::method::Id;
 
 
 use typedef::builtin;
 use typedef::builtin::Builtin;
-use typedef::integer::IntegerObject;
-use typedef::float::FloatObject;
-use typedef::string::StringObject;
-use typedef::tuple::TupleObject;
-use typedef::list::ListObject;
 use typedef::native;
 
 
@@ -153,57 +148,19 @@ impl Hash for WeakObjectRef {
     }
 }
 
-impl Borrow<Box<Builtin>> for ObjectRef {
-    fn borrow(&self) -> &Box<Builtin> {
-        self.0.borrow()
-    }
-}
-
 
 impl std::fmt::Display for ObjectRef {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let builtin: &Box<Builtin> = self.0.borrow();
-
-        match builtin.deref() {
-            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
-            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
-            &Builtin::String(ref obj) => write!(f, "<String(\"{}\") {:?}>", obj, obj as *const StringObject),
-            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
-            &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
-            other => write!(f, "<{:?} {:?}>", other, other.native_identity()),
-        }
+        let boxed: &Box<Builtin> = self.0.borrow();
+        let builtin = boxed.deref();
+        write!(f, "<{:?} {:?}>", builtin, builtin.native_id())
     }
 }
 
 impl std::fmt::Debug for ObjectRef {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let builtin: &Box<Builtin> = self.0.borrow();
-
-        match builtin.deref() {
-            &Builtin::Integer(ref obj) => write!(f, "<Integer({}): {:?}>", obj, obj as *const IntegerObject),
-            &Builtin::Float(ref obj) => write!(f, "<Float({}) {:?}>", obj, obj as *const FloatObject),
-            &Builtin::String(ref obj) => write!(f, "<String({}) {:?}>", obj, obj as *const StringObject),
-            &Builtin::Tuple(ref obj) => write!(f, "<Tuple({}) {:?}>", obj, obj as *const TupleObject),
-            &Builtin::List(ref obj) => write!(f, "<List({}) {:?}>", obj, obj as *const ListObject),
-            other => write!(f, "<{:?} {:?}>", other, other as *const _),
-        }
+        let boxed: &Box<Builtin> = self.0.borrow();
+        let builtin = boxed.deref();
+        write!(f, "<{:?} {:?}>", builtin, builtin.native_id())
     }
-}
-
-
-/// Convert between types the intermediate Builtin/ObjectRef/Etc types
-pub trait ToRtWrapperType<T> {
-    fn to(self) -> T;
-}
-
-
-// TODO: move to object::api if needed
-pub trait TypeInfo {}
-
-
-// TODO: Move me to object::api
-pub trait RtObject
-    : object::model::PyBehavior + ToRtWrapperType<ObjectRef> + ToRtWrapperType<Builtin> + Display
-    where Self: std::marker::Sized
-{
 }

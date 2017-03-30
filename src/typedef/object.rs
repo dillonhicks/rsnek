@@ -1,18 +1,17 @@
+use std::fmt;
 use std::borrow::Borrow;
 
 use error::Error;
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
 use object::{self, RtValue};
-use object::method;
+use object::method::{self, Id};
 use object::attribute;
 
 use typedef::dictionary::PyDict;
 use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
-use typedef::string::StringObject;
-
 
 
 //struct PyNativeFunction {
@@ -48,22 +47,22 @@ pub struct ObjectValue {
 pub type PyObject = RtValue<ObjectValue>;
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-macro_rules! resolve_inner {
-    ($out:ident, $objref:expr, $otype:ty, $resolver:ident) => (
-        let boxed: &Box<Builtin> = $objref.borrow();
-        let $out: $otype = boxed.$resolver().unwrap();
-    )
-}
-
-impl attribute::HasDict for PyObject {
-    fn get_dict(&self) -> &PyDict {
-        resolve_inner!(dictobj, self.value.dict, &PyDict, dict);
-        dictobj
-    }
-}
+//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+////    Python Object Traits
+//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//macro_rules! resolve_inner {
+//    ($out:ident, $objref:expr, $otype:ty, $resolver:ident) => (
+//        let boxed: &Box<Builtin> = $objref.borrow();
+//        let $out: $otype = boxed.$resolver().unwrap();
+//    )
+//}
+//
+//impl attribute::HasDict for PyObject {
+//    fn get_dict(&self) -> &PyDict {
+//        resolve_inner!(dictobj, self.value.0.dict, &PyDict, dict);
+//        dictobj
+//    }
+//}
 
 
 impl object::PyAPI for PyObject {}
@@ -205,3 +204,21 @@ impl method::Enter for PyObject {}
 impl method::DescriptorGet for PyObject {}
 impl method::DescriptorSet for PyObject {}
 impl method::DescriptorSetName for PyObject {}
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//        stdlib Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+impl fmt::Display for PyObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<object at {}>", self.native_id())
+    }
+}
+
+impl fmt::Debug for PyObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<object at {}>", self.native_id())
+    }
+}

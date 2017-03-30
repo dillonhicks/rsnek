@@ -12,8 +12,8 @@ macro_rules! log {
 macro_rules! try_cast {
     ($out:ident, $objref:expr, $builtin:path) => (
         let boxed: &Box<Builtin> = $objref.0.borrow();
-        $out = match *boxed {
-            $builtin(ref obj) => &obj,
+        match boxed.deref() {
+            &$builtin(ref obj) => $out = &obj,
             _ => panic!("Not expected type")
         }
     )

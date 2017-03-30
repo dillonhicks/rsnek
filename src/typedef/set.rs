@@ -1,83 +1,78 @@
 use std::fmt;
-use std::collections::HashSet;
+use std::cell::RefCell;
 use std::borrow::Borrow;
 use result::RuntimeResult;
 use runtime::Runtime;
-use std::cell::RefCell;
 
 use object;
 use typedef::builtin::Builtin;
-use object::model::PyBehavior;
-
-use super::objectref::{self, ObjectRef};
-use super::builtin;
-pub use super::native::{SetElement, HashId, Set};
 
 
-
-
-
-#[derive(Clone, Debug)]
-pub struct SetObject {
-    value: RefCell<Set>,
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//     Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-
-impl SetObject {
-    #[inline]
-    pub fn new() -> SetObject {
-        SetObject { value: RefCell::new(Set::new()) }
+#[cfg(test)]
+mod old {
+    #[derive(Clone, Debug)]
+    pub struct SetObject {
+        value: RefCell<Set>,
     }
-}
+
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //     Struct Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//     RtObject Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    impl SetObject {
+        #[inline]
+        pub fn new() -> SetObject {
+            SetObject { value: RefCell::new(Set::new()) }
+        }
+    }
 
-impl objectref::RtObject for SetObject {}
-impl object::model::PyObject for SetObject {}
-impl object::model::PyBehavior for SetObject {
-    fn op_add(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = item.0.borrow();
-        match builtin.native_hash() {
-            Ok(hash_id) => {
-                self.value.borrow_mut().insert(SetElement(hash_id, item.clone()));
-                Ok(rt.None())
+
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //     RtObject Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    impl objectref::RtObject for SetObject {}
+
+    impl object::model::PyObject for SetObject {}
+
+    impl object::model::PyBehavior for SetObject {
+        fn op_add(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+            let builtin: &Box<Builtin> = item.0.borrow();
+            match builtin.native_hash() {
+                Ok(hash_id) => {
+                    self.value.borrow_mut().insert(SetElement(hash_id, item.clone()));
+                    Ok(rt.None())
+                }
+                // TODO: When objects are around we will need to match
+                // against builtin enum variants.
+                Err(err) => Err(err),
             }
-            // TODO: When objects are around we will need to match
-            // against builtin enum variants.
-            Err(err) => Err(err),
+        }
+    }
+
+    impl objectref::ToRtWrapperType<builtin::Builtin> for SetObject {
+        fn to(self) -> builtin::Builtin {
+            builtin::Builtin::Set(self)
+        }
+    }
+
+    impl objectref::ToRtWrapperType<ObjectRef> for SetObject {
+        fn to(self) -> ObjectRef {
+            ObjectRef::new(builtin::Builtin::Set(self))
+        }
+    }
+
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //        stdlib Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    impl fmt::Display for SetObject {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{:?}", self.value)
         }
     }
 }
-
-impl objectref::ToRtWrapperType<builtin::Builtin> for SetObject {
-    fn to(self) -> builtin::Builtin {
-        builtin::Builtin::Set(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for SetObject {
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(builtin::Builtin::Set(self))
-    }
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//        stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl fmt::Display for SetObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.value)
-    }
-}
-
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //        Tests

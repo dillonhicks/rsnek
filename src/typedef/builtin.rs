@@ -5,48 +5,28 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::fmt;
 
-use object;
-use object::method;
-use object::selfref::SelfRef;
 use runtime::Runtime;
 use result::{NativeResult, RuntimeResult};
 use error::{Error, ErrorType};
-use object::model::PyBehavior;
 
-use typedef::objectref;
-use typedef::objectref::{RtObject, ObjectRef, WeakObjectRef};
-use typedef::boolean::{PyBoolean, BooleanObject};
-use typedef::integer::{PyInteger, IntegerObject};
-use typedef::float::FloatObject;
-use typedef::string::{PyString, StringObject};
-use typedef::tuple::TupleObject;
-use typedef::list::ListObject;
-use typedef::complex::ComplexObject;
-use typedef::set::SetObject;
-use typedef::frozenset::FrozenSetObject;
-use typedef::dictionary::{DictionaryObject, PyDict};
-use typedef::none::NoneType;
-use typedef::object::PyObject;
+use object;
+use object::method::{self, StringRepresentation, Equal};
+use object::selfref::SelfRef;
+
 use typedef::native;
+use typedef::dictionary::PyDict;
+use typedef::object::PyObject;
+use typedef::boolean::PyBoolean;
+use typedef::integer::PyInteger;
+use typedef::string::PyString;
+use typedef::complex::PyComplex;
+use typedef::none::PyNone;
+use typedef::objectref::{self, ObjectRef, WeakObjectRef};
 
 
-pub type CastResult<T: RtObject> = Result<T, Error>;
 
-
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Builtin {
-    None(NoneType),
-    Boolean(BooleanObject),
-    Integer(IntegerObject),
-    Float(FloatObject),
-    String(StringObject),
-    Tuple(TupleObject),
-    List(ListObject),
-    Set(SetObject),
-    FrozenSet(FrozenSetObject),
-    Dictionary(DictionaryObject),
-    Complex(ComplexObject),
-
     // Not yet implementeds
     Function(()),
     Method(()),
@@ -55,11 +35,14 @@ pub enum Builtin {
                  *    None(NoneObject) */
 
     Object(PyObject),
+    None(PyNone),
     Bool(PyBoolean),
-    Str(PyString),
     Int(PyInteger),
+    Complex(PyComplex),
+    Str(PyString),
     Dict(PyDict),
 
+    // Utility Types
     DictKey(native::DictKey),
 }
 
@@ -68,59 +51,6 @@ pub enum Builtin {
 //     Struct Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl Builtin {
-    pub fn int(&self) -> CastResult<&IntegerObject> {
-        match *self {
-            Builtin::Integer(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not an IntegerObject")),
-        }
-    }
-
-    pub fn float(&self) -> CastResult<&FloatObject> {
-        match *self {
-            Builtin::Float(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a FloatObject")),
-        }
-    }
-
-    pub fn tuple(&self) -> CastResult<&TupleObject> {
-        match *self {
-            Builtin::Tuple(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a TupleObject")),
-        }
-    }
-
-    pub fn list(&self) -> CastResult<&ListObject> {
-        match *self {
-            Builtin::List(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a ListObject")),
-        }
-    }
-
-    pub fn string(&self) -> CastResult<&StringObject> {
-        match *self {
-            Builtin::String(ref obj) => Ok(&obj),
-            _ => Err(Error(ErrorType::Type, "Not a StringObject")),
-        }
-    }
-
-    pub fn dict(&self) -> CastResult<&DictionaryObject> {
-        match *self {
-            Builtin::Dictionary(ref obj) => Ok(obj),
-            _ => Err(Error::typerr("Not a DictionaryObject")),
-        }
-    }
-
-    //
-    // new trait based methods
-    //
-    pub fn bool(&self) -> CastResult<&PyBoolean> {
-        match *self {
-            Builtin::Bool(ref obj) => Ok(obj),
-            _ => Err(Error::typerr("Not a PyBoolean")),
-        }
-    }
-}
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //     New Object Traits
@@ -183,7 +113,7 @@ impl method::DelAttr for Builtin {}
 impl method::Id for Builtin {
 
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
-        foreach_builtin!(self, rt, id, lhs)
+        foreach_builtin!(self, rt, op_id, lhs)
     }
 
     // Short circuit the ident to hit the wrapper since
@@ -675,15 +605,17 @@ impl method::GetItem for Builtin {
         native_foreach_builtin!(self, native_getitem, object, name)
     }
 }
+
 impl method::SetItem for Builtin {
     fn op_setitem(&self, rt: &Runtime, name: &ObjectRef, item: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_setitem, object, name, item)
     }
 
-    fn native_setitem(&self, name: &Builtin, item: &Builtin) -> NativeResult<native::NoneValue> {
+    fn native_setitem(&self, name: &Builtin, item: &Builtin) -> NativeResult<native::None> {
         native_foreach_builtin!(self, native_setitem, object, name, item)
     }
 }
+
 impl method::DeleteItem for Builtin {
     fn op_delitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_delitem, object, name)
@@ -693,33 +625,37 @@ impl method::DeleteItem for Builtin {
         native_foreach_builtin!(self, native_delitem, object, name)
     }
 }
+
 impl method::Count for Builtin {
     fn meth_count(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_count, object, name)
+        foreach_builtin!(self, rt, meth_count, object, name)
     }
 
     fn native_meth_count(&self, name: &Builtin) -> NativeResult<native::Integer> {
-        native_foreach_builtin!(self, native_count, object, name)
+        native_foreach_builtin!(self, native_meth_count, object, name)
     }
 }
+
 impl method::Append for Builtin {
     fn meth_append(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_append, object, name)
+        foreach_builtin!(self, rt, meth_append, object, name)
     }
 
-    fn native_meth_append(&self, name: &Builtin) -> NativeResult<native::NoneValue> {
-        native_foreach_builtin!(self, native_append, object, name)
+    fn native_meth_append(&self, name: &Builtin) -> NativeResult<native::None> {
+        native_foreach_builtin!(self, native_meth_append, object, name)
     }
 }
+
 impl method::Extend for Builtin {
     fn meth_extend(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_extend, object, name)
     }
 
-    fn native_meth_extend(&self, name: &Builtin) -> NativeResult<native::NoneValue> {
+    fn native_meth_extend(&self, name: &Builtin) -> NativeResult<native::None> {
         native_foreach_builtin!(self, native_meth_extend, object, name)
     }
 }
+
 impl method::Pop for Builtin {
     fn meth_pop(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_pop, object, name)
@@ -729,15 +665,17 @@ impl method::Pop for Builtin {
         native_foreach_builtin!(self, native_meth_pop, object, name)
     }
 }
+
 impl method::Remove for Builtin {
     fn meth_remove(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_remove, object, name)
+        foreach_builtin!(self, rt, meth_remove, object, name)
     }
 
     fn native_meth_remove(&self, name: &Builtin) -> NativeResult<Builtin> {
         native_foreach_builtin!(self, native_meth_remove, object, name)
     }
 }
+
 impl method::IsDisjoint for Builtin {
     fn meth_isdisjoint(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_isdisjoint, object, name)
@@ -747,15 +685,17 @@ impl method::IsDisjoint for Builtin {
         native_foreach_builtin!(self, native_meth_isdisjoint, object, name)
     }
 }
+
 impl method::AddItem for Builtin {
     fn meth_add(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_meth_add, object, name)
+        foreach_builtin!(self, rt, meth_add, object, name)
     }
 
     fn native_meth_add(&self, name: &Builtin) -> NativeResult<Builtin> {
         native_foreach_builtin!(self, native_meth_add, object, name)
     }
 }
+
 impl method::Discard for Builtin {}
 impl method::Clear for Builtin {}
 impl method::Get for Builtin {}
@@ -776,21 +716,22 @@ impl method::DescriptorSet for Builtin {}
 impl method::DescriptorSetName for Builtin {}
 
 
+#[cfg(test)]
+mod old {
+    impl objectref::ToRtWrapperType<Builtin> for Builtin {
+        #[inline]
+        fn to(self) -> Builtin {
+            self
+        }
+    }
 
-impl objectref::ToRtWrapperType<Builtin> for Builtin {
-    #[inline]
-    fn to(self) -> Builtin {
-        self
+    impl objectref::ToRtWrapperType<ObjectRef> for Builtin {
+        #[inline]
+        fn to(self) -> ObjectRef {
+            ObjectRef::new(self)
+        }
     }
 }
-
-impl objectref::ToRtWrapperType<ObjectRef> for Builtin {
-    #[inline]
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(self)
-    }
-}
-
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //     stdlib Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -806,13 +747,9 @@ impl std::cmp::Eq for Builtin {}
 
 impl fmt::Display for Builtin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Builtin::Integer(ref obj) => write!(f, "{}", obj),
-            &Builtin::Float(ref obj) => write!(f, "{}", obj),
-            &Builtin::String(ref obj) => write!(f, "{}", obj),
-            &Builtin::Tuple(ref obj) => write!(f, "{}", obj),
-            &Builtin::List(ref obj) => write!(f, "{}", obj),
-            _ => write!(f, "BuiltinType"),
+        match self.native_repr() {
+            Ok(string) => write!(f, "{}", string),
+            _ => write!(f, "BuiltinType(repr_error=True)"),
         }
     }
 }

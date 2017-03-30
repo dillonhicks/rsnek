@@ -9,25 +9,68 @@ use std::marker::Copy;
 
 use num::{BigInt, FromPrimitive};
 
-use object::{self, RtValue, PyAPI};
-use object::method;
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
 use error::{Error, ErrorType};
-use typedef::objectref::ToRtWrapperType;
+use object::selfref::{self, SelfRef};
+use object::{self, RtValue, PyAPI, method, typing};
+
 use typedef::native;
-use typedef::string::StringObject;
-
-use super::objectref;
-use super::objectref::{ObjectRef, WeakObjectRef};
-use super::builtin::Builtin;
-use super::float::FloatObject;
+use typedef::objectref::{self, ObjectRef, WeakObjectRef};
+use typedef::builtin::Builtin;
 
 
-pub const NONE_TYPE: NoneType = NoneType(());
+pub const NONE: &'static native::None =  &native::None();
 pub const NONE_STR: &'static str = "None";
 
-pub struct NoneValue;
+
+pub struct PyNoneType {
+    singleton_none: ObjectRef
+}
+
+
+impl typing::BuiltinType for PyNoneType {
+    type T = PyNone;
+    type V = &'static native::None;
+
+
+    fn init_type() -> Self {
+        PyNoneType {
+            singleton_none: PyNoneType::inject_selfref(PyNoneType::alloc(NONE))
+        }
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::None(value));
+
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::None(ref none) => {
+                none.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
+        new
+    }
+
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        return self.singleton_none.clone()
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyNone {
+            value: NoneValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+
+
+}
+
+
+pub struct NoneValue(&'static native::None);
 pub type PyNone = RtValue<NoneValue>;
 
 
@@ -142,132 +185,134 @@ impl method::DescriptorSet for PyNone {}
 impl method::DescriptorSetName for PyNone {}
 
 
+#[cfg(test)]
+mod old {
+    #[derive(Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
+    pub struct NoneType(());
+
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //    Struct Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    impl NoneType {}
 
 
-#[derive(Clone,Hash,Eq,PartialEq,PartialOrd,Ord)]
-pub struct NoneType(());
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //    Python Object Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    impl objectref::RtObject for NoneType {}
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    impl object::model::PyObject for NoneType {}
 
-impl NoneType {}
+    impl object::model::PyBehavior for NoneType {
+        fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+            let builtin: &Box<Builtin> = rhs.0.borrow();
+            match self.native_eq(builtin.deref()) {
+                Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+                Err(err) => Err(err),
+            }
+        }
 
+        fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+            match rhs {
+                &Builtin::None(ref obj) => Ok(true),
+                _ => Ok(false),
+            }
+        }
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl objectref::RtObject for NoneType {}
-impl object::model::PyObject for NoneType {}
-impl object::model::PyBehavior for NoneType {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-        match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
-            Err(err) => Err(err),
+        fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+            match rhs {
+                &Builtin::None(ref obj) => Ok(true),
+                _ => Ok(false),
+            }
+        }
+
+        fn native_bool(&self) -> NativeResult<native::Boolean> {
+            return Ok(false);
+        }
+
+        fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+            Err(Error::attribute())
+        }
+
+        fn native_int(&self) -> NativeResult<native::Integer> {
+            Err(Error::attribute())
+        }
+
+        fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+            Err(Error::attribute())
+        }
+
+        fn native_float(&self) -> NativeResult<native::Float> {
+            Err(Error::attribute())
+        }
+
+        fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+            Err(Error::attribute())
+        }
+
+        fn native_complex(&self) -> NativeResult<native::Complex> {
+            Err(Error::attribute())
+        }
+
+        fn op_index(&self, rt: &Runtime) -> RuntimeResult {
+            Err(Error::attribute())
+        }
+
+        fn native_index(&self) -> NativeResult<native::Integer> {
+            Err(Error::attribute())
+        }
+
+        fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_repr() {
+                Ok(string) => rt.alloc(StringObject::new(string).to()),
+                Err(err) => unreachable!(),
+            }
+        }
+
+        fn native_repr(&self) -> NativeResult<native::String> {
+            Ok(NONE_STR.to_string())
+        }
+
+        fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+            self.op_repr(rt)
+        }
+
+        fn native_str(&self) -> NativeResult<native::String> {
+            return self.native_repr();
         }
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        match rhs {
-            &Builtin::None(ref obj) => Ok(true),
-            _ => Ok(false),
+
+    impl objectref::ToRtWrapperType<Builtin> for NoneType {
+        #[inline]
+        fn to(self) -> Builtin {
+            return Builtin::None(self);
         }
     }
 
-    fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        match rhs {
-            &Builtin::None(ref obj) => Ok(true),
-            _ => Ok(false),
+    impl objectref::ToRtWrapperType<ObjectRef> for NoneType {
+        #[inline]
+        fn to(self) -> ObjectRef {
+            ObjectRef::new(self.to())
         }
-    }
-
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
-        return Ok(false);
-    }
-
-    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
-        Err(Error::attribute())
-    }
-
-    fn native_int(&self) -> NativeResult<native::Integer> {
-        Err(Error::attribute())
-    }
-
-    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-        Err(Error::attribute())
-    }
-
-    fn native_float(&self) -> NativeResult<native::Float> {
-        Err(Error::attribute())
-    }
-
-    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-        Err(Error::attribute())
-    }
-
-    fn native_complex(&self) -> NativeResult<native::Complex> {
-        Err(Error::attribute())
-    }
-
-    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
-        Err(Error::attribute())
-    }
-
-    fn native_index(&self) -> NativeResult<native::Integer> {
-        Err(Error::attribute())
-    }
-
-    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_repr() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => unreachable!(),
-        }
-    }
-
-    fn native_repr(&self) -> NativeResult<native::String> {
-        Ok(NONE_STR.to_string())
-    }
-
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        self.op_repr(rt)
-    }
-
-    fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr();
     }
 }
-
-
-impl objectref::ToRtWrapperType<Builtin> for NoneType {
-    #[inline]
-    fn to(self) -> Builtin {
-        return Builtin::None(self);
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for NoneType {
-    #[inline]
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(self.to())
-    }
-}
-
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    stdlib Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl fmt::Display for NoneType {
+impl fmt::Display for PyNone {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "NoneType")
+        write!(f, "PyNone")
     }
 }
 
-impl fmt::Debug for NoneType {
+impl fmt::Debug for PyNone {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "NoneType")
+        write!(f, "PyNone")
     }
 }
 

@@ -1,33 +1,20 @@
 use std;
 use std::fmt;
 use std::cell::RefCell;
-use std::ops::Deref;
+use std::ops::{Deref,Neg};
 use std::borrow::Borrow;
+use num::{Signed,Zero,ToPrimitive,FromPrimitive};
 
-use object::{self, RtValue};
-use object::model::PyBehavior;
-use object::typing;
-use object::method;
-use object::selfref;
+use object::{self, RtValue, typing, method};
+use object::method::{BooleanCast, IntegerCast, StringRepresentation};
+use object::selfref::{self, RefCount, SelfRef};
+
 use error::Error;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
-use typedef::integer::IntegerObject;
-use typedef::objectref::ToRtWrapperType;
-use typedef::float::FloatObject;
-use object::selfref::{RefCount, SelfRef};
-
-use typedef::builtin;
-use typedef::builtin::Builtin;
-use typedef::objectref;
-use typedef::objectref::ObjectRef;
-use typedef::native;
-use typedef::complex::ComplexObject;
-use typedef::string::StringObject;
-
-use num::Zero;
-use num::FromPrimitive;
-use num::ToPrimitive;
+use typedef::builtin::{self, Builtin};
+use typedef::objectref::{self, ObjectRef};
+use typedef::native::{self, Number};
 
 
 pub const TRUE_STR: &'static str = "True";
@@ -58,12 +45,15 @@ impl typing::BuiltinType for PyBooleanType {
 
     fn inject_selfref(value: Self::T) -> ObjectRef {
         let objref = ObjectRef::new(Builtin::Bool(value));
-
         let new = objref.clone();
 
-        let mut boolean;
-        try_cast!(boolean, objref, Builtin::Bool);
-        boolean.rc.set(&objref.clone());
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Bool(ref boolean) => {
+                boolean.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
         new
     }
 
@@ -74,7 +64,7 @@ impl typing::BuiltinType for PyBooleanType {
     fn alloc(value: Self::V) -> Self::T {
         let int = if value {native::Integer::from_usize(1).unwrap()} else {native::Integer::zero()};
         PyBoolean {
-            value: BoolValue(value),
+            value: BoolValue(int),
             rc: selfref::RefCount::default(),
         }
     }
@@ -117,13 +107,13 @@ impl method::StringCast for PyBoolean {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr();
+        self.native_repr()
     }
 }
 impl method::BytesCast for PyBoolean {
     fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
         // TODO: Fix after PyBytes is implemented
-        Err(Error::unimplemented())
+        Err(Error::not_implemented())
     }
 
     fn native_bytes(&self) -> NativeResult<native::Bytes> {
@@ -136,13 +126,13 @@ impl method::StringRepresentation for PyBoolean {
 
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
+            Ok(string) => Ok(rt.str(string)),
             Err(err) => unreachable!(),
         }
     }
 
     fn native_repr(&self) -> NativeResult<native::String> {
-        let value = if self.value.is_zero() {
+        let value = if self.value.0.is_zero() {
             FALSE_STR
         } else {
             TRUE_STR
@@ -151,12 +141,14 @@ impl method::StringRepresentation for PyBoolean {
     }
 
 }
+
+/// `x == y`
 impl method::Equal for PyBoolean {
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+            Ok(value) => if value { Ok(rt.bool_true()) } else { Ok(rt.bool_false()) },
             Err(err) => Err(err),
         }
     }
@@ -168,45 +160,153 @@ impl method::Equal for PyBoolean {
         }
     }
 }
-impl method::NotEqual for PyBoolean {}
+
+impl method::NotEqual for PyBoolean {
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match self.native_ne(builtin.deref()) {
+            Ok(value) => if value { Ok(rt.bool_true()) } else { Ok(rt.bool_false()) },
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs.native_bool() {
+            Ok(value) => Ok(self.native_bool().unwrap() != value),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl method::LessThan for PyBoolean {}
 impl method::LessOrEqual for PyBoolean {}
 impl method::GreaterOrEqual for PyBoolean {}
 impl method::GreaterThan for PyBoolean {}
-impl method::BooleanCast for PyBoolean {}
-impl method::IntegerCast for PyBoolean {}
+
+impl method::BooleanCast for PyBoolean {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        self.rc.upgrade()
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(!self.value.0.is_zero())
+    }
+}
+impl method::IntegerCast for PyBoolean {
+
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(rt.int(self.value.0.clone()))
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        Ok(self.value.0.clone())
+    }
+}
+
+// TODO: FIXME when float is finished
 impl method::FloatCast for PyBoolean {
 
     fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_float() {
-            Ok(float) => rt.alloc(FloatObject::new(float).to()),
-            Err(err) => Err(err),
-        }
+        unimplemented!()
+        //        match self.native_float() {
+        //            Ok(float) => rt.alloc(FloatObject::new(float).to()),
+        //            Err(err) => Err(err),
+//        }
 
     }
 
     fn native_float(&self) -> NativeResult<native::Float> {
-        return Ok(self.value.to_f64().unwrap());
+        return Ok(self.value.0.to_f64().unwrap());
     }
 }
+
+// TODO: FIXME when complex is finished
 impl method::ComplexCast for PyBoolean {
     fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_complex() {
-            Ok(value) => return rt.alloc(ComplexObject::from_native(value).to()),
-            Err(err) => Err(err),
-        }
+        unimplemented!()
+        //        match self.native_complex() {
+        //            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
+        //            Err(err) => Err(err),
+        //        }
     }
 
     fn native_complex(&self) -> NativeResult<native::Complex> {
-        return Ok(native::Complex::new(self.value.to_f64().unwrap(), 0.));
+        Ok(native::Complex::new(self.value.0.to_f64().unwrap(), 0.))
     }
 
 }
-impl method::Rounding for PyBoolean {}
-impl method::Index for PyBoolean {}
-impl method::NegateValue for PyBoolean {}
-impl method::AbsValue for PyBoolean {}
-impl method::PositiveValue for PyBoolean {}
+
+/// `round(True) => 1` `round(False) => 0`
+impl method::Rounding for PyBoolean {
+    fn op_round(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_round() {
+            Ok(Number::Int(int)) => Ok(rt.int(int)),
+            _ => unreachable!()
+        }
+    }
+
+    fn native_round(&self) -> NativeResult<Number> {
+        Ok(Number::Int(self.value.0.clone()))
+    }
+}
+
+/// `__index___`
+impl method::Index for PyBoolean {
+    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_index() {
+            Ok(int) => Ok(rt.int(int)),
+            _ => unreachable!()
+        }
+    }
+
+    fn native_index(&self) -> NativeResult<native::Integer> {
+        self.native_int()
+    }
+}
+
+/// `-self`
+impl method::NegateValue for PyBoolean {
+    fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_neg() {
+            Ok(Number::Int(int)) => Ok(rt.int(int)),
+            _ => unreachable!()
+        }
+    }
+
+    fn native_neg(&self) -> NativeResult<Number> {
+        Ok(Number::Int(self.value.0.clone().neg()))
+    }
+}
+
+/// `__abs__`
+impl method::AbsValue for PyBoolean {
+    fn op_abs(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_abs() {
+            Ok(Number::Int(int)) => Ok(rt.int(int)),
+            _ => unreachable!()
+        }
+    }
+
+    fn native_abs(&self) -> NativeResult<Number> {
+        Ok(Number::Int(self.value.0.abs()))
+    }
+}
+
+/// `+self`
+impl method::PositiveValue for PyBoolean {
+    fn op_pos(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_pos() {
+            Ok(Number::Int(int)) => Ok(rt.int(int)),
+            _ => unreachable!()
+        }
+    }
+
+    fn native_pos(&self) -> NativeResult<Number> {
+        Ok(Number::Int(self.value.0.clone()))
+    }
+}
+
 impl method::InvertValue for PyBoolean {}
 impl method::Add for PyBoolean {}
 impl method::BitwiseAnd for PyBoolean {}
@@ -285,161 +385,6 @@ impl method::Enter for PyBoolean {}
 impl method::DescriptorGet for PyBoolean {}
 impl method::DescriptorSet for PyBoolean {}
 impl method::DescriptorSetName for PyBoolean {}
-
-
-
-impl ToRtWrapperType<builtin::Builtin> for PyBoolean {
-    fn to(self) -> builtin::Builtin {
-        builtin::Builtin::Bool(self)
-    }
-}
-
-impl ToRtWrapperType<objectref::ObjectRef> for PyBoolean {
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(builtin::Builtin::Bool(self))
-    }
-}
-
-
-/// old
-///
-#[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct BooleanObject {
-    value: native::Integer,
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-
-impl BooleanObject {
-    pub fn new_true() -> BooleanObject {
-        return BooleanObject { value: native::Integer::from(1) };
-    }
-
-    pub fn new_false() -> BooleanObject {
-        return BooleanObject { value: native::Integer::from(0) };
-    }
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl objectref::RtObject for BooleanObject {}
-impl object::model::PyObject for BooleanObject {}
-impl object::model::PyBehavior for BooleanObject {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        match rhs.native_bool() {
-            Ok(value) => Ok(self.native_bool().unwrap() == value),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
-        return Ok(!self.value.is_zero());
-    }
-
-    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_int() {
-            Ok(int) => rt.alloc(IntegerObject::new_bigint(int).to()),
-            Err(err) => Err(err),
-        }
-
-    }
-
-    fn native_int(&self) -> NativeResult<native::Integer> {
-        return Ok(self.value.clone());
-    }
-
-    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_float() {
-            Ok(float) => rt.alloc(FloatObject::new(float).to()),
-            Err(err) => Err(err),
-        }
-
-    }
-
-    fn native_float(&self) -> NativeResult<native::Float> {
-        return Ok(self.value.to_f64().unwrap());
-    }
-
-    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_complex() {
-            Ok(value) => return rt.alloc(ComplexObject::from_native(value).to()),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_complex(&self) -> NativeResult<native::Complex> {
-        return Ok(native::Complex::new(self.value.to_f64().unwrap(), 0.));
-    }
-
-    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
-        self.op_int(&rt)
-    }
-
-    fn native_index(&self) -> NativeResult<native::Integer> {
-        return self.native_int();
-    }
-
-    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_repr() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => unreachable!(),
-        }
-    }
-
-    fn native_repr(&self) -> NativeResult<native::String> {
-        let value = if self.value.is_zero() {
-            FALSE_STR
-        } else {
-            TRUE_STR
-        };
-        Ok(value.to_string())
-    }
-
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        self.op_repr(rt)
-    }
-
-    fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr();
-    }
-}
-
-
-impl objectref::ToRtWrapperType<builtin::Builtin> for BooleanObject {
-    fn to(self) -> builtin::Builtin {
-        builtin::Builtin::Boolean(self)
-    }
-}
-
-impl objectref::ToRtWrapperType<objectref::ObjectRef> for BooleanObject {
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(builtin::Builtin::Boolean(self))
-    }
-}
-
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//        stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl fmt::Display for BooleanObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.value)
-    }
-}
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+

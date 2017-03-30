@@ -9,16 +9,15 @@ pub use result::RuntimeResult;
 use heap::Heap;
 use object::typing::BuiltinType;
 
-use typedef::native::ObjectId;
+use typedef::native::{self, ObjectId};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::boolean::{BooleanObject, PyBoolean, PyBooleanType};
-use typedef::integer::{IntegerObject, PyInteger, PyIntegerType};
-use typedef::string::{PyStringType};
+use typedef::none::{PyNone, PyNoneType, NONE};
+use typedef::boolean::{PyBoolean, PyBooleanType};
+use typedef::integer::{PyInteger, PyIntegerType};
+use typedef::string::{PyStringType, PyString};
 use typedef::dictionary::{PyDict, PyDictType};
-use typedef::objectref::ToRtWrapperType;
-use typedef::none::NONE_TYPE;
-use typedef::native;
+
 
 /// If not size is given, fallback to 256kb.
 pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
@@ -34,8 +33,9 @@ pub struct Runtime(RuntimeRef);
 
 
 pub struct BuiltinTypes {
-    int: PyIntegerType,
+    none: PyNoneType,
     bool: PyBooleanType,
+    int: PyIntegerType,
     dict: PyDictType,
     string: PyStringType
 }
@@ -43,19 +43,7 @@ pub struct BuiltinTypes {
 /// Concrete struct that holds the current runtime state, heap, etc.
 struct RuntimeInternal {
     heap: Heap,
-    singletons: SingletonIndex,
     types: BuiltinTypes
-}
-
-
-
-//noinspection RsFieldNaming
-#[deprecated]
-struct SingletonIndex {
-    True: ObjectRef,
-    False: ObjectRef,
-    None: ObjectRef,
-    integers: Box<[ObjectRef]>,
 }
 
 
@@ -86,19 +74,8 @@ impl Runtime {
 
         let mut heap = Heap::new(size);
 
-        let True: ObjectRef = BooleanObject::new_true().to();
-        let False: ObjectRef = BooleanObject::new_false().to();
-        let range: Vec<ObjectRef> =
-            STATIC_INT_RANGE.map(|int| IntegerObject::new_i64(int as i64)).map(|obj| heap.alloc_static(obj.to()).unwrap()).collect();
-
-        let singletons = SingletonIndex {
-            True: heap.alloc_static(True).unwrap(),
-            False: heap.alloc_static(False).unwrap(),
-            None: heap.alloc_static(NONE_TYPE.to()).unwrap(),
-            integers: range.into(),
-        };
-
         let builtins = BuiltinTypes {
+            none: PyNoneType::init_type(),
             bool: PyBooleanType::init_type(),
             int: PyIntegerType::init_type(),
             dict: PyDictType::init_type(),
@@ -107,7 +84,6 @@ impl Runtime {
 
         let internal = RuntimeInternal {
             heap: heap,
-            singletons: singletons,
             types: builtins,
         };
 
@@ -137,61 +113,66 @@ impl Runtime {
         return self.0.heap.find_object(id);
     }
 
-    #[cfg(rsnek_debug)]
-    pub fn debug_references(&self) {
-        (self.0.borrow_mut()).heap.print_ref_counts()
-    }
+//    #[cfg(rsnek_debug)]
+//    pub fn debug_references(&self) {
+//        (self.0.borrow_mut()).heap.print_ref_counts()
+//    }
+//
+//    //
+//    // Convenience Accessors for Statically Alloc'd Values
+//    //
+//
+//    #[allow(non_snake_case)]
+//    pub fn OldTrue(&self) -> ObjectRef {
+//        self.0
+//            .singletons
+//            .True
+//            .clone()
+//    }
+//
+//    #[allow(non_snake_case)]
+//    pub fn OldFalse(&self) -> ObjectRef {
+//        self.0
+//            .singletons
+//            .False
+//            .clone()
+//    }
+//
+//    #[allow(non_snake_case)]
+//    pub fn None(&self) -> ObjectRef {
+//        self.0
+//            .singletons
+//            .None
+//            .clone()
+//    }
+//
+//    // Statically allocated integers to make
+//    // often created values like 0 and 1 a shortcut.
+//    #[allow(non_snake_case)]
+//    pub fn IntOld(&self, idx: isize) -> Option<ObjectRef> {
+//        match (idx + (STATIC_INT_IDX_OFFSET as isize)) as usize {
+//            checked_idx @ 0...STATIC_INT_RANGE_MAX => {
+//                let static_ref = self.0.singletons.integers[checked_idx as usize].clone();
+//                Some(static_ref.clone())
+//            }
+//            _ => None,
+//        }
+//    }
+//
+//
+//    #[allow(non_snake_case)]
+//    pub fn ZeroOld(&self) -> ObjectRef {
+//        return self.IntOld(0).unwrap();
+//    }
+//
+//    #[allow(non_snake_case)]
+//    pub fn OneOld(&self) -> ObjectRef {
+//        return self.IntOld(1).unwrap();
+//    }
 
-    //
-    // Convenience Accessors for Statically Alloc'd Values
-    //
-
-    #[allow(non_snake_case)]
-    pub fn OldTrue(&self) -> ObjectRef {
-        self.0
-            .singletons
-            .True
-            .clone()
-    }
-
-    #[allow(non_snake_case)]
-    pub fn OldFalse(&self) -> ObjectRef {
-        self.0
-            .singletons
-            .False
-            .clone()
-    }
-
-    #[allow(non_snake_case)]
-    pub fn None(&self) -> ObjectRef {
-        self.0
-            .singletons
-            .None
-            .clone()
-    }
-
-    // Statically allocated integers to make
-    // often created values like 0 and 1 a shortcut.
-    #[allow(non_snake_case)]
-    pub fn IntOld(&self, idx: isize) -> Option<ObjectRef> {
-        match (idx + (STATIC_INT_IDX_OFFSET as isize)) as usize {
-            checked_idx @ 0...STATIC_INT_RANGE_MAX => {
-                let static_ref = self.0.singletons.integers[checked_idx as usize].clone();
-                Some(static_ref.clone())
-            }
-            _ => None,
-        }
-    }
-
-
-    #[allow(non_snake_case)]
-    pub fn ZeroOld(&self) -> ObjectRef {
-        return self.IntOld(0).unwrap();
-    }
-
-    #[allow(non_snake_case)]
-    pub fn OneOld(&self) -> ObjectRef {
-        return self.IntOld(1).unwrap();
+    // none
+    pub fn none(&self) -> ObjectRef {
+        return self.0.types.none.new(&self, NONE)
     }
 
     // Integer

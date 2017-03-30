@@ -9,23 +9,19 @@ use std::hash::{Hash, SipHasher, Hasher};
 
 use num::{BigInt, FromPrimitive};
 
-use object::{self, RtValue, PyAPI};
-use object::selfref;
-use object::method;
-use object::typing;
-use object::method::Hashed;
-use typedef::native;
-use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use error::{Error, ErrorType};
 
-use typedef::objectref::ToRtWrapperType;
-use typedef::integer::IntegerObject;
-use super::objectref;
-use super::objectref::ObjectRef;
-use super::builtin::Builtin;
-use super::float::FloatObject;
+use object::{self, RtValue, PyAPI};
+use object::selfref::{self, SelfRef};
+use object::typing::{self, BuiltinType};
+use object::method::{self, Hashed};
+use result::{RuntimeResult, NativeResult};
 
+use typedef::native;
+use typedef::objectref;
+use typedef::objectref::ObjectRef;
+use typedef::builtin::Builtin;
 
 
 pub struct PyStringType {
@@ -38,23 +34,27 @@ impl typing::BuiltinType for PyStringType {
     type V = native::String;
 
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-        PyStringType::inject_selfref(PyString::alloc(value))
+        PyStringType::inject_selfref(PyStringType::alloc(value))
     }
 
     fn init_type() -> Self {
         PyStringType{
-            empty: PyString::inject_selfref(PyStringType::alloc("".to_string()))
+            empty: PyStringType::inject_selfref(PyStringType::alloc("".to_string()))
         }
     }
 
 
     fn inject_selfref(value: Self::T) -> ObjectRef {
         let objref = ObjectRef::new(Builtin::Str(value));
-
         let new = objref.clone();
-        let mut string;
-        try_cast!(string, objref, Builtin::Str);
-        string.rc.set(&objref.clone());
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Str(ref string) => {
+                string.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
         new
     }
 
@@ -196,135 +196,135 @@ impl method::DescriptorSet for PyString {}
 impl method::DescriptorSetName for PyString {}
 
 
-
-
-
-#[derive(Clone, Debug, Hash)]
-pub struct StringObject {
-    pub value: String,
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//      Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl StringObject {
-    pub fn from_str(value: &'static str) -> StringObject {
-        return StringObject::new(value.to_string());
+#[cfg(teset)]
+mod old {
+    #[derive(Clone, Debug, Hash)]
+    pub struct StringObject {
+        pub value: String,
     }
 
-    pub fn new(value: std::string::String) -> StringObject {
-        StringObject { value: value }
-    }
-}
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //      Struct Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+    impl StringObject {
+        pub fn from_str(value: &'static str) -> StringObject {
+            return StringObject::new(value.to_string());
+        }
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl objectref::RtObject for StringObject {}
-impl object::model::PyObject for StringObject {}
-impl object::model::PyBehavior for StringObject {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
-            Err(err) => Err(err),
-            _ => unreachable!(),
+        pub fn new(value: std::string::String) -> StringObject {
+            StringObject { value: value }
         }
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = SipHasher::new();
-        self.hash(&mut s);
-        Ok(s.finish())
-    }
 
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //    Python Object Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    impl objectref::RtObject for StringObject {}
 
-        match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
-            _ => unreachable!(),
-        }
-    }
+    impl object::model::PyObject for StringObject {}
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        match rhs {
-            &Builtin::String(ref string) => Ok(self.value.eq(&string.value)),
-            _ => Ok(false),
-        }
-    }
-
-    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_repr() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => unreachable!(),
-        }
-    }
-
-    fn native_repr(&self) -> NativeResult<native::String> {
-        Ok(format!("{:?}", self.value.clone()))
-    }
-
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        // TODO: Refs back to self in the object holder type - this should be just a
-        // return self.ref.clone().
-        match self.native_str() {
-            Ok(string) => rt.alloc(StringObject::new(string).to()),
-            Err(err) => unreachable!(),
-        }
-    }
-
-    fn native_str(&self) -> NativeResult<native::String> {
-        Ok(self.value.clone())
-    }
-
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-        match self.native_add(&builtin.deref()) {
-            Ok(Builtin::String(string)) => rt.alloc(string.to()),
-            Err(err) => Err(err),
-            _ => unreachable!(),
-        }
-    }
-
-    fn native_add(&self, rhs: &Builtin) -> NativeResult<Builtin> {
-        match rhs {
-            &Builtin::String(ref obj) => {
-                let new_string = StringObject::new(self.value.clone() + obj.value.borrow());
-                Ok(Builtin::String(new_string))
+    impl object::model::PyBehavior for StringObject {
+        fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_hash() {
+                Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
+                Err(err) => Err(err),
+                _ => unreachable!(),
             }
-            _ => Err(Error::typerr("TypeError cannot add to str")),
+        }
+
+        fn native_hash(&self) -> NativeResult<native::HashId> {
+            let mut s = SipHasher::new();
+            self.hash(&mut s);
+            Ok(s.finish())
+        }
+
+        fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+            let builtin: &Box<Builtin> = rhs.0.borrow();
+
+            match self.native_eq(builtin.deref()) {
+                Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+                _ => unreachable!(),
+            }
+        }
+
+        fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+            match rhs {
+                &Builtin::String(ref string) => Ok(self.value.eq(&string.value)),
+                _ => Ok(false),
+            }
+        }
+
+        fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_repr() {
+                Ok(string) => rt.alloc(StringObject::new(string).to()),
+                Err(err) => unreachable!(),
+            }
+        }
+
+        fn native_repr(&self) -> NativeResult<native::String> {
+            Ok(format!("{:?}", self.value.clone()))
+        }
+
+        fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+            // TODO: Refs back to self in the object holder type - this should be just a
+            // return self.ref.clone().
+            match self.native_str() {
+                Ok(string) => rt.alloc(StringObject::new(string).to()),
+                Err(err) => unreachable!(),
+            }
+        }
+
+        fn native_str(&self) -> NativeResult<native::String> {
+            Ok(self.value.clone())
+        }
+
+        fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+            let builtin: &Box<Builtin> = rhs.0.borrow();
+            match self.native_add(&builtin.deref()) {
+                Ok(Builtin::String(string)) => rt.alloc(string.to()),
+                Err(err) => Err(err),
+                _ => unreachable!(),
+            }
+        }
+
+        fn native_add(&self, rhs: &Builtin) -> NativeResult<Builtin> {
+            match rhs {
+                &Builtin::String(ref obj) => {
+                    let new_string = StringObject::new(self.value.clone() + obj.value.borrow());
+                    Ok(Builtin::String(new_string))
+                }
+                _ => Err(Error::typerr("TypeError cannot add to str")),
+            }
+        }
+    }
+
+
+    impl objectref::ToRtWrapperType<Builtin> for StringObject {
+        #[inline]
+        fn to(self) -> Builtin {
+            return Builtin::String(self);
+        }
+    }
+
+    impl objectref::ToRtWrapperType<ObjectRef> for StringObject {
+        #[inline]
+        fn to(self) -> ObjectRef {
+            ObjectRef::new(self.to())
+        }
+    }
+
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //      stdlib Traits
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    impl fmt::Display for StringObject {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.value)
         }
     }
 }
-
-
-impl objectref::ToRtWrapperType<Builtin> for StringObject {
-    #[inline]
-    fn to(self) -> Builtin {
-        return Builtin::String(self);
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for StringObject {
-    #[inline]
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(self.to())
-    }
-}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//      stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl fmt::Display for StringObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
-    }
-}
-
-
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //         Tests

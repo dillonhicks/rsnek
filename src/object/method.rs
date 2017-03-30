@@ -8,8 +8,8 @@ use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use typedef::objectref::{ObjectRef, ToRtWrapperType};
-use typedef::integer::{IntegerObject, PyInteger};
+use typedef::objectref::{ObjectRef};
+use typedef::integer::{PyInteger};
 
 
 /// Big index of all traits used to define builtin objects
@@ -40,6 +40,12 @@ api_trait!(binary, self, __del__, Delete, op_del, native_del);
 // __doc__
 // __class__
 
+#[inline(always)]
+fn memory_address<T>(data: &T) -> native::ObjectId {
+    (&data as *const _) as native::ObjectId
+}
+
+
 // ----------------------------------
 //  Object
 // ----------------------------------
@@ -63,7 +69,7 @@ pub trait Id {
     }
 
     fn native_id(&self) -> native::ObjectId {
-        return (&self as *const _) as native::ObjectId;
+        memory_address(&self)
     }
 }
 
@@ -139,8 +145,44 @@ api_trait!(unary, self, __format__, StringFormat, op_format, native_format, nati
 // ----------------------------------
 //  Rich Comparisons
 // -----------------------------------
-api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);
-api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);
+/// `api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);`
+pub trait Equal {
+    /// Default implementation of equals fallsbacks to op_is.
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_eq(rhs_builtin).unwrap() {
+            Ok(rt.bool_true())
+        } else {
+            Ok(rt.bool_false())
+        }
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(memory_address(&self) == other.native_id())
+    }
+}
+
+/// `api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);`
+pub trait NotEqual {
+    /// Default implementation of equals fallsbacks to !op_is
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_ne(rhs_builtin).unwrap() {
+            Ok(rt.bool_true())
+        } else {
+            Ok(rt.bool_false())
+        }
+    }
+
+    /// Default implementation of equals fallsbacks to op_is.
+    fn native_ne(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(memory_address(&self) != other.native_id())
+    }
+}
+
 api_trait!(binary, self, __lt__, LessThan, op_lt, native_lt, native::Boolean);
 api_trait!(binary, self, __le__, LessOrEqual, op_le, native_le, native::Boolean);
 api_trait!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge, native::Boolean);
@@ -153,14 +195,14 @@ api_trait!(unary, self, __bool__, BooleanCast, op_bool, native_bool, native::Boo
 api_trait!(unary, self, __int__, IntegerCast, op_int, native_int, native::Integer);
 api_trait!(unary, self, __float__, FloatCast, op_float, native_float, native::Float);
 api_trait!(unary, self, __complex__, ComplexCast, op_complex, native_complex, native::Complex);
-api_trait!(unary, self, __round__, Rounding, op_round, native_round);
+api_trait!(unary, self, __round__, Rounding, op_round, native_round, native::Number);
 api_trait!(unary, self, __index__, Index, op_index, native_index, native::Integer);
 
 // Standard unary operators
-api_trait!(unary, self, __neg__, NegateValue, op_neg, native_neg);
-api_trait!(unary, self, __abs__, AbsValue, op_abs, native_abs);
-api_trait!(unary, self, __pos__, PositiveValue, op_pos, native_pos);
-api_trait!(unary, self, __invert__, InvertValue, op_invert, native_invert);
+api_trait!(unary, self, __neg__, NegateValue, op_neg, native_neg, native::Number);
+api_trait!(unary, self, __abs__, AbsValue, op_abs, native_abs, native::Number);
+api_trait!(unary, self, __pos__, PositiveValue, op_pos, native_pos, native::Number);
+api_trait!(unary, self, __invert__, InvertValue, op_invert, native_invert, native::Number);
 
 
 // ----------------------------------
@@ -229,11 +271,11 @@ api_trait!(unary, self, __reversed__, Reversed, op_reversed, native_reversed);
 
 // Sequences
 api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
-api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::NoneValue);
+api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::None);
 api_trait!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
 api_trait!(binary, self, count, Count, meth_count, native_meth_count, native::Integer);
-api_trait!(binary, self, append, Append, meth_append, native_meth_append, native::NoneValue);
-api_trait!(binary, self, extend, Extend, meth_extend, native_meth_extend, native::NoneValue);
+api_trait!(binary, self, append, Append, meth_append, native_meth_append, native::None);
+api_trait!(binary, self, extend, Extend, meth_extend, native_meth_extend, native::None);
 api_trait!(binary, self, pop, Pop, meth_pop, native_meth_pop);
 api_trait!(binary, self, remove, Remove, meth_remove, native_meth_remove);
 

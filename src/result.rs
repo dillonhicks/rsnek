@@ -21,13 +21,3 @@ pub type RuntimeResult = result::Result<ObjectRef, Error>;
 /// When there is a case that a native result could be one of many, consider
 /// use the Builtin wrapper.
 pub type NativeResult<T> = result::Result<T, Error>;
-
-
-
-//pub type IntegerResult = NativeResult<typedef::native::Integer>;
-//pub type BooleanResult = NativeResult<typedef::native::Boolean>;
-//pub type FloatResult = NativeResult<typedef::integer::Integer>;
-//pub type IntegerResult = NativeResult<typedef::integer::Integer>;
-//pub type IntegerResult = NativeResult<typedef::integer::Integer>;
-//pub type IntegerResult = NativeResult<typedef::integer::Integer>;
-//pub type IntegerResult = NativeResult<typedef::integer::Integer>;

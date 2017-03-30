@@ -1,40 +1,38 @@
 use std;
+use std::fmt;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
-use std::ops::DerefMut;
-use std::fmt;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::rc::{Weak, Rc};
 use std::hash::{Hash, SipHasher, Hasher};
 
 use num::{Zero, FromPrimitive, ToPrimitive, BigInt};
 
-use object::{self, RtValue};
-use object::method;
-use object::typing;
-use object::selfref;
+use runtime::Runtime;
 use error::{Error, ErrorType};
 use result::{NativeResult, RuntimeResult};
-use runtime::Runtime;
-use typedef::objectref::ToRtWrapperType;
+use object::{self, RtValue, method, typing};
+use object::selfref::{self, SelfRef};
 
 use typedef::native;
-use typedef::objectref;
-use typedef::objectref::ObjectRef;
+use typedef::objectref::{self, ObjectRef};
 use typedef::builtin::Builtin;
-use typedef::float::FloatObject;
-use typedef::complex::ComplexObject;
 use typedef::string::PyStringType;
-
 
 pub const STATIC_INT_IDX_OFFSET: usize = 5;
 pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
 pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
 
 
+#[inline(always)]
+pub fn format_int(int: &native::Integer) -> native::String {
+    format!("{}", *int)
+}
+
+
 #[derive(Clone)]
 pub struct PyIntegerType {
-    pub static_integers: Vec<PyInteger>
+    pub static_integers: Vec<ObjectRef>
 }
 
 
@@ -53,7 +51,6 @@ impl typing::BuiltinType for PyIntegerType {
         let range: Vec<ObjectRef> =
             STATIC_INT_RANGE
                 .map(|int| native::Integer::from(int))
-                .map(|result| result.unwrap())
                 .map(|value| {
                     let int = PyIntegerType::alloc(value);
                     PyIntegerType::inject_selfref(int)
@@ -68,11 +65,15 @@ impl typing::BuiltinType for PyIntegerType {
 
     fn inject_selfref(value: PyInteger) -> ObjectRef {
         let objref = ObjectRef::new(Builtin::Int(value));
-
         let new = objref.clone();
-        let mut int;
-        try_cast!(int, objref, Builtin::Int);
-        int.rc.set(&objref.clone());
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Int(ref int) => {
+                int.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
         new
     }
 
@@ -111,14 +112,14 @@ impl method::IsNot for PyInteger {}
 impl method::Hashed for PyInteger {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
-            Ok(value) => rt.int(native::Integer::from_u64(value).unwrap()),
+            Ok(value) => Ok(rt.int(native::Integer::from(value))),
             Err(err) => Err(err),
         }
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId> {
         let mut s = SipHasher::new();
-        self.hash(&mut s);
+        self.value.0.hash(&mut s);
         Ok(s.finish())
     }
 
@@ -126,11 +127,14 @@ impl method::Hashed for PyInteger {
 
 impl method::StringCast for PyInteger {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        self.op_repr(rt)
+        match self.native_str() {
+            Ok(string) => Ok(rt.str(string)),
+            Err(err) => unreachable!(),
+        }
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr();
+        Ok(format_int(&self.value.0))
     }
 }
 
@@ -139,21 +143,22 @@ impl method::StringFormat for PyInteger {}
 impl method::StringRepresentation for PyInteger {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
-            Ok(string) => rt.alloc(PyStringType::new(string)),
+            Ok(string) => Ok(rt.str(string)),
             Err(err) => unreachable!(),
         }
     }
 
     fn native_repr(&self) -> NativeResult<native::String> {
-        Ok(format!("{}", self.value.0))
+        Ok(format_int(&self.value.0))
     }
 }
+
 impl method::Equal for PyInteger {
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+            Ok(value) => Ok(rt.bool(value)),
             Err(err) => Err(err),
         }
     }
@@ -172,7 +177,7 @@ impl method::GreaterOrEqual for PyInteger {}
 impl method::GreaterThan for PyInteger {}
 impl method::BooleanCast for PyInteger {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        if self.native_bool() {
+        if self.native_bool().unwrap() {
             Ok(rt.bool_true())
         } else {
             Ok(rt.bool_false())
@@ -193,15 +198,14 @@ impl method::AbsValue for PyInteger {}
 impl method::PositiveValue for PyInteger {}
 impl method::InvertValue for PyInteger {}
 impl method::Add for PyInteger {
-    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
             &Builtin::Int(ref obj) => {
-                let new_number: ObjectRef = PyIntegerType::new(&self.value.0 + &obj.value.0);
-                runtime.alloc(new_number)
+                Ok(rt.int(&self.value.0 + &obj.value.0))
             }
-            _ => Err(Error::typerr("TypeError cannot add to int"))s,
+            _ => Err(Error::typerr("TypeError cannot add to int")),
         }
     }
 
@@ -296,192 +300,200 @@ impl fmt::Display for PyInteger {
     }
 }
 
-
-// ---
-// OLD
-// ---
-
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct IntegerObject {
-    pub value: native::Integer,
+impl fmt::Debug for PyInteger {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value.0)
+    }
 }
 
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+#[cfg(test)]
+mod old {
+    // ---
+    // OLD
+    // ---
+
+    #[derive(Clone, Debug, Hash, Eq, PartialEq)]
+    pub struct IntegerObject {
+        pub value: native::Integer,
+    }
+
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///       Struct Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl IntegerObject {
-    #[inline]
-    pub fn new_i64(value: i64) -> IntegerObject {
-        let integer = IntegerObject { value: native::Integer::from(value) };
+    impl IntegerObject {
+        #[inline]
+        pub fn new_i64(value: i64) -> IntegerObject {
+            let integer = IntegerObject { value: native::Integer::from(value) };
 
-        return integer;
+            return integer;
+        }
+
+        #[inline]
+        pub fn new_u64(value: u64) -> IntegerObject {
+            let integer = IntegerObject { value: native::Integer::from(value) };
+
+            return integer;
+        }
+
+        pub fn new_bigint(value: native::Integer) -> IntegerObject {
+            let integer = IntegerObject { value: native::Integer::from(value) };
+
+            return integer;
+        }
     }
 
-    #[inline]
-    pub fn new_u64(value: u64) -> IntegerObject {
-        let integer = IntegerObject { value: native::Integer::from(value) };
 
-        return integer;
-    }
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //    Python Object Traits - old
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-    pub fn new_bigint(value: native::Integer) -> IntegerObject {
-        let integer = IntegerObject { value: native::Integer::from(value) };
+    impl objectref::RtObject for IntegerObject {}
 
-        return integer;
-    }
-}
+    impl object::model::PyObject for IntegerObject {}
 
+    impl object::model::PyBehavior for IntegerObject {
+        fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+            // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
+            let builtin: &Box<Builtin> = rhs.0.borrow();
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits - old
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl objectref::RtObject for IntegerObject {}
-impl object::model::PyObject for IntegerObject {}
-impl object::model::PyBehavior for IntegerObject {
-    fn op_add(&self, runtime: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        // If this fails the interpreter is fucked anyways because the runtime has been dealloc'd
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref() {
-            &Builtin::Integer(ref obj) => {
-                let new_number: ObjectRef = IntegerObject::new_bigint(&self.value + &obj.value).to();
-                runtime.alloc(new_number)
+            match builtin.deref() {
+                &Builtin::Integer(ref obj) => {
+                    let new_number: ObjectRef = IntegerObject::new_bigint(&self.value + &obj.value).to();
+                    runtime.alloc(new_number)
+                }
+                &Builtin::Float(ref obj) => {
+                    let new_number: ObjectRef = FloatObject::add_integer(obj, &self)?.to();
+                    runtime.alloc(new_number)
+                }
+                _ => Err(Error(ErrorType::Type, "TypeError cannot add to int")),
             }
-            &Builtin::Float(ref obj) => {
-                let new_number: ObjectRef = FloatObject::add_integer(obj, &self)?.to();
-                runtime.alloc(new_number)
+        }
+
+        fn native_hash(&self) -> NativeResult<native::HashId> {
+            let mut s = SipHasher::new();
+            self.hash(&mut s);
+            Ok(s.finish())
+        }
+
+        fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_hash() {
+                Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
+                Err(err) => Err(err),
             }
-            _ => Err(Error(ErrorType::Type, "TypeError cannot add to int")),
         }
-    }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = SipHasher::new();
-        self.hash(&mut s);
-        Ok(s.finish())
-    }
+        fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+            let builtin: &Box<Builtin> = rhs.0.borrow();
 
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(value) => rt.alloc(ObjectRef::new(Builtin::Integer(IntegerObject::new_u64(value)))),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
-        match other {
-            &Builtin::Integer(ref obj) => Ok(self.value == obj.value),
-            _ => Ok(false),
-        }
-    }
-
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
-        return Ok(!self.value.is_zero());
-    }
-
-    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_int() {
-            Ok(int) => {
-                // TODO: once self refs are are implemented, just
-                // clone the ref and pass it back
-                rt.alloc(IntegerObject::new_bigint(int).to())
+            match self.native_eq(builtin.deref()) {
+                Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+                Err(err) => Err(err),
             }
-            Err(err) => Err(err),
+        }
+
+        fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+            match other {
+                &Builtin::Integer(ref obj) => Ok(self.value == obj.value),
+                _ => Ok(false),
+            }
+        }
+
+        fn native_bool(&self) -> NativeResult<native::Boolean> {
+            return Ok(!self.value.is_zero());
+        }
+
+        fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_int() {
+                Ok(int) => {
+                    // TODO: once self refs are are implemented, just
+                    // clone the ref and pass it back
+                    rt.alloc(IntegerObject::new_bigint(int).to())
+                }
+                Err(err) => Err(err),
+            }
+        }
+
+        fn native_int(&self) -> NativeResult<native::Integer> {
+            return Ok(self.value.clone());
+        }
+
+        fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_float() {
+                Ok(float) => rt.alloc(FloatObject::new(float).to()),
+                Err(err) => Err(err),
+            }
+        }
+
+        fn native_float(&self) -> NativeResult<native::Float> {
+            return Ok(self.value.to_f64().unwrap());
+        }
+
+        fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_complex() {
+                Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
+                Err(err) => Err(err),
+            }
+        }
+
+        fn native_complex(&self) -> NativeResult<native::Complex> {
+            return Ok(native::Complex::new(self.value.to_f64().unwrap(), 0.));
+        }
+
+        fn op_index(&self, rt: &Runtime) -> RuntimeResult {
+            self.op_int(&rt)
+        }
+
+        fn native_index(&self) -> NativeResult<native::Integer> {
+            return self.native_int();
+        }
+
+        fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+            match self.native_repr() {
+                Ok(string) => Ok(rt.str(string)),
+                Err(err) => unreachable!(),
+            }
+        }
+
+        fn native_repr(&self) -> NativeResult<native::String> {
+            Ok(format!("{}", self.value))
+        }
+
+        fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+            self.op_repr(rt)
+        }
+
+        fn native_str(&self) -> NativeResult<native::String> {
+            return self.native_repr();
         }
     }
 
-    fn native_int(&self) -> NativeResult<native::Integer> {
-        return Ok(self.value.clone());
-    }
 
-    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_float() {
-            Ok(float) => rt.alloc(FloatObject::new(float).to()),
-            Err(err) => Err(err),
-        }
-
-    }
-
-    fn native_float(&self) -> NativeResult<native::Float> {
-        return Ok(self.value.to_f64().unwrap());
-    }
-
-    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_complex() {
-            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
-            Err(err) => Err(err),
+    impl objectref::ToRtWrapperType<Builtin> for IntegerObject {
+        #[inline]
+        fn to(self) -> Builtin {
+            return Builtin::Integer(self);
         }
     }
 
-    fn native_complex(&self) -> NativeResult<native::Complex> {
-        return Ok(native::Complex::new(self.value.to_f64().unwrap(), 0.));
-    }
-
-    fn op_index(&self, rt: &Runtime) -> RuntimeResult {
-        self.op_int(&rt)
-    }
-
-    fn native_index(&self) -> NativeResult<native::Integer> {
-        return self.native_int();
-    }
-
-    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_repr() {
-            Ok(string) => Ok(rt.str(string)),
-            Err(err) => unreachable!(),
+    impl objectref::ToRtWrapperType<ObjectRef> for IntegerObject {
+        #[inline]
+        fn to(self) -> ObjectRef {
+            ObjectRef::new(self.to())
         }
     }
 
-    fn native_repr(&self) -> NativeResult<native::String> {
-        Ok(format!("{}", self.value))
-    }
 
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        self.op_repr(rt)
-    }
-
-    fn native_str(&self) -> NativeResult<native::String> {
-        return self.native_repr();
-    }
-}
-
-
-impl objectref::ToRtWrapperType<Builtin> for IntegerObject {
-    #[inline]
-    fn to(self) -> Builtin {
-        return Builtin::Integer(self);
-    }
-}
-
-impl objectref::ToRtWrapperType<ObjectRef> for IntegerObject {
-    #[inline]
-    fn to(self) -> ObjectRef {
-        ObjectRef::new(self.to())
-    }
-}
-
-
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///      stdlib Traits
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-impl fmt::Display for IntegerObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
+    impl fmt::Display for IntegerObject {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.value)
+        }
     }
 }
-
 
 /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ///          Tests

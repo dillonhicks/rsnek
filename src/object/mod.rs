@@ -1,5 +1,4 @@
 pub mod method;
-pub mod model;
 pub mod selfref;
 pub mod typing;
 pub mod operator;

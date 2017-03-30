@@ -23,9 +23,11 @@ pub type Integer = num::BigInt;
 pub type Float = f64;
 pub type Boolean = bool;
 pub type Complex = num::Complex<f64>;
+
+
 pub type String = std::string::String;
 pub type Bytes = Vec<u8>;
-pub type NoneValue = ();
+pub struct None();
 
 //
 // Collection Primitive Types
@@ -57,4 +59,29 @@ pub struct Type {
     name: String,
     dict: KWDictionary,
     bases: Tuple,
+}
+
+
+/// Enum for numeric types
+pub enum Number {
+    Int(Integer),
+    Float(Float),
+    Bool(Boolean),
+    Complex(Complex)
+}
+
+
+pub enum Collection {
+    Dict(Dict),
+    Tuple(Tuple),
+    List(List),
+    Str(String),
+    Bytes(Bytes),
+}
+
+pub enum Sequence {
+    Tuple(Tuple),
+    List(List),
+    Str(String),
+    Bytes(Bytes),
 }
