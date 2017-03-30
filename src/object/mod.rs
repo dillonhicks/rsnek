@@ -243,7 +243,7 @@ struct PyNewType;
 object_api!(PyNewType);
 
 
-#[cfg(test)]
+#[cfg(all(feature="old", test))]
 mod impl_object {
     use num::{Zero, FromPrimitive};
     use std::borrow::Borrow;

@@ -34,6 +34,8 @@ macro_rules! foreach_builtin {
 macro_rules! unary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => {
         match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($rt),
+            &Builtin::None(ref $lhs) => $lhs.$op($rt),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt),
@@ -57,6 +59,8 @@ macro_rules! unary_op_foreach{
 macro_rules! binary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::None(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $rhs),
@@ -81,6 +85,8 @@ macro_rules! binary_op_foreach{
 macro_rules! ternary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::None(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
@@ -117,6 +123,8 @@ macro_rules! native_foreach_builtin {
 macro_rules! native_unary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident) => {
         match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op(),
+            &Builtin::None(ref $lhs) => $lhs.$op(),
             &Builtin::Int(ref $lhs) => $lhs.$op(),
             &Builtin::Dict(ref $lhs) => $lhs.$op(),
             &Builtin::Str(ref $lhs) => $lhs.$op(),
@@ -141,6 +149,8 @@ macro_rules! native_unary_op_foreach{
 macro_rules! native_binary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::None(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rhs),
@@ -164,6 +174,8 @@ macro_rules! native_binary_op_foreach{
 macro_rules! native_ternary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::None(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($mid, $rhs),

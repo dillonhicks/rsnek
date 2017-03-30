@@ -32,7 +32,7 @@ pub mod builtin;
 
 
 #[allow(unused_variables,non_snake_case,unused_imports,unused_mut)]
-#[cfg(test)]
+#[cfg(all(feature="old", test))]
 mod tests {
     use std;
     use std::ops::Deref;

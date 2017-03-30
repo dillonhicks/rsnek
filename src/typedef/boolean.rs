@@ -392,6 +392,44 @@ impl method::DescriptorSetName for PyBoolean {}
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[cfg(test)]
+mod object_api {
+    use std::ops::Deref;
+
+    use super::*;
+    use object::method::*;
+
+    #[test]
+    fn is_() {
+        let mut rt = Runtime::new(None);
+
+        let f = rt.bool_false();
+        let f2 = f.clone();
+
+        let f_ref: &Box<Builtin> = f.0.borrow();
+
+        let result = f_ref.native_is(f_ref).unwrap();
+        assert_eq!(result, true, "BooleanObject native is(native_is)");
+
+        let result = f_ref.op_is(&mut rt, &f2).unwrap();
+        assert_eq!(result, rt.bool_true(), "BooleanObject is(op_is)");
+    }
+
+    #[test]
+    fn __eq__() {
+        let mut rt = Runtime::new(None);
+
+        let f = rt.bool_false();
+        let f2 = f.clone();
+
+        let f_ref: &Box<Builtin> = f.0.borrow();
+
+        let result = f_ref.op_eq(&rt, &f2).unwrap();
+        assert_eq!(result, rt.bool_true())
+    }
+
+}
+
+#[cfg(all(feature="old", test))]
 #[allow(non_snake_case)]
 mod impl_pybehavior {
     use std;
@@ -699,7 +737,8 @@ mod impl_pybehavior {
 
 }
 
-#[cfg(test)]
+
+#[cfg(all(feature="old", test))]
 mod impl_pytypebehavior {
     use std;
     use std::rc::Rc;

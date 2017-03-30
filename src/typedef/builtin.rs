@@ -716,7 +716,7 @@ impl method::DescriptorSet for Builtin {}
 impl method::DescriptorSetName for Builtin {}
 
 
-#[cfg(test)]
+#[cfg(all(feature="old", test))]
 mod old {
     impl objectref::ToRtWrapperType<Builtin> for Builtin {
         #[inline]

@@ -113,63 +113,6 @@ impl Runtime {
         return self.0.heap.find_object(id);
     }
 
-//    #[cfg(rsnek_debug)]
-//    pub fn debug_references(&self) {
-//        (self.0.borrow_mut()).heap.print_ref_counts()
-//    }
-//
-//    //
-//    // Convenience Accessors for Statically Alloc'd Values
-//    //
-//
-//    #[allow(non_snake_case)]
-//    pub fn OldTrue(&self) -> ObjectRef {
-//        self.0
-//            .singletons
-//            .True
-//            .clone()
-//    }
-//
-//    #[allow(non_snake_case)]
-//    pub fn OldFalse(&self) -> ObjectRef {
-//        self.0
-//            .singletons
-//            .False
-//            .clone()
-//    }
-//
-//    #[allow(non_snake_case)]
-//    pub fn None(&self) -> ObjectRef {
-//        self.0
-//            .singletons
-//            .None
-//            .clone()
-//    }
-//
-//    // Statically allocated integers to make
-//    // often created values like 0 and 1 a shortcut.
-//    #[allow(non_snake_case)]
-//    pub fn IntOld(&self, idx: isize) -> Option<ObjectRef> {
-//        match (idx + (STATIC_INT_IDX_OFFSET as isize)) as usize {
-//            checked_idx @ 0...STATIC_INT_RANGE_MAX => {
-//                let static_ref = self.0.singletons.integers[checked_idx as usize].clone();
-//                Some(static_ref.clone())
-//            }
-//            _ => None,
-//        }
-//    }
-//
-//
-//    #[allow(non_snake_case)]
-//    pub fn ZeroOld(&self) -> ObjectRef {
-//        return self.IntOld(0).unwrap();
-//    }
-//
-//    #[allow(non_snake_case)]
-//    pub fn OneOld(&self) -> ObjectRef {
-//        return self.IntOld(1).unwrap();
-//    }
-
     // none
     pub fn none(&self) -> ObjectRef {
         return self.0.types.none.new(&self, NONE)
@@ -220,7 +163,7 @@ impl std::fmt::Debug for Runtime {
 }
 
 
-#[cfg(test)]
+#[cfg(all(feature="old", test))]
 mod impl_runtime {
     use super::*;
 
