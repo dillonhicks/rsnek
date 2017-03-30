@@ -1,19 +1,16 @@
 use std;
-use std::fmt;
-use std::cell::RefCell;
 use std::ops::{Deref,Neg};
 use std::borrow::Borrow;
-use num::{Signed,Zero,ToPrimitive,FromPrimitive};
+use num::{Signed,Zero, FromPrimitive};
 
 use object::{self, RtValue, typing, method};
 use object::method::{BooleanCast, IntegerCast, StringRepresentation};
-use object::selfref::{self, RefCount, SelfRef};
+use object::selfref::{self, SelfRef};
 
-use error::Error;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
-use typedef::builtin::{self, Builtin};
-use typedef::objectref::{self, ObjectRef};
+use typedef::builtin::Builtin;
+use typedef::objectref::ObjectRef;
 use typedef::native::{self, Number};
 
 
@@ -57,6 +54,7 @@ impl typing::BuiltinType for PyBooleanType {
         new
     }
 
+    #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
         if value {self.singleton_true.clone()} else {self.singleton_false.clone()}
     }
@@ -111,10 +109,10 @@ impl method::StringCast for PyBoolean {
     }
 }
 impl method::BytesCast for PyBoolean {
-    fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
-        // TODO: Fix after PyBytes is implemented
-        Err(Error::not_implemented())
-    }
+//    fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
+//        // TODO: Fix after PyBytes is implemented
+//        Err(Error::not_implemented())
+//    }
 
     fn native_bytes(&self) -> NativeResult<native::Bytes> {
         let result = if self.value.0.is_zero() {FALSE_BYTES.to_vec()} else {TRUE_BYTES.to_vec()};
@@ -127,7 +125,7 @@ impl method::StringRepresentation for PyBoolean {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
             Ok(string) => Ok(rt.str(string)),
-            Err(err) => unreachable!(),
+            Err(_) => unreachable!(),
         }
     }
 
@@ -185,6 +183,7 @@ impl method::GreaterOrEqual for PyBoolean {}
 impl method::GreaterThan for PyBoolean {}
 
 impl method::BooleanCast for PyBoolean {
+    #[allow(unused_variables)]
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         self.rc.upgrade()
     }
@@ -207,33 +206,33 @@ impl method::IntegerCast for PyBoolean {
 // TODO: FIXME when float is finished
 impl method::FloatCast for PyBoolean {
 
-    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-        unimplemented!()
-        //        match self.native_float() {
-        //            Ok(float) => rt.alloc(FloatObject::new(float).to()),
-        //            Err(err) => Err(err),
-//        }
-
-    }
-
-    fn native_float(&self) -> NativeResult<native::Float> {
-        return Ok(self.value.0.to_f64().unwrap());
-    }
+//    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+//        unimplemented!()
+//        //        match self.native_float() {
+//        //            Ok(float) => rt.alloc(FloatObject::new(float).to()),
+//        //            Err(err) => Err(err),
+////        }
+//
+//    }
+//
+//    fn native_float(&self) -> NativeResult<native::Float> {
+//        return Ok(self.value.0.to_f64().unwrap());
+//    }
 }
 
 // TODO: FIXME when complex is finished
 impl method::ComplexCast for PyBoolean {
-    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-        unimplemented!()
-        //        match self.native_complex() {
-        //            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
-        //            Err(err) => Err(err),
-        //        }
-    }
-
-    fn native_complex(&self) -> NativeResult<native::Complex> {
-        Ok(native::Complex::new(self.value.0.to_f64().unwrap(), 0.))
-    }
+//    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+//        unimplemented!()
+//        //        match self.native_complex() {
+//        //            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
+//        //            Err(err) => Err(err),
+//        //        }
+//    }
+//
+//    fn native_complex(&self) -> NativeResult<native::Complex> {
+//        Ok(native::Complex::new(self.value.0.to_f64().unwrap(), 0.))
+//    }
 
 }
 
@@ -393,7 +392,6 @@ impl method::DescriptorSetName for PyBoolean {}
 
 #[cfg(test)]
 mod object_api {
-    use std::ops::Deref;
     use object::method::*;
     use super::*;
 

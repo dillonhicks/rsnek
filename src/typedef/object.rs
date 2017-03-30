@@ -1,45 +1,12 @@
 use std::fmt;
-use std::borrow::Borrow;
-
-use error::Error;
-use result::{NativeResult, RuntimeResult};
-use runtime::Runtime;
 use object::{self, RtValue};
 use object::method::{self, Id};
-use object::attribute;
 
-use typedef::dictionary::PyDict;
-use typedef::native;
-use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
 
-//struct PyNativeFunction {
-//
-//}
-//
-//struct PyMethodWrapper {
-//
-//}
-//
-//h struct PyFunction {
-//    code: (),
-//    args: (),
-//    locals: (),
-//    consts: ()
-//}
-//
-//enum Function {
-//    Builtin(PyNativeFunction),
-//
-//}
-//
-//struct PyMethod {
-//
-//}
-
-
 pub struct ObjectValue {
+    #[allow(dead_code)]
     dict: ObjectRef,
 }
 
@@ -50,19 +17,6 @@ pub type PyObject = RtValue<ObjectValue>;
 //// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ////    Python Object Traits
 //// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//macro_rules! resolve_inner {
-//    ($out:ident, $objref:expr, $otype:ty, $resolver:ident) => (
-//        let boxed: &Box<Builtin> = $objref.borrow();
-//        let $out: $otype = boxed.$resolver().unwrap();
-//    )
-//}
-//
-//impl attribute::HasDict for PyObject {
-//    fn get_dict(&self) -> &PyDict {
-//        resolve_inner!(dictobj, self.value.0.dict, &PyDict, dict);
-//        dictobj
-//    }
-//}
 
 
 impl object::PyAPI for PyObject {}

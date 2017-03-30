@@ -1,21 +1,18 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 use std;
 use std::rc::Rc;
-use std::cell::RefCell;
 use num::FromPrimitive;
 use num::Zero;
 
-use result::RuntimeResult;
 use object::typing::BuiltinType;
 
-use typedef::native::{self, ObjectId};
+use typedef::native;
 use typedef::objectref::ObjectRef;
-use typedef::builtin::Builtin;
-use typedef::none::{PyNone, PyNoneType, NONE};
-use typedef::boolean::{PyBoolean, PyBooleanType};
-use typedef::integer::{PyInteger, PyIntegerType};
-use typedef::string::{PyStringType, PyString};
-use typedef::dictionary::{PyDict, PyDictType};
+use typedef::none::{PyNoneType, NONE};
+use typedef::boolean::PyBooleanType;
+use typedef::integer::PyIntegerType;
+use typedef::string::PyStringType;
+use typedef::dictionary::PyDictType;
 
 
 pub const STATIC_INT_IDX_OFFSET: usize = 5;
@@ -117,9 +114,12 @@ impl Runtime {
     }
 
     pub fn str_empty(&self) -> ObjectRef {
-        return self.0.types.string.empty.clone()
+        self.0.types.string.empty.clone()
     }
 
+    pub fn dict(&self, value: native::Dict) -> ObjectRef {
+        self.0.types.dict.new(&self, value)
+    }
 }
 
 

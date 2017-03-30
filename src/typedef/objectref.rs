@@ -1,24 +1,17 @@
 /// Wrapper for the runtime housekeeping
 use std;
 use std::rc::{Rc, Weak};
-use std::cell::RefCell;
 use std::borrow::Borrow;
-use std::fmt::Display;
 use std::ops::Deref;
-use std::cmp::Eq;
 use std::hash::{Hash, Hasher};
 
 use num::Zero;
 use num::FromPrimitive;
 
 use error::Error;
-use runtime::Runtime;
 use result::RuntimeResult;
-use object;
 use object::method::Id;
 
-
-use typedef::builtin;
 use typedef::builtin::Builtin;
 use typedef::native;
 
@@ -66,7 +59,7 @@ impl Default for WeakObjectRef {
 
 impl WeakObjectRef {
     pub fn weak_count(&self) -> native::Integer {
-        let mut count: native::Integer;
+        let count: native::Integer;
         {
             let objref = match self.upgrade() {
                 Ok(strong) => strong,
@@ -81,7 +74,7 @@ impl WeakObjectRef {
     }
 
     pub fn strong_count(&self) -> native::Integer {
-        let mut count: native::Integer;
+        let count: native::Integer;
         {
             let objref = match self.upgrade() {
                 Ok(strong) => strong,
@@ -137,12 +130,14 @@ impl Clone for WeakObjectRef {
 }
 
 impl Hash for ObjectRef {
+    #[allow(unused_variables)]
     fn hash<H: Hasher>(&self, s: &mut H) {
         // noop since we use Holder elements with manually computed hashes
     }
 }
 
 impl Hash for WeakObjectRef {
+    #[allow(unused_variables)]
     fn hash<H: Hasher>(&self, state: &mut H) {
         // noop since we use Holder elements with manually computed hashes
     }

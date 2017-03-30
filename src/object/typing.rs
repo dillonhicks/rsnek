@@ -1,7 +1,4 @@
-use error::Error;
 use runtime::Runtime;
-use result::{RuntimeResult, NativeResult};
-use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::ObjectRef;
 

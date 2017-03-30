@@ -1,13 +1,11 @@
 use std::fmt::{Debug, Formatter, Result};
 use std::ops::Deref;
-use std::borrow::Borrow;
 use std::cell::RefCell;
 
 use num::Zero;
 
-use result::{RuntimeResult, NativeResult};
+use result::RuntimeResult;
 use error::Error;
-use runtime::Runtime;
 
 use typedef::objectref::{WeakObjectRef, ObjectRef};
 use typedef::native;
@@ -69,7 +67,7 @@ impl SelfRef for RefCount {
     /// Unwrap the optional type and proxy to the underlying WeakObjectRef if present
     /// otherwise return 0.
     fn weak_count(&self) -> native::Integer {
-        let mut count: native::Integer;
+        let count: native::Integer;
         // use a scope to ensure that the borrow is dropped
         {
             count = match *self.0.borrow().deref() {

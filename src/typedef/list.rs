@@ -1,21 +1,3 @@
-use std;
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::{Cell, Ref, RefCell};
-use std::ops::{Deref, DerefMut};
-use std::fmt;
-use std::rc::{Weak, Rc};
-use std::marker::Copy;
-
-use num::{BigInt, FromPrimitive};
-
-use object;
-use result::RuntimeResult;
-use runtime::Runtime;
-use error::{Error, ErrorType};
-
-use typedef::native;
-use typedef::objectref::{self, ObjectRef, WeakObjectRef};
-use typedef::builtin::Builtin;
 
 #[cfg(all(feature="old", test))]
 mod old {

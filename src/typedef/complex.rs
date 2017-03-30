@@ -1,13 +1,11 @@
-use std;
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
-use result::RuntimeResult;
 use runtime::Runtime;
-use object::{self, RtValue, PyAPI, method, typing};
+use object::{RtValue, PyAPI, method, typing};
 use object::selfref::{self, SelfRef};
 
-use typedef::{native, objectref};
+use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
@@ -19,6 +17,11 @@ pub struct PyComplexType {}
 impl typing::BuiltinType for PyComplexType {
     type T = PyComplex;
     type V = native::Complex;
+
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyComplexType::inject_selfref(PyComplexType::alloc(value))
+    }
 
     fn init_type() -> Self {
         PyComplexType {}
@@ -36,10 +39,6 @@ impl typing::BuiltinType for PyComplexType {
             _ => unreachable!()
         }
         new
-    }
-
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-       PyComplexType::inject_selfref(PyComplexType::alloc(value))
     }
 
     fn alloc(value: Self::V) -> Self::T {

@@ -1,22 +1,3 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
-use std::ops::DerefMut;
-use std::fmt;
-use std::rc::{Weak, Rc};
-use std::ops::Deref;
-
-use num;
-use num::{FromPrimitive, BigInt, ToPrimitive};
-
-use object;
-use error::{Error, ErrorType};
-use result::RuntimeResult;
-use runtime::Runtime;
-
-use typedef::objectref;
-use typedef::builtin::Builtin;
-use typedef::objectref::ObjectRef;
-
 
 #[cfg(all(feature="old", test))]
 mod old {

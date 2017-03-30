@@ -1,25 +1,15 @@
-use std;
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
-use std::ops::DerefMut;
+use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::{Weak, Rc};
-use std::hash::{Hash, SipHasher, Hasher};
-
-use num::{BigInt, FromPrimitive};
 
 use runtime::Runtime;
-use error::{Error, ErrorType};
 
-use object::{self, RtValue, PyAPI};
+use object::{self, RtValue};
 use object::selfref::{self, SelfRef};
-use object::typing::{self, BuiltinType};
-use object::method::{self, Hashed};
-use result::{RuntimeResult, NativeResult};
+use object::typing;
+use object::method;
 
 use typedef::native;
-use typedef::objectref;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
@@ -33,6 +23,7 @@ impl typing::BuiltinType for PyStringType {
     type T = PyString;
     type V = native::String;
 
+    #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
         PyStringType::inject_selfref(PyStringType::alloc(value))
     }

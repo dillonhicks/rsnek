@@ -1,7 +1,3 @@
-use std;
-
-use std::io::Write;
-
 
 // TODO: Replace this with an actual logging mod
 macro_rules! log {

@@ -1,13 +1,12 @@
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
-use num::{Zero, FromPrimitive};
 use std::cell::RefCell;
 use result::{NativeResult, RuntimeResult};
 
 use runtime::Runtime;
 use error::Error;
-use typedef::objectref::{self, ObjectRef};
+use typedef::objectref::ObjectRef;
 use typedef::native::{self, DictKey};
 use typedef::builtin::Builtin;
 
@@ -24,7 +23,7 @@ impl typing::BuiltinType for PyDictType {
     type T = PyDict;
     type V = native::Dict;
 
-
+    #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
         // TODO: Add check for static range
         PyDictType::inject_selfref(PyDictType::alloc(value))
@@ -50,7 +49,7 @@ impl typing::BuiltinType for PyDictType {
 
     fn alloc(value: Self::V) -> Self::T {
         PyDict {
-            value: DictValue(RefCell::new(native::Dict::new())),
+            value: DictValue(RefCell::new(value)),
             rc: selfref::RefCount::default(),
         }
     }
@@ -88,6 +87,7 @@ impl method::Id for PyDict {}
 impl method::Is for PyDict {}
 impl method::IsNot for PyDict {}
 impl method::Hashed for PyDict {
+    #[allow(unused_variables)]
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         Err(Error::typerr("Unhashable type dict"))
     }
@@ -191,6 +191,7 @@ impl method::Next for PyDict {}
 impl method::Reversed for PyDict {}
 impl method::GetItem for PyDict {
     /// native getitem now that we have self refs?
+    #[allow(unused_variables)]
     fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
         let key_box: &Box<Builtin> = keyref.0.borrow();
         match key_box.native_hash() {
@@ -204,7 +205,7 @@ impl method::GetItem for PyDict {
                     }
                 }
             }
-            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
+            Err(_) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
 }
@@ -214,17 +215,14 @@ impl method::SetItem for PyDict {
         match key_value.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
-                let result = self.value
-                    .0
-                    .borrow_mut()
-                    .insert(key, valueref.clone());
-                //if result.is_some() {Ok(rt.None())} else {Err(Error::runtime("RuntimeError: Cannot add item to dictionary"))}
+                self.value.0.borrow_mut().insert(key, valueref.clone());
                 Ok(rt.none())
             }
-            Err(err) => Err(Error::typerr("TypeError: Unhashable key type")),
+            Err(_) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
 
+    #[allow(unused_variables)]
     fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::None> {
         // TODO: enforce all objects containing a weakref to itself so we can support
         // the clone and upgrade here for the native map api. Should check if the strong count

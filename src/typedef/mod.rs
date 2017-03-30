@@ -1,6 +1,3 @@
-#[macro_use]
-use macros;
-
 pub mod builtin;
 pub mod integer;
 pub mod float;

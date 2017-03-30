@@ -1,22 +1,13 @@
-use std;
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::{Cell, Ref, RefCell};
-use std::ops::DerefMut;
+use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::{Weak, Rc};
-use std::marker::Copy;
 
-use num::{BigInt, FromPrimitive};
-
-use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
-use error::{Error, ErrorType};
 use object::selfref::{self, SelfRef};
-use object::{self, RtValue, PyAPI, method, typing};
+use object::{RtValue, PyAPI, method, typing};
 
 use typedef::native;
-use typedef::objectref::{self, ObjectRef, WeakObjectRef};
+use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
 
@@ -34,6 +25,7 @@ impl typing::BuiltinType for PyNoneType {
     type V = &'static native::None;
 
     #[inline(always)]
+    #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
         return self.singleton_none.clone()
     }

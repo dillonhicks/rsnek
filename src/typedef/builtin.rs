@@ -1,13 +1,9 @@
 use std;
-use std::ops::Deref;
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::fmt;
 
 use runtime::Runtime;
 use result::{NativeResult, RuntimeResult};
-use error::{Error, ErrorType};
+use error::Error;
 
 use object;
 use object::method::{self, StringRepresentation, Equal};
@@ -21,7 +17,7 @@ use typedef::integer::PyInteger;
 use typedef::string::PyString;
 use typedef::complex::PyComplex;
 use typedef::none::PyNone;
-use typedef::objectref::{self, ObjectRef, WeakObjectRef};
+use typedef::objectref::{ObjectRef, WeakObjectRef};
 
 
 
@@ -754,7 +750,7 @@ impl fmt::Display for Builtin {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature="old", test))]
 mod impl_pybehavior {
     api_test_stub!(unary, self, __del__, Delete, op_del, native_del);
     api_test_stub!(unary, self, __repr__, ToStringRepr, op_repr, native_repr);

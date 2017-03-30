@@ -1,9 +1,3 @@
-use result::RuntimeResult;
-use runtime::Runtime;
-use object;
-
-use typedef::objectref::{self, ObjectRef};
-
 #[cfg(all(feature="old", test))]
 mod old {
     pub type FrozenSet = ();

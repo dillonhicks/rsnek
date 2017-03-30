@@ -239,8 +239,9 @@ macro_rules! object_api {
     }
 }
 
-struct PyNewType;
-object_api!(PyNewType);
+
+//struct PyNewType;
+//object_api!(PyNewType);
 
 
 #[cfg(all(feature="old", test))]

@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
-use num::FromPrimitive;
 
-use error::{Error, ErrorType};
+use error::Error;
 use runtime::Runtime;
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
@@ -22,6 +21,7 @@ pub trait HasDict {
 
 pub trait DefaultGetAttr: method::GetAttr + HasDict {
     // TODO: Need to search the base classes dicts as well, maybe need MRO
+    #[allow(unused_variables)]
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = name.0.borrow();
         DefaultGetAttr::native_getattr(self, &boxed)

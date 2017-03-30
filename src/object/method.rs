@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 use num::FromPrimitive;
 
@@ -9,7 +10,6 @@ use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::{ObjectRef};
-use typedef::integer::{PyInteger};
 
 
 /// Big index of all traits used to define builtin objects
@@ -20,11 +20,12 @@ use typedef::integer::{PyInteger};
 api_trait!(4ary, self, __new__, New, op_new, native_new);
 /// Class constructor generally gets passed the instance created in __new__
 //api_trait!(4ary, self, __init__, Init, op_init, native_init);
+#[allow(unused_variables)]
 pub trait Init{
     fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         Err(Error::not_implemented())
     }
-    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<()> {
+    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<native::None> {
         Err(Error::not_implemented())
     }
 }
@@ -124,7 +125,7 @@ pub trait Hashed where Self: Id{
     /// use the ptr identity and hash that.
     /// Numerical types especially should override
     fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = SipHasher::new();
+        let mut s = DefaultHasher::new();
         self.native_id().hash(&mut s);
         Ok(s.finish())
     }

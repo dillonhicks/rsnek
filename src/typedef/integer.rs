@@ -1,23 +1,22 @@
 use std;
 use std::fmt;
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
-use std::ops::{Deref, DerefMut};
-use std::rc::{Weak, Rc};
-use std::hash::{Hash, SipHasher, Hasher};
+use std::borrow::Borrow;
+use std::ops::Deref;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
-use num::{Zero, FromPrimitive, ToPrimitive, BigInt};
+use num::Zero;
 
 use runtime::Runtime;
-use error::{Error, ErrorType};
+use error::Error;
 use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 
 use typedef::native;
-use typedef::objectref::{self, ObjectRef};
+use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::string::PyStringType;
+
 
 pub const STATIC_INT_IDX_OFFSET: usize = 5;
 pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
@@ -40,7 +39,7 @@ impl typing::BuiltinType for PyIntegerType {
     type T = PyInteger;
     type V = native::Integer;
 
-
+    #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
         // TODO: Add check for static range
         PyIntegerType::inject_selfref(PyIntegerType::alloc(value))
@@ -118,7 +117,7 @@ impl method::Hashed for PyInteger {
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = SipHasher::new();
+        let mut s = DefaultHasher::new();
         self.value.0.hash(&mut s);
         Ok(s.finish())
     }
@@ -129,7 +128,7 @@ impl method::StringCast for PyInteger {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_str() {
             Ok(string) => Ok(rt.str(string)),
-            Err(err) => unreachable!(),
+            Err(_) => unreachable!(),
         }
     }
 
@@ -144,7 +143,7 @@ impl method::StringRepresentation for PyInteger {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
             Ok(string) => Ok(rt.str(string)),
-            Err(err) => unreachable!(),
+            Err(_) => unreachable!(),
         }
     }
 
