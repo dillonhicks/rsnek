@@ -6,6 +6,8 @@ use num::FromPrimitive;
 
 use error::Error;
 use runtime::Runtime;
+use runtime::IntegerProvider;
+
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
@@ -50,7 +52,7 @@ fn memory_address<T>(data: &T) -> native::ObjectId {
 // ----------------------------------
 //  Object
 // ----------------------------------
-api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr);
+api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr, ObjectRef);
 api_trait!(binary, self, __getattribute__, GetAttribute, op_getattribute, native_getattribute);
 api_trait!(binary, self, __setattr__, SetAttr, op_setattr, native_setattr);
 api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
@@ -271,7 +273,7 @@ api_trait!(unary, self, __next__, Next, op_next, native_next);
 api_trait!(unary, self, __reversed__, Reversed, op_reversed, native_reversed);
 
 // Sequences
-api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem);
+api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem, ObjectRef);
 api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::None);
 api_trait!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
 api_trait!(binary, self, count, Count, meth_count, native_meth_count, native::Integer);

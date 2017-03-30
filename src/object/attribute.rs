@@ -39,7 +39,7 @@ pub trait DefaultGetAttr: method::GetAttr + HasDict {
                 let key = native::DictKey(string.native_hash().unwrap(), stringref);
                 match dict.native_getitem(&Builtin::DictKey(key)) {
                     // TODO: Fixme
-                    Ok(builtin) => builtin.upgrade(),
+                    Ok(builtin) => Ok(builtin.clone()),
                     Err(err) => Err(err),
                 }
             }

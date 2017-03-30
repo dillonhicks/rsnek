@@ -1,7 +1,15 @@
 use std::fmt;
-use object::{self, RtValue};
-use object::method::{self, Id};
+use std::borrow::Borrow;
 
+use error::Error;
+use result::{RuntimeResult, NativeResult};
+use runtime::Runtime;
+use object::{self, RtValue};
+use object::method::{self, Id, GetItem, Hashed};
+
+use typedef::builtin::Builtin;
+use typedef::native::DictKey;
+use object::selfref::SelfRef;
 use typedef::objectref::ObjectRef;
 
 
@@ -22,38 +30,39 @@ pub type PyObject = RtValue<ObjectValue>;
 impl object::PyAPI for PyObject {}
 impl method::New for PyObject {}
 impl method::Init for PyObject {}
-impl method::Delete for PyObject {}
-impl method::GetAttr for PyObject {}
+impl method::Delete for PyObject {
+}
 
-//
-//    // TODO: Need to search the base classes dicts as well, maybe need MRO
-//    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-//        let boxed: &Box<Builtin> = name.0.borrow();
-//        self.native_getattr(&boxed)
-//    }
-//
-//    fn native_getattr(&self, name: &Builtin) -> NativeResult<&ObjectRef> {
-//        match name {
-//            &Builtin::Str(ref string) => {
-//                let stringref = match string.rc.upgrade() {
-//                    Ok(objref) => objref,
-//                    Err(err) => return Err(err)
-//                };
-//
-//                let boxed: &Box<Builtin> = self.value.0.borrow();
-//                let dict: &native::Dictionary = boxed.dict().unwrap();
-//                let key = native::Key(string.native_hash().unwrap(), stringref);
-//                match dict.get(&key) {
-//                    Some(objref) => Ok(objref),
-//                    None => Err(Error::attribute())
-//                }
-//            },
-//            _ => Err(Error::typerr("getattr(): attribute name must be string"))
-//        }
-//    }
-//
-//}
+impl method::GetAttr for PyObject {
 
+        // TODO: Need to search the base classes dicts as well, maybe need MRO
+        #[allow(unused_variables)]
+        fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+            let boxed: &Box<Builtin> = name.0.borrow();
+            self.native_getattr(&boxed)
+        }
+
+        fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+            match name {
+                &Builtin::Str(ref string) => {
+                    let stringref = match string.rc.upgrade() {
+                        Ok(objref) => objref,
+                        Err(err) => return Err(err)
+                    };
+
+                    let key = DictKey(string.native_hash().unwrap(), stringref);
+                    let dict: &Box<Builtin> = self.value.dict.0.borrow();
+                    match dict.native_getitem(&Builtin::DictKey(key)) {
+                        Ok(objref) => Ok(objref),
+                        Err(_) => Err(Error::attribute())
+                    }
+                },
+                _ => Err(Error::typerr("getattr(): attribute name must be string"))
+            }
+        }
+
+
+}
 impl method::GetAttribute for PyObject {}
 impl method::SetAttr for PyObject {}
 impl method::DelAttr for PyObject {}

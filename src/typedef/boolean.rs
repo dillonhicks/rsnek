@@ -8,6 +8,7 @@ use object::method::{BooleanCast, IntegerCast, StringRepresentation};
 use object::selfref::{self, SelfRef};
 
 use runtime::Runtime;
+use runtime::IntegerProvider;
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
@@ -32,6 +33,11 @@ impl typing::BuiltinType for PyBooleanType {
     type T = PyBoolean;
     type V = native::Boolean;
 
+    #[inline(always)]
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        if value {self.singleton_true.clone()} else {self.singleton_false.clone()}
+    }
 
     fn init_type() -> Self {
         PyBooleanType {
@@ -52,11 +58,6 @@ impl typing::BuiltinType for PyBooleanType {
             _ => unreachable!()
         }
         new
-    }
-
-    #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-        if value {self.singleton_true.clone()} else {self.singleton_false.clone()}
     }
 
     fn alloc(value: Self::V) -> Self::T {
@@ -395,35 +396,62 @@ mod object_api {
     use object::method::*;
     use super::*;
 
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
     #[test]
     fn is_() {
-        let rt = Runtime::new();
+        let rt = setup_test();
 
         let f = rt.bool_false();
         let f2 = f.clone();
 
         let f_ref: &Box<Builtin> = f.0.borrow();
-
-        let result = f_ref.native_is(f_ref).unwrap();
-        assert_eq!(result, true, "BooleanObject native is(native_is)");
-
         let result = f_ref.op_is(&rt, &f2).unwrap();
         assert_eq!(result, rt.bool_true(), "BooleanObject is(op_is)");
     }
 
     #[test]
     fn __eq__() {
-        let rt = Runtime::new();
+        let rt = setup_test();
 
         let f = rt.bool_false();
         let f2 = f.clone();
 
         let f_ref: &Box<Builtin> = f.0.borrow();
-
         let result = f_ref.op_eq(&rt, &f2).unwrap();
         assert_eq!(result, rt.bool_true())
     }
 
+    #[test]
+    fn __bool__() {
+        let rt = setup_test();
+
+        let (t, f) = (rt.bool_true(), rt.bool_false());
+
+        let t_ref: &Box<Builtin> = t.0.borrow();
+        let f_ref: &Box<Builtin> = f.0.borrow();
+
+        let result = t_ref.op_bool(&rt).unwrap();
+        assert_eq!(result, rt.bool_true());
+
+        let result = f_ref.op_bool(&rt).unwrap();
+        assert_eq!(result, rt.bool_false());
+    }
+
+    #[test]
+    fn __int__() {
+        let rt = setup_test();
+
+        let one = rt.int(1);
+
+        let t = rt.bool_true();
+        let t_ref: &Box<Builtin> = t.0.borrow();
+
+        let result = t_ref.op_int(&rt).unwrap();
+        assert_eq!(result, one);
+    }
 }
 
 #[cfg(all(feature="old", test))]

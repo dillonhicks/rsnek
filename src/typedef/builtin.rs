@@ -597,7 +597,7 @@ impl method::GetItem for Builtin {
         foreach_builtin!(self, rt, op_getitem, object, name)
     }
 
-    fn native_getitem(&self, name: &Builtin) -> NativeResult<Builtin> {
+    fn native_getitem(&self, name: &Builtin) -> NativeResult<ObjectRef> {
         native_foreach_builtin!(self, native_getitem, object, name)
     }
 }

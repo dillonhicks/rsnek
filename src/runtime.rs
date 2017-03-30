@@ -15,9 +15,16 @@ use typedef::string::PyStringType;
 use typedef::dictionary::PyDictType;
 
 
-pub const STATIC_INT_IDX_OFFSET: usize = 5;
-pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
-pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
+pub trait IntegerProvider<T> {
+    fn int(&self, value: T) -> ObjectRef;
+}
+
+
+pub trait IntegerSingletons {
+    fn int_zero(&self) -> ObjectRef;
+    fn int_one(&self) -> ObjectRef;
+}
+
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
@@ -25,6 +32,7 @@ pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
 pub struct Runtime(RuntimeRef);
 
 
+/// Well Known builtin types
 pub struct BuiltinTypes {
     none: PyNoneType,
     bool: PyBooleanType,
@@ -32,6 +40,7 @@ pub struct BuiltinTypes {
     dict: PyDictType,
     string: PyStringType
 }
+
 
 /// Concrete struct that holds the current runtime state, heap, etc.
 /// TODO: add ability to intern objects?
@@ -54,6 +63,7 @@ impl Clone for Runtime {
         Runtime((self.0).clone())
     }
 }
+
 
 
 impl Runtime {
@@ -82,28 +92,18 @@ impl Runtime {
         return self.0.types.none.new(&self, NONE)
     }
 
-    // PyInteger
-    pub fn int(&self, value: native::Integer) -> ObjectRef {
-        self.0.types.int.new(&self, value)
-    }
-
-    pub fn int_zero(&self) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::zero())
-    }
-
-    pub fn int_one(&self) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::from_usize(1).unwrap())
-    }
-
     // PyBoolean
+    #[inline(always)]
     pub fn bool(&self, value: native::Boolean) -> ObjectRef {
         self.0.types.bool.new(&self, value)
     }
 
+    #[inline(always)]
     pub fn bool_true(&self) -> ObjectRef {
         self.bool(true)
     }
 
+    #[inline(always)]
     pub fn bool_false(&self) -> ObjectRef {
         self.bool(false)
     }
@@ -120,6 +120,30 @@ impl Runtime {
     pub fn dict(&self, value: native::Dict) -> ObjectRef {
         self.0.types.dict.new(&self, value)
     }
+}
+
+
+impl IntegerProvider<native::Integer> for Runtime {
+    fn int(&self, value: native::Integer) -> ObjectRef {
+        self.0.types.int.new(&self, value)
+    }
+}
+
+impl IntegerProvider<isize> for Runtime {
+    fn int(&self, value: isize) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::from(value))
+    }
+}
+
+impl IntegerSingletons for Runtime {
+    fn int_zero(&self) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::zero())
+    }
+
+    fn int_one(&self) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::from_usize(1).unwrap())
+    }
+
 }
 
 

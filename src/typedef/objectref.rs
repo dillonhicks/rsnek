@@ -6,7 +6,6 @@ use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 
 use num::Zero;
-use num::FromPrimitive;
 
 use error::Error;
 use result::RuntimeResult;
@@ -39,11 +38,11 @@ impl ObjectRef {
     }
 
     pub fn strong_count(&self) -> native::Integer {
-        native::Integer::from_usize(Rc::strong_count(&self.0)).unwrap()
+        native::Integer::from(Rc::strong_count(&self.0))
     }
 
     pub fn weak_count(&self) -> native::Integer {
-        native::Integer::from_usize(Rc::weak_count(&self.0)).unwrap()
+        native::Integer::from(Rc::weak_count(&self.0))
     }
 }
 

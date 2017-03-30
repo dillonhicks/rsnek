@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use result::{NativeResult, RuntimeResult};
 
 use runtime::Runtime;
+use runtime::IntegerProvider;
 use error::Error;
 use typedef::objectref::ObjectRef;
 use typedef::native::{self, DictKey};
