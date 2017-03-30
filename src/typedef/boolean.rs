@@ -394,13 +394,12 @@ impl method::DescriptorSetName for PyBoolean {}
 #[cfg(test)]
 mod object_api {
     use std::ops::Deref;
-
-    use super::*;
     use object::method::*;
+    use super::*;
 
     #[test]
     fn is_() {
-        let mut rt = Runtime::new(None);
+        let rt = Runtime::new();
 
         let f = rt.bool_false();
         let f2 = f.clone();
@@ -410,13 +409,13 @@ mod object_api {
         let result = f_ref.native_is(f_ref).unwrap();
         assert_eq!(result, true, "BooleanObject native is(native_is)");
 
-        let result = f_ref.op_is(&mut rt, &f2).unwrap();
+        let result = f_ref.op_is(&rt, &f2).unwrap();
         assert_eq!(result, rt.bool_true(), "BooleanObject is(op_is)");
     }
 
     #[test]
     fn __eq__() {
-        let mut rt = Runtime::new(None);
+        let rt = Runtime::new();
 
         let f = rt.bool_false();
         let f2 = f.clone();

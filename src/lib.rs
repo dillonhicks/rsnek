@@ -24,7 +24,6 @@ pub mod macros;
 
 pub mod typedef;
 pub mod result;
-pub mod heap;
 pub mod runtime;
 pub mod error;
 pub mod object;

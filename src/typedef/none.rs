@@ -33,6 +33,10 @@ impl typing::BuiltinType for PyNoneType {
     type T = PyNone;
     type V = &'static native::None;
 
+    #[inline(always)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        return self.singleton_none.clone()
+    }
 
     fn init_type() -> Self {
         PyNoneType {
@@ -53,10 +57,6 @@ impl typing::BuiltinType for PyNoneType {
             _ => unreachable!()
         }
         new
-    }
-
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-        return self.singleton_none.clone()
     }
 
     fn alloc(value: Self::V) -> Self::T {

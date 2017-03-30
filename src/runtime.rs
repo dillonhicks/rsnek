@@ -5,8 +5,7 @@ use std::cell::RefCell;
 use num::FromPrimitive;
 use num::Zero;
 
-pub use result::RuntimeResult;
-use heap::Heap;
+use result::RuntimeResult;
 use object::typing::BuiltinType;
 
 use typedef::native::{self, ObjectId};
@@ -18,9 +17,6 @@ use typedef::integer::{PyInteger, PyIntegerType};
 use typedef::string::{PyStringType, PyString};
 use typedef::dictionary::{PyDict, PyDictType};
 
-
-/// If not size is given, fallback to 256kb.
-pub const DEFAULT_HEAP_CAPACITY: usize = 256 * 1024;
 
 pub const STATIC_INT_IDX_OFFSET: usize = 5;
 pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
@@ -41,8 +37,8 @@ pub struct BuiltinTypes {
 }
 
 /// Concrete struct that holds the current runtime state, heap, etc.
+/// TODO: add ability to intern objects?
 struct RuntimeInternal {
-    heap: Heap,
     types: BuiltinTypes
 }
 
@@ -64,16 +60,7 @@ impl Clone for Runtime {
 
 
 impl Runtime {
-    #[inline]
-    #[allow(non_snake_case)]
-    pub fn new(heap_size: Option<usize>) -> Runtime {
-        let size = match heap_size {
-            Some(i) => i,
-            None => DEFAULT_HEAP_CAPACITY,
-        };
-
-        let mut heap = Heap::new(size);
-
+    pub fn new() -> Runtime {
         let builtins = BuiltinTypes {
             none: PyNoneType::init_type(),
             bool: PyBooleanType::init_type(),
@@ -83,7 +70,6 @@ impl Runtime {
         };
 
         let internal = RuntimeInternal {
-            heap: heap,
             types: builtins,
         };
 
@@ -91,34 +77,15 @@ impl Runtime {
         Runtime(Rc::new(Box::new(internal)))
     }
 
-    /// Alloc a spot for the object ref in the `Heap` for the `Runtime` this will
-    /// mean that there will be at one single strong reference to the `ObjectRef`
-    /// for the life of the Runtime.
-    ///
-    /// This gives the `Runtime` to control when the `Drop<Object>` happens
-    /// and finally cleans up struct behind the `ObjectRef`.
-    pub fn alloc(&self, reference: ObjectRef) -> RuntimeResult {
-        self.0.heap.alloc_dynamic(reference)
-    }
+    // Type Convenience Methods for Builtin Types
 
-    pub fn heap_size(&self) -> usize {
-        self.0.heap.size()
-    }
-
-    pub fn heap_capacity(&self) -> usize {
-        self.0.heap.capacity()
-    }
-
-    pub fn find_object(&self, id: ObjectId) -> RuntimeResult {
-        return self.0.heap.find_object(id);
-    }
-
-    // none
+    // PyNone
+    #[inline(always)]
     pub fn none(&self) -> ObjectRef {
         return self.0.types.none.new(&self, NONE)
     }
 
-    // Integer
+    // PyInteger
     pub fn int(&self, value: native::Integer) -> ObjectRef {
         self.0.types.int.new(&self, value)
     }
@@ -131,7 +98,7 @@ impl Runtime {
         self.0.types.int.new(&self, native::Integer::from_usize(1).unwrap())
     }
 
-    // Boolean
+    // PyBoolean
     pub fn bool(&self, value: native::Boolean) -> ObjectRef {
         self.0.types.bool.new(&self, value)
     }
@@ -144,7 +111,7 @@ impl Runtime {
         self.bool(false)
     }
 
-    // String
+    // PyString
     pub fn str(&self, value: native::String) -> ObjectRef {
         self.0.types.string.new(&self, value)
     }
@@ -158,7 +125,7 @@ impl Runtime {
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Runtime(heap={:?})", self.0.heap)
+        write!(f, "Runtime()")
     }
 }
 
