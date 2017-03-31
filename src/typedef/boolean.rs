@@ -8,7 +8,7 @@ use object::method::{BooleanCast, IntegerCast, StringRepresentation};
 use object::selfref::{self, SelfRef};
 
 use runtime::Runtime;
-use runtime::IntegerProvider;
+use runtime::{StringProvider, IntegerProvider};
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
@@ -392,7 +392,7 @@ impl method::DescriptorSetName for PyBoolean {}
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[cfg(test)]
-mod object_api {
+mod _api_method {
     use object::method::*;
     use super::*;
 

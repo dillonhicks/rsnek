@@ -55,6 +55,11 @@ pub type Set = std::collections::HashSet<SetElement>;
 pub type KWDictionary = std::collections::HashMap<String, typedef::objectref::ObjectRef>;
 
 
+pub struct Object {
+    pub dict: typedef::objectref::ObjectRef,
+    pub bases: typedef::objectref::ObjectRef
+}
+
 
 
 /// Enum for numeric types
@@ -71,6 +76,7 @@ pub enum Number {
 //    dict: KWDictionary,
 //    bases: Tuple,
 //}
+
 //
 //
 //pub enum Collection {

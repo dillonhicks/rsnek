@@ -212,12 +212,16 @@ impl method::GetItem for PyDict {
 }
 impl method::SetItem for PyDict {
     fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
-        let key_value: &Box<Builtin> = keyref.0.borrow();
-        match key_value.native_hash() {
+        let boxed_key: &Box<Builtin> = keyref.0.borrow();
+        match boxed_key.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
-                self.value.0.borrow_mut().insert(key, valueref.clone());
-                Ok(rt.none())
+                let boxed_value: &Box<Builtin> = valueref.0.borrow();
+
+                match self.native_setitem(&Builtin::DictKey(key), boxed_value) {
+                    Ok(_) => Ok(rt.none()),
+                    Err(err) => Err(err)
+                }
             }
             Err(_) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
@@ -225,11 +229,19 @@ impl method::SetItem for PyDict {
 
     #[allow(unused_variables)]
     fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::None> {
-        // TODO: enforce all objects containing a weakref to itself so we can support
-        // the clone and upgrade here for the native map api. Should check if the strong count
-        // exists or otherwise return Err because it would mean the value is unmanaged which
-        // leads to memory leaks and such.
-        Err(Error::not_implemented())
+
+        let objref = match value.upgrade() {
+            Ok(objref) => objref,
+            Err(err) => return Err(err)
+        };
+
+        match key {
+            &Builtin::DictKey(ref key) => {
+                self.value.0.borrow_mut().insert(key.clone(), objref);
+                Ok(native::None())
+            }
+            _ => Err(Error::typerr("key is not a dictkey type"))
+        }
     }
 }
 impl method::DeleteItem for PyDict {}
@@ -258,6 +270,94 @@ impl method::Enter for PyDict {}
 impl method::DescriptorGet for PyDict {}
 impl method::DescriptorSet for PyDict {}
 impl method::DescriptorSetName for PyDict {}
+
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//          Tests
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+#[cfg(test)]
+mod _api_method {
+    use runtime::{StringProvider, DictProvider};
+    use object::method::*;
+    use super::*;
+
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
+    #[test]
+    fn is_() {
+        let rt = setup_test();
+
+        let dict = rt.dict(native::None());
+        let dict2 = dict.clone();
+
+        let boxed: &Box<Builtin> = dict.0.borrow();
+        let result = boxed.op_is(&rt, &dict2).unwrap();
+        assert_eq!(result, rt.bool(true), "BooleanObject is(op_is)");
+
+        let dict3 = rt.dict(native::None());
+        let result = boxed.op_is(&rt, &dict3).unwrap();
+        assert_eq!(result, rt.bool(false));
+    }
+
+
+
+//    #[test]
+//    fn __eq__() {
+//        let rt = setup_test();
+//
+//        let f = rt.bool_false();
+//        let f2 = f.clone();
+//
+//        let f_ref: &Box<Builtin> = f.0.borrow();
+//        let result = f_ref.op_eq(&rt, &f2).unwrap();
+//        assert_eq!(result, rt.bool_true())
+//    }
+
+    #[test]
+    fn __bool__() {
+        let rt = setup_test();
+
+        let dict = rt.dict(native::None());
+        let boxed: &Box<Builtin> = dict.0.borrow();
+
+        let result = boxed.op_bool(&rt).unwrap();
+        assert_eq!(result, rt.bool_false());
+
+        let key = rt.str("helloworld");
+        let value = rt.int(1234);
+        boxed.op_setitem(&rt, &key, &value).unwrap();
+
+        let result = boxed.op_bool(&rt).unwrap();
+        assert_eq!(result, rt.bool_true());
+    }
+
+    #[test]
+    #[should_panic]
+    fn __int__() {
+        let rt = setup_test();
+
+        let dict = rt.dict(native::None());
+        let boxed: &Box<Builtin> = dict.0.borrow();
+
+        boxed.op_int(&rt).unwrap();
+    }
+
+    /// Mutable collection types should not be hashable
+    #[test]
+    #[should_panic]
+    fn __hash__() {
+        let rt = setup_test();
+        let dict = rt.dict(native::None());
+        let boxed: &Box<Builtin> = dict.0.borrow();
+
+        boxed.op_hash(&rt).unwrap();
+    }
+
+}
 
 
 #[cfg(all(feature="old", test))]

@@ -3,7 +3,6 @@ use std::fmt;
 
 use runtime::Runtime;
 use result::{NativeResult, RuntimeResult};
-use error::Error;
 
 use object;
 use object::method::{self, StringRepresentation, Equal};
@@ -55,45 +54,36 @@ pub enum Builtin {
 // underlying associated function using the foreach macros.
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
+
 impl SelfRef for Builtin {
     fn strong_count(&self) -> native::Integer {
-        match *self {
-            Builtin::Bool(ref obj) => obj.rc.strong_count(),
-            Builtin::Str(ref obj) => obj.rc.strong_count(),
-            _ => panic!("Invalid type"),
-        }
+        expr_foreach_builtin!(self, obj, {
+            obj.rc.strong_count()
+        })
     }
 
     fn weak_count(&self) -> native::Integer {
-        match *self {
-            Builtin::Bool(ref obj) => obj.rc.weak_count(),
-            Builtin::Str(ref obj) => obj.rc.weak_count(),
-            _ => panic!("Invalid type"),
-        }
+        expr_foreach_builtin!(self, obj, {
+            obj.rc.weak_count()
+        })
     }
 
     fn set(&self, objref: &ObjectRef) {
-        match *self {
-            Builtin::Bool(ref obj) => obj.rc.set(objref),
-            Builtin::Str(ref obj) => obj.rc.set(objref),
-            _ => panic!("Invalid type"),
-        }
+        expr_foreach_builtin!(self, obj, {
+            obj.rc.set(objref)
+        })
     }
 
     fn get(&self) -> WeakObjectRef {
-        match *self {
-            Builtin::Bool(ref obj) => obj.rc.get(),
-            Builtin::Str(ref obj) => obj.rc.get(),
-            _ => panic!("Invalid type"),
-        }
+        expr_foreach_builtin!(self, obj, {
+            obj.rc.get()
+        })
     }
 
     fn upgrade(&self) -> RuntimeResult {
-        match *self {
-            Builtin::Bool(ref obj) => obj.rc.upgrade(),
-            Builtin::Str(ref obj) => obj.rc.upgrade(),
-            _ => Err(Error::typerr("Invald type")),
-        }
+        expr_foreach_builtin!(self, obj, {
+            obj.rc.upgrade()
+        })
     }
 }
 
@@ -104,7 +94,15 @@ impl method::Init for Builtin {}
 impl method::Delete for Builtin {}
 impl method::GetAttr for Builtin {}
 impl method::GetAttribute for Builtin {}
-impl method::SetAttr for Builtin {}
+impl method::SetAttr for Builtin {
+    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_setattr, lhs, name, value)
+    }
+
+    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
+        native_foreach_builtin!(self, native_setattr, lhs, name, value)
+    }
+}
 impl method::DelAttr for Builtin {}
 impl method::Id for Builtin {
 
@@ -116,10 +114,10 @@ impl method::Id for Builtin {
     // the macro unwrapping causes an extra layer of indirection
     // and makes comparing porinters at the Object level harder.
     //
-    //     fn native_identity(&self) -> native::ObjectId {
-    //        native_foreach_builtin!(self, native_identity, lhs)
-    //        //return (&self as *const _) as native::ObjectId;
-    //     }
+         fn native_id(&self) -> native::ObjectId {
+            native_foreach_builtin!(self, native_id, lhs)
+            //return (&self as *const _) as native::ObjectId;
+         }
 }
 
 

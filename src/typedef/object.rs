@@ -1,24 +1,61 @@
 use std::fmt;
+use std::ops::Deref;
 use std::borrow::Borrow;
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
-use object::{self, RtValue};
-use object::method::{self, Id, GetItem, Hashed};
+use object::{self, RtValue, typing};
+use object::method::{self, Id, GetItem, Hashed, SetItem};
+use object::selfref::{self, SelfRef};
 
 use typedef::builtin::Builtin;
-use typedef::native::DictKey;
-use object::selfref::SelfRef;
+use typedef::native::{self, DictKey};
 use typedef::objectref::ObjectRef;
 
 
-pub struct ObjectValue {
-    #[allow(dead_code)]
-    dict: ObjectRef,
+#[derive(Clone)]
+pub struct PyObjectType {}
+
+
+impl typing::BuiltinType for PyObjectType {
+    type T = PyObject;
+    type V = native::Object;
+
+    #[inline(always)]
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyObjectType::inject_selfref(PyObjectType::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyObjectType {}
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Object(value));
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Object(ref object) => {
+                object.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
+        new
+    }
+
+    fn alloc(object: Self::V) -> Self::T {
+        PyObject{
+            value: ObjectValue(object),
+            rc: selfref::RefCount::default(),
+        }
+    }
 }
 
-// ref to dictionary
+
+pub struct ObjectValue(pub native::Object);
 pub type PyObject = RtValue<ObjectValue>;
 
 
@@ -30,8 +67,7 @@ pub type PyObject = RtValue<ObjectValue>;
 impl object::PyAPI for PyObject {}
 impl method::New for PyObject {}
 impl method::Init for PyObject {}
-impl method::Delete for PyObject {
-}
+impl method::Delete for PyObject {}
 
 impl method::GetAttr for PyObject {
 
@@ -51,7 +87,7 @@ impl method::GetAttr for PyObject {
                     };
 
                     let key = DictKey(string.native_hash().unwrap(), stringref);
-                    let dict: &Box<Builtin> = self.value.dict.0.borrow();
+                    let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
                     match dict.native_getitem(&Builtin::DictKey(key)) {
                         Ok(objref) => Ok(objref),
                         Err(_) => Err(Error::attribute())
@@ -60,11 +96,41 @@ impl method::GetAttr for PyObject {
                 _ => Err(Error::typerr("getattr(): attribute name must be string"))
             }
         }
-
-
 }
 impl method::GetAttribute for PyObject {}
-impl method::SetAttr for PyObject {}
+
+impl method::SetAttr for PyObject {
+    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+        let boxed_name: &Box<Builtin> = name.0.borrow();
+        let boxed_value: &Box<Builtin> = value.0.borrow();
+        match self.native_setattr(&boxed_name, boxed_value) {
+            Ok(_) => Ok(rt.none()),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
+
+        let hashid = match name.native_hash() {
+            Ok(hash) => hash,
+            Err(err) => return Err(err)
+        };
+
+        let key_ref = match name.upgrade() {
+            Ok(objref) => objref,
+            Err(err) => return Err(err)
+        };
+
+        let key = DictKey(hashid, key_ref);
+        let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
+
+        match dict.native_setitem(&Builtin::DictKey(key), &value) {
+            Ok(_) => Ok(native::None()),
+            Err(_) => Err(Error::attribute())
+        }
+    }
+}
+
 impl method::DelAttr for PyObject {}
 impl method::Id for PyObject {}
 impl method::Is for PyObject {}
@@ -184,4 +250,34 @@ impl fmt::Debug for PyObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<object at {}>", self.native_id())
     }
+}
+
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//          Tests
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+#[cfg(test)]
+mod _api_method {
+    use runtime::{StringProvider, IntegerProvider, ObjectProvider};
+    use object::method::*;
+    use super::*;
+
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
+    #[test]
+    fn __setattr__() {
+        let rt = setup_test();
+        let object = rt.object(native::None());
+
+        let boxed: &Box<Builtin> = object.0.borrow();
+        let key = rt.str("hello");
+        let value = rt.int(234);
+
+        boxed.op_setitem(&rt, &key, &value).unwrap();
+    }
+
 }

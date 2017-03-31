@@ -15,6 +15,8 @@ macro_rules! try_cast {
     )
 }
 
+
+
 macro_rules! foreach_builtin {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (
         unary_op_foreach!($sel, $rt, $function, $receiver)
@@ -24,7 +26,21 @@ macro_rules! foreach_builtin {
     );
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident) => (
         ternary_op_foreach!($sel, $rt, $function, $receiver, $arg0, $arg1)
-    )
+    );
+}
+
+macro_rules! expr_foreach_builtin {
+    ($obj:expr, $inner:ident, $e:block) => (
+       match $obj {
+            &Builtin::Bool(ref $inner) => $e,
+            &Builtin::None(ref $inner) => $e,
+            &Builtin::Int(ref $inner) => $e,
+            &Builtin::Dict(ref $inner) =>$e,
+            &Builtin::Str(ref $inner) =>$e,
+            &Builtin::Object(ref $inner) =>$e,
+            _ => unreachable!()
+        }
+    );
 }
 
 macro_rules! unary_op_foreach{

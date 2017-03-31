@@ -54,7 +54,7 @@ fn memory_address<T>(data: &T) -> native::ObjectId {
 // ----------------------------------
 api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr, ObjectRef);
 api_trait!(binary, self, __getattribute__, GetAttribute, op_getattribute, native_getattribute);
-api_trait!(binary, self, __setattr__, SetAttr, op_setattr, native_setattr);
+api_trait!(ternary, self, __setattr__, SetAttr, op_setattr, native_setattr, native::None);
 api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 
 

@@ -13,6 +13,7 @@ use typedef::boolean::PyBooleanType;
 use typedef::integer::PyIntegerType;
 use typedef::string::PyStringType;
 use typedef::dictionary::PyDictType;
+use typedef::object::PyObjectType;
 
 
 pub trait IntegerProvider<T> {
@@ -26,6 +27,18 @@ pub trait IntegerSingletons {
 }
 
 
+pub trait DictProvider<T> {
+    fn dict(&self, value: T) -> ObjectRef;
+}
+
+pub trait StringProvider<T> {
+    fn str(&self, value: T) -> ObjectRef;
+}
+
+pub trait ObjectProvider<T> {
+    fn object(&self, value: T) -> ObjectRef;
+}
+
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
 ///
@@ -38,7 +51,8 @@ pub struct BuiltinTypes {
     bool: PyBooleanType,
     int: PyIntegerType,
     dict: PyDictType,
-    string: PyStringType
+    string: PyStringType,
+    object: PyObjectType
 }
 
 
@@ -73,7 +87,8 @@ impl Runtime {
             bool: PyBooleanType::init_type(),
             int: PyIntegerType::init_type(),
             dict: PyDictType::init_type(),
-            string: PyStringType::init_type()
+            string: PyStringType::init_type(),
+            object: PyObjectType::init_type(),
         };
 
         let internal = RuntimeInternal {
@@ -108,20 +123,12 @@ impl Runtime {
         self.bool(false)
     }
 
-    // PyString
-    pub fn str(&self, value: native::String) -> ObjectRef {
-        self.0.types.string.new(&self, value)
-    }
-
-    pub fn str_empty(&self) -> ObjectRef {
-        self.0.types.string.empty.clone()
-    }
-
-    pub fn dict(&self, value: native::Dict) -> ObjectRef {
-        self.0.types.dict.new(&self, value)
-    }
 }
 
+
+//
+// Integer
+//
 
 impl IntegerProvider<native::Integer> for Runtime {
     fn int(&self, value: native::Integer) -> ObjectRef {
@@ -135,6 +142,7 @@ impl IntegerProvider<isize> for Runtime {
     }
 }
 
+
 impl IntegerSingletons for Runtime {
     fn int_zero(&self) -> ObjectRef {
         self.0.types.int.new(&self, native::Integer::zero())
@@ -144,6 +152,62 @@ impl IntegerSingletons for Runtime {
         self.0.types.int.new(&self, native::Integer::from_usize(1).unwrap())
     }
 
+}
+
+
+//
+// String
+//
+
+impl StringProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn str(&self, value: native::None) -> ObjectRef {
+        return self.0.types.string.empty.clone()
+    }
+}
+
+impl StringProvider<native::String> for Runtime {
+    #[allow(unused_variables)]
+    fn str(&self, value: native::String) -> ObjectRef {
+        return self.0.types.string.new(&self, value)
+    }
+}
+
+impl StringProvider<&'static str> for Runtime {
+    #[allow(unused_variables)]
+    fn str(&self, value: &'static str) -> ObjectRef {
+        return self.0.types.string.new(&self, value.to_string())
+    }
+}
+
+//
+// Dict
+//
+impl DictProvider<native::Dict> for Runtime {
+    fn dict(&self, value: native::Dict) -> ObjectRef {
+        self.0.types.dict.new(&self, value)
+    }
+}
+
+impl DictProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn dict(&self, value: native::None) -> ObjectRef {
+        self.0.types.dict.new(&self, native::Dict::new())
+    }
+}
+
+//
+// Object
+//
+
+impl ObjectProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn object(&self, value: native::None) -> ObjectRef {
+        self.0.types.object.new(&self, native::Object {
+            dict: self.dict(native::None()),
+            bases: self.dict(native::None())
+        })
+    }
 }
 
 
