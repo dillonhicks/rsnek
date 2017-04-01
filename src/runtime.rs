@@ -1,7 +1,6 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 use std;
 use std::rc::Rc;
-use num::FromPrimitive;
 use num::Zero;
 
 use object::typing::BuiltinType;
@@ -15,17 +14,17 @@ use typedef::string::PyStringType;
 use typedef::dictionary::PyDictType;
 use typedef::object::PyObjectType;
 
+pub trait NoneProvider {
+    fn none(&self) -> ObjectRef;
+}
+
+pub trait BooleanProvider<T> {
+    fn bool(&self, value: T) -> ObjectRef;
+}
 
 pub trait IntegerProvider<T> {
     fn int(&self, value: T) -> ObjectRef;
 }
-
-
-pub trait IntegerSingletons {
-    fn int_zero(&self) -> ObjectRef;
-    fn int_one(&self) -> ObjectRef;
-}
-
 
 pub trait DictProvider<T> {
     fn dict(&self, value: T) -> ObjectRef;
@@ -101,17 +100,6 @@ impl Runtime {
 
     // Type Convenience Methods for Builtin Types
 
-    // PyNone
-    #[inline(always)]
-    pub fn none(&self) -> ObjectRef {
-        return self.0.types.none.new(&self, NONE)
-    }
-
-    // PyBoolean
-    #[inline(always)]
-    pub fn bool(&self, value: native::Boolean) -> ObjectRef {
-        self.0.types.bool.new(&self, value)
-    }
 
     #[inline(always)]
     pub fn bool_true(&self) -> ObjectRef {
@@ -125,10 +113,43 @@ impl Runtime {
 
 }
 
+//
+// None
+//
+impl NoneProvider for Runtime {
+    #[inline]
+    fn none(&self) -> ObjectRef {
+        self.0.types.none.new(&self, NONE)
+    }
+}
+
+//
+// Boolean
+//
+impl BooleanProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn bool(&self, value: native::None) -> ObjectRef {
+        self.0.types.bool.new(&self, false)
+    }
+}
+
+impl BooleanProvider<native::Boolean> for Runtime {
+    fn bool(&self, value: native::Boolean) -> ObjectRef {
+        self.0.types.bool.new(&self, value)
+    }
+}
 
 //
 // Integer
 //
+
+impl IntegerProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn int(&self, value: native::None) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::zero())
+    }
+}
+
 
 impl IntegerProvider<native::Integer> for Runtime {
     fn int(&self, value: native::Integer) -> ObjectRef {
@@ -136,22 +157,16 @@ impl IntegerProvider<native::Integer> for Runtime {
     }
 }
 
-impl IntegerProvider<isize> for Runtime {
-    fn int(&self, value: isize) -> ObjectRef {
+impl IntegerProvider<native::ObjectId> for Runtime {
+    fn int(&self, value: native::ObjectId) -> ObjectRef {
         self.0.types.int.new(&self, native::Integer::from(value))
     }
 }
 
-
-impl IntegerSingletons for Runtime {
-    fn int_zero(&self) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::zero())
+impl IntegerProvider<i32> for Runtime {
+    fn int(&self, value: i32) -> ObjectRef {
+        self.0.types.int.new(&self, native::Integer::from(value))
     }
-
-    fn int_one(&self) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::from_usize(1).unwrap())
-    }
-
 }
 
 
@@ -211,6 +226,14 @@ impl ObjectProvider<native::None> for Runtime {
 }
 
 
+impl ObjectProvider<native::Object> for Runtime {
+    #[allow(unused_variables)]
+    fn object(&self, value: native::Object) -> ObjectRef {
+        self.0.types.object.new(&self, value)
+    }
+}
+
+// stdlib
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Runtime()")

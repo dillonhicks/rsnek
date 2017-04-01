@@ -22,9 +22,6 @@ method::GetAttr +
 method::GetAttribute +
 method::SetAttr +
 method::DelAttr +
-method::Id +
-method::Is +
-method::IsNot +
 method::Hashed +
 method::StringCast +
 method::BytesCast +
@@ -134,9 +131,6 @@ macro_rules! object_api {
         impl method::GetAttribute for $typename {}
         impl method::SetAttr for $typename {}
         impl method::DelAttr for $typename {}
-        impl method::Id for $typename {}
-        impl method::Is for $typename {}
-        impl method::IsNot for $typename {}
         impl method::Hashed for $typename {}
         impl method::StringCast for $typename {}
         impl method::BytesCast for $typename {}

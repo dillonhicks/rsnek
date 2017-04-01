@@ -2,7 +2,8 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
 
-use runtime::Runtime;
+use runtime::{BooleanProvider, Runtime};
+use result::{RuntimeResult, NativeResult};
 use object::selfref::{self, SelfRef};
 use object::{RtValue, PyAPI, method, typing};
 
@@ -82,7 +83,23 @@ impl method::StringCast for PyNone {}
 impl method::BytesCast for PyNone {}
 impl method::StringFormat for PyNone {}
 impl method::StringRepresentation for PyNone {}
-impl method::Equal for PyNone {}
+impl method::Equal for PyNone {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+        match self.native_eq(boxed) {
+            Ok(truth) => Ok(rt.bool(truth)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::None(_) => Ok(true),
+            _ => Ok(false)
+        }
+    }
+
+}
 impl method::NotEqual for PyNone {}
 impl method::LessThan for PyNone {}
 impl method::LessOrEqual for PyNone {}

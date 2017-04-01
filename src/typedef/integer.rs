@@ -7,8 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 
 use num::Zero;
 
-use runtime::Runtime;
-use runtime::{StringProvider, IntegerProvider};
+use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider};
 use error::Error;
 use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};

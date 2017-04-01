@@ -1,8 +1,11 @@
 use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
-use runtime::Runtime;
+use result::{NativeResult, RuntimeResult};
+use runtime::{Runtime, IntegerProvider, BooleanProvider};
 
 use object::{self, RtValue};
 use object::selfref::{self, SelfRef};
@@ -60,7 +63,6 @@ impl typing::BuiltinType for PyStringType {
 }
 
 
-#[derive(Clone)]
 pub struct StringValue(pub native::String);
 
 
@@ -87,12 +89,41 @@ impl method::DelAttr for PyString {}
 impl method::Id for PyString {}
 impl method::Is for PyString {}
 impl method::IsNot for PyString {}
-impl method::Hashed for PyString {}
+impl method::Hashed for PyString {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(value) => Ok(rt.int(native::Integer::from(value))),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        let mut s = DefaultHasher::new();
+        self.value.0.hash(&mut s);
+        Ok(s.finish())
+    }
+}
 impl method::StringCast for PyString {}
 impl method::BytesCast for PyString {}
 impl method::StringFormat for PyString {}
 impl method::StringRepresentation for PyString {}
-impl method::Equal for PyString {}
+impl method::Equal for PyString {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        match self.native_eq(boxed) {
+            Ok(value) => Ok(rt.bool(value)),
+            _ => unreachable!(),
+        }
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::Str(ref string) => Ok(self.value.0.eq(&string.value.0)),
+            _ => Ok(false),
+        }
+    }
+}
 impl method::NotEqual for PyString {}
 impl method::LessThan for PyString {}
 impl method::LessOrEqual for PyString {}

@@ -105,8 +105,6 @@ impl std::cmp::PartialEq for ObjectRef {
         let lhs_box: &Box<Builtin> = self.0.borrow();
 
         let rhs_box: &Box<Builtin> = rhs.0.borrow();
-
-
         *lhs_box.deref() == *rhs_box.deref()
     }
 }

@@ -7,7 +7,7 @@ use object::{self, RtValue, typing, method};
 use object::method::{BooleanCast, IntegerCast, StringRepresentation};
 use object::selfref::{self, SelfRef};
 
-use runtime::Runtime;
+use runtime::{Runtime, BooleanProvider};
 use runtime::{StringProvider, IntegerProvider};
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
@@ -96,9 +96,6 @@ impl method::GetAttr for PyBoolean {}
 impl method::GetAttribute for PyBoolean {}
 impl method::SetAttr for PyBoolean {}
 impl method::DelAttr for PyBoolean {}
-impl method::Id for PyBoolean {}
-impl method::Is for PyBoolean {}
-impl method::IsNot for PyBoolean {}
 impl method::Hashed for PyBoolean {}
 impl method::StringCast for PyBoolean {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
@@ -147,7 +144,7 @@ impl method::Equal for PyBoolean {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.bool_true()) } else { Ok(rt.bool_false()) },
+            Ok(value) => if value { Ok(rt.bool(true)) } else { Ok(rt.bool(false)) },
             Err(err) => Err(err),
         }
     }
@@ -165,7 +162,7 @@ impl method::NotEqual for PyBoolean {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_ne(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.bool_true()) } else { Ok(rt.bool_false()) },
+            Ok(value) => if value { Ok(rt.bool(true)) } else { Ok(rt.bool(false)) },
             Err(err) => Err(err),
         }
     }
@@ -404,40 +401,63 @@ mod _api_method {
     fn is_() {
         let rt = setup_test();
 
-        let f = rt.bool_false();
+        let f = rt.bool(false);
         let f2 = f.clone();
+        let t = rt.bool(true);
 
         let f_ref: &Box<Builtin> = f.0.borrow();
+
         let result = f_ref.op_is(&rt, &f2).unwrap();
-        assert_eq!(result, rt.bool_true(), "BooleanObject is(op_is)");
+        assert_eq!(result, rt.bool(true), "BooleanObject is(op_is)");
+
+        let result = f_ref.op_is(&rt, &t).unwrap();
+        assert_eq!(result, rt.bool(false));
     }
+
+    #[test]
+    fn is_not() {
+        let rt = setup_test();
+
+        let f = rt.bool(false);
+        let f2 = f.clone();
+        let t = rt.bool(true);
+
+        let f_ref: &Box<Builtin> = f.0.borrow();
+
+        let result = f_ref.op_is_not(&rt, &f2).unwrap();
+        assert_eq!(result, rt.bool(false), "BooleanObject is(op_is)");
+
+        let result = f_ref.op_is_not(&rt, &t).unwrap();
+        assert_eq!(result, rt.bool(true));
+    }
+
 
     #[test]
     fn __eq__() {
         let rt = setup_test();
 
-        let f = rt.bool_false();
+        let f = rt.bool(false);
         let f2 = f.clone();
 
         let f_ref: &Box<Builtin> = f.0.borrow();
         let result = f_ref.op_eq(&rt, &f2).unwrap();
-        assert_eq!(result, rt.bool_true())
+        assert_eq!(result, rt.bool(true))
     }
 
     #[test]
     fn __bool__() {
         let rt = setup_test();
 
-        let (t, f) = (rt.bool_true(), rt.bool_false());
+        let (t, f) = (rt.bool(true), rt.bool(false));
 
         let t_ref: &Box<Builtin> = t.0.borrow();
         let f_ref: &Box<Builtin> = f.0.borrow();
 
         let result = t_ref.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.bool_true());
+        assert_eq!(result, rt.bool(true));
 
         let result = f_ref.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.bool_false());
+        assert_eq!(result, rt.bool(false));
     }
 
     #[test]
@@ -446,7 +466,7 @@ mod _api_method {
 
         let one = rt.int(1);
 
-        let t = rt.bool_true();
+        let t = rt.bool(true);
         let t_ref: &Box<Builtin> = t.0.borrow();
 
         let result = t_ref.op_int(&rt).unwrap();

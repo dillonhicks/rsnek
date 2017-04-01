@@ -1,11 +1,12 @@
 use std;
 use std::fmt;
+use std::borrow::Borrow;
 
-use runtime::Runtime;
+use runtime::{Runtime, IntegerProvider, BooleanProvider};
 use result::{NativeResult, RuntimeResult};
 
 use object;
-use object::method::{self, StringRepresentation, Equal};
+use object::method::{self, Id, StringRepresentation, Equal};
 use object::selfref::SelfRef;
 
 use typedef::native;
@@ -92,7 +93,16 @@ impl object::PyAPI for Builtin {}
 impl method::New for Builtin {}
 impl method::Init for Builtin {}
 impl method::Delete for Builtin {}
-impl method::GetAttr for Builtin {}
+impl method::GetAttr for Builtin {
+    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_getattr, lhs, name)
+    }
+
+    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+        native_foreach_builtin!(self, native_getattr, lhs, name)
+    }
+}
+
 impl method::GetAttribute for Builtin {}
 impl method::SetAttr for Builtin {
     fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
@@ -107,38 +117,48 @@ impl method::DelAttr for Builtin {}
 impl method::Id for Builtin {
 
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_id, lhs)
+        Ok(rt.int(self.native_id()))
     }
 
-    // Short circuit the ident to hit the wrapper since
-    // the macro unwrapping causes an extra layer of indirection
-    // and makes comparing porinters at the Object level harder.
-    //
-         fn native_id(&self) -> native::ObjectId {
-            native_foreach_builtin!(self, native_id, lhs)
-            //return (&self as *const _) as native::ObjectId;
-         }
+    fn native_id(&self) -> native::ObjectId {
+        expr_foreach_builtin!(self, obj, {
+                (obj as *const _) as native::ObjectId
+            })
+    }
+
 }
 
 
 impl method::Is for Builtin {
     fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_is, lhs, rhs)
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is(rhs_builtin).unwrap() {
+            Ok(rt.bool(true))
+        } else {
+            Ok(rt.bool(false))
+        }
     }
 
 
     fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_is, lhs, rhs)
+        Ok(self.native_id() == rhs.native_id())
     }
 }
 
 impl method::IsNot for Builtin {
     fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        foreach_builtin!(self, rt, op_is_not, lhs, rhs)
+        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
+
+        if self.native_is_not(rhs_builtin).unwrap() {
+            Ok(rt.bool(true))
+        } else {
+            Ok(rt.bool(false))
+        }
     }
 
     fn native_is_not(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        native_foreach_builtin!(self, native_is_not, lhs, rhs)
+        Ok(self.native_id() != rhs.native_id())
     }
 }
 
@@ -154,6 +174,7 @@ impl method::Hashed for Builtin {
         native_foreach_builtin!(self, native_hash, obj)
     }
 }
+
 impl method::StringCast for Builtin {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_str, obj)

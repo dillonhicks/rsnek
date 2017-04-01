@@ -4,8 +4,7 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use result::{NativeResult, RuntimeResult};
 
-use runtime::Runtime;
-use runtime::IntegerProvider;
+use runtime::{Runtime, IntegerProvider, NoneProvider, BooleanProvider};
 use error::Error;
 use typedef::objectref::ObjectRef;
 use typedef::native::{self, DictKey};
@@ -110,9 +109,9 @@ impl method::GreaterThan for PyDict {}
 impl method::BooleanCast for PyDict {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         Ok(if self.native_bool().unwrap() {
-               rt.bool_true()
+               rt.bool(true)
            } else {
-               rt.bool_false()
+               rt.bool(false)
            })
     }
 
@@ -198,6 +197,7 @@ impl method::GetItem for PyDict {
         match key_box.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
+                println!("HASHED: {:?}", key);
                 match self.value.0.borrow().get(&key) {
                     Some(objref) => Ok(objref.clone()),
                     None => {
@@ -209,7 +209,21 @@ impl method::GetItem for PyDict {
             Err(_) => Err(Error::typerr("TypeError: Unhashable key type")),
         }
     }
+
+    fn native_getitem(&self, key: &Builtin) -> RuntimeResult {
+        match key {
+            &Builtin::DictKey(ref key) => {
+                match self.value.0.borrow().get(key) {
+                    Some(value) => Ok(value.clone()),
+                    None => Err(Error::key("No such key"))
+                }
+            }
+            _ => Err(Error::typerr("key is not a dictkey type"))
+        }
+    }
+
 }
+
 impl method::SetItem for PyDict {
     fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
         let boxed_key: &Box<Builtin> = keyref.0.borrow();
@@ -304,19 +318,6 @@ mod _api_method {
     }
 
 
-
-//    #[test]
-//    fn __eq__() {
-//        let rt = setup_test();
-//
-//        let f = rt.bool_false();
-//        let f2 = f.clone();
-//
-//        let f_ref: &Box<Builtin> = f.0.borrow();
-//        let result = f_ref.op_eq(&rt, &f2).unwrap();
-//        assert_eq!(result, rt.bool_true())
-//    }
-
     #[test]
     fn __bool__() {
         let rt = setup_test();
@@ -325,14 +326,14 @@ mod _api_method {
         let boxed: &Box<Builtin> = dict.0.borrow();
 
         let result = boxed.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.bool_false());
+        assert_eq!(result, rt.bool(false));
 
         let key = rt.str("helloworld");
         let value = rt.int(1234);
         boxed.op_setitem(&rt, &key, &value).unwrap();
 
         let result = boxed.op_bool(&rt).unwrap();
-        assert_eq!(result, rt.bool_true());
+        assert_eq!(result, rt.bool(true));
     }
 
     #[test]
@@ -355,6 +356,41 @@ mod _api_method {
         let boxed: &Box<Builtin> = dict.0.borrow();
 
         boxed.op_hash(&rt).unwrap();
+    }
+
+
+    #[test]
+    fn __setitem__() {
+        let rt = setup_test();
+        let dict = rt.dict(native::None());
+
+        let key= rt.str("hello");
+        let value = rt.int(234);
+
+        let boxed: &Box<Builtin> = dict.0.borrow();
+
+        let result = boxed.op_setitem(&rt, &key, &value).unwrap();
+        assert_eq!(result, rt.none());
+
+    }
+
+    #[test]
+    fn __getitem__() {
+        let rt = setup_test();
+        let dict = rt.dict(native::None());
+
+        let key = rt.str("hello");
+        let value = rt.int(234);
+
+        let boxed: &Box<Builtin> = dict.0.borrow();
+
+        let result = boxed.op_setitem(&rt, &key, &value).unwrap();
+        assert_eq!(result, rt.none());
+
+        println!("{:?}", dict);
+        println!("{:?}", key);
+        let result = boxed.op_getitem(&rt, &key).unwrap();
+        assert_eq!(result, value);
     }
 
 }

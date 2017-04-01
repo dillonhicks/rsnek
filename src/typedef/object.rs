@@ -1,10 +1,12 @@
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::Runtime;
+use runtime::{Runtime, NoneProvider, IntegerProvider};
 use object::{self, RtValue, typing};
 use object::method::{self, Id, GetItem, Hashed, SetItem};
 use object::selfref::{self, SelfRef};
@@ -90,7 +92,7 @@ impl method::GetAttr for PyObject {
                     let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
                     match dict.native_getitem(&Builtin::DictKey(key)) {
                         Ok(objref) => Ok(objref),
-                        Err(_) => Err(Error::attribute())
+                        Err(err) => Err(err)
                     }
                 },
                 _ => Err(Error::typerr("getattr(): attribute name must be string"))
@@ -132,10 +134,34 @@ impl method::SetAttr for PyObject {
 }
 
 impl method::DelAttr for PyObject {}
-impl method::Id for PyObject {}
-impl method::Is for PyObject {}
-impl method::IsNot for PyObject {}
-impl method::Hashed for PyObject {}
+impl method::Id for PyObject {
+    fn native_id(&self) -> native::ObjectId {
+        match self.rc.upgrade() {
+            Ok(objref) => {
+                let boxed: &Box<Builtin> = objref.0.borrow();
+                boxed.native_id()
+            },
+            Err(_) => 0
+        }
+    }
+}
+
+impl method::Hashed for PyObject {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(hashid) => Ok(rt.int(hashid)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        let mut s = DefaultHasher::new();
+        self.native_id().hash(&mut s);
+        Ok(s.finish())
+    }
+
+
+}
 impl method::StringCast for PyObject {}
 impl method::BytesCast for PyObject {}
 impl method::StringFormat for PyObject {}
@@ -260,12 +286,45 @@ impl fmt::Debug for PyObject {
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{StringProvider, IntegerProvider, ObjectProvider};
+    use runtime::{BooleanProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
     use object::method::*;
     use super::*;
 
     fn setup_test() -> (Runtime) {
         Runtime::new()
+    }
+
+    #[test]
+    fn is_() {
+        let rt = setup_test();
+        let object = rt.object(native::None());
+        let object2 = object.clone();
+        let object3 = rt.object(native::None());
+
+        let boxed: &Box<Builtin> = object.0.borrow();
+
+        let result = boxed.op_is(&rt, &object2).unwrap();
+        assert_eq!(result, rt.bool(true));
+
+        let result = boxed.op_is(&rt, &object3).unwrap();
+        assert_eq!(result, rt.bool(false));
+    }
+
+
+    #[test]
+    fn is_not() {
+        let rt = setup_test();
+        let object = rt.object(native::None());
+        let object2 = object.clone();
+        let object3 = rt.object(native::None());
+
+        let boxed: &Box<Builtin> = object.0.borrow();
+
+        let result = boxed.op_is_not(&rt, &object2).unwrap();
+        assert_eq!(result, rt.bool(false));
+
+        let result = boxed.op_is_not(&rt, &object3).unwrap();
+        assert_eq!(result, rt.bool(true));
     }
 
     #[test]
@@ -277,7 +336,23 @@ mod _api_method {
         let key = rt.str("hello");
         let value = rt.int(234);
 
-        boxed.op_setitem(&rt, &key, &value).unwrap();
+        let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+        assert_eq!(result, rt.none())
     }
 
+    #[test]
+    fn __getattr__() {
+        let rt = setup_test();
+        let object = rt.object(native::None());
+
+        let boxed: &Box<Builtin> = object.0.borrow();
+        let key = rt.str("hello");
+        let value = rt.int(234);
+
+        let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+        assert_eq!(result, rt.none());
+
+        let result = boxed.op_getattr(&rt, &key).unwrap();
+        assert_eq!(result, value);
+    }
 }

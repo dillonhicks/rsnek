@@ -1,12 +1,7 @@
 use std::borrow::Borrow;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-
-use num::FromPrimitive;
 
 use error::Error;
-use runtime::Runtime;
-use runtime::IntegerProvider;
+use runtime::{Runtime, BooleanProvider, IntegerProvider};
 
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
@@ -44,8 +39,8 @@ api_trait!(binary, self, __del__, Delete, op_del, native_del);
 // __class__
 
 #[inline(always)]
-fn memory_address<T>(data: &T) -> native::ObjectId {
-    (&data as *const _) as native::ObjectId
+pub fn memory_address<T>(data: &T) -> native::ObjectId {
+    (data as *const _) as native::ObjectId
 }
 
 
@@ -66,13 +61,15 @@ api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 //  and `is / is not` keyword operators.
 // ----------------------------------
 // api_trait!(unary, self, id, Id, op_id, native_id, native::ObjectId);
+//
+
 pub trait Id {
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
-        Ok(rt.int(native::Integer::from_u64(self.native_id()).unwrap()))
+        Ok(rt.int(self.native_id()))
     }
 
     fn native_id(&self) -> native::ObjectId {
-        memory_address(&self)
+        (&self as *const _) as native::ObjectId
     }
 }
 
@@ -81,9 +78,9 @@ pub trait Is where Self: Id  {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is(rhs_builtin).unwrap() {
-            Ok(rt.bool_true())
+            Ok(rt.bool(true))
         } else {
-            Ok(rt.bool_false())
+            Ok(rt.bool(false))
         }
     }
 
@@ -97,9 +94,9 @@ pub trait IsNot where Self: Id {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is_not(rhs_builtin).unwrap() {
-            Ok(rt.bool_true())
+            Ok(rt.bool(true))
         } else {
-            Ok(rt.bool_false())
+            Ok(rt.bool(false))
         }
     }
 
@@ -109,33 +106,34 @@ pub trait IsNot where Self: Id {
     }
 }
 
-pub trait Hashed where Self: Id{
-    // Called by built-in function hash() and for operations on members of hashed collections including
-    // set, frozenset, and dict. __hash__() should return an integer. The only required property is
-    // that objects which compare equal have the same hash value; it is advised to mix together
-    // the hash values of the components of the object that also play a part in comparison
-    // of objects by packing them into a tuple and hashing the tuple. Example:
-    // api_method!(unary, self, __hash__, Hashable, op_hash, native_hash);
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(value) => Ok(rt.int(native::Integer::from_u64(value).unwrap())),
-            Err(err) => Err(err),
-        }
-    }
+api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
 
-    /// Default implementation of the native hash is to
-    /// use the ptr identity and hash that.
-    /// Numerical types especially should override
-    fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = DefaultHasher::new();
-        self.native_id().hash(&mut s);
-        Ok(s.finish())
-    }
-}
+//pub trait Hashed {
+//    // Called by built-in function hash() and for operations on members of hashed collections including
+//    // set, frozenset, and dict. __hash__() should return an integer. The only required property is
+//    // that objects which compare equal have the same hash value; it is advised to mix together
+//    // the hash values of the components of the object that also play a part in comparison
+//    // of objects by packing them into a tuple and hashing the tuple. Example:
+//    // api_method!(unary, self, __hash__, Hashable, op_hash, native_hash);
+//    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+//        match self.native_hash() {
+//            Ok(value) => Ok(rt.int(native::Integer::from_u64(value).unwrap())),
+//            Err(err) => Err(err),
+//        }
+//    }
+//
+//    /// Default implementation of the native hash is to
+//    /// use the ptr identity and hash that.
+//    /// Numerical types especially should override
+//    fn native_hash(&self) -> NativeResult<native::HashId> {
+//        let mut s = DefaultHasher::new();
+//        self.native_id().hash(&mut s);
+//        Ok(s.finish())
+//    }
+//}
 
 //api_trait!(binary, self, is_, Is, op_is, native_is, native::Boolean);
 //api_trait!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
-//api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
 
 // ----------------------------------
 //  String Formatting
@@ -155,9 +153,9 @@ pub trait Equal {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_eq(rhs_builtin).unwrap() {
-            Ok(rt.bool_true())
+            Ok(rt.bool(true))
         } else {
-            Ok(rt.bool_false())
+            Ok(rt.bool(false))
         }
     }
 
@@ -174,9 +172,9 @@ pub trait NotEqual {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_ne(rhs_builtin).unwrap() {
-            Ok(rt.bool_true())
+            Ok(rt.bool(true))
         } else {
-            Ok(rt.bool_false())
+            Ok(rt.bool(false))
         }
     }
 
