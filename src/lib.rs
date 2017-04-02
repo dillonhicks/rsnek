@@ -14,6 +14,7 @@
 ///  - TODO: Consider a lighter weight NativeBuiltin union/enum for polymorphic native type cases
 ///
 extern crate num;
+extern crate itertools;
 
 #[macro_use]
 pub mod macros;

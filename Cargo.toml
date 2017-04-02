@@ -16,6 +16,7 @@ num = "*"
 serde = "*"
 serde_derive = "*"
 serde_yaml = "*"
+itertools = "*"
 
 [features]
 #rsnek-debug-heap = []

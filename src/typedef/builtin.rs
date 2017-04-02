@@ -17,8 +17,9 @@ use typedef::integer::PyInteger;
 use typedef::string::PyString;
 use typedef::complex::PyComplex;
 use typedef::none::PyNone;
+use typedef::tuple::PyTuple;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
-
+use typedef::pytype::PyType;
 
 
 #[derive(Debug)]
@@ -37,6 +38,8 @@ pub enum Builtin {
     Complex(PyComplex),
     Str(PyString),
     Dict(PyDict),
+    Tuple(PyTuple),
+    Type(PyType),
 
     // Utility Types
     DictKey(native::DictKey),

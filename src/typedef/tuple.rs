@@ -1,3 +1,310 @@
+use std::fmt;
+use std::ops::{Add, Deref};
+use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+use itertools::Itertools;
+use num::Zero;
+
+use result::{RuntimeResult, NativeResult};
+use runtime::{Runtime, IntegerProvider};
+use object::{self, RtValue, typing};
+use object::method::{self, Id, Length};
+use object::selfref::{self, SelfRef};
+
+use typedef::builtin::Builtin;
+use typedef::native;
+use typedef::objectref::ObjectRef;
+
+
+pub struct PyTupleType {
+    pub empty: ObjectRef
+}
+
+
+impl typing::BuiltinType for PyTupleType {
+    type T = PyTuple;
+    type V = native::Tuple;
+
+    #[inline(always)]
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyTupleType::inject_selfref(PyTupleType::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyTupleType {
+            empty: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new()))
+        }
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Tuple(value));
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Tuple(ref tuple) => {
+                tuple.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyTuple{
+            value: TupleValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+}
+
+
+pub struct TupleValue(pub native::Tuple);
+pub type PyTuple = RtValue<TupleValue>;
+
+
+impl object::PyAPI for PyTuple {}
+impl method::New for PyTuple {}
+impl method::Init for PyTuple {}
+impl method::Delete for PyTuple {}
+impl method::GetAttr for PyTuple {}
+impl method::GetAttribute for PyTuple {}
+impl method::SetAttr for PyTuple {}
+impl method::DelAttr for PyTuple {}
+
+impl method::Hashed for PyTuple {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_hash() {
+            Ok(hashid) => Ok(rt.int(hashid)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_hash(&self) -> NativeResult<native::HashId> {
+        if self.native_len().unwrap().is_zero() {
+            let mut s = DefaultHasher::new();
+            match self.rc.upgrade() {
+                Ok(objref) => {
+                    let boxed: &Box<Builtin> = objref.0.borrow();
+                    boxed.native_id().hash(&mut s);
+                    return Ok(s.finish());
+                },
+                Err(err) => return Err(err)
+            }
+        }
+
+        self.value.0.iter().map(|ref item| {
+            let boxed: &Box<Builtin> = item.0.borrow();
+            boxed.native_hash()
+        }).fold_results(0, Add::add)
+    }
+}
+
+impl method::StringCast for PyTuple {}
+impl method::BytesCast for PyTuple {}
+impl method::StringFormat for PyTuple {}
+impl method::StringRepresentation for PyTuple {}
+impl method::Equal for PyTuple {}
+impl method::NotEqual for PyTuple {}
+impl method::LessThan for PyTuple {}
+impl method::LessOrEqual for PyTuple {}
+impl method::GreaterOrEqual for PyTuple {}
+impl method::GreaterThan for PyTuple {}
+impl method::BooleanCast for PyTuple {}
+impl method::IntegerCast for PyTuple {}
+impl method::FloatCast for PyTuple {}
+impl method::ComplexCast for PyTuple {}
+impl method::Rounding for PyTuple {}
+impl method::Index for PyTuple {}
+impl method::NegateValue for PyTuple {}
+impl method::AbsValue for PyTuple {}
+impl method::PositiveValue for PyTuple {}
+impl method::InvertValue for PyTuple {}
+impl method::Add for PyTuple {}
+impl method::BitwiseAnd for PyTuple {}
+impl method::DivMod for PyTuple {}
+impl method::FloorDivision for PyTuple {}
+impl method::LeftShift for PyTuple {}
+impl method::Modulus for PyTuple {}
+impl method::Multiply for PyTuple {}
+impl method::MatrixMultiply for PyTuple {}
+impl method::BitwiseOr for PyTuple {}
+impl method::Pow for PyTuple {}
+impl method::RightShift for PyTuple {}
+impl method::Subtract for PyTuple {}
+impl method::TrueDivision for PyTuple {}
+impl method::XOr for PyTuple {}
+impl method::ReflectedAdd for PyTuple {}
+impl method::ReflectedBitwiseAnd for PyTuple {}
+impl method::ReflectedDivMod for PyTuple {}
+impl method::ReflectedFloorDivision for PyTuple {}
+impl method::ReflectedLeftShift for PyTuple {}
+impl method::ReflectedModulus for PyTuple {}
+impl method::ReflectedMultiply for PyTuple {}
+impl method::ReflectedMatrixMultiply for PyTuple {}
+impl method::ReflectedBitwiseOr for PyTuple {}
+impl method::ReflectedPow for PyTuple {}
+impl method::ReflectedRightShift for PyTuple {}
+impl method::ReflectedSubtract for PyTuple {}
+impl method::ReflectedTrueDivision for PyTuple {}
+impl method::ReflectedXOr for PyTuple {}
+impl method::InPlaceAdd for PyTuple {}
+impl method::InPlaceBitwiseAnd for PyTuple {}
+impl method::InPlaceDivMod for PyTuple {}
+impl method::InPlaceFloorDivision for PyTuple {}
+impl method::InPlaceLeftShift for PyTuple {}
+impl method::InPlaceModulus for PyTuple {}
+impl method::InPlaceMultiply for PyTuple {}
+impl method::InPlaceMatrixMultiply for PyTuple {}
+impl method::InPlaceBitwiseOr for PyTuple {}
+impl method::InPlacePow for PyTuple {}
+impl method::InPlaceRightShift for PyTuple {}
+impl method::InPlaceSubtract for PyTuple {}
+impl method::InPlaceTrueDivision for PyTuple {}
+impl method::InPlaceXOr for PyTuple {}
+impl method::Contains for PyTuple {}
+impl method::Iter for PyTuple {}
+impl method::Call for PyTuple {}
+impl method::Length for PyTuple {
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_len() {
+            Ok(length) => Ok(rt.int(length)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        Ok(native::Integer::from(self.value.0.len()))
+    }
+
+}
+impl method::LengthHint for PyTuple {}
+impl method::Next for PyTuple {}
+impl method::Reversed for PyTuple {}
+impl method::GetItem for PyTuple {}
+impl method::SetItem for PyTuple {}
+impl method::DeleteItem for PyTuple {}
+impl method::Count for PyTuple {}
+impl method::Append for PyTuple {}
+impl method::Extend for PyTuple {}
+impl method::Pop for PyTuple {}
+impl method::Remove for PyTuple {}
+impl method::IsDisjoint for PyTuple {}
+impl method::AddItem for PyTuple {}
+impl method::Discard for PyTuple {}
+impl method::Clear for PyTuple {}
+impl method::Get for PyTuple {}
+impl method::Keys for PyTuple {}
+impl method::Values for PyTuple {}
+impl method::Items for PyTuple {}
+impl method::PopItem for PyTuple {}
+impl method::Update for PyTuple {}
+impl method::SetDefault for PyTuple {}
+impl method::Await for PyTuple {}
+impl method::Send for PyTuple {}
+impl method::Throw for PyTuple {}
+impl method::Close for PyTuple {}
+impl method::Exit for PyTuple {}
+impl method::Enter for PyTuple {}
+impl method::DescriptorGet for PyTuple {}
+impl method::DescriptorSet for PyTuple {}
+impl method::DescriptorSetName for PyTuple {}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      stdlib traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl fmt::Display for PyTuple {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Tuple({:?})", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyTuple {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Tuple({:?})", self.value.0)
+    }
+}
+
+
+#[cfg(test)]
+mod _api_method {
+    use runtime::{TupleProvider, BooleanProvider};
+    use object::method::*;
+    use super::*;
+
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
+    #[test]
+    fn is_() {
+        let rt = setup_test();
+        let tuple = rt.tuple(native::None());
+        let tuple2 = tuple.clone();
+        let tuple3 = rt.tuple(vec![rt.tuple(native::None())]);
+
+        let boxed: &Box<Builtin> = tuple.0.borrow();
+
+        let result = boxed.op_is(&rt, &tuple2).unwrap();
+        assert_eq!(result, rt.bool(true));
+
+        let result = boxed.op_is(&rt, &tuple3).unwrap();
+        assert_eq!(result, rt.bool(false));
+    }
+
+    mod __hash__ {
+        use runtime::{StringProvider, IntegerProvider, DictProvider};
+        use super::*;
+
+        #[test]
+        fn empty_stable() {
+            let rt = setup_test();
+            let tuple = rt.tuple(native::None());
+            let tuple2 = tuple.clone();
+
+            let boxed: &Box<Builtin> = tuple.0.borrow();
+            let r1 = boxed.op_hash(&rt).unwrap();
+            let boxed: &Box<Builtin> = tuple2.0.borrow();
+            let r2 = boxed.op_hash(&rt).unwrap();
+
+            assert_eq!(r1, r2);
+        }
+
+        #[test]
+        fn hashable_items() {
+            let rt = setup_test();
+            let empty = rt.tuple(native::None());
+
+            let tuple = rt.tuple(vec![rt.int(1), rt.int(2), rt.str("3")]);
+            let tuple2 = rt.tuple(vec![rt.int(1), rt.int(2), rt.str("3")]);
+
+            let boxed: &Box<Builtin> = tuple.0.borrow();
+            let r1 = boxed.op_hash(&rt).unwrap();
+            let boxed: &Box<Builtin> = tuple2.0.borrow();
+            let r2 = boxed.op_hash(&rt).unwrap();
+            let boxed: &Box<Builtin> = empty.0.borrow();
+            let r3 = boxed.op_hash(&rt).unwrap();
+
+            assert_eq!(r1, r2);
+            assert!(r1 != r3);
+        }
+
+        #[test]
+        #[should_panic]
+        fn unhashable_items_causes_error() {
+            let rt = setup_test();
+
+            let tuple = rt.tuple(vec![rt.dict(native::None())]);
+            let boxed: &Box<Builtin> = tuple.0.borrow();
+            boxed.op_hash(&rt).unwrap();
+        }
+    }
+}
+
+
 #[cfg(all(feature="old", test))]
 mod old {
     use std;

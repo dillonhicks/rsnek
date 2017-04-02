@@ -1,41 +1,70 @@
+use std::fmt;
+use std::cell::RefCell;
+use std::borrow::Borrow;
+use std::ops::Deref;
+
+use runtime::Runtime;
+use object::{self, RtValue, method, typing};
+use object::selfref::{self, SelfRef};
+
 use typedef::native;
-use object::{self, RtValue};
-use object::method;
-
-////
-////struct PyBuiltinFunction {
-////    locals: (),
-////    consts: (),
-////    etc: ()
-////}
-//struct PyNativeFunction {
-//
-//}
-//
-//struct PyMethodWrapper {
-//
-//}
-//
-//
-//struct PyFunction {
-//    code: (),
-//    args: (),
-//    locals: (),
-//    consts: ()
-//}
-//
-//enum Function {
-//    Builtin(PyNativeFunction),
-//
-//}
-//
-//struct PyMethod {
-//
-//}
+use typedef::objectref::ObjectRef;
+use typedef::builtin::Builtin;
 
 
-pub struct TypeValue(pub native::Type);
+pub struct PyMeta {
+    pub pytype: ObjectRef
+}
+
 pub type PyType = RtValue<TypeValue>;
+pub struct TypeValue(pub native::Type);
+
+
+impl typing::BuiltinType for PyMeta {
+    type T = PyType;
+    type V = native::Type;
+
+    #[inline(always)]
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyMeta::inject_selfref(PyMeta::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        let typeref = PyMeta::inject_selfref(PyMeta::alloc(native::Type {
+                name: "type".to_string(),
+                module: "builtins".to_string(),
+                bases: Vec::new(),
+                subclasses: RefCell::new(Vec::new()),
+            }));
+
+        PyMeta {
+            pytype: typeref
+        }
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Type(value));
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Type(ref pytype) => {
+                pytype.rc.set(&objref.clone());
+            },
+            _ => unreachable!()
+        }
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyType {
+            value: TypeValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+}
+
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -53,6 +82,10 @@ impl method::Id for PyType {}
 impl method::Is for PyType {}
 impl method::IsNot for PyType {}
 impl method::Hashed for PyType {}
+impl method::StringCast for PyType {}
+impl method::BytesCast for PyType {}
+impl method::StringFormat for PyType {}
+impl method::StringRepresentation for PyType {}
 impl method::Equal for PyType {}
 impl method::NotEqual for PyType {}
 impl method::LessThan for PyType {}
@@ -147,3 +180,36 @@ impl method::DescriptorGet for PyType {}
 impl method::DescriptorSet for PyType {}
 impl method::DescriptorSetName for PyType {}
 
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      stdlib traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl fmt::Display for PyType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Type({:?})", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Type({:?})", self.value.0)
+    }
+}
+
+#[cfg(test)]
+mod _api_methods {
+    use super::*;
+    use runtime::{PyTypeProvider};
+
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
+    #[test]
+    fn _fake() {
+        let rt = setup_test();
+        let t = rt.pytype(native::None());
+        println!("{:?}", t);
+    }
+
+}

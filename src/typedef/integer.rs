@@ -177,9 +177,9 @@ impl method::GreaterThan for PyInteger {}
 impl method::BooleanCast for PyInteger {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         if self.native_bool().unwrap() {
-            Ok(rt.bool_true())
+            Ok(rt.bool(true))
         } else {
-            Ok(rt.bool_false())
+            Ok(rt.bool(false))
         }
     }
 

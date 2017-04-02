@@ -35,9 +35,11 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Bool(ref $inner) => $e,
             &Builtin::None(ref $inner) => $e,
             &Builtin::Int(ref $inner) => $e,
-            &Builtin::Dict(ref $inner) =>$e,
-            &Builtin::Str(ref $inner) =>$e,
-            &Builtin::Object(ref $inner) =>$e,
+            &Builtin::Dict(ref $inner) => $e,
+            &Builtin::Str(ref $inner) => $e,
+            &Builtin::Tuple(ref $inner) =>$e,
+            &Builtin::Object(ref $inner) => $e,
+            &Builtin::Type(ref $inner) => $e,
             _ => unreachable!()
         }
     );
@@ -51,18 +53,9 @@ macro_rules! unary_op_foreach{
             &Builtin::Int(ref $lhs) => $lhs.$op($rt),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::None(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Boolean(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Integer(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Float(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::String(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::List(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Set(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Complex(ref $lhs) => $lhs.$op($rt),
-//            &Builtin::Dictionary(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Type(ref $lhs) => $lhs.$op($rt),
             _ => unreachable!()
         }
     };
@@ -76,19 +69,9 @@ macro_rules! binary_op_foreach{
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $rhs),
-//            
-//            &Builtin::None(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Boolean(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Integer(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Float(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::String(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::List(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Complex(ref $lhs) => $lhs.$op($rt, $rhs),
-//            &Builtin::Dictionary(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Type(ref $lhs) => $lhs.$op($rt, $rhs),
             _ => unreachable!()
         }
     };
@@ -102,18 +85,9 @@ macro_rules! ternary_op_foreach{
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::None(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Boolean(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Integer(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Float(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::String(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::List(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Complex(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-//            &Builtin::Dictionary(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             _ => unreachable!()
         }
     };
@@ -140,19 +114,9 @@ macro_rules! native_unary_op_foreach{
             &Builtin::Int(ref $lhs) => $lhs.$op(),
             &Builtin::Dict(ref $lhs) => $lhs.$op(),
             &Builtin::Str(ref $lhs) => $lhs.$op(),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op(),
             &Builtin::Object(ref $lhs) => $lhs.$op(),
-                
-//            &Builtin::None(ref $lhs) => $lhs.$op(),
-//            &Builtin::Boolean(ref $lhs) => $lhs.$op(),
-//            &Builtin::Integer(ref $lhs) => $lhs.$op(),
-//            &Builtin::Float(ref $lhs) => $lhs.$op(),
-//            &Builtin::String(ref $lhs) => $lhs.$op(),
-//            &Builtin::Tuple(ref $lhs) => $lhs.$op(),
-//            &Builtin::List(ref $lhs) => $lhs.$op(),
-//            &Builtin::Set(ref $lhs) => $lhs.$op(),
-//            &Builtin::FrozenSet(ref $lhs) => $lhs.$op(),
-//            &Builtin::Complex(ref $lhs) => $lhs.$op(),
-//            &Builtin::Dictionary(ref $lhs) => $lhs.$op(),
+            &Builtin::Type(ref $lhs) => $lhs.$op(),
             _ => unreachable!()
         }
     };
@@ -166,18 +130,9 @@ macro_rules! native_binary_op_foreach{
             &Builtin::Int(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::None(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Boolean(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Integer(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Float(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::String(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Tuple(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::List(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Set(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Complex(ref $lhs) => $lhs.$op($rhs),
-//            &Builtin::Dictionary(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Type(ref $lhs) => $lhs.$op($rhs),
             _ => unreachable!()
         }
     };
@@ -191,24 +146,13 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::Int(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($mid, $rhs),
-
-//            &Builtin::None(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Boolean(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Integer(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Float(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::String(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::List(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Set(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Complex(ref $lhs) => $lhs.$op($mid, $rhs),
-//            &Builtin::Dictionary(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Type(ref $lhs) => $lhs.$op($mid, $rhs),
             _ => unreachable!()
         }
     };
 }
-
 
 
 /// Macro to create Object and native typed level hooks for

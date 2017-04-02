@@ -13,6 +13,9 @@ use typedef::integer::PyIntegerType;
 use typedef::string::PyStringType;
 use typedef::dictionary::PyDictType;
 use typedef::object::PyObjectType;
+use typedef::tuple::PyTupleType;
+use typedef::pytype::PyMeta;
+
 
 pub trait NoneProvider {
     fn none(&self) -> ObjectRef;
@@ -34,9 +37,19 @@ pub trait StringProvider<T> {
     fn str(&self, value: T) -> ObjectRef;
 }
 
+pub trait TupleProvider<T> {
+    fn tuple(&self, value: T) -> ObjectRef;
+}
+
+pub trait PyTypeProvider<T> {
+    fn pytype(&self, value: T) -> ObjectRef;
+}
+
+
 pub trait ObjectProvider<T> {
     fn object(&self, value: T) -> ObjectRef;
 }
+
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
@@ -51,7 +64,9 @@ pub struct BuiltinTypes {
     int: PyIntegerType,
     dict: PyDictType,
     string: PyStringType,
-    object: PyObjectType
+    tuple: PyTupleType,
+    object: PyObjectType,
+    meta: PyMeta,
 }
 
 
@@ -87,28 +102,16 @@ impl Runtime {
             int: PyIntegerType::init_type(),
             dict: PyDictType::init_type(),
             string: PyStringType::init_type(),
+            tuple: PyTupleType::init_type(),
             object: PyObjectType::init_type(),
+            meta: PyMeta::init_type()
         };
 
         let internal = RuntimeInternal {
             types: builtins,
         };
 
-
         Runtime(Rc::new(Box::new(internal)))
-    }
-
-    // Type Convenience Methods for Builtin Types
-
-
-    #[inline(always)]
-    pub fn bool_true(&self) -> ObjectRef {
-        self.bool(true)
-    }
-
-    #[inline(always)]
-    pub fn bool_false(&self) -> ObjectRef {
-        self.bool(false)
     }
 
 }
@@ -212,13 +215,30 @@ impl DictProvider<native::None> for Runtime {
 }
 
 //
+// Tuple
+//
+impl TupleProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn tuple(&self, value: native::None) -> ObjectRef {
+        return self.0.types.tuple.empty.clone()
+    }
+}
+
+
+impl TupleProvider<native::Tuple> for Runtime {
+    fn tuple(&self, value: native::Tuple) -> ObjectRef {
+        return self.0.types.tuple.new(&self, value)
+    }
+}
+
+//
 // Object
 //
-
 impl ObjectProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn object(&self, value: native::None) -> ObjectRef {
         self.0.types.object.new(&self, native::Object {
+            // class: rt.type_()
             dict: self.dict(native::None()),
             bases: self.dict(native::None())
         })
@@ -230,6 +250,16 @@ impl ObjectProvider<native::Object> for Runtime {
     #[allow(unused_variables)]
     fn object(&self, value: native::Object) -> ObjectRef {
         self.0.types.object.new(&self, value)
+    }
+}
+
+//
+// type
+//
+impl PyTypeProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn pytype(&self, value: native::None) -> ObjectRef {
+        return self.0.types.meta.pytype.clone()
     }
 }
 

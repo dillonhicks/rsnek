@@ -13,17 +13,14 @@ pub type RuntimeWeakRef = std::rc::Weak<Box<typedef::builtin::Builtin>>;
 pub type ObjectId = u64;
 pub type HashId = u64;
 
-
 // The well known primitive types that have a fairly direct
 // 1:1 representation to rusts primitive types. The 'native api',
 // along with not using the reference counting wrappers, will
 // always return these types directly.
-
 pub type Integer = num::BigInt;
 pub type Float = f64;
 pub type Boolean = bool;
 pub type Complex = num::Complex<f64>;
-
 
 pub type String = std::string::String;
 pub type Bytes = Vec<u8>;
@@ -56,10 +53,10 @@ pub type KWDictionary = std::collections::HashMap<String, typedef::objectref::Ob
 
 
 pub struct Object {
+    //pub class: typedef::objectref::ObjectRef,
     pub dict: typedef::objectref::ObjectRef,
     pub bases: typedef::objectref::ObjectRef
 }
-
 
 
 /// Enum for numeric types
@@ -71,11 +68,13 @@ pub enum Number {
 }
 
 
-//pub struct Type {
-//    name: String,
-//    dict: KWDictionary,
-//    bases: Tuple,
-//}
+#[derive(Debug)]
+pub struct Type {
+    pub name: String,
+    pub module: String,
+    pub bases: Tuple,
+    pub subclasses: std::cell::RefCell<List>,
+}
 
 //
 //

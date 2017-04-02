@@ -16,8 +16,9 @@ use typedef::native::{self, DictKey};
 use typedef::objectref::ObjectRef;
 
 
-#[derive(Clone)]
-pub struct PyObjectType {}
+pub struct PyObjectType {
+
+}
 
 
 impl typing::BuiltinType for PyObjectType {

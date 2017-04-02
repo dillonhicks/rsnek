@@ -99,7 +99,6 @@ impl WeakObjectRef {
 //        stdlib Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-
 impl std::cmp::PartialEq for ObjectRef {
     fn eq(&self, rhs: &ObjectRef) -> bool {
         let lhs_box: &Box<Builtin> = self.0.borrow();
