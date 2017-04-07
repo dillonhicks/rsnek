@@ -31,15 +31,14 @@ impl typing::BuiltinType for PyMeta {
     }
 
     fn init_type() -> Self {
-        let typeref = PyMeta::inject_selfref(PyMeta::alloc(native::Type {
+        PyMeta {
+            pytype: PyMeta::inject_selfref(PyMeta::alloc(native::Type {
                 name: "type".to_string(),
                 module: "builtins".to_string(),
                 bases: Vec::new(),
                 subclasses: RefCell::new(Vec::new()),
-            }));
+            })),
 
-        PyMeta {
-            pytype: typeref
         }
     }
 
@@ -186,13 +185,13 @@ impl method::DescriptorSetName for PyType {}
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 impl fmt::Display for PyType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Type({:?})", self.value.0)
+        write!(f, "{:?}", self.value.0)
     }
 }
 
 impl fmt::Debug for PyType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Type({:?})", self.value.0)
+        write!(f, "{:?}", self.value.0)
     }
 }
 

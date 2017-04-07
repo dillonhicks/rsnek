@@ -20,12 +20,11 @@ use typedef::none::PyNone;
 use typedef::tuple::PyTuple;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
+use typedef::method::PyFunction;
 
 
-#[derive(Debug)]
 pub enum Builtin {
     // Not yet implementeds
-    Function(()),
     Method(()),
     Module(()), /*    Type(TypeObject),
                  *    Meta(MetaObject),
@@ -40,6 +39,7 @@ pub enum Builtin {
     Dict(PyDict),
     Tuple(PyTuple),
     Type(PyType),
+    Function(PyFunction),
 
     // Utility Types
     DictKey(native::DictKey),
@@ -601,7 +601,15 @@ impl method::Contains for Builtin {
     }
 }
 impl method::Iter for Builtin {}
-impl method::Call for Builtin {}
+impl method::Call for Builtin {
+    fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_call, method, pos_args, starargs, kwargs)
+    }
+
+    fn native_call(&self, pos_args: &Builtin, starargs: &Builtin, kwargs: &Builtin) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_call, method, pos_args, starargs, kwargs)
+    }
+}
 impl method::Length for Builtin {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_len, lhs)
@@ -734,22 +742,6 @@ impl method::DescriptorSet for Builtin {}
 impl method::DescriptorSetName for Builtin {}
 
 
-#[cfg(all(feature="old", test))]
-mod old {
-    impl objectref::ToRtWrapperType<Builtin> for Builtin {
-        #[inline]
-        fn to(self) -> Builtin {
-            self
-        }
-    }
-
-    impl objectref::ToRtWrapperType<ObjectRef> for Builtin {
-        #[inline]
-        fn to(self) -> ObjectRef {
-            ObjectRef::new(self)
-        }
-    }
-}
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //     stdlib Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -762,6 +754,13 @@ impl std::cmp::PartialEq for Builtin {
 
 impl std::cmp::Eq for Builtin {}
 
+impl fmt::Debug for Builtin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        expr_foreach_builtin!(self, obj, {
+            write!(f, "{:?}", obj)
+        })
+    }
+}
 
 impl fmt::Display for Builtin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

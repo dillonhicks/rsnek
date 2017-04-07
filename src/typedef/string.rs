@@ -71,7 +71,7 @@ pub type PyString = RtValue<StringValue>;
 
 impl fmt::Debug for PyString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value.0)
+        write!(f, "String {{ {:?} }}", self.value.0)
     }
 }
 

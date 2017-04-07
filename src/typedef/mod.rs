@@ -14,3 +14,4 @@ pub mod boolean;
 pub mod none;
 pub mod object;
 pub mod pytype;
+pub mod method;

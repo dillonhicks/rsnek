@@ -27,6 +27,9 @@ macro_rules! foreach_builtin {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident) => (
         ternary_op_foreach!($sel, $rt, $function, $receiver, $arg0, $arg1)
     );
+    ($sel:expr, $rt:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident, $arg2:ident) => (
+        _4ary_op_foreach!($sel, $rt, $function, $receiver, $arg0, $arg1, $arg2)
+    );
 }
 
 macro_rules! expr_foreach_builtin {
@@ -38,6 +41,7 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Dict(ref $inner) => $e,
             &Builtin::Str(ref $inner) => $e,
             &Builtin::Tuple(ref $inner) =>$e,
+            &Builtin::Function(ref $inner) => $e,
             &Builtin::Object(ref $inner) => $e,
             &Builtin::Type(ref $inner) => $e,
             _ => unreachable!()
@@ -54,6 +58,7 @@ macro_rules! unary_op_foreach{
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Function(ref $lhs) => $lhs.$op($rt),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt),
             _ => unreachable!()
@@ -70,6 +75,7 @@ macro_rules! binary_op_foreach{
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Function(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $rhs),
             _ => unreachable!()
@@ -86,8 +92,26 @@ macro_rules! ternary_op_foreach{
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Function(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            _ => unreachable!()
+        }
+    };
+}
+
+macro_rules! _4ary_op_foreach{
+    ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
+        match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::None(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Int(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Str(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Function(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Object(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Type(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             _ => unreachable!()
         }
     };
@@ -102,8 +126,10 @@ macro_rules! native_foreach_builtin {
     );
     ($sel:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident) => (
         native_ternary_op_foreach!($sel, $function, $receiver, $arg0, $arg1)
+    );
+    ($sel:expr, $function:ident, $receiver:ident, $arg0:ident, $arg1:ident, $arg2:ident) => (
+        native_4ary_op_foreach!($sel, $function, $receiver, $arg0, $arg1, $arg2)
     )
-
 }
 
 macro_rules! native_unary_op_foreach{
@@ -115,6 +141,7 @@ macro_rules! native_unary_op_foreach{
             &Builtin::Dict(ref $lhs) => $lhs.$op(),
             &Builtin::Str(ref $lhs) => $lhs.$op(),
             &Builtin::Tuple(ref $lhs) => $lhs.$op(),
+            &Builtin::Function(ref $lhs) => $lhs.$op(),
             &Builtin::Object(ref $lhs) => $lhs.$op(),
             &Builtin::Type(ref $lhs) => $lhs.$op(),
             _ => unreachable!()
@@ -131,6 +158,7 @@ macro_rules! native_binary_op_foreach{
             &Builtin::Dict(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Function(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rhs),
             _ => unreachable!()
@@ -147,6 +175,7 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::Dict(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Function(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($mid, $rhs),
             _ => unreachable!()
@@ -154,14 +183,29 @@ macro_rules! native_ternary_op_foreach{
     };
 }
 
-
+macro_rules! native_4ary_op_foreach {
+    ($obj:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
+        match $obj {
+            &Builtin::Bool(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::None(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Int(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Dict(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Str(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Tuple(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Function(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Object(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Type(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            _ => unreachable!()
+        }
+    };
+}
 /// Macro to create Object and native typed level hooks for
-/// the rsnek runtime. Each method is generated with a default implementation
+/// the rsnek runtime. Each Function is generated with a default implementation
 /// that will return a NotImplemented error.
 ///
-/// Note that for arity of methods may appear deceiving since the receiver (self)
+/// Note that for arity of Functions may appear deceiving since the receiver (self)
 /// is always the first argument and is the first argument by convention.
-macro_rules! api_method {
+macro_rules! api_Function {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
                 Err(Error::not_implemented())
@@ -243,10 +287,10 @@ macro_rules! api_method {
 
 
 /// Macro to create Object and native typed level hooks for
-/// the rsnek runtime. Each method is generated with a default implementation
+/// the rsnek runtime. Each Function is generated with a default implementation
 /// that will return a NotImplemented error.
 ///
-/// Note that for arity of methods may appear deceiving since the receiver (self)
+/// Note that for arity of Functions may appear deceiving since the receiver (self)
 /// is always the first argument and is the first argument by convention.
 macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {

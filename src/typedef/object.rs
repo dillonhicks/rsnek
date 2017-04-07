@@ -6,20 +6,48 @@ use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::{Runtime, NoneProvider, IntegerProvider};
+use runtime::{Runtime, NoneProvider, IntegerProvider, PyTypeProvider};
 use object::{self, RtValue, typing};
 use object::method::{self, Id, GetItem, Hashed, SetItem};
 use object::selfref::{self, SelfRef};
+use object::typing::BuiltinType;
 
+use typedef::pytype::PyMeta;
+use typedef::dictionary::PyDictType;
+use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, DictKey};
 use typedef::objectref::ObjectRef;
 
 
 pub struct PyObjectType {
-
+    pub object: ObjectRef,
+    pub pytype: ObjectRef
 }
 
+impl PyObjectType {
+    pub fn init_type(typeref: &ObjectRef) -> Self {
+        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(
+            native::Object {
+                class: typeref.clone(),
+                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new()))
+            }));
+
+
+        let object = PyObjectType::inject_selfref(PyObjectType::alloc(
+            native::Object {
+                class: typeref.clone(),
+                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new()))
+            }));
+
+        PyObjectType {
+            object: object,
+            pytype: typ
+        }
+    }
+}
 
 impl typing::BuiltinType for PyObjectType {
     type T = PyObject;
@@ -32,7 +60,7 @@ impl typing::BuiltinType for PyObjectType {
     }
 
     fn init_type() -> Self {
-        PyObjectType {}
+        unimplemented!()
     }
 
     fn inject_selfref(value: Self::T) -> ObjectRef {
@@ -93,7 +121,20 @@ impl method::GetAttr for PyObject {
                     let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
                     match dict.native_getitem(&Builtin::DictKey(key)) {
                         Ok(objref) => Ok(objref),
-                        Err(err) => Err(err)
+                        Err(err) => {
+                            let boxed: &Box<Builtin> = self.value.0.bases.0.borrow();
+
+                            match boxed.deref() {
+                                &Builtin::Tuple(ref tuple) => {
+                                    for base in &tuple.value.0 {
+                                        println!("{:?}", base);
+                                    }
+                                },
+                                _ => unreachable!()
+                            }
+                            println!("NOOPE!");
+                            Err(err)
+                        }
                     }
                 },
                 _ => Err(Error::typerr("getattr(): attribute name must be string"))
@@ -269,13 +310,13 @@ impl method::DescriptorSetName for PyObject {}
 
 impl fmt::Display for PyObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<object at {}>", self.native_id())
+        write!(f, "{:?}", self.value.0)
     }
 }
 
 impl fmt::Debug for PyObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<object at {}>", self.native_id())
+        write!(f, "{:?}", self.value.0)
     }
 }
 
@@ -341,19 +382,47 @@ mod _api_method {
         assert_eq!(result, rt.none())
     }
 
+    mod __getattr__ {
+        use super::*;
+        #[test]
+        fn set_and_get(){
+            let rt = setup_test();
+            let object = rt.object(native::None());
+
+            let boxed: &Box<Builtin> = object.0.borrow();
+            let key = rt.str("hello");
+            let value = rt.int(234);
+
+            let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+            assert_eq!(result, rt.none());
+
+            let result = boxed.op_getattr(&rt, &key).unwrap();
+            assert_eq!(result, value);
+        }
+
+        #[test]
+        #[should_panic]
+        fn get_nonexistant_key(){
+            let rt = setup_test();
+            let object = rt.object(native::None());
+
+            let boxed: &Box<Builtin> = object.0.borrow();
+            let key = rt.str("hello");
+            let value = rt.int(234);
+
+            let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+            assert_eq!(result, rt.none());
+
+            let key = rt.str("baddie");
+            boxed.op_getattr(&rt, &key).unwrap();
+        }
+
+    }
+
     #[test]
-    fn __getattr__() {
+    fn debug() {
         let rt = setup_test();
         let object = rt.object(native::None());
-
-        let boxed: &Box<Builtin> = object.0.borrow();
-        let key = rt.str("hello");
-        let value = rt.int(234);
-
-        let result = boxed.op_setattr(&rt, &key, &value).unwrap();
-        assert_eq!(result, rt.none());
-
-        let result = boxed.op_getattr(&rt, &key).unwrap();
-        assert_eq!(result, value);
+        println!("{:?}", object);
     }
 }

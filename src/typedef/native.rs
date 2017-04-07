@@ -1,7 +1,12 @@
 use std;
 use num;
-use typedef;
 
+use runtime::{self, Runtime};
+use typedef;
+use typedef::objectref::ObjectRef;
+use typedef::builtin::Builtin;
+use result::{RuntimeResult, NativeResult};
+use traits::New;
 
 // Implementation specific types
 //
@@ -29,33 +34,34 @@ pub struct None();
 //
 // Collection Primitive Types
 //
-pub type List = Vec<typedef::objectref::ObjectRef>;
-pub type Tuple = Vec<typedef::objectref::ObjectRef>;
+pub type List = Vec<ObjectRef>;
+pub type Tuple = Vec<ObjectRef>;
 
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct DictKey(pub HashId, pub typedef::objectref::ObjectRef);
-//#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-//pub struct WeakKey(pub HashId, pub typedef::objectref::WeakObjectRef);
+pub struct DictKey(pub HashId, pub ObjectRef);
+pub type Dict = std::collections::HashMap<DictKey, ObjectRef>;
+pub type KWDict = std::collections::HashMap<String, ObjectRef>;
 
-pub type Dict = std::collections::HashMap<DictKey, typedef::objectref::ObjectRef>;
-/*struct {
-    key_set: Set,
-    mapping: std::collections::HashMap<Key, typedef::objectref::ObjectRef>
-};
-*/
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct SetElement(pub HashId, pub typedef::objectref::ObjectRef);
+pub struct SetElement(pub HashId, pub ObjectRef);
 pub type Set = std::collections::HashSet<SetElement>;
 
+pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
+pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult;
 
-pub type KWDictionary = std::collections::HashMap<String, typedef::objectref::ObjectRef>;
+pub enum Function {
+    Native(Box<NativeFn>),
+    Wrapper(Box<WrapperFn>),
+    ByteCode(),
+}
 
 
+#[derive(Debug)]
 pub struct Object {
-    //pub class: typedef::objectref::ObjectRef,
-    pub dict: typedef::objectref::ObjectRef,
-    pub bases: typedef::objectref::ObjectRef
+    pub class: ObjectRef,
+    pub dict: ObjectRef,
+    pub bases: ObjectRef
 }
 
 
@@ -75,6 +81,7 @@ pub struct Type {
     pub bases: Tuple,
     pub subclasses: std::cell::RefCell<List>,
 }
+
 
 //
 //

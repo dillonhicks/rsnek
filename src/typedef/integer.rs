@@ -49,14 +49,10 @@ impl typing::BuiltinType for PyIntegerType {
     fn init_type() -> Self {
         let range: Vec<ObjectRef> =
             STATIC_INT_RANGE
-                .map(|int| native::Integer::from(int))
-                .map(|value| {
-                    let int = PyIntegerType::alloc(value);
-                    PyIntegerType::inject_selfref(int)
-                })
+                .map(native::Integer::from)
+                .map(PyIntegerType::alloc)
+                .map(PyIntegerType::inject_selfref)
                 .collect();
-                //.map(|obj| heap.alloc_static(obj.to()).unwrap()).collect();
-
         PyIntegerType {
             static_integers: range
         }

@@ -43,4 +43,51 @@
    2. Get MVP of the BuiltinTypeAPI integrated into existing types
    3. Fix tests
    4. Get the __dict__ powered object type functional enough to handle the
-     dot lookup case of  __getattr__ -> method -> __call__ case.
+      dot lookup case of  __getattr__ -> method -> __call__ case.
+
+
+
+** <2017-04-2 Sun>
+
+   Weekly update. Slow progress due to vacationing however there was
+   some progress.
+
+   - Trait model is proving effective.
+
+   - Still need some work on MRO and attribute lookup and inheritence in general.
+
+   - Prototyped a the base `type` type.
+
+   - Moved the runtime type methods to a trait model for overloading.
+
+
+   Previous Goals:
+
+*** [DONE] Finish refactor to trait based model
+
+*** [INPROGRESS] Get MVP of the BuiltinTypeAPI integrated into existing types
+    Missing a few builtin types.
+
+*** [DONE] Fix tests
+
+*** [INPROGRESS] Get the __dict__ powered object type functional enough
+    to handle the dot lookup case of  __getattr__ -> method -> __call__ case.
+
+    New Goals:
+
+*** Migrate builtin types to use a PyType definition for their object.
+
+
+** <2017-04-7 Fri>
+
+   Made a function wrapper object for wrapping native code that can be called
+   via a normal objectref.
+
+   The prototype example is `len()` which benches at roughly 3x
+   slower than normal CPython probably due to a level or two extra indirection that
+   is not needed.
+
+   Still thinking about how best to handle user created types.
+
+   After code and module objects are prototyped it might be time to start working
+   on the interpreter.
