@@ -433,3 +433,50 @@ mod _api_method {
         println!("{:?}", object);
     }
 }
+
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//          Tests
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+#[cfg(test)]
+mod _integration {
+    use runtime::{DictProvider, TupleProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
+    use object::method::*;
+    use super::*;
+
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
+    /// Test setting the builtin len function as an attribute of the object.
+    /// Retrieving that function by name, and calling it on tuple.
+    /// Milestone
+    #[test]
+    fn function_setattr_getattr_call() {
+        let rt = setup_test();
+        let object = rt.object(native::None());
+
+        let boxed: &Box<Builtin> = object.0.borrow();
+        let key = rt.str("test_function");
+
+        let func = rt.get_builtin("len");
+        let result = boxed.op_setattr(&rt, &key, &func).unwrap();
+        assert_eq!(result, rt.none());
+
+        let result = boxed.op_getattr(&rt, &key).unwrap();
+        assert_eq!(result, func);
+
+
+        let tuple = rt.tuple(vec![rt.none(), rt.int(3), rt.str("Potato!@!@")]);
+        let args = rt.tuple(vec![tuple.clone()]);
+        let starargs = rt.tuple(vec![]);
+        let kwargs = rt.dict(native::Dict::new());
+
+        let len: &Box<Builtin> = result.0.borrow();
+        let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
+        assert_eq!(result, rt.int(3));
+    }
+
+
+}

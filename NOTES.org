@@ -63,19 +63,17 @@
 
    Previous Goals:
 
-*** [DONE] Finish refactor to trait based model
+    - [DONE] Finish refactor to trait based model
 
-*** [INPROGRESS] Get MVP of the BuiltinTypeAPI integrated into existing types
-    Missing a few builtin types.
+    - [INPROGRESS] Get MVP of the BuiltinTypeAPI integrated into existing types
+       Missing a few builtin types.
 
-*** [DONE] Fix tests
+    - [DONE] Fix tests
 
-*** [INPROGRESS] Get the __dict__ powered object type functional enough
-    to handle the dot lookup case of  __getattr__ -> method -> __call__ case.
+    - [INPROGRESS] Get the __dict__ powered object type functional enough
+      to handle the dot lookup case of  __getattr__ -> method -> __call__ case.
 
-    New Goals:
-
-*** Migrate builtin types to use a PyType definition for their object.
+    - [BLOCKED] Migrate builtin types to use a PyType definition for their object.
 
 
 ** <2017-04-7 Fri>
@@ -91,3 +89,40 @@
 
    After code and module objects are prototyped it might be time to start working
    on the interpreter.
+
+
+** <2017-04-8 Sat>
+
+  Crates used currently:
+
+    - serde: planned for native serialization
+    - itertools: Folding results and iter errors
+    - num: bigint support
+
+  Crates that may be useful:
+
+    - concurrent_hashmap
+    - rayon: parallel iterators
+    - fringe: usermode stacks and generators for uThread implementations
+    - futures
+    - hyper: httplib
+
+  Additional Reading:
+
+    - goal: Sandboxing
+    - nom: parsing
+    - tokio: AsyncIO
+      - rotor: IO Lib
+    - crossbeam: concurrency
+    - (meta) https://github.com/contain-rs
+    - (meta)
+
+  Goals:
+
+    - [INPROGRESS] Get MVP of the BuiltinTypeAPI integrated into existing types
+       Missing a few builtin types.
+
+    - (Milestone 0x01) [Done] Get the __dict__ powered object type functional enough
+      to handle the dot lookup case of  __getattr__ -> method -> __call__ case.
+
+    - [BLOCKED] Migrate builtin types to use a PyType definition for their object.

@@ -28,12 +28,12 @@ pub struct PyFunctionType {
 impl PyFunctionType {
     pub fn init_type(typeref: &ObjectRef, object: &ObjectRef) -> Self {
 
-        let method = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
-                                                                          class: typeref.clone(),
-                                                                          dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-                                                                          bases:
-                                                                              PyTupleType::inject_selfref(PyTupleType::alloc(vec![object.clone()])),
-                                                                      }));
+        let method = PyObjectType::inject_selfref(PyObjectType::alloc(
+            native::Object {
+                class: typeref.clone(),
+                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                bases: PyTupleType::inject_selfref(PyTupleType::alloc(vec![object.clone()])),
+            }));
 
         PyFunctionType { function_type: method }
     }
@@ -244,7 +244,10 @@ impl method::SetAttr for PyFunction {
 }
 
 impl method::DelAttr for PyFunction {}
+
 impl method::Id for PyFunction {
+    // TODO: why do we have to go back through the builtin? Is there a good reason to
+    //  special case this at the builtin.rs layer?
     fn native_id(&self) -> native::ObjectId {
         match self.rc.upgrade() {
             Ok(objref) => {
@@ -274,7 +277,12 @@ impl method::StringCast for PyFunction {}
 impl method::BytesCast for PyFunction {}
 impl method::StringFormat for PyFunction {}
 impl method::StringRepresentation for PyFunction {}
-impl method::Equal for PyFunction {}
+
+impl method::Equal for PyFunction {
+    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(self.native_id() == other.native_id())
+    }
+}
 impl method::NotEqual for PyFunction {}
 impl method::LessThan for PyFunction {}
 impl method::LessOrEqual for PyFunction {}
