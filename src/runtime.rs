@@ -7,7 +7,7 @@ use std::rc::Rc;
 use num::Zero;
 
 use object::typing::BuiltinType;
-use object::method::{Length};
+use object::method::{Length, GetItem};
 
 use result::{NativeResult, RuntimeResult};
 use error::Error;
@@ -107,7 +107,7 @@ impl Clone for Runtime {
 }
 
 
-#[inline]
+#[inline(always)]
 fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> {
     let boxed: &Box<Builtin> = pos_args.0.borrow();
     match boxed.deref() {
@@ -123,7 +123,7 @@ fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> 
     }
 }
 
-#[inline]
+#[inline(always)]
 fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> {
     let boxed: &Box<Builtin> = kwargs.0.borrow();
     match boxed.deref() {
@@ -142,9 +142,8 @@ fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> 
 
 }
 
-
 fn builtin_len() -> native::Function {
-    let func: Box<native::WrapperFn> = Box::new(|rt, pos_args, starargs, kwargs| {
+    fn len(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match check_args(1, &pos_args) {
             Err(err) => return Err(err),
             _ => {}
@@ -161,9 +160,13 @@ fn builtin_len() -> native::Function {
         };
 
         let boxed: &Box<Builtin> = pos_args.0.borrow();
+        let zero = rt.int(0);
+        let value = boxed.op_getitem(&rt, &zero).unwrap();
+        let boxed: &Box<Builtin> = value.0.borrow();
         boxed.op_len(&rt)
-    });
+    }
 
+    let func: Box<native::WrapperFn> = Box::new(len);
     native::Function::Wrapper(func)
 }
 
@@ -418,9 +421,10 @@ mod _api {
         let len: &Box<Builtin> = func.0.borrow();
 
         b.iter(|| {
-            let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
-            assert_eq!(result, rt.int(1));
-        })
+            len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
+         });
 
+        let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
+        assert_eq!(result, rt.int(3));
     }
 }

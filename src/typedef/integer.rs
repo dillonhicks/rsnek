@@ -87,7 +87,7 @@ impl method::Init for PyIntegerType {}
 impl method::Delete for PyIntegerType {}
 
 
-pub struct IntValue(native::Integer);
+pub struct IntValue(pub native::Integer);
 pub type PyInteger = RtValue<IntValue>;
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+

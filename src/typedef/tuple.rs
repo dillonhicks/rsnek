@@ -5,8 +5,9 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use itertools::Itertools;
-use num::Zero;
+use num::{ToPrimitive, Zero};
 
+use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::{Runtime, IntegerProvider};
 use object::{self, RtValue, typing};
@@ -184,7 +185,30 @@ impl method::Length for PyTuple {
 impl method::LengthHint for PyTuple {}
 impl method::Next for PyTuple {}
 impl method::Reversed for PyTuple {}
-impl method::GetItem for PyTuple {}
+impl method::GetItem for PyTuple {
+    /// native getitem now that we have self refs?
+    #[allow(unused_variables)]
+    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = index.0.borrow();
+        self.native_getitem(boxed)
+    }
+
+    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+        match index {
+            &Builtin::Int(ref obj) => {
+                match obj.value.0.to_usize() {
+                    Some(idx) => match self.value.0.get(idx) {
+                        Some(objref) => Ok(objref.clone()),
+                        None =>  Err(Error::runtime("Index out of range"))
+                    },
+                    None => Err(Error::runtime("Index out of range"))
+                }
+            },
+            _ => Err(Error::typerr("index was not an integer"))
+        }
+    }
+
+}
 impl method::SetItem for PyTuple {}
 impl method::DeleteItem for PyTuple {}
 impl method::Count for PyTuple {}
