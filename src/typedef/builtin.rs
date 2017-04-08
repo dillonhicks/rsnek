@@ -124,8 +124,8 @@ impl method::Id for Builtin {
 
     fn native_id(&self) -> native::ObjectId {
         expr_foreach_builtin!(self, obj, {
-                (obj as *const _) as native::ObjectId
-            })
+            (obj as *const _) as native::ObjectId
+        })
     }
 }
 

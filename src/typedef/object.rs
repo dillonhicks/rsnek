@@ -6,13 +6,12 @@ use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::{Runtime, NoneProvider, IntegerProvider, PyTypeProvider};
+use runtime::{Runtime, NoneProvider, IntegerProvider};
 use object::{self, RtValue, typing};
 use object::method::{self, Id, GetItem, Hashed, SetItem};
 use object::selfref::{self, SelfRef};
 use object::typing::BuiltinType;
 
-use typedef::pytype::PyMeta;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;

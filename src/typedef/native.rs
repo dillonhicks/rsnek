@@ -1,12 +1,11 @@
 use std;
 use num;
 
-use runtime::{self, Runtime};
+use runtime::Runtime;
 use typedef;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 use result::{RuntimeResult, NativeResult};
-use traits::New;
 
 // Implementation specific types
 //
