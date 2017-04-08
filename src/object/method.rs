@@ -6,7 +6,7 @@ use runtime::{Runtime, BooleanProvider, IntegerProvider};
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use typedef::objectref::{ObjectRef};
+use typedef::objectref::ObjectRef;
 
 
 /// Big index of all traits used to define builtin objects
@@ -18,7 +18,7 @@ api_trait!(4ary, self, __new__, New, op_new, native_new);
 /// Class constructor generally gets passed the instance created in __new__
 //api_trait!(4ary, self, __init__, Init, op_init, native_init);
 #[allow(unused_variables)]
-pub trait Init{
+pub trait Init {
     fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         Err(Error::not_implemented())
     }
@@ -73,7 +73,9 @@ pub trait Id {
     }
 }
 
-pub trait Is where Self: Id  {
+pub trait Is
+    where Self: Id
+{
     fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
@@ -89,7 +91,9 @@ pub trait Is where Self: Id  {
     }
 }
 
-pub trait IsNot where Self: Id {
+pub trait IsNot
+    where Self: Id
+{
     fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
@@ -101,7 +105,7 @@ pub trait IsNot where Self: Id {
     }
 
 
-    fn native_is_not(&self, other: &Builtin) -> NativeResult<native::Boolean>  {
+    fn native_is_not(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         Ok(self.native_id() != other.native_id())
     }
 }

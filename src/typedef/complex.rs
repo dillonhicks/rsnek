@@ -35,8 +35,8 @@ impl typing::BuiltinType for PyComplexType {
         match boxed.deref() {
             &Builtin::Complex(ref complex) => {
                 complex.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
@@ -47,7 +47,6 @@ impl typing::BuiltinType for PyComplexType {
             rc: selfref::RefCount::default(),
         }
     }
-
 }
 
 
@@ -273,7 +272,7 @@ mod old {
 
 
         /// Reference equality
-    ///  True is True
+        ///  True is True
         #[test]
         fn is() {
             let mut rt = Runtime::new(None);
@@ -292,7 +291,7 @@ mod old {
         }
 
         ///
-    /// True == True
+        /// True == True
         #[test]
         fn __eq__() {
             let mut rt = Runtime::new(None);

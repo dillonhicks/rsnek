@@ -13,7 +13,7 @@ use typedef::builtin::Builtin;
 
 
 pub struct PyMeta {
-    pub pytype: ObjectRef
+    pub pytype: ObjectRef,
 }
 
 pub type PyType = RtValue<TypeValue>;
@@ -33,12 +33,11 @@ impl typing::BuiltinType for PyMeta {
     fn init_type() -> Self {
         PyMeta {
             pytype: PyMeta::inject_selfref(PyMeta::alloc(native::Type {
-                name: "type".to_string(),
-                module: "builtins".to_string(),
-                bases: Vec::new(),
-                subclasses: RefCell::new(Vec::new()),
-            })),
-
+                                                             name: "type".to_string(),
+                                                             module: "builtins".to_string(),
+                                                             bases: Vec::new(),
+                                                             subclasses: RefCell::new(Vec::new()),
+                                                         })),
         }
     }
 
@@ -50,8 +49,8 @@ impl typing::BuiltinType for PyMeta {
         match boxed.deref() {
             &Builtin::Type(ref pytype) => {
                 pytype.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
@@ -198,7 +197,7 @@ impl fmt::Debug for PyType {
 #[cfg(test)]
 mod _api_methods {
     use super::*;
-    use runtime::{PyTypeProvider};
+    use runtime::PyTypeProvider;
 
     fn setup_test() -> (Runtime) {
         Runtime::new()

@@ -31,7 +31,7 @@ pub fn format_int(int: &native::Integer) -> native::String {
 
 #[derive(Clone)]
 pub struct PyIntegerType {
-    pub static_integers: Vec<ObjectRef>
+    pub static_integers: Vec<ObjectRef>,
 }
 
 
@@ -47,15 +47,11 @@ impl typing::BuiltinType for PyIntegerType {
 
 
     fn init_type() -> Self {
-        let range: Vec<ObjectRef> =
-            STATIC_INT_RANGE
-                .map(native::Integer::from)
-                .map(PyIntegerType::alloc)
-                .map(PyIntegerType::inject_selfref)
-                .collect();
-        PyIntegerType {
-            static_integers: range
-        }
+        let range: Vec<ObjectRef> = STATIC_INT_RANGE.map(native::Integer::from)
+            .map(PyIntegerType::alloc)
+            .map(PyIntegerType::inject_selfref)
+            .collect();
+        PyIntegerType { static_integers: range }
     }
 
     fn inject_selfref(value: PyInteger) -> ObjectRef {
@@ -66,8 +62,8 @@ impl typing::BuiltinType for PyIntegerType {
         match boxed.deref() {
             &Builtin::Int(ref int) => {
                 int.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
@@ -78,7 +74,6 @@ impl typing::BuiltinType for PyIntegerType {
             rc: selfref::RefCount::default(),
         }
     }
-
 }
 
 
@@ -117,7 +112,6 @@ impl method::Hashed for PyInteger {
         self.value.0.hash(&mut s);
         Ok(s.finish())
     }
-
 }
 
 impl method::StringCast for PyInteger {
@@ -197,13 +191,10 @@ impl method::Add for PyInteger {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
-            &Builtin::Int(ref obj) => {
-                Ok(rt.int(&self.value.0 + &obj.value.0))
-            }
+            &Builtin::Int(ref obj) => Ok(rt.int(&self.value.0 + &obj.value.0)),
             _ => Err(Error::typerr("TypeError cannot add to int")),
         }
     }
-
 }
 
 impl method::BitwiseAnd for PyInteger {}
@@ -313,8 +304,8 @@ mod old {
     }
 
     /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///       Struct Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ///       Struct Traits
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     impl IntegerObject {
         #[inline]
@@ -382,7 +373,13 @@ mod old {
             let builtin: &Box<Builtin> = rhs.0.borrow();
 
             match self.native_eq(builtin.deref()) {
-                Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+                Ok(value) => {
+                    if value {
+                        Ok(rt.OldTrue())
+                    } else {
+                        Ok(rt.OldFalse())
+                    }
+                }
                 Err(err) => Err(err),
             }
         }
@@ -480,8 +477,8 @@ mod old {
 
 
     /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///      stdlib Traits
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ///      stdlib Traits
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     impl fmt::Display for IntegerObject {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -491,8 +488,8 @@ mod old {
 
 
     /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-///          Tests
-/// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ///          Tests
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+
     #[cfg(test)]
     mod impl_pybehavior {
         use std;
@@ -530,8 +527,8 @@ mod old {
         }
 
         /// Create integer object on the stack and try to allocate it
-    /// in the runtime.
-    ///
+        /// in the runtime.
+        ///
         #[test]
         fn test_alloc_integer() {
             let mut runtime = Runtime::new(None);
@@ -546,7 +543,7 @@ mod old {
         }
 
         /// int+int => int
-    /// api::BinaryOperation::op_add
+        /// api::BinaryOperation::op_add
         #[test]
         fn __add__() {
             let mut runtime = Runtime::new(None);
@@ -727,13 +724,13 @@ mod old {
         // api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
 
         /// Called by `bytes()` to compute a byte-string representation of an object.
-    /// This should return a bytes object.
+        /// This should return a bytes object.
         api_test_stub!(unary, self, __bytes__, ToBytes, op_bytes, native_bytes);
         api_test_stub!(binary, self, __format__, Format, op_format, native_format);
 
 
         /// The object comparison functions are useful for all objects,
-    /// and are named after the rich comparison operators they support:
+        /// and are named after the rich comparison operators they support:
         api_test_stub!(binary, self, __lt__, LessThan, op_lt, native_lt);
         api_test_stub!(binary, self, __le__, LessOrEqual, op_le, native_le);
         //api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);

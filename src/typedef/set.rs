@@ -8,7 +8,7 @@ mod old {
 
     use object;
     use typedef::builtin::Builtin;
-    
+
     #[derive(Clone, Debug)]
     pub struct SetObject {
         value: RefCell<Set>,
@@ -133,13 +133,13 @@ mod old {
             api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
 
             /// Called by `bytes()` to compute a byte-string representation of an object.
-    /// This should return a bytes object.
+            /// This should return a bytes object.
             api_test_stub!(unary, self, __bytes__, ToBytes, op_bytes, native_bytes);
             api_test_stub!(binary, self, __format__, Format, op_format, native_format);
 
 
             /// The object comparison functions are useful for all objects,
-    /// and are named after the rich comparison operators they support:
+            /// and are named after the rich comparison operators they support:
             api_test_stub!(binary, self, __lt__, LessThan, op_lt, native_lt);
             api_test_stub!(binary, self, __le__, LessOrEqual, op_le, native_le);
             api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);

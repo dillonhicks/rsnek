@@ -118,7 +118,6 @@ impl method::SetAttr for Builtin {
 }
 impl method::DelAttr for Builtin {}
 impl method::Id for Builtin {
-
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
         Ok(rt.int(self.native_id()))
     }
@@ -128,7 +127,6 @@ impl method::Id for Builtin {
                 (obj as *const _) as native::ObjectId
             })
     }
-
 }
 
 

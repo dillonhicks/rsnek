@@ -1,7 +1,7 @@
 use std;
-use std::ops::{Deref,Neg};
+use std::ops::{Deref, Neg};
 use std::borrow::Borrow;
-use num::{Signed,Zero, FromPrimitive};
+use num::{Signed, Zero, FromPrimitive};
 
 use object::{self, RtValue, typing, method};
 use object::method::{BooleanCast, IntegerCast, StringRepresentation};
@@ -25,7 +25,7 @@ pub const FALSE_BYTES: &'static [u8] = &[0];
 #[derive(Clone)]
 pub struct PyBooleanType {
     singleton_true: ObjectRef,
-    singleton_false: ObjectRef
+    singleton_false: ObjectRef,
 }
 
 
@@ -36,7 +36,11 @@ impl typing::BuiltinType for PyBooleanType {
     #[inline(always)]
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-        if value {self.singleton_true.clone()} else {self.singleton_false.clone()}
+        if value {
+            self.singleton_true.clone()
+        } else {
+            self.singleton_false.clone()
+        }
     }
 
     fn init_type() -> Self {
@@ -54,21 +58,23 @@ impl typing::BuiltinType for PyBooleanType {
         match boxed.deref() {
             &Builtin::Bool(ref boolean) => {
                 boolean.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
 
     fn alloc(value: Self::V) -> Self::T {
-        let int = if value {native::Integer::from_usize(1).unwrap()} else {native::Integer::zero()};
+        let int = if value {
+            native::Integer::from_usize(1).unwrap()
+        } else {
+            native::Integer::zero()
+        };
         PyBoolean {
             value: BoolValue(int),
             rc: selfref::RefCount::default(),
         }
     }
-
-
 }
 
 
@@ -107,19 +113,22 @@ impl method::StringCast for PyBoolean {
     }
 }
 impl method::BytesCast for PyBoolean {
-//    fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
-//        // TODO: Fix after PyBytes is implemented
-//        Err(Error::not_implemented())
-//    }
+    //    fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
+    //        // TODO: Fix after PyBytes is implemented
+    //        Err(Error::not_implemented())
+    //    }
 
     fn native_bytes(&self) -> NativeResult<native::Bytes> {
-        let result = if self.value.0.is_zero() {FALSE_BYTES.to_vec()} else {TRUE_BYTES.to_vec()};
+        let result = if self.value.0.is_zero() {
+            FALSE_BYTES.to_vec()
+        } else {
+            TRUE_BYTES.to_vec()
+        };
         Ok(result)
     }
 }
 impl method::StringFormat for PyBoolean {}
 impl method::StringRepresentation for PyBoolean {
-
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_repr() {
             Ok(string) => Ok(rt.str(string)),
@@ -135,7 +144,6 @@ impl method::StringRepresentation for PyBoolean {
         };
         Ok(value.to_string())
     }
-
 }
 
 /// `x == y`
@@ -144,7 +152,13 @@ impl method::Equal for PyBoolean {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.bool(true)) } else { Ok(rt.bool(false)) },
+            Ok(value) => {
+                if value {
+                    Ok(rt.bool(true))
+                } else {
+                    Ok(rt.bool(false))
+                }
+            }
             Err(err) => Err(err),
         }
     }
@@ -162,7 +176,13 @@ impl method::NotEqual for PyBoolean {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_ne(builtin.deref()) {
-            Ok(value) => if value { Ok(rt.bool(true)) } else { Ok(rt.bool(false)) },
+            Ok(value) => {
+                if value {
+                    Ok(rt.bool(true))
+                } else {
+                    Ok(rt.bool(false))
+                }
+            }
             Err(err) => Err(err),
         }
     }
@@ -191,7 +211,6 @@ impl method::BooleanCast for PyBoolean {
     }
 }
 impl method::IntegerCast for PyBoolean {
-
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
         Ok(rt.int(self.value.0.clone()))
     }
@@ -203,35 +222,33 @@ impl method::IntegerCast for PyBoolean {
 
 // TODO: FIXME when float is finished
 impl method::FloatCast for PyBoolean {
-
-//    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-//        unimplemented!()
-//        //        match self.native_float() {
-//        //            Ok(float) => rt.alloc(FloatObject::new(float).to()),
-//        //            Err(err) => Err(err),
-////        }
-//
-//    }
-//
-//    fn native_float(&self) -> NativeResult<native::Float> {
-//        return Ok(self.value.0.to_f64().unwrap());
-//    }
+    //    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+    //        unimplemented!()
+    //        //        match self.native_float() {
+    //        //            Ok(float) => rt.alloc(FloatObject::new(float).to()),
+    //        //            Err(err) => Err(err),
+    ////        }
+    //
+    //    }
+    //
+    //    fn native_float(&self) -> NativeResult<native::Float> {
+    //        return Ok(self.value.0.to_f64().unwrap());
+    //    }
 }
 
 // TODO: FIXME when complex is finished
 impl method::ComplexCast for PyBoolean {
-//    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-//        unimplemented!()
-//        //        match self.native_complex() {
-//        //            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
-//        //            Err(err) => Err(err),
-//        //        }
-//    }
-//
-//    fn native_complex(&self) -> NativeResult<native::Complex> {
-//        Ok(native::Complex::new(self.value.0.to_f64().unwrap(), 0.))
-//    }
-
+    //    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
+    //        unimplemented!()
+    //        //        match self.native_complex() {
+    //        //            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
+    //        //            Err(err) => Err(err),
+    //        //        }
+    //    }
+    //
+    //    fn native_complex(&self) -> NativeResult<native::Complex> {
+    //        Ok(native::Complex::new(self.value.0.to_f64().unwrap(), 0.))
+    //    }
 }
 
 /// `round(True) => 1` `round(False) => 0`
@@ -239,7 +256,7 @@ impl method::Rounding for PyBoolean {
     fn op_round(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_round() {
             Ok(Number::Int(int)) => Ok(rt.int(int)),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -253,7 +270,7 @@ impl method::Index for PyBoolean {
     fn op_index(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_index() {
             Ok(int) => Ok(rt.int(int)),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -267,12 +284,15 @@ impl method::NegateValue for PyBoolean {
     fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_neg() {
             Ok(Number::Int(int)) => Ok(rt.int(int)),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     fn native_neg(&self) -> NativeResult<Number> {
-        Ok(Number::Int(self.value.0.clone().neg()))
+        Ok(Number::Int(self.value
+                           .0
+                           .clone()
+                           .neg()))
     }
 }
 
@@ -281,7 +301,7 @@ impl method::AbsValue for PyBoolean {
     fn op_abs(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_abs() {
             Ok(Number::Int(int)) => Ok(rt.int(int)),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -295,7 +315,7 @@ impl method::PositiveValue for PyBoolean {
     fn op_pos(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_pos() {
             Ok(Number::Int(int)) => Ok(rt.int(int)),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 

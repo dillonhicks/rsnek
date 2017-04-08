@@ -30,7 +30,7 @@ impl typing::BuiltinType for PyDictType {
     }
 
     fn init_type() -> Self {
-        PyDictType{}
+        PyDictType {}
     }
 
     fn inject_selfref(value: Self::T) -> ObjectRef {
@@ -41,8 +41,8 @@ impl typing::BuiltinType for PyDictType {
         match boxed.deref() {
             &Builtin::Dict(ref dict) => {
                 dict.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
@@ -53,7 +53,6 @@ impl typing::BuiltinType for PyDictType {
             rc: selfref::RefCount::default(),
         }
     }
-
 }
 
 
@@ -116,7 +115,10 @@ impl method::BooleanCast for PyDict {
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        Ok(!self.value.0.borrow().is_empty())
+        Ok(!self.value
+                .0
+                .borrow()
+                .is_empty())
     }
 }
 
@@ -183,7 +185,10 @@ impl method::Length for PyDict {
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
-        Ok(native::Integer::from(self.value.0.borrow().len()))
+        Ok(native::Integer::from(self.value
+                                     .0
+                                     .borrow()
+                                     .len()))
     }
 }
 impl method::LengthHint for PyDict {}
@@ -198,7 +203,10 @@ impl method::GetItem for PyDict {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
                 println!("HASHED: {:?}", key);
-                match self.value.0.borrow().get(&key) {
+                match self.value
+                          .0
+                          .borrow()
+                          .get(&key) {
                     Some(objref) => Ok(objref.clone()),
                     None => {
                         // TODO: use repr for this as per cPython default
@@ -213,15 +221,17 @@ impl method::GetItem for PyDict {
     fn native_getitem(&self, key: &Builtin) -> RuntimeResult {
         match key {
             &Builtin::DictKey(ref key) => {
-                match self.value.0.borrow().get(key) {
+                match self.value
+                          .0
+                          .borrow()
+                          .get(key) {
                     Some(value) => Ok(value.clone()),
-                    None => Err(Error::key("No such key"))
+                    None => Err(Error::key("No such key")),
                 }
             }
-            _ => Err(Error::typerr("key is not a dictkey type"))
+            _ => Err(Error::typerr("key is not a dictkey type")),
         }
     }
-
 }
 
 impl method::SetItem for PyDict {
@@ -234,7 +244,7 @@ impl method::SetItem for PyDict {
 
                 match self.native_setitem(&Builtin::DictKey(key), boxed_value) {
                     Ok(_) => Ok(rt.none()),
-                    Err(err) => Err(err)
+                    Err(err) => Err(err),
                 }
             }
             Err(_) => Err(Error::typerr("TypeError: Unhashable key type")),
@@ -246,15 +256,18 @@ impl method::SetItem for PyDict {
 
         let objref = match value.upgrade() {
             Ok(objref) => objref,
-            Err(err) => return Err(err)
+            Err(err) => return Err(err),
         };
 
         match key {
             &Builtin::DictKey(ref key) => {
-                self.value.0.borrow_mut().insert(key.clone(), objref);
+                self.value
+                    .0
+                    .borrow_mut()
+                    .insert(key.clone(), objref);
                 Ok(native::None())
             }
-            _ => Err(Error::typerr("key is not a dictkey type"))
+            _ => Err(Error::typerr("key is not a dictkey type")),
         }
     }
 }
@@ -365,7 +378,7 @@ mod _api_method {
         let rt = setup_test();
         let dict = rt.dict(native::None());
 
-        let key= rt.str("hello");
+        let key = rt.str("hello");
         let value = rt.int(234);
 
         let boxed: &Box<Builtin> = dict.0.borrow();
@@ -432,10 +445,10 @@ mod old {
 
         fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
             Ok(if self.native_bool().unwrap() {
-                rt.OldTrue()
-            } else {
-                rt.OldFalse()
-            })
+                   rt.OldTrue()
+               } else {
+                   rt.OldFalse()
+               })
         }
 
         fn native_bool(&self) -> NativeResult<native::Boolean> {
@@ -566,7 +579,7 @@ mod old {
         }
 
         /// Ensure that the dictionary reference equality does not
-    /// match against two separarte dictionaries.
+        /// match against two separarte dictionaries.
         #[test]
         fn is_not() {
             let mut rt = Runtime::new(None);
@@ -610,13 +623,13 @@ mod old {
         api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
 
         /// Called by `bytes()` to compute a byte-string representation of an object.
-    /// This should return a bytes object.
+        /// This should return a bytes object.
         api_test_stub!(unary, self, __bytes__, ToBytes, op_bytes, native_bytes);
         api_test_stub!(binary, self, __format__, Format, op_format, native_format);
 
 
         /// The object comparison functions are useful for all objects,
-    /// and are named after the rich comparison operators they support:
+        /// and are named after the rich comparison operators they support:
         api_test_stub!(binary, self, __lt__, LessThan, op_lt, native_lt);
         api_test_stub!(binary, self, __le__, LessOrEqual, op_le, native_le);
         api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);

@@ -22,20 +22,20 @@ extern crate rattlesnake;
 fn main() {
     println!("Hello RSNEK!");
 
-        let stack = OsStack::new(1 << 16).unwrap();
-        let mut gen = Generator::new(stack, move |yielder, ()| {
+    let stack = OsStack::new(1 << 16).unwrap();
+    let mut gen = Generator::new(stack, move |yielder, ()| {
 
             otherthing(yielder);
         });
 
-        loop {
-            let out = gen.resume(());
-            println!("{:?}", out); // Some(1)
+    loop {
+        let out = gen.resume(());
+        println!("{:?}", out); // Some(1)
 
-            match out {
-                None => break,
-                _ => (),
-            };
-        }
+        match out {
+            None => break,
+            _ => (),
+        };
+    }
 
 }

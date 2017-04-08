@@ -114,12 +114,11 @@ fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> 
         &Builtin::Tuple(ref tuple) => {
             if tuple.value.0.len() == count {
                 Ok(native::None())
-            }
-            else {
+            } else {
                 Err(Error::typerr("Argument mismatch 1"))
             }
-        },
-        _ => Err(Error::typerr("Expected type tuple for pos_args"))
+        }
+        _ => Err(Error::typerr("Expected type tuple for pos_args")),
     }
 }
 
@@ -136,8 +135,8 @@ fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> 
             } else {
                 Err(Error::typerr("Argument mismatch 2"))
             }
-        },
-        _ => Err(Error::typerr("Expected type tuple for pos_args"))
+        }
+        _ => Err(Error::typerr("Expected type tuple for pos_args")),
     }
 
 }
@@ -187,12 +186,12 @@ impl Runtime {
             tuple: PyTupleType::init_type(),
             function: PyFunctionType::init_type(&object.pytype, &object.object),
             object: object,
-            meta: meta
+            meta: meta,
         };
 
         let internal = RuntimeInternal {
             types: builtins,
-            funcs: RefCell::new(native::KWDict::new())
+            funcs: RefCell::new(native::KWDict::new()),
         };
 
 
@@ -201,7 +200,7 @@ impl Runtime {
         rt
     }
 
-    pub fn register_builtin(&self, name: &'static str, func: native::Function)  {
+    pub fn register_builtin(&self, name: &'static str, func: native::Function) {
         let mut funcs = self.0.funcs.borrow_mut();
         let func_obj = self.function(func);
         funcs.insert(name.to_string(), func_obj.clone());
@@ -212,7 +211,7 @@ impl Runtime {
         let key = name.to_string();
         match funcs.get(&key) {
             Some(objref) => objref.clone(),
-            None => self.none()
+            None => self.none(),
         }
     }
 }
@@ -223,7 +222,10 @@ impl Runtime {
 impl NoneProvider for Runtime {
     #[inline]
     fn none(&self) -> ObjectRef {
-        self.0.types.none.new(&self, NONE)
+        self.0
+            .types
+            .none
+            .new(&self, NONE)
     }
 }
 
@@ -233,13 +235,19 @@ impl NoneProvider for Runtime {
 impl BooleanProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn bool(&self, value: native::None) -> ObjectRef {
-        self.0.types.bool.new(&self, false)
+        self.0
+            .types
+            .bool
+            .new(&self, false)
     }
 }
 
 impl BooleanProvider<native::Boolean> for Runtime {
     fn bool(&self, value: native::Boolean) -> ObjectRef {
-        self.0.types.bool.new(&self, value)
+        self.0
+            .types
+            .bool
+            .new(&self, value)
     }
 }
 
@@ -250,26 +258,38 @@ impl BooleanProvider<native::Boolean> for Runtime {
 impl IntegerProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn int(&self, value: native::None) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::zero())
+        self.0
+            .types
+            .int
+            .new(&self, native::Integer::zero())
     }
 }
 
 
 impl IntegerProvider<native::Integer> for Runtime {
     fn int(&self, value: native::Integer) -> ObjectRef {
-        self.0.types.int.new(&self, value)
+        self.0
+            .types
+            .int
+            .new(&self, value)
     }
 }
 
 impl IntegerProvider<native::ObjectId> for Runtime {
     fn int(&self, value: native::ObjectId) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::from(value))
+        self.0
+            .types
+            .int
+            .new(&self, native::Integer::from(value))
     }
 }
 
 impl IntegerProvider<i32> for Runtime {
     fn int(&self, value: i32) -> ObjectRef {
-        self.0.types.int.new(&self, native::Integer::from(value))
+        self.0
+            .types
+            .int
+            .new(&self, native::Integer::from(value))
     }
 }
 
@@ -281,21 +301,31 @@ impl IntegerProvider<i32> for Runtime {
 impl StringProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn str(&self, value: native::None) -> ObjectRef {
-        self.0.types.string.empty.clone()
+        self.0
+            .types
+            .string
+            .empty
+            .clone()
     }
 }
 
 impl StringProvider<native::String> for Runtime {
     #[allow(unused_variables)]
     fn str(&self, value: native::String) -> ObjectRef {
-        self.0.types.string.new(&self, value)
+        self.0
+            .types
+            .string
+            .new(&self, value)
     }
 }
 
 impl StringProvider<&'static str> for Runtime {
     #[allow(unused_variables)]
     fn str(&self, value: &'static str) -> ObjectRef {
-        self.0.types.string.new(&self, value.to_string())
+        self.0
+            .types
+            .string
+            .new(&self, value.to_string())
     }
 }
 
@@ -304,14 +334,20 @@ impl StringProvider<&'static str> for Runtime {
 //
 impl DictProvider<native::Dict> for Runtime {
     fn dict(&self, value: native::Dict) -> ObjectRef {
-        self.0.types.dict.new(&self, value)
+        self.0
+            .types
+            .dict
+            .new(&self, value)
     }
 }
 
 impl DictProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn dict(&self, value: native::None) -> ObjectRef {
-        self.0.types.dict.new(&self, native::Dict::new())
+        self.0
+            .types
+            .dict
+            .new(&self, native::Dict::new())
     }
 }
 
@@ -321,14 +357,21 @@ impl DictProvider<native::None> for Runtime {
 impl TupleProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn tuple(&self, value: native::None) -> ObjectRef {
-        self.0.types.tuple.empty.clone()
+        self.0
+            .types
+            .tuple
+            .empty
+            .clone()
     }
 }
 
 
 impl TupleProvider<native::Tuple> for Runtime {
     fn tuple(&self, value: native::Tuple) -> ObjectRef {
-        self.0.types.tuple.new(&self, value)
+        self.0
+            .types
+            .tuple
+            .new(&self, value)
     }
 }
 
@@ -338,11 +381,19 @@ impl TupleProvider<native::Tuple> for Runtime {
 impl ObjectProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn object(&self, value: native::None) -> ObjectRef {
-        self.0.types.object.new(&self, native::Object {
-            class: self.0.types.object.object.clone(),
-            dict: self.dict(native::None()),
-            bases: self.dict(native::None())
-        })
+        self.0
+            .types
+            .object
+            .new(&self,
+                 native::Object {
+                     class: self.0
+                         .types
+                         .object
+                         .object
+                         .clone(),
+                     dict: self.dict(native::None()),
+                     bases: self.dict(native::None()),
+                 })
     }
 }
 
@@ -350,7 +401,10 @@ impl ObjectProvider<native::None> for Runtime {
 impl ObjectProvider<native::Object> for Runtime {
     #[allow(unused_variables)]
     fn object(&self, value: native::Object) -> ObjectRef {
-        self.0.types.object.new(&self, value)
+        self.0
+            .types
+            .object
+            .new(&self, value)
     }
 }
 
@@ -360,7 +414,11 @@ impl ObjectProvider<native::Object> for Runtime {
 impl PyTypeProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn pytype(&self, value: native::None) -> ObjectRef {
-        self.0.types.meta.pytype.clone()
+        self.0
+            .types
+            .meta
+            .pytype
+            .clone()
     }
 }
 
@@ -370,7 +428,10 @@ impl PyTypeProvider<native::None> for Runtime {
 //
 impl FunctionProvider<native::Function> for Runtime {
     fn function(&self, value: native::Function) -> ObjectRef {
-        self.0.types.function.new(&self, value)
+        self.0
+            .types
+            .function
+            .new(&self, value)
     }
 }
 
@@ -420,9 +481,7 @@ mod _api {
         let func = rt.get_builtin("len");
         let len: &Box<Builtin> = func.0.borrow();
 
-        b.iter(|| {
-            len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
-         });
+        b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
 
         let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
         assert_eq!(result, rt.int(3));

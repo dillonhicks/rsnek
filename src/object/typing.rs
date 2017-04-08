@@ -30,5 +30,4 @@ pub trait BuiltinType {
 
     /// Create a new instance of the primitve type that his reference counted
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef;
-
 }

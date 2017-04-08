@@ -61,7 +61,7 @@ pub enum Function {
 pub struct Object {
     pub class: ObjectRef,
     pub dict: ObjectRef,
-    pub bases: ObjectRef
+    pub bases: ObjectRef,
 }
 
 
@@ -70,7 +70,7 @@ pub enum Number {
     Int(Integer),
     Float(Float),
     Bool(Boolean),
-    Complex(Complex)
+    Complex(Complex),
 }
 
 

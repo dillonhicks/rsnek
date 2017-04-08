@@ -18,7 +18,7 @@ use typedef::builtin::Builtin;
 
 
 pub struct PyStringType {
-    pub empty: ObjectRef
+    pub empty: ObjectRef,
 }
 
 
@@ -32,9 +32,7 @@ impl typing::BuiltinType for PyStringType {
     }
 
     fn init_type() -> Self {
-        PyStringType{
-            empty: PyStringType::inject_selfref(PyStringType::alloc("".to_string()))
-        }
+        PyStringType { empty: PyStringType::inject_selfref(PyStringType::alloc("".to_string())) }
     }
 
 
@@ -46,8 +44,8 @@ impl typing::BuiltinType for PyStringType {
         match boxed.deref() {
             &Builtin::Str(ref string) => {
                 string.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
@@ -59,7 +57,6 @@ impl typing::BuiltinType for PyStringType {
             rc: selfref::RefCount::default(),
         }
     }
-
 }
 
 
@@ -266,7 +263,13 @@ mod old {
             let builtin: &Box<Builtin> = rhs.0.borrow();
 
             match self.native_eq(builtin.deref()) {
-                Ok(value) => if value { Ok(rt.OldTrue()) } else { Ok(rt.OldFalse()) },
+                Ok(value) => {
+                    if value {
+                        Ok(rt.OldTrue())
+                    } else {
+                        Ok(rt.OldFalse())
+                    }
+                }
                 _ => unreachable!(),
             }
         }
@@ -380,13 +383,13 @@ mod old {
         api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
 
         /// Called by `bytes()` to compute a byte-string representation of an object.
-    /// This should return a bytes object.
+        /// This should return a bytes object.
         api_test_stub!(unary, self, __bytes__, ToBytes, op_bytes, native_bytes);
         api_test_stub!(binary, self, __format__, Format, op_format, native_format);
 
 
         /// The object comparison functions are useful for all objects,
-    /// and are named after the rich comparison operators they support:
+        /// and are named after the rich comparison operators they support:
         api_test_stub!(binary, self, __lt__, LessThan, op_lt, native_lt);
         api_test_stub!(binary, self, __le__, LessOrEqual, op_le, native_le);
         api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);
@@ -395,11 +398,11 @@ mod old {
         api_test_stub!(binary, self, __gt__, GreaterThan, op_gt, native_gt);
 
         /// Called by built-in function hash() and for operations on members of hashed collections including
-    /// set, frozenset, and dict. __hash__() should return an integer. The only required property is
-    /// that objects which compare equal have the same hash value; it is advised to mix together
-    /// the hash values of the components of the object that also play a part in comparison
-    /// of objects by packing them into a tuple and hashing the tuple. Example:
-    /// `api_test_stub!(unary, self, __hash__, Hashable, op_hash, native_hash, native::HashId);`
+        /// set, frozenset, and dict. __hash__() should return an integer. The only required property is
+        /// that objects which compare equal have the same hash value; it is advised to mix together
+        /// the hash values of the components of the object that also play a part in comparison
+        /// of objects by packing them into a tuple and hashing the tuple. Example:
+        /// `api_test_stub!(unary, self, __hash__, Hashable, op_hash, native_hash, native::HashId);`
         #[test]
         fn __hash__() {
             let mut rt = Runtime::new(None);

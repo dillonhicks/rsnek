@@ -20,7 +20,7 @@ use typedef::objectref::ObjectRef;
 
 
 pub struct PyTupleType {
-    pub empty: ObjectRef
+    pub empty: ObjectRef,
 }
 
 
@@ -35,9 +35,7 @@ impl typing::BuiltinType for PyTupleType {
     }
 
     fn init_type() -> Self {
-        PyTupleType {
-            empty: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new()))
-        }
+        PyTupleType { empty: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())) }
     }
 
     fn inject_selfref(value: Self::T) -> ObjectRef {
@@ -48,14 +46,14 @@ impl typing::BuiltinType for PyTupleType {
         match boxed.deref() {
             &Builtin::Tuple(ref tuple) => {
                 tuple.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
 
     fn alloc(value: Self::V) -> Self::T {
-        PyTuple{
+        PyTuple {
             value: TupleValue(value),
             rc: selfref::RefCount::default(),
         }
@@ -80,7 +78,7 @@ impl method::Hashed for PyTuple {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
             Ok(hashid) => Ok(rt.int(hashid)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -92,15 +90,19 @@ impl method::Hashed for PyTuple {
                     let boxed: &Box<Builtin> = objref.0.borrow();
                     boxed.native_id().hash(&mut s);
                     return Ok(s.finish());
-                },
-                Err(err) => return Err(err)
+                }
+                Err(err) => return Err(err),
             }
         }
 
-        self.value.0.iter().map(|ref item| {
-            let boxed: &Box<Builtin> = item.0.borrow();
-            boxed.native_hash()
-        }).fold_results(0, Add::add)
+        self.value
+            .0
+            .iter()
+            .map(|ref item| {
+                     let boxed: &Box<Builtin> = item.0.borrow();
+                     boxed.native_hash()
+                 })
+            .fold_results(0, Add::add)
     }
 }
 
@@ -173,14 +175,13 @@ impl method::Length for PyTuple {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_len() {
             Ok(length) => Ok(rt.int(length)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
         Ok(native::Integer::from(self.value.0.len()))
     }
-
 }
 impl method::LengthHint for PyTuple {}
 impl method::Next for PyTuple {}
@@ -197,17 +198,18 @@ impl method::GetItem for PyTuple {
         match index {
             &Builtin::Int(ref obj) => {
                 match obj.value.0.to_usize() {
-                    Some(idx) => match self.value.0.get(idx) {
-                        Some(objref) => Ok(objref.clone()),
-                        None =>  Err(Error::runtime("Index out of range"))
-                    },
-                    None => Err(Error::runtime("Index out of range"))
+                    Some(idx) => {
+                        match self.value.0.get(idx) {
+                            Some(objref) => Ok(objref.clone()),
+                            None => Err(Error::runtime("Index out of range")),
+                        }
+                    }
+                    None => Err(Error::runtime("Index out of range")),
                 }
-            },
-            _ => Err(Error::typerr("index was not an integer"))
+            }
+            _ => Err(Error::typerr("index was not an integer")),
         }
     }
-
 }
 impl method::SetItem for PyTuple {}
 impl method::DeleteItem for PyTuple {}
@@ -451,13 +453,13 @@ mod old {
         api_test_stub!(unary, self, __str__, ToString, op_str, native_str);
 
         /// Called by `bytes()` to compute a byte-string representation of an object.
-    /// This should return a bytes object.
+        /// This should return a bytes object.
         api_test_stub!(unary, self, __bytes__, ToBytes, op_bytes, native_bytes);
         api_test_stub!(binary, self, __format__, Format, op_format, native_format);
 
 
         /// The object comparison functions are useful for all objects,
-    /// and are named after the rich comparison operators they support:
+        /// and are named after the rich comparison operators they support:
         api_test_stub!(binary, self, __lt__, LessThan, op_lt, native_lt);
         api_test_stub!(binary, self, __le__, LessOrEqual, op_le, native_le);
         api_test_stub!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);

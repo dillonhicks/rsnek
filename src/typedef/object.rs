@@ -22,29 +22,28 @@ use typedef::objectref::ObjectRef;
 
 pub struct PyObjectType {
     pub object: ObjectRef,
-    pub pytype: ObjectRef
+    pub pytype: ObjectRef,
 }
 
 impl PyObjectType {
     pub fn init_type(typeref: &ObjectRef) -> Self {
-        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(
-            native::Object {
-                class: typeref.clone(),
-                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-                bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new()))
-            }));
+        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
+                                                                       class: typeref.clone(),
+                                                                       dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                                                                       bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+                                                                   }));
 
 
-        let object = PyObjectType::inject_selfref(PyObjectType::alloc(
-            native::Object {
-                class: typeref.clone(),
-                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-                bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new()))
-            }));
+        let object = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
+                                                                          class: typeref.clone(),
+                                                                          dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                                                                          bases:
+                                                                              PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+                                                                      }));
 
         PyObjectType {
             object: object,
-            pytype: typ
+            pytype: typ,
         }
     }
 }
@@ -71,14 +70,14 @@ impl typing::BuiltinType for PyObjectType {
         match boxed.deref() {
             &Builtin::Object(ref object) => {
                 object.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
 
     fn alloc(object: Self::V) -> Self::T {
-        PyObject{
+        PyObject {
             value: ObjectValue(object),
             rc: selfref::RefCount::default(),
         }
@@ -101,45 +100,52 @@ impl method::Init for PyObject {}
 impl method::Delete for PyObject {}
 
 impl method::GetAttr for PyObject {
+    // TODO: Need to search the base classes dicts as well, maybe need MRO
+    #[allow(unused_variables)]
+    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = name.0.borrow();
+        self.native_getattr(&boxed)
+    }
 
-        // TODO: Need to search the base classes dicts as well, maybe need MRO
-        #[allow(unused_variables)]
-        fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-            let boxed: &Box<Builtin> = name.0.borrow();
-            self.native_getattr(&boxed)
-        }
+    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+        match name {
+            &Builtin::Str(ref string) => {
+                let stringref = match string.rc.upgrade() {
+                    Ok(objref) => objref,
+                    Err(err) => return Err(err),
+                };
 
-        fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
-            match name {
-                &Builtin::Str(ref string) => {
-                    let stringref = match string.rc.upgrade() {
-                        Ok(objref) => objref,
-                        Err(err) => return Err(err)
-                    };
+                let key = DictKey(string.native_hash().unwrap(), stringref);
+                let dict: &Box<Builtin> = self.value
+                    .0
+                    .dict
+                    .0
+                    .borrow();
+                match dict.native_getitem(&Builtin::DictKey(key)) {
+                    Ok(objref) => Ok(objref),
+                    Err(err) => {
+                        let boxed: &Box<Builtin> = self.value
+                            .0
+                            .bases
+                            .0
+                            .borrow();
 
-                    let key = DictKey(string.native_hash().unwrap(), stringref);
-                    let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
-                    match dict.native_getitem(&Builtin::DictKey(key)) {
-                        Ok(objref) => Ok(objref),
-                        Err(err) => {
-                            let boxed: &Box<Builtin> = self.value.0.bases.0.borrow();
-
-                            match boxed.deref() {
-                                &Builtin::Tuple(ref tuple) => {
-                                    for base in &tuple.value.0 {
-                                        println!("{:?}", base);
-                                    }
-                                },
-                                _ => unreachable!()
+                        match boxed.deref() {
+                            &Builtin::Tuple(ref tuple) => {
+                                for base in &tuple.value.0 {
+                                    println!("{:?}", base);
+                                }
                             }
-                            println!("NOOPE!");
-                            Err(err)
+                            _ => unreachable!(),
                         }
+                        println!("NOOPE!");
+                        Err(err)
                     }
-                },
-                _ => Err(Error::typerr("getattr(): attribute name must be string"))
+                }
             }
+            _ => Err(Error::typerr("getattr(): attribute name must be string")),
         }
+    }
 }
 impl method::GetAttribute for PyObject {}
 
@@ -149,7 +155,7 @@ impl method::SetAttr for PyObject {
         let boxed_value: &Box<Builtin> = value.0.borrow();
         match self.native_setattr(&boxed_name, boxed_value) {
             Ok(_) => Ok(rt.none()),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -157,20 +163,24 @@ impl method::SetAttr for PyObject {
 
         let hashid = match name.native_hash() {
             Ok(hash) => hash,
-            Err(err) => return Err(err)
+            Err(err) => return Err(err),
         };
 
         let key_ref = match name.upgrade() {
             Ok(objref) => objref,
-            Err(err) => return Err(err)
+            Err(err) => return Err(err),
         };
 
         let key = DictKey(hashid, key_ref);
-        let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
+        let dict: &Box<Builtin> = self.value
+            .0
+            .dict
+            .0
+            .borrow();
 
         match dict.native_setitem(&Builtin::DictKey(key), &value) {
             Ok(_) => Ok(native::None()),
-            Err(_) => Err(Error::attribute())
+            Err(_) => Err(Error::attribute()),
         }
     }
 }
@@ -182,8 +192,8 @@ impl method::Id for PyObject {
             Ok(objref) => {
                 let boxed: &Box<Builtin> = objref.0.borrow();
                 boxed.native_id()
-            },
-            Err(_) => 0
+            }
+            Err(_) => 0,
         }
     }
 }
@@ -192,7 +202,7 @@ impl method::Hashed for PyObject {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
             Ok(hashid) => Ok(rt.int(hashid)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -201,8 +211,6 @@ impl method::Hashed for PyObject {
         self.native_id().hash(&mut s);
         Ok(s.finish())
     }
-
-
 }
 impl method::StringCast for PyObject {}
 impl method::BytesCast for PyObject {}
@@ -385,7 +393,7 @@ mod _api_method {
     mod __getattr__ {
         use super::*;
         #[test]
-        fn set_and_get(){
+        fn set_and_get() {
             let rt = setup_test();
             let object = rt.object(native::None());
 
@@ -402,7 +410,7 @@ mod _api_method {
 
         #[test]
         #[should_panic]
-        fn get_nonexistant_key(){
+        fn get_nonexistant_key() {
             let rt = setup_test();
             let object = rt.object(native::None());
 

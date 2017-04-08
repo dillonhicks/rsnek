@@ -22,22 +22,20 @@ use typedef::objectref::ObjectRef;
 
 
 pub struct PyFunctionType {
-    pub function_type: ObjectRef
+    pub function_type: ObjectRef,
 }
 
 impl PyFunctionType {
     pub fn init_type(typeref: &ObjectRef, object: &ObjectRef) -> Self {
 
-        let method = PyObjectType::inject_selfref(PyObjectType::alloc(
-            native::Object {
-                class: typeref.clone(),
-                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-                bases: PyTupleType::inject_selfref(PyTupleType::alloc(vec![object.clone()]))
-            }));
+        let method = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
+                                                                          class: typeref.clone(),
+                                                                          dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                                                                          bases:
+                                                                              PyTupleType::inject_selfref(PyTupleType::alloc(vec![object.clone()])),
+                                                                      }));
 
-        PyFunctionType {
-            function_type: method
-        }
+        PyFunctionType { function_type: method }
     }
 }
 
@@ -63,8 +61,8 @@ impl typing::BuiltinType for PyFunctionType {
         match boxed.deref() {
             &Builtin::Function(ref object) => {
                 object.rc.set(&objref.clone());
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         new
     }
@@ -82,23 +80,36 @@ pub struct FunctionValue(pub native::Function);
 pub type PyFunction = RtValue<FunctionValue>;
 
 impl PyFunction {
-    fn do_call_nativefn_rt(&self, rt: &Runtime, callable: &Box<NativeFn>, pos_args: &ObjectRef,
-                                star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    fn do_call_nativefn_rt(&self,
+                           rt: &Runtime,
+                           callable: &Box<NativeFn>,
+                           pos_args: &ObjectRef,
+                           star_args: &ObjectRef,
+                           kwargs: &ObjectRef)
+                           -> RuntimeResult {
 
         let boxed: &Box<Builtin> = pos_args.0.borrow();
         let arg0: native::Tuple = match boxed.deref() {
             &Builtin::Tuple(ref tuple) => {
-                tuple.value.0.iter().map(|objref| objref.clone()).collect()
-            },
-            _ => return Err(Error::typerr("Expected type tuple for pos_args"))
+                tuple.value
+                    .0
+                    .iter()
+                    .map(|objref| objref.clone())
+                    .collect()
+            }
+            _ => return Err(Error::typerr("Expected type tuple for pos_args")),
         };
 
         let boxed: &Box<Builtin> = star_args.0.borrow();
         let arg1: native::Tuple = match boxed.deref() {
             &Builtin::Tuple(ref tuple) => {
-                tuple.value.0.iter().map(|objref| objref.clone()).collect()
-            },
-            _ => return Err(Error::typerr("Expected type tuple for *args"))
+                tuple.value
+                    .0
+                    .iter()
+                    .map(|objref| objref.clone())
+                    .collect()
+            }
+            _ => return Err(Error::typerr("Expected type tuple for *args")),
         };
 
         let boxed: &Box<Builtin> = kwargs.0.borrow();
@@ -106,40 +117,44 @@ impl PyFunction {
             &Builtin::Dict(ref dict) => {
                 let borrowed: Ref<native::Dict> = dict.value.0.borrow();
                 borrowed.iter().map(|(key, value)| (key.clone(), value.clone())).collect()
-            },
-            _ => return Err(Error::typerr("Expected type tuple for **args"))
+            }
+            _ => return Err(Error::typerr("Expected type tuple for **args")),
         };
 
         match callable(&arg0, &arg1, &arg2) {
             Ok(_) => Ok(rt.none()),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
-    fn do_call_wrapperfn(&self, rt: &Runtime, callable: &Box<WrapperFn>, pos_args: &ObjectRef,
-                         star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    fn do_call_wrapperfn(&self,
+                         rt: &Runtime,
+                         callable: &Box<WrapperFn>,
+                         pos_args: &ObjectRef,
+                         star_args: &ObjectRef,
+                         kwargs: &ObjectRef)
+                         -> RuntimeResult {
 
         let boxed: &Box<Builtin> = pos_args.0.borrow();
         match boxed.deref() {
-            &Builtin::Tuple(_) => {},
-            _ => return Err(Error::typerr("Expected type tuple for pos_args"))
+            &Builtin::Tuple(_) => {}
+            _ => return Err(Error::typerr("Expected type tuple for pos_args")),
         };
 
         let boxed: &Box<Builtin> = star_args.0.borrow();
         match boxed.deref() {
-            &Builtin::Tuple(_) => {},
-            _ => return Err(Error::typerr("Expected type tuple for *args"))
+            &Builtin::Tuple(_) => {}
+            _ => return Err(Error::typerr("Expected type tuple for *args")),
         };
 
         let boxed: &Box<Builtin> = kwargs.0.borrow();
         match boxed.deref() {
-            &Builtin::Dict(_) => {},
-            _ => return Err(Error::typerr("Expected type tuple for **args"))
+            &Builtin::Dict(_) => {}
+            _ => return Err(Error::typerr("Expected type tuple for **args")),
         };
 
         callable(&rt, &pos_args, &star_args, &kwargs)
     }
-
 }
 
 
@@ -154,78 +169,78 @@ impl method::Init for PyFunction {}
 impl method::Delete for PyFunction {}
 
 impl method::GetAttr for PyFunction {
-//
-//    // TODO: Need to search the base classes dicts as well, maybe need MRO
-//    #[allow(unused_variables)]
-//    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-//        let boxed: &Box<Builtin> = name.0.borrow();
-//        self.native_getattr(&boxed)
-//    }
-//
-//    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
-//        match name {
-//            &Builtin::Str(ref string) => {
-//                let stringref = match string.rc.upgrade() {
-//                    Ok(objref) => objref,
-//                    Err(err) => return Err(err)
-//                };
-//
-//                let key = DictKey(string.native_hash().unwrap(), stringref);
-//                let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
-//                match dict.native_getitem(&Builtin::DictKey(key)) {
-//                    Ok(objref) => Ok(objref),
-//                    Err(err) => {
-//                        let boxed: &Box<Builtin> = self.value.0.bases.0.borrow();
-//
-//                        match boxed.deref() {
-//                            &Builtin::Tuple(ref tuple) => {
-//                                for base in &tuple.value.0 {
-//                                    println!("{:?}", base);
-//                                }
-//                            },
-//                            _ => unreachable!()
-//                        }
-//                        println!("NOOPE!");
-//                        Err(err)
-//                    }
-//                }
-//            },
-//            _ => Err(Error::typerr("getattr(): attribute name must be string"))
-//        }
-//    }
+    //
+    //    // TODO: Need to search the base classes dicts as well, maybe need MRO
+    //    #[allow(unused_variables)]
+    //    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    //        let boxed: &Box<Builtin> = name.0.borrow();
+    //        self.native_getattr(&boxed)
+    //    }
+    //
+    //    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+    //        match name {
+    //            &Builtin::Str(ref string) => {
+    //                let stringref = match string.rc.upgrade() {
+    //                    Ok(objref) => objref,
+    //                    Err(err) => return Err(err)
+    //                };
+    //
+    //                let key = DictKey(string.native_hash().unwrap(), stringref);
+    //                let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
+    //                match dict.native_getitem(&Builtin::DictKey(key)) {
+    //                    Ok(objref) => Ok(objref),
+    //                    Err(err) => {
+    //                        let boxed: &Box<Builtin> = self.value.0.bases.0.borrow();
+    //
+    //                        match boxed.deref() {
+    //                            &Builtin::Tuple(ref tuple) => {
+    //                                for base in &tuple.value.0 {
+    //                                    println!("{:?}", base);
+    //                                }
+    //                            },
+    //                            _ => unreachable!()
+    //                        }
+    //                        println!("NOOPE!");
+    //                        Err(err)
+    //                    }
+    //                }
+    //            },
+    //            _ => Err(Error::typerr("getattr(): attribute name must be string"))
+    //        }
+    //    }
 }
 impl method::GetAttribute for PyFunction {}
 
 impl method::SetAttr for PyFunction {
-//    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
-//        let boxed_name: &Box<Builtin> = name.0.borrow();
-//        let boxed_value: &Box<Builtin> = value.0.borrow();
-//        match self.native_setattr(&boxed_name, boxed_value) {
-//            Ok(_) => Ok(rt.none()),
-//            Err(err) => Err(err)
-//        }
-//    }
-//
-//    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
-//
-//        let hashid = match name.native_hash() {
-//            Ok(hash) => hash,
-//            Err(err) => return Err(err)
-//        };
-//
-//        let key_ref = match name.upgrade() {
-//            Ok(objref) => objref,
-//            Err(err) => return Err(err)
-//        };
-//
-//        let key = DictKey(hashid, key_ref);
-//        let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
-//
-//        match dict.native_setitem(&Builtin::DictKey(key), &value) {
-//            Ok(_) => Ok(native::None()),
-//            Err(_) => Err(Error::attribute())
-//        }
-//    }
+    //    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+    //        let boxed_name: &Box<Builtin> = name.0.borrow();
+    //        let boxed_value: &Box<Builtin> = value.0.borrow();
+    //        match self.native_setattr(&boxed_name, boxed_value) {
+    //            Ok(_) => Ok(rt.none()),
+    //            Err(err) => Err(err)
+    //        }
+    //    }
+    //
+    //    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
+    //
+    //        let hashid = match name.native_hash() {
+    //            Ok(hash) => hash,
+    //            Err(err) => return Err(err)
+    //        };
+    //
+    //        let key_ref = match name.upgrade() {
+    //            Ok(objref) => objref,
+    //            Err(err) => return Err(err)
+    //        };
+    //
+    //        let key = DictKey(hashid, key_ref);
+    //        let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
+    //
+    //        match dict.native_setitem(&Builtin::DictKey(key), &value) {
+    //            Ok(_) => Ok(native::None()),
+    //            Err(_) => Err(Error::attribute())
+    //        }
+    //    }
 }
 
 impl method::DelAttr for PyFunction {}
@@ -235,8 +250,8 @@ impl method::Id for PyFunction {
             Ok(objref) => {
                 let boxed: &Box<Builtin> = objref.0.borrow();
                 boxed.native_id()
-            },
-            Err(_) => 0
+            }
+            Err(_) => 0,
         }
     }
 }
@@ -245,7 +260,7 @@ impl method::Hashed for PyFunction {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_hash() {
             Ok(hashid) => Ok(rt.int(hashid)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 
@@ -254,7 +269,6 @@ impl method::Hashed for PyFunction {
         self.native_id().hash(&mut s);
         Ok(s.finish())
     }
-
 }
 impl method::StringCast for PyFunction {}
 impl method::BytesCast for PyFunction {}
@@ -325,7 +339,7 @@ impl method::Call for PyFunction {
         match self.value.0 {
             Function::Native(ref func) => self.do_call_nativefn_rt(&rt, func, &pos_args, &star_args, &kwargs),
             Function::Wrapper(ref func) => self.do_call_wrapperfn(&rt, func, &pos_args, &star_args, &kwargs),
-            _ => Err(Error::not_implemented())
+            _ => Err(Error::not_implemented()),
         }
     }
 
