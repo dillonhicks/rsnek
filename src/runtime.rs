@@ -1,16 +1,17 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 use std;
+use std::default::Default;
 use std::borrow::Borrow;
 use std::ops::Deref;
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use num::Zero;
 
 use object::typing::BuiltinType;
-use object::method::{Length, GetItem};
+use object::method::{Length, GetItem, SetAttr, GetAttr};
 
 use result::{NativeResult, RuntimeResult};
-use error::Error;
+use error::{Error, ErrorType};
 
 use typedef::native;
 use typedef::builtin::Builtin;
@@ -68,6 +69,13 @@ pub trait ModuleProvider<T> {
     fn module(&self, value: T) -> ObjectRef;
 }
 
+pub trait ModuleFinder<T> {
+    fn get_module(&self, value: T) -> RuntimeResult;
+}
+
+pub trait ModuleImporter<T> {
+    fn import_module(&self, value: T) -> RuntimeResult;
+}
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
 ///
@@ -88,12 +96,12 @@ pub struct BuiltinTypes {
     meta: PyMeta,
 }
 
-
 /// Concrete struct that holds the current runtime state, heap, etc.
 /// TODO: add ability to intern objects?
 struct RuntimeInternal {
     types: BuiltinTypes,
-    funcs: RefCell<native::KWDict>,
+    modules: RefCell<ObjectRef>, // should be a dict
+    mod_builtins: RefCell<ObjectRef>,
 }
 
 
@@ -149,7 +157,7 @@ fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> 
 }
 
 // TODO: move to another module
-fn builtin_len() -> native::Function {
+fn create_func_wrapper_len() -> (&'static str, native::Function) {
     fn len(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match check_args(1, &pos_args) {
             Err(err) => return Err(err),
@@ -174,7 +182,7 @@ fn builtin_len() -> native::Function {
     }
 
     let func: Box<native::WrapperFn> = Box::new(len);
-    native::Function::Wrapper(func)
+    ("len", native::Function::Wrapper(func))
 }
 
 
@@ -199,31 +207,44 @@ impl Runtime {
             meta: meta,
         };
 
+        let placeholder = builtins.meta.pytype.clone();
+
         let internal = RuntimeInternal {
             types: builtins,
-            funcs: RefCell::new(native::KWDict::new()),
+            modules: RefCell::new(placeholder.clone()),
+            mod_builtins: RefCell::new(placeholder.clone()),
         };
 
-
         let rt = Runtime(Rc::new(Box::new(internal)));
-        rt.register_builtin("len", builtin_len());
+        {
+            let mut _mod: RefMut<ObjectRef> = rt.0.mod_builtins.borrow_mut();
+            *_mod = rt.module(native::None());
+        }
+        {
+            let mut _mod: RefMut<ObjectRef> = rt.0.modules.borrow_mut();
+            *_mod = rt.dict(native::None());
+        }
+
+
+        let (name, func) = create_func_wrapper_len();
+        rt.register_builtin(name, func);
         rt
     }
 
     pub fn register_builtin(&self, name: &'static str, func: native::Function) {
-        let mut funcs = self.0.funcs.borrow_mut();
-        let func_obj = self.function(func);
-        funcs.insert(name.to_string(), func_obj.clone());
+        let boxed: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+        let boxed: &Box<Builtin> = boxed.0.borrow();
+        let key = self.str(name);
+        boxed.op_setattr(&self, &key, &self.function(func)).unwrap();
     }
 
     pub fn get_builtin(&self, name: &'static str) -> ObjectRef {
-        let funcs = self.0.funcs.borrow();
-        let key = name.to_string();
-        match funcs.get(&key) {
-            Some(objref) => objref.clone(),
-            None => self.none(),
-        }
+        let boxed: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+        let boxed: &Box<Builtin> = boxed.0.borrow();
+        let key = self.str(name);
+        boxed.op_getattr(&self, &key).unwrap()
     }
+
 }
 
 //
@@ -486,12 +507,35 @@ impl ModuleProvider<native::None> for Runtime {
 }
 
 
+// Module registry
+impl ModuleFinder<&'static str> for Runtime {
+    fn get_module(&self, name: &'static str) -> RuntimeResult {
+        let boxed: Ref<ObjectRef> = self.0.modules.borrow();
+        let boxed: &Box<Builtin> = boxed.0.borrow();
+
+        match boxed.op_getitem(&self, &self.str(name)) {
+            Ok(objref) => Ok(objref),
+            Err(Error(ErrorType::Key, _)) => Err(Error::module_not_found(name)),
+            Err(err) => Err(err)
+        }
+    }
+}
+
+impl<'a> ModuleImporter<(&'static str, &'a ObjectRef)> for Runtime {
+
+    #[allow(unused_variables)]
+    fn import_module(&self, args: (&'static str, &ObjectRef)) -> RuntimeResult {
+        Err(Error::not_implemented())
+    }
+}
+
 // stdlib
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Runtime()")
     }
 }
+
 
 #[cfg(test)]
 mod _api {

@@ -1,4 +1,5 @@
 #![feature(associated_consts)]
+#![feature(type_ascription)]
 #![feature(const_fn)]
 #![feature(test)]
 /// # Notes and TODOS

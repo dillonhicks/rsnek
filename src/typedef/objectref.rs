@@ -46,9 +46,6 @@ impl ObjectRef {
     }
 }
 
-
-
-
 impl Default for WeakObjectRef {
     fn default() -> WeakObjectRef {
         WeakObjectRef(Weak::default())

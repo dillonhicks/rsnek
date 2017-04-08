@@ -26,19 +26,19 @@ pub struct PyObjectType {
 
 impl PyObjectType {
     pub fn init_type(typeref: &ObjectRef) -> Self {
-        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
-                                                                       class: typeref.clone(),
-                                                                       dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-                                                                       bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
-                                                                   }));
 
+        // TODO: Fundamental objects should have __setitem__ set to a attribute error
+        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
+            class: typeref.clone(),
+            dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+            bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+        }));
 
         let object = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
-                                                                          class: typeref.clone(),
-                                                                          dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-                                                                          bases:
-                                                                              PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
-                                                                      }));
+            class: typeref.clone(),
+            dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+            bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+        }));
 
         PyObjectType {
             object: object,

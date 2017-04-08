@@ -2,14 +2,14 @@ use std;
 
 pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display {
     fn error_type(&self) -> ErrorType;
-    fn message(&self) -> &'static str;
+    fn message(&self) -> String;
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Error(pub ErrorType, pub &'static str);
+#[derive(Debug, Clone)]
+pub struct Error(pub ErrorType, pub String);
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum ErrorType {
     Runtime,
     Type,
@@ -18,37 +18,43 @@ pub enum ErrorType {
     Attribute,
     Value,
     Key,
+    ModuleNotFound
 }
 
 
 impl Error {
     pub fn runtime(message: &'static str) -> Error {
-        return Error(ErrorType::Runtime, message);
+        return Error(ErrorType::Runtime, message.to_string());
     }
 
     pub fn typerr(message: &'static str) -> Error {
-        return Error(ErrorType::Type, message);
+        return Error(ErrorType::Type, message.to_string());
     }
 
     pub fn overflow(message: &'static str) -> Error {
-        return Error(ErrorType::Overflow, message);
+        return Error(ErrorType::Overflow, message.to_string());
     }
 
     pub fn not_implemented() -> Error {
-        return Error(ErrorType::NotImplemented, "Not Implemented");
+        return Error(ErrorType::NotImplemented, "Not Implemented".to_string());
     }
 
     pub fn attribute() -> Error {
-        return Error(ErrorType::Attribute, "Attribute is not defined for type");
+        return Error(ErrorType::Attribute, "Attribute is not defined for type".to_string());
     }
 
     pub fn value(message: &'static str) -> Self {
-        return Error(ErrorType::Value, message);
+        return Error(ErrorType::Value, message.to_string());
     }
 
     pub fn key(message: &'static str) -> Error {
-        return Error(ErrorType::Key, message);
+        return Error(ErrorType::Key, message.to_string());
     }
+
+    pub fn module_not_found(name: &'static str) -> Error {
+        return Error(ErrorType::ModuleNotFound, format!("could not find {:?}", name));
+    }
+
 }
 
 
@@ -64,7 +70,7 @@ impl Exception for Error {
         self.0.clone()
     }
 
-    fn message(&self) -> &'static str {
-        self.1
+    fn message(&self) -> String {
+        self.1.to_string()
     }
 }

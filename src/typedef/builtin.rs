@@ -21,7 +21,6 @@ use typedef::tuple::PyTuple;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
-use typedef::module::PyModule;
 
 
 pub enum Builtin {
@@ -35,7 +34,7 @@ pub enum Builtin {
     Tuple(PyTuple),
     Type(PyType),
     Function(PyFunction),
-    Module(PyModule),
+    Module(PyObject),
 
     // Utility Types
     DictKey(native::DictKey),

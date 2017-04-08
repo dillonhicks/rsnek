@@ -64,6 +64,11 @@ pub struct Object {
 }
 
 
+pub struct Module {
+    pub name: ObjectRef,
+
+}
+
 /// Enum for numeric types
 pub enum Number {
     Int(Integer),

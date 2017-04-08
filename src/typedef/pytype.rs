@@ -3,7 +3,9 @@ use std::cell::RefCell;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
+use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
+use error::Error;
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 
@@ -69,8 +71,10 @@ impl typing::BuiltinType for PyMeta {
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 impl object::PyAPI for PyType {}
-impl method::New for PyType {}
-impl method::Init for PyType {}
+impl method::New for PyType {
+}
+impl method::Init for PyType {
+}
 impl method::Delete for PyType {}
 impl method::GetAttr for PyType {}
 impl method::GetAttribute for PyType {}
