@@ -3,7 +3,7 @@
 ## v0.2.0 - Basic Object Functionality 
 Object: setattr, getattr, __call_ retrieved attr
 
-**Status**: In progress
+**Status**: Reached #rRPYd5f4a09
 
 Get the __dict__ powered PyObject and related types functional enough to handle the
 case in a rust test:

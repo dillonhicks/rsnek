@@ -449,9 +449,10 @@ mod _integration {
         Runtime::new()
     }
 
+    /// Milestone v0.2.0
+    ///
     /// Test setting the builtin len function as an attribute of the object.
     /// Retrieving that function by name, and calling it on tuple.
-    /// Milestone
     #[test]
     fn function_setattr_getattr_call() {
         let rt = setup_test();
@@ -466,7 +467,6 @@ mod _integration {
 
         let result = boxed.op_getattr(&rt, &key).unwrap();
         assert_eq!(result, func);
-
 
         let tuple = rt.tuple(vec![rt.none(), rt.int(3), rt.str("Potato!@!@")]);
         let args = rt.tuple(vec![tuple.clone()]);
