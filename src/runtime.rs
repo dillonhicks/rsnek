@@ -24,8 +24,9 @@ use typedef::object::PyObjectType;
 use typedef::tuple::PyTupleType;
 use typedef::pytype::PyMeta;
 use typedef::method::PyFunctionType;
+use typedef::module::PyModuleType;
 
-
+// TODO: Move the provider methods to a trait module
 pub trait NoneProvider {
     fn none(&self) -> ObjectRef;
 }
@@ -63,6 +64,10 @@ pub trait FunctionProvider<T> {
     fn function(&self, value: T) -> ObjectRef;
 }
 
+pub trait ModuleProvider<T> {
+    fn module(&self, value: T) -> ObjectRef;
+}
+
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
 ///
@@ -79,6 +84,7 @@ pub struct BuiltinTypes {
     tuple: PyTupleType,
     function: PyFunctionType,
     object: PyObjectType,
+    module: PyModuleType,
     meta: PyMeta,
 }
 
@@ -106,7 +112,7 @@ impl Clone for Runtime {
     }
 }
 
-
+// TODO: move to another module
 #[inline(always)]
 fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> {
     let boxed: &Box<Builtin> = pos_args.0.borrow();
@@ -122,6 +128,7 @@ fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> 
     }
 }
 
+// TODO: move to another module
 #[inline(always)]
 fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> {
     let boxed: &Box<Builtin> = kwargs.0.borrow();
@@ -141,6 +148,7 @@ fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> 
 
 }
 
+// TODO: move to another module
 fn builtin_len() -> native::Function {
     fn len(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match check_args(1, &pos_args) {
@@ -176,6 +184,7 @@ impl Runtime {
 
         let meta = PyMeta::init_type();
         let object = PyObjectType::init_type(&meta.pytype);
+        let module = PyModuleType::init_type(&meta.pytype);
 
         let builtins = BuiltinTypes {
             none: PyNoneType::init_type(),
@@ -186,6 +195,7 @@ impl Runtime {
             tuple: PyTupleType::init_type(),
             function: PyFunctionType::init_type(&object.pytype, &object.object),
             object: object,
+            module: module,
             meta: meta,
         };
 
@@ -427,6 +437,7 @@ impl PyTypeProvider<native::None> for Runtime {
 // method
 //
 impl FunctionProvider<native::Function> for Runtime {
+    /// Create a function object from the native::Function and return its `ObjectRef`
     fn function(&self, value: native::Function) -> ObjectRef {
         self.0
             .types
@@ -435,8 +446,8 @@ impl FunctionProvider<native::Function> for Runtime {
     }
 }
 
-
 impl FunctionProvider<native::None> for Runtime {
+    /// Create a function object that returns Ok(None)
     #[allow(unused_variables)]
     fn function(&self, value: native::None) -> ObjectRef {
         self.function(self.none())
@@ -444,12 +455,36 @@ impl FunctionProvider<native::None> for Runtime {
 }
 
 impl FunctionProvider<ObjectRef> for Runtime {
+    /// Create a function object that returns Ok(value)
     #[allow(unused_variables)]
     fn function(&self, value: ObjectRef) -> ObjectRef {
         let func: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
         self.function(native::Function::Wrapper(func))
     }
 }
+
+//
+// Module
+//
+impl ModuleProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn module(&self, value: native::None) -> ObjectRef {
+        self.0
+            .types
+            .module
+            .new(&self,
+                 native::Object {
+                     class: self.0
+                         .types
+                         .object
+                         .object
+                         .clone(),
+                     dict: self.dict(native::None()),
+                     bases: self.dict(native::None()),
+                 })
+    }
+}
+
 
 // stdlib
 impl std::fmt::Debug for Runtime {

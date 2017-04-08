@@ -21,15 +21,10 @@ use typedef::tuple::PyTuple;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
+use typedef::module::PyModule;
 
 
 pub enum Builtin {
-    // Not yet implementeds
-    Method(()),
-    Module(()), /*    Type(TypeObject),
-                 *    Meta(MetaObject),
-                 *    None(NoneObject) */
-
     Object(PyObject),
     None(PyNone),
     Bool(PyBoolean),
@@ -40,6 +35,7 @@ pub enum Builtin {
     Tuple(PyTuple),
     Type(PyType),
     Function(PyFunction),
+    Module(PyModule),
 
     // Utility Types
     DictKey(native::DictKey),

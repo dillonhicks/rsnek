@@ -15,3 +15,4 @@ pub mod none;
 pub mod object;
 pub mod pytype;
 pub mod method;
+pub mod module;
