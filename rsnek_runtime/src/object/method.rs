@@ -271,7 +271,7 @@ api_trait!(unary, self, __iter__, Iter, op_iter, native_iter);
 api_trait!(4ary, self, __call__, Call, op_call, native_call);
 api_trait!(unary, self, __len__, Length, op_len, native_len, native::Integer);
 api_trait!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);
-api_trait!(unary, self, __next__, Next, op_next, native_next);
+api_trait!(unary, self, __next__, Next, op_next, native_next, ObjectRef);
 api_trait!(unary, self, __reversed__, Reversed, op_reversed, native_reversed);
 
 // Sequences

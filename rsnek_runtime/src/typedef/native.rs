@@ -1,5 +1,6 @@
 use std;
-use num;
+use std::cell::Cell;
+use num::{self, Zero};
 
 use runtime::Runtime;
 use typedef;
@@ -40,10 +41,10 @@ pub type Tuple = Vec<ObjectRef>;
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct DictKey(pub HashId, pub ObjectRef);
 pub type Dict = std::collections::HashMap<DictKey, ObjectRef>;
-pub type KWDict = std::collections::HashMap<String, ObjectRef>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct SetElement(pub HashId, pub ObjectRef);
+#[allow(dead_code)]
 pub type Set = std::collections::HashSet<SetElement>;
 
 pub type NativeFnArgs = (Tuple, Tuple, Dict);
@@ -58,6 +59,18 @@ pub enum Function {
     ByteCode(),
 }
 
+#[derive(Debug)]
+pub enum Iterator {
+    Sequence {source: ObjectRef, idx_next: Cell<u64>},
+    Empty,
+}
+
+impl Iterator {
+    pub fn new(source: &ObjectRef) -> NativeResult<Self> {
+        // TODO: Assert type
+        Ok(Iterator::Sequence {source: source.clone(), idx_next: Cell::new(0)})
+    }
+}
 
 #[derive(Debug)]
 pub struct Object {
@@ -66,13 +79,14 @@ pub struct Object {
     pub bases: ObjectRef,
 }
 
-
+#[allow(dead_code)]
 pub struct Module {
     pub name: ObjectRef,
 
 }
 
 /// Enum for numeric types
+#[allow(dead_code)]
 pub enum Number {
     Int(Integer),
     Float(Float),
@@ -89,6 +103,25 @@ pub struct Type {
     pub subclasses: std::cell::RefCell<List>,
 }
 
+pub struct Code {
+    pub co_name: String,
+    pub co_names: Tuple,
+    pub co_varnames: Tuple,
+    pub co_code: Bytes,
+    pub co_consts: Tuple,
+
+    //pub co_argcount: Int,
+    //pub co_cellvars: Tuple,
+    //pub co_filename: Str,
+    //pub co_firstlineno: Int,
+    //pub co_flags: Int,
+    //pub co_freevars: Tuple,
+    //pub co_kwonlyargcount: Int,
+    //pub co_lnotab: Bytes,
+
+    //pub co_nlocals: Int,
+    //pub co_stacksize: Int,
+}
 
 //
 //
@@ -99,7 +132,8 @@ pub struct Type {
 //    Str(String),
 //    Bytes(Bytes),
 //}
-//
+
+//#[derive(Debug)]
 //pub enum Sequence {
 //    Tuple(Tuple),
 //    List(List),

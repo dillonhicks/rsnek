@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use num::Zero;
+use num::ToPrimitive;
 
 use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider};
 use error::Error;
@@ -18,9 +19,7 @@ use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
 
-pub const STATIC_INT_IDX_OFFSET: usize = 5;
-pub const STATIC_INT_RANGE: std::ops::Range<isize> = (-(STATIC_INT_IDX_OFFSET as isize)..1025);
-pub const STATIC_INT_RANGE_MAX: usize = 1025 + STATIC_INT_IDX_OFFSET;
+const STATIC_INT_RANGE: std::ops::Range<isize> = -5..1025;
 
 
 #[inline(always)]
@@ -40,9 +39,12 @@ impl typing::BuiltinType for PyIntegerType {
     type V = native::Integer;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-        // TODO: Add check for static range
-        PyIntegerType::inject_selfref(PyIntegerType::alloc(value))
+    fn new(&self, rt: &Runtime, value: native::Integer) -> ObjectRef {
+        match value.to_isize() {
+            Some(idx @ -5..1015) => self.static_integers[(idx + 5) as usize].clone(),
+            Some(_) |
+            None => PyIntegerType::inject_selfref(PyIntegerType::alloc(value))
+        }
     }
 
 

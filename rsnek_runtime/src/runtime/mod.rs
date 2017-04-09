@@ -7,7 +7,7 @@ pub use self::interpreter::{ThreadModel, Interpreter};
 use std;
 use std::borrow::Borrow;
 use std::cell::{Ref, RefCell, RefMut};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use num::Zero;
 
 use object::typing::BuiltinType;
@@ -19,13 +19,16 @@ pub use traits::{
     ModuleFinder,
     BooleanProvider,
     IntegerProvider,
+    IteratorProvider,
     StringProvider,
+    BytesProvider,
     NoneProvider,
     ObjectProvider,
     DictProvider,
     TupleProvider,
     FunctionProvider,
-    PyTypeProvider
+    PyTypeProvider,
+    CodeProvider
 };
 
 use result::{RuntimeResult};
@@ -38,19 +41,22 @@ use typedef::objectref::ObjectRef;
 use typedef::none::{PyNoneType, NONE};
 use typedef::boolean::PyBooleanType;
 use typedef::integer::PyIntegerType;
+use typedef::iterator::{PyIteratorType, IteratorValue};
 use typedef::string::PyStringType;
+use typedef::bytes::PyBytesType;
 use typedef::dictionary::PyDictType;
 use typedef::object::PyObjectType;
 use typedef::tuple::PyTupleType;
 use typedef::pytype::PyMeta;
 use typedef::method::PyFunctionType;
 use typedef::module::PyModuleType;
-
+use typedef::code::PyCodeType;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
 ///
 pub struct Runtime(RuntimeRef);
+pub struct WeakRuntime(RuntimeWeakRef);
 
 
 /// Well Known builtin types
@@ -58,12 +64,15 @@ pub struct BuiltinTypes {
     none: PyNoneType,
     bool: PyBooleanType,
     int: PyIntegerType,
+    iterator: PyIteratorType,
     dict: PyDictType,
     string: PyStringType,
+    bytes: PyBytesType,
     tuple: PyTupleType,
     function: PyFunctionType,
     object: PyObjectType,
     module: PyModuleType,
+    code: PyCodeType,
     meta: PyMeta,
 }
 
@@ -81,6 +90,7 @@ struct RuntimeInternal {
 /// Patterns about References Taken from:
 ///  https://ricardomartins.cc/2016/06/08/interior-mutability
 type RuntimeRef = Rc<Box<RuntimeInternal>>;
+type RuntimeWeakRef = Weak<Box<RuntimeInternal>>;
 
 
 /// Cloning a runtime just increases the strong reference count and gives
@@ -88,6 +98,13 @@ type RuntimeRef = Rc<Box<RuntimeInternal>>;
 impl Clone for Runtime {
     fn clone(&self) -> Self {
         Runtime((self.0).clone())
+    }
+}
+
+
+impl Default for WeakRuntime {
+    fn default() -> Self {
+        WeakRuntime(Weak::new())
     }
 }
 
@@ -103,12 +120,15 @@ impl Runtime {
             none: PyNoneType::init_type(),
             bool: PyBooleanType::init_type(),
             int: PyIntegerType::init_type(),
+            iterator: PyIteratorType::init_type(),
             dict: PyDictType::init_type(),
             string: PyStringType::init_type(),
+            bytes: PyBytesType::init_type(),
             tuple: PyTupleType::init_type(),
             function: PyFunctionType::init_type(&object.pytype, &object.object),
             object: object,
             module: module,
+            code: PyCodeType::init_type(),
             meta: meta,
         };
 
@@ -134,6 +154,10 @@ impl Runtime {
         let (name, func) = builtin::LenFunction::create();
         rt.register_builtin(name, func);
         rt
+    }
+
+    pub fn downgrade(&self) -> WeakRuntime {
+        WeakRuntime(Rc::downgrade(&self.0.clone()))
     }
 
     pub fn register_builtin(&self, name: &'static str, func: native::Function) {
@@ -239,6 +263,31 @@ impl IntegerProvider<i64> for Runtime {
 }
 
 //
+//
+//
+
+impl IteratorProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn iter(&self, value: native::None) -> ObjectRef {
+        let wrapped = IteratorValue(native::Iterator::Empty, self.clone());
+        self.iter(native::Iterator::Empty)
+    }
+}
+
+
+impl IteratorProvider<native::Iterator> for Runtime {
+    #[allow(unused_variables)]
+    fn iter(&self, value: native::Iterator) -> ObjectRef {
+        let wrapped = IteratorValue(value, self.clone());
+        self.0
+            .types
+            .iterator
+            .new(&self, wrapped)
+    }
+}
+
+
+//
 // String
 //
 
@@ -252,6 +301,23 @@ impl StringProvider<native::None> for Runtime {
             .clone()
     }
 }
+
+
+//
+// String
+//
+
+impl BytesProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn bytes(&self, value: native::None) -> ObjectRef {
+        self.0
+            .types
+            .bytes
+            .empty
+            .clone()
+    }
+}
+
 
 impl StringProvider<native::String> for Runtime {
     #[allow(unused_variables)]
@@ -394,6 +460,15 @@ impl FunctionProvider<ObjectRef> for Runtime {
     fn function(&self, value: ObjectRef) -> ObjectRef {
         let func: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
         self.function(native::Function::Wrapper(func))
+    }
+}
+
+//
+// Code
+//
+impl CodeProvider<native::Code> for Runtime {
+    fn code(&self, value: native::Code) -> ObjectRef {
+        self.0.types.code.new(&self, value)
     }
 }
 

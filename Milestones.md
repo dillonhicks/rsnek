@@ -48,13 +48,13 @@ Will require:
 
 ## v0.4.0 - Threadsafe Refcounts
 
-libfringe allows for generators and self managed stacks that can be the basis of greenlets/uthreads for 
+libfringe allows for generators and self managed stacks that can be the basis of uthreads for 
 optimizing single threaded cases.
 
 
 ## v0.5.0 - Classobj
 
-Properly implement class objects
+Properly implement class objects and switch the hardcoded types to use them for builtin types
 
 
 ## vFuture
@@ -65,4 +65,5 @@ Properly implement class objects
 - 5..100% language parity targets
 - frames
 - tracebacks
+- Switch macros.rs to use procedural macros based on builtin enum variants
 

@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
 
-use runtime::{BooleanProvider, Runtime};
+use runtime::{BooleanProvider, Runtime, StringProvider};
 use result::{RuntimeResult, NativeResult};
 use object::selfref::{self, SelfRef};
 use object::{RtValue, PyAPI, method, typing};
@@ -52,14 +52,14 @@ impl typing::BuiltinType for PyNoneType {
 
     fn alloc(value: Self::V) -> Self::T {
         PyNone {
-            value: NoneValue(value),
+            value: NoneValue(value, NONE_STR.to_string()),
             rc: selfref::RefCount::default(),
         }
     }
 }
 
 
-pub struct NoneValue(&'static native::None);
+pub struct NoneValue(&'static native::None, String);
 pub type PyNone = RtValue<NoneValue>;
 
 
@@ -75,7 +75,15 @@ impl method::Id for PyNone {}
 impl method::Is for PyNone {}
 impl method::IsNot for PyNone {}
 impl method::Hashed for PyNone {}
-impl method::StringCast for PyNone {}
+impl method::StringCast for PyNone {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(rt.str(self.value.1.clone()))
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        Ok(self.value.1.clone())
+    }
+}
 impl method::BytesCast for PyNone {}
 impl method::StringFormat for PyNone {}
 impl method::StringRepresentation for PyNone {}
@@ -209,123 +217,6 @@ impl fmt::Debug for PyNone {
 
 #[cfg(all(feature="old", test))]
 mod old {
-    #[derive(Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
-    pub struct NoneType(());
-
-    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-    //    Struct Traits
-    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-    impl NoneType {}
-
-
-    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-    //    Python Object Traits
-    // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-    impl objectref::RtObject for NoneType {}
-
-    impl object::model::PyObject for NoneType {}
-
-    impl object::model::PyBehavior for NoneType {
-        fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-            let builtin: &Box<Builtin> = rhs.0.borrow();
-            match self.native_eq(builtin.deref()) {
-                Ok(value) => {
-                    if value {
-                        Ok(rt.OldTrue())
-                    } else {
-                        Ok(rt.OldFalse())
-                    }
-                }
-                Err(err) => Err(err),
-            }
-        }
-
-        fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-            match rhs {
-                &Builtin::None(ref obj) => Ok(true),
-                _ => Ok(false),
-            }
-        }
-
-        fn native_is(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-            match rhs {
-                &Builtin::None(ref obj) => Ok(true),
-                _ => Ok(false),
-            }
-        }
-
-        fn native_bool(&self) -> NativeResult<native::Boolean> {
-            return Ok(false);
-        }
-
-        fn op_int(&self, rt: &Runtime) -> RuntimeResult {
-            Err(Error::attribute())
-        }
-
-        fn native_int(&self) -> NativeResult<native::Integer> {
-            Err(Error::attribute())
-        }
-
-        fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-            Err(Error::attribute())
-        }
-
-        fn native_float(&self) -> NativeResult<native::Float> {
-            Err(Error::attribute())
-        }
-
-        fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-            Err(Error::attribute())
-        }
-
-        fn native_complex(&self) -> NativeResult<native::Complex> {
-            Err(Error::attribute())
-        }
-
-        fn op_index(&self, rt: &Runtime) -> RuntimeResult {
-            Err(Error::attribute())
-        }
-
-        fn native_index(&self) -> NativeResult<native::Integer> {
-            Err(Error::attribute())
-        }
-
-        fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
-            match self.native_repr() {
-                Ok(string) => rt.alloc(StringObject::new(string).to()),
-                Err(err) => unreachable!(),
-            }
-        }
-
-        fn native_repr(&self) -> NativeResult<native::String> {
-            Ok(NONE_STR.to_string())
-        }
-
-        fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-            self.op_repr(rt)
-        }
-
-        fn native_str(&self) -> NativeResult<native::String> {
-            return self.native_repr();
-        }
-    }
-
-
-    impl objectref::ToRtWrapperType<Builtin> for NoneType {
-        #[inline]
-        fn to(self) -> Builtin {
-            return Builtin::None(self);
-        }
-    }
-
-    impl objectref::ToRtWrapperType<ObjectRef> for NoneType {
-        #[inline]
-        fn to(self) -> ObjectRef {
-            ObjectRef::new(self.to())
-        }
-    }
-
 
     #[cfg(all(feature = "old", test))]
     mod impl_pybehavior {

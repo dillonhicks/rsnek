@@ -14,27 +14,34 @@ use typedef::dictionary::PyDict;
 use typedef::object::PyObject;
 use typedef::boolean::PyBoolean;
 use typedef::integer::PyInteger;
+use typedef::iterator::PyIterator;
 use typedef::string::PyString;
+use typedef::bytes::PyBytes;
 use typedef::complex::PyComplex;
 use typedef::none::PyNone;
 use typedef::tuple::PyTuple;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
+use typedef::code::PyCode;
 
 
+#[allow(dead_code)]
 pub enum Builtin {
     Object(PyObject),
     None(PyNone),
     Bool(PyBoolean),
     Int(PyInteger),
+    Iter(PyIterator),
     Complex(PyComplex),
     Str(PyString),
+    Bytes(PyBytes),
     Dict(PyDict),
     Tuple(PyTuple),
     Type(PyType),
     Function(PyFunction),
     Module(PyObject),
+    Code(PyCode),
 
     // Utility Types
     DictKey(native::DictKey),
@@ -613,7 +620,15 @@ impl method::Length for Builtin {
     }
 }
 impl method::LengthHint for Builtin {}
-impl method::Next for Builtin {}
+impl method::Next for Builtin {
+    fn op_next(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_next, lhs)
+    }
+
+    fn native_next(&self) -> NativeResult<ObjectRef> {
+        native_foreach_builtin!(self, native_next, lhs)
+    }    
+}
 impl method::Reversed for Builtin {}
 impl method::GetItem for Builtin {
     fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
@@ -760,6 +775,19 @@ impl fmt::Display for Builtin {
         match self.native_repr() {
             Ok(string) => write!(f, "{}", string),
             _ => write!(f, "BuiltinType(repr_error=True)"),
+        }
+    }
+}
+
+impl Iterator for Builtin {
+    type Item = ObjectRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            &mut Builtin::Iter(ref mut iterator) => {
+                iterator.next()
+            }
+            _ => None
         }
     }
 }

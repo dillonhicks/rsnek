@@ -18,7 +18,8 @@ pub enum ErrorType {
     Attribute,
     Value,
     Key,
-    ModuleNotFound
+    ModuleNotFound,
+    StopIteration
 }
 
 
@@ -55,6 +56,9 @@ impl Error {
         return Error(ErrorType::ModuleNotFound, format!("could not find {:?}", name));
     }
 
+    pub fn stop_iteration() -> Error {
+        return Error(ErrorType::StopIteration, "".to_string());
+    }
 }
 
 

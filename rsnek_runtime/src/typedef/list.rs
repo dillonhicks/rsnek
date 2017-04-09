@@ -54,8 +54,6 @@ mod old {
                     rhs_borrow.iter().map(|objref| new_list.push(objref.clone()));
 
 
-                    rt.find_object((&(*self) as *const _) as native::ObjectId).unwrap();
-
                     /// DUMB DUMB DUMB THIS IS A COPY AND NOT THE REF TO THE ORIGINAL LIST!!!
                     let l: ObjectRef = ListObject::new(&new_list).to();
                     rt.alloc(l)

@@ -18,12 +18,20 @@ pub trait IntegerProvider<T> {
     fn int(&self, value: T) -> ObjectRef;
 }
 
+pub trait IteratorProvider<T> {
+    fn iter(&self, value: T) -> ObjectRef;
+}
+
 pub trait DictProvider<T> {
     fn dict(&self, value: T) -> ObjectRef;
 }
 
 pub trait StringProvider<T> {
     fn str(&self, value: T) -> ObjectRef;
+}
+
+pub trait BytesProvider<T> {
+    fn bytes(&self, value: T) -> ObjectRef;
 }
 
 pub trait TupleProvider<T> {
@@ -34,13 +42,16 @@ pub trait PyTypeProvider<T> {
     fn pytype(&self, value: T) -> ObjectRef;
 }
 
-
 pub trait ObjectProvider<T> {
     fn object(&self, value: T) -> ObjectRef;
 }
 
 pub trait FunctionProvider<T> {
     fn function(&self, value: T) -> ObjectRef;
+}
+
+pub trait CodeProvider<T> {
+    fn code(&self, value: T) -> ObjectRef;
 }
 
 pub trait ModuleProvider<T> {

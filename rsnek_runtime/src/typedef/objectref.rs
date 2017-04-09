@@ -2,15 +2,15 @@
 use std;
 use std::rc::{Rc, Weak};
 
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 
 use num::Zero;
 
-use error::Error;
+use error::{Error, ErrorType};
 use result::RuntimeResult;
-use object::method::Id;
+use object::method::{Id, Next};
 
 use typedef::builtin::Builtin;
 use typedef::native;
@@ -151,5 +151,23 @@ impl std::fmt::Debug for ObjectRef {
         let boxed: &Box<Builtin> = self.0.borrow();
         let builtin = boxed.deref();
         write!(f, "<{:?} {:?}>", builtin, builtin.native_id())
+    }
+}
+
+impl Iterator for ObjectRef {
+    type Item = ObjectRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut boxed: &Box<Builtin> = self.0.borrow();
+        match boxed.deref() {
+            &Builtin::Iter(ref iterator) => {
+                match iterator.native_next() {
+                    Ok(objref) => Some(objref),
+                    Err(Error(ErrorType::StopIteration, _)) => None,
+                    Err(_) => panic!("Iterator logic fault")
+                }
+            }
+            _ => None
+        }
     }
 }

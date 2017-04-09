@@ -1,7 +1,9 @@
 pub mod builtin;
 pub mod integer;
+pub mod iterator;
 pub mod float;
 pub mod string;
+pub mod bytes;
 pub mod list;
 pub mod tuple;
 pub mod dictionary;
@@ -16,3 +18,4 @@ pub mod object;
 pub mod pytype;
 pub mod method;
 pub mod module;
+pub mod code;

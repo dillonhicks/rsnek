@@ -1,6 +1,7 @@
 #![feature(associated_consts)]
 #![feature(type_ascription)]
 #![feature(const_fn)]
+#![feature(exclusive_range_pattern)]
 #![feature(test)]
 /// # Notes and TODOS
 ///
@@ -20,16 +21,14 @@ extern crate num;
 extern crate itertools;
 extern crate fringe;
 
-
 #[macro_use]
-pub mod macros;
+mod macros;
 
-pub mod typedef;
-pub mod result;
+mod typedef;
+mod result;
+mod error;
+mod object;
+mod builtin;
+mod traits;
+
 pub mod runtime;
-pub mod error;
-pub mod object;
-pub mod builtin;
-pub mod traits;
-
-mod ast;

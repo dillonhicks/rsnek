@@ -3,7 +3,6 @@ name = "rsnek_runtime"
 version = "0.2.0"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
-
 [lib]
 name = "rsnek_runtime"
 
@@ -13,7 +12,3 @@ version = "1.2.1"
 [dependencies]
 num = "*"
 itertools = "*"
-
-[features]
-#rsnek-debug-heap = []
-#rsnek-debug = []

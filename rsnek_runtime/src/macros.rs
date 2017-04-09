@@ -38,13 +38,16 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Bool(ref $inner) => $e,
             &Builtin::None(ref $inner) => $e,
             &Builtin::Int(ref $inner) => $e,
+            &Builtin::Iter(ref $inner) => $e,
             &Builtin::Dict(ref $inner) => $e,
             &Builtin::Str(ref $inner) => $e,
+            &Builtin::Bytes(ref $inner) => $e,
             &Builtin::Tuple(ref $inner) =>$e,
             &Builtin::Function(ref $inner) => $e,
             &Builtin::Object(ref $inner) => $e,
             &Builtin::Type(ref $inner) => $e,
             &Builtin::Module(ref $inner) => $e,
+            &Builtin::Code(ref $inner) => $e,
             _ => unreachable!()
         }
     );
@@ -56,13 +59,16 @@ macro_rules! unary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op($rt),
             &Builtin::None(ref $lhs) => $lhs.$op($rt),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($rt),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Code(ref $lhs) => $lhs.$op($rt),
             _ => unreachable!()
         }
     };
@@ -74,13 +80,16 @@ macro_rules! binary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::None(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Code(ref $lhs) => $lhs.$op($rt, $rhs),
             _ => unreachable!()
         }
     };
@@ -92,13 +101,16 @@ macro_rules! ternary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::None(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Code(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             _ => unreachable!()
         }
     };
@@ -110,13 +122,16 @@ macro_rules! _4ary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::None(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Int(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Code(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             _ => unreachable!()
         }
     };
@@ -143,13 +158,16 @@ macro_rules! native_unary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op(),
             &Builtin::None(ref $lhs) => $lhs.$op(),
             &Builtin::Int(ref $lhs) => $lhs.$op(),
+            &Builtin::Iter(ref $lhs) => $lhs.$op(),
             &Builtin::Dict(ref $lhs) => $lhs.$op(),
             &Builtin::Str(ref $lhs) => $lhs.$op(),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op(),
             &Builtin::Tuple(ref $lhs) => $lhs.$op(),
             &Builtin::Function(ref $lhs) => $lhs.$op(),
             &Builtin::Object(ref $lhs) => $lhs.$op(),
             &Builtin::Type(ref $lhs) => $lhs.$op(),
             &Builtin::Module(ref $lhs) => $lhs.$op(),
+            &Builtin::Code(ref $lhs) => $lhs.$op(),
             _ => unreachable!()
         }
     };
@@ -161,13 +179,16 @@ macro_rules! native_binary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op($rhs),
             &Builtin::None(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Code(ref $lhs) => $lhs.$op($rhs),
             _ => unreachable!()
         }
     };
@@ -179,13 +200,16 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::Bool(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::None(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Int(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Dict(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Str(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Code(ref $lhs) => $lhs.$op($mid, $rhs),
             _ => unreachable!()
         }
     };
@@ -197,13 +221,16 @@ macro_rules! native_4ary_op_foreach {
             &Builtin::Bool(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::None(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Int(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Iter(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Dict(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Str(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Bytes(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Function(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Object(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Type(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Module(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Code(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             _ => unreachable!()
         }
     };
