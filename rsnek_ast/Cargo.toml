@@ -6,9 +6,11 @@ authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 [lib]
 name = "rsnek_ast"
 
-[dependencies]
+[features]
+const_fn = []
 
-[dependencies.nom]
-version = "^2.2"
-features = ["regexp"]
+[dependencies]
+rsnek_proc_macros =  { version = "*", path = "../rsnek_proc_macros" }
+num = "*"
+itertools = "*"
 

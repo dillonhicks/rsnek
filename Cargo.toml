@@ -1,5 +1,6 @@
 [workspace]
 members = [
+        "rsnek_proc_macros",
         "rsnek_ast",
         "rsnek_runtime",
         "rsnek"

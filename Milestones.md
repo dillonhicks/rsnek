@@ -33,8 +33,10 @@ and execute successfully.
 
 Example Python Code:
 ```python
-
-
+x = 1
+y = 2.0
+z = x + y
+print(z)
 ```
 
 Will require:
@@ -51,6 +53,8 @@ Will require:
 libfringe allows for generators and self managed stacks that can be the basis of uthreads for 
 optimizing single threaded cases.
 
+- Should try to abstract the single vs multithreaded concurrency primitives
+  - Determine if the crossbeam crate has anything that can help
 
 ## v0.5.0 - Classobj
 
@@ -60,7 +64,10 @@ Properly implement class objects and switch the hardcoded types to use them for 
 ## vFuture
 
 - scopes
-- Implement outstanding types
+- Implement outstanding core types
+  - Numbers
+  - Collections
+  - Etc
 - stdlib implementation targets
 - 5..100% language parity targets
 - frames

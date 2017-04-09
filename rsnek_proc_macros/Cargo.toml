@@ -1,0 +1,15 @@
+[package]
+name = "rsnek_proc_macros"
+version = "0.2.0"
+authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
+
+[lib]
+name = "rsnek_proc_macros"
+proc-macro = true
+
+[dependencies]
+syn = "0.11"
+quote = "0.3"
+
+
+[features]
