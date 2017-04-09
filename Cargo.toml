@@ -1,0 +1,6 @@
+[workspace]
+members = [
+        "rsnek_ast",
+        "rsnek_runtime",
+        "rsnek"
+]

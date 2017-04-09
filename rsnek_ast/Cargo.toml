@@ -1,0 +1,14 @@
+[package]
+name = "rsnek_ast"
+version = "0.0.1"
+authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
+
+[lib]
+name = "rsnek_ast"
+
+[dependencies]
+
+[dependencies.nom]
+version = "^2.2"
+features = ["regexp"]
+

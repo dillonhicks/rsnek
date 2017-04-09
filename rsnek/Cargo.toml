@@ -1,0 +1,8 @@
+[package]
+name = "rsnek"
+version = "0.0.1"
+authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
+
+[dependencies]
+rsnek_runtime =  { version = "*", path = "../rsnek_runtime" }
+
