@@ -1,17 +1,36 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
+mod interpreter;
+
+pub use self::interpreter::{ThreadModel, Interpreter};
+
+
 use std;
-use std::default::Default;
 use std::borrow::Borrow;
-use std::ops::Deref;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use num::Zero;
 
 use object::typing::BuiltinType;
-use object::method::{Length, GetItem, SetAttr, GetAttr};
+use object::method::{GetItem, SetAttr, GetAttr};
 
-use result::{NativeResult, RuntimeResult};
+pub use traits::{
+    ModuleImporter,
+    ModuleProvider,
+    ModuleFinder,
+    BooleanProvider,
+    IntegerProvider,
+    StringProvider,
+    NoneProvider,
+    ObjectProvider,
+    DictProvider,
+    TupleProvider,
+    FunctionProvider,
+    PyTypeProvider
+};
+
+use result::{RuntimeResult};
 use error::{Error, ErrorType};
+use builtin;
 
 use typedef::native;
 use typedef::builtin::Builtin;
@@ -27,55 +46,7 @@ use typedef::pytype::PyMeta;
 use typedef::method::PyFunctionType;
 use typedef::module::PyModuleType;
 
-// TODO: Move the provider methods to a trait module
-pub trait NoneProvider {
-    fn none(&self) -> ObjectRef;
-}
 
-pub trait BooleanProvider<T> {
-    fn bool(&self, value: T) -> ObjectRef;
-}
-
-pub trait IntegerProvider<T> {
-    fn int(&self, value: T) -> ObjectRef;
-}
-
-pub trait DictProvider<T> {
-    fn dict(&self, value: T) -> ObjectRef;
-}
-
-pub trait StringProvider<T> {
-    fn str(&self, value: T) -> ObjectRef;
-}
-
-pub trait TupleProvider<T> {
-    fn tuple(&self, value: T) -> ObjectRef;
-}
-
-pub trait PyTypeProvider<T> {
-    fn pytype(&self, value: T) -> ObjectRef;
-}
-
-
-pub trait ObjectProvider<T> {
-    fn object(&self, value: T) -> ObjectRef;
-}
-
-pub trait FunctionProvider<T> {
-    fn function(&self, value: T) -> ObjectRef;
-}
-
-pub trait ModuleProvider<T> {
-    fn module(&self, value: T) -> ObjectRef;
-}
-
-pub trait ModuleFinder<T> {
-    fn get_module(&self, value: T) -> RuntimeResult;
-}
-
-pub trait ModuleImporter<T> {
-    fn import_module(&self, value: T) -> RuntimeResult;
-}
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
 ///
@@ -120,72 +91,6 @@ impl Clone for Runtime {
     }
 }
 
-// TODO: move to another module
-#[inline(always)]
-fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> {
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    match boxed.deref() {
-        &Builtin::Tuple(ref tuple) => {
-            if tuple.value.0.len() == count {
-                Ok(native::None())
-            } else {
-                Err(Error::typerr("Argument mismatch 1"))
-            }
-        }
-        _ => Err(Error::typerr("Expected type tuple for pos_args")),
-    }
-}
-
-// TODO: move to another module
-#[inline(always)]
-fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> {
-    let boxed: &Box<Builtin> = kwargs.0.borrow();
-    match boxed.deref() {
-
-        &Builtin::Dict(ref dict) => {
-            let borrowed: Ref<native::Dict> = dict.value.0.borrow();
-
-            if borrowed.len() == count {
-                Ok(native::None())
-            } else {
-                Err(Error::typerr("Argument mismatch 2"))
-            }
-        }
-        _ => Err(Error::typerr("Expected type tuple for pos_args")),
-    }
-
-}
-
-// TODO: move to another module
-fn create_func_wrapper_len() -> (&'static str, native::Function) {
-    fn len(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-        match check_args(1, &pos_args) {
-            Err(err) => return Err(err),
-            _ => {}
-        };
-
-        match check_args(0, &starargs) {
-            Err(err) => return Err(err),
-            _ => {}
-        };
-
-        match check_kwargs(0, &kwargs) {
-            Err(err) => return Err(err),
-            _ => {}
-        };
-
-        let boxed: &Box<Builtin> = pos_args.0.borrow();
-        let zero = rt.int(0);
-        let value = boxed.op_getitem(&rt, &zero).unwrap();
-        let boxed: &Box<Builtin> = value.0.borrow();
-        boxed.op_len(&rt)
-    }
-
-    let func: Box<native::WrapperFn> = Box::new(len);
-    ("len", native::Function::Wrapper(func))
-}
-
-
 
 impl Runtime {
     pub fn new() -> Runtime {
@@ -226,7 +131,7 @@ impl Runtime {
         }
 
 
-        let (name, func) = create_func_wrapper_len();
+        let (name, func) = builtin::LenFunction::create();
         rt.register_builtin(name, func);
         rt
     }
@@ -324,6 +229,14 @@ impl IntegerProvider<i32> for Runtime {
     }
 }
 
+impl IntegerProvider<i64> for Runtime {
+    fn int(&self, value: i64) -> ObjectRef {
+        self.0
+            .types
+            .int
+            .new(&self, native::Integer::from(value))
+    }
+}
 
 //
 // String

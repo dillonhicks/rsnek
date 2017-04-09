@@ -3,9 +3,7 @@ use std::cell::RefCell;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
-use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
-use error::Error;
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 

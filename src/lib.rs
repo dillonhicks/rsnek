@@ -18,6 +18,8 @@
 extern crate test;
 extern crate num;
 extern crate itertools;
+extern crate fringe;
+
 
 #[macro_use]
 pub mod macros;
@@ -29,3 +31,5 @@ pub mod error;
 pub mod object;
 pub mod builtin;
 pub mod traits;
+
+mod ast;

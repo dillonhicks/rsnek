@@ -1,5 +1,4 @@
 use std::fmt;
-use std::cell::Ref;
 use std::ops::Deref;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
@@ -8,6 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::{Runtime, NoneProvider, IntegerProvider};
+use builtin::precondition::check_fnargs_rt;
 use object::{self, RtValue, typing};
 use object::method::{self, Id};
 use object::selfref::{self, SelfRef};
@@ -75,9 +75,9 @@ impl typing::BuiltinType for PyFunctionType {
     }
 }
 
-
 pub struct FunctionValue(pub native::Function);
 pub type PyFunction = RtValue<FunctionValue>;
+
 
 impl PyFunction {
     fn do_call_nativefn_rt(&self,
@@ -88,37 +88,11 @@ impl PyFunction {
                            kwargs: &ObjectRef)
                            -> RuntimeResult {
 
-        let boxed: &Box<Builtin> = pos_args.0.borrow();
-        let arg0: native::Tuple = match boxed.deref() {
-            &Builtin::Tuple(ref tuple) => {
-                tuple.value
-                    .0
-                    .iter()
-                    .map(|objref| objref.clone())
-                    .collect()
-            }
-            _ => return Err(Error::typerr("Expected type tuple for pos_args")),
-        };
+        let args = &(pos_args.clone(), star_args.clone(), kwargs.clone());
 
-        let boxed: &Box<Builtin> = star_args.0.borrow();
-        let arg1: native::Tuple = match boxed.deref() {
-            &Builtin::Tuple(ref tuple) => {
-                tuple.value
-                    .0
-                    .iter()
-                    .map(|objref| objref.clone())
-                    .collect()
-            }
-            _ => return Err(Error::typerr("Expected type tuple for *args")),
-        };
-
-        let boxed: &Box<Builtin> = kwargs.0.borrow();
-        let arg2: native::Dict = match boxed.deref() {
-            &Builtin::Dict(ref dict) => {
-                let borrowed: Ref<native::Dict> = dict.value.0.borrow();
-                borrowed.iter().map(|(key, value)| (key.clone(), value.clone())).collect()
-            }
-            _ => return Err(Error::typerr("Expected type tuple for **args")),
+        let (arg0, arg1, arg2) = match check_fnargs_rt(args) {
+            Ok(args) => args,
+            Err(err) => return Err(err)
         };
 
         match callable(&arg0, &arg1, &arg2) {

@@ -46,6 +46,9 @@ pub type KWDict = std::collections::HashMap<String, ObjectRef>;
 pub struct SetElement(pub HashId, pub ObjectRef);
 pub type Set = std::collections::HashSet<SetElement>;
 
+pub type NativeFnArgs = (Tuple, Tuple, Dict);
+pub type FnArgs = (ObjectRef, ObjectRef, ObjectRef);
+
 pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
 pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult;
 

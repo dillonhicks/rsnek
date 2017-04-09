@@ -11,6 +11,10 @@ name = "rattlesnake"
 [dependencies.fringe]
 version = "1.2.1"
 
+[dependencies.nom]
+version = "^2.2"
+features = ["regexp"]
+
 [dependencies]
 num = "*"
 serde = "*"

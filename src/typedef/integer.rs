@@ -177,7 +177,16 @@ impl method::BooleanCast for PyInteger {
         return Ok(!self.value.0.is_zero());
     }
 }
-impl method::IntegerCast for PyInteger {}
+impl method::IntegerCast for PyInteger {
+    #[allow(unused_variables)]
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        self.rc.upgrade()
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        return Ok(self.value.0.clone());
+    }
+}
 impl method::FloatCast for PyInteger {}
 impl method::ComplexCast for PyInteger {}
 impl method::Rounding for PyInteger {}
