@@ -19,16 +19,6 @@ pub trait NewToken<T>{
 //  search: ([a-z]+)
 //  replace: "pub fn new_$1() -> Self {\n        Token::new(TokenType::\U$1)\n    }"
 impl Token {
-//
-//    fn new(value: usize) -> Self {
-//        if let Some(id) = Id::new(value) {
-//            Self {
-//                id: id
-//            }
-//        } else {
-//            panic!(format!("Got a bad token id value! {}", value))
-//        }
-//    }
 }
 
 impl NewToken<u8> for Token {
@@ -294,12 +284,12 @@ impl num::FromPrimitive for Id {
 
 impl num::ToPrimitive for Id {
     fn to_i64(&self) -> Option<i64> {
-        let id = (*self as usize);
+        let id = *self as usize;
         Some(id as i64)
     }
 
     fn to_u64(&self) -> Option<u64> {
-        let id = (*self as usize);
+        let id = *self as usize;
         Some(id as u64)
     }
 }

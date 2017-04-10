@@ -7,22 +7,13 @@ use std::io::Bytes;
 
 use num::FromPrimitive;
 use itertools::{Itertools};
+use nom::{IResult,digit};
 
 
 use token::{Token, Id, NewToken};
 
-//#define is_potential_identifier_start(c) (\
-//(c >= 'a' && c <= 'z')\
-//|| (c >= 'A' && c <= 'Z')\
-//|| c == '_'\
-//|| (c >= 128))
-//
-//#define is_potential_identifier_char(c) (\
-//(c >= 'a' && c <= 'z')\
-//|| (c >= 'A' && c <= 'Z')\
-//|| (c >= '0' && c <= '9')\
-//|| c == '_'\
-//|| (c >= 128))
+
+
 
 fn is_potential_identifier_start(ch: u8) -> bool {
     match ch as char {
@@ -95,8 +86,8 @@ fn is_potential_identifier_char(ch: u8) -> bool {
                              NEWLINE token after it. */
 */
 pub type TokenResult = std::result::Result<Token, Error>;
-
-
+pub const EOF: u8 = 0;
+pub const ASCII_MAX: u8 = 128;
 
 enum Error{
     IO(std::io::Error),
@@ -275,7 +266,6 @@ impl Tokenizer {
             println!("WP0");
             if *(self.line_pos.deref()) == Position::Beginning {
                 'calculate_indent: loop {
-
                     *self.line_pos = Position::Offset;
 
                     ch = match self.stream.next() {
@@ -313,7 +303,7 @@ impl Tokenizer {
                         if (*self.indent + 1) > MAXINDENT {
                             return Some(Err(Error::TOO_DEEP()))
                         }
-                        if (alt_column <= self.altindent_stack[*self.indent]) {
+                        if alt_column <= self.altindent_stack[*self.indent] {
                             match self.check_indent() {
                                 Ok(_) => {},
                                 Err(err) => return Some(Err(err))
@@ -325,7 +315,8 @@ impl Tokenizer {
 
                         self.indent_stack[*self.indent] = column;
                         self.altindent_stack[*self.indent] = alt_column;
-                    } else { // tokenizer.c L#1438
+                    } else {
+                        // tokenizer.c L#1438
                         /* col < tok->indstack[tok->indent] */
 
                         /* Dedent -- any number, must be consistent */
@@ -343,13 +334,11 @@ impl Tokenizer {
                             };
                         }
                     }
-
                 }
-
             }
 
             // tokenizer.c L#1457
-            let tk_bytes:Vec<u8> =  vec![];
+            let tk_bytes: Vec<u8> = vec![];
 
             if *self.pending_dents != 0 {
                 if *self.pending_dents < 0 {
@@ -361,20 +350,20 @@ impl Tokenizer {
                 }
             }
 
-//            if (tok->async_def
-//                && !blankline
-//                && tok->level == 0
-//                /* There was a NEWLINE after ASYNC DEF,
-//                   so we're past the signature. */
-//                && tok->async_def_nl
-//                /* Current indentation level is less than where
-//                   the async function was defined */
-//                && tok->async_def_indent >= tok->indent)
-//            {
-//            tok->async_def = 0;
-//            tok->async_def_indent = 0;
-//            tok->async_def_nl = 0;
-//            }
+            //            if (tok->async_def
+            //                && !blankline
+            //                && tok->level == 0
+            //                /* There was a NEWLINE after ASYNC DEF,
+            //                   so we're past the signature. */
+            //                && tok->async_def_nl
+            //                /* Current indentation level is less than where
+            //                   the async function was defined */
+            //                && tok->async_def_indent >= tok->indent)
+            //            {
+            //            tok->async_def = 0;
+            //            tok->async_def_indent = 0;
+            //            tok->async_def_nl = 0;
+            //            }
 
             // tokenizer.c L#1487
 
@@ -383,19 +372,89 @@ impl Tokenizer {
             println!("WP1");
             let mut wscount = 0;
             'skip_whitespace: loop {
-                let ch = match self.stream.next() {
+                ch = match self.stream.next() {
                     Some(Ok(ch)) => ch,
                     Some(Err(err)) => return Some(Err(Error::IO(err))),
                     None => return None
                 };
 
                 match ch as char {
-                    ' ' | '\t' |'\x14' => {wscount += 1; continue 'skip_whitespace},
-                    _ => {self.stream.put_back(Ok(ch)); break 'skip_whitespace},
+                    ' ' | '\t' | '\x14' => {
+                        wscount += 1;
+                        continue 'skip_whitespace
+                    },
+                    _ => {
+                        self.stream.put_back(Ok(ch));
+                        break 'skip_whitespace
+                    },
                 }
             }
 
             println!("WP2: {:?}", wscount);
+
+            //            /* Set start of current token */
+            //            tok->start = tok->cur - 1;
+            //
+            //            /* Skip comment */
+            //            if (c == '#') {
+            //                while (c != EOF && c != '\n') {
+            //                    c = tok_nextc(tok);
+            //                }
+            //            }
+
+            if (ch as char) == '#' {
+                while ch != EOF && (ch as char) != '\n' {
+                    let ch = match self.stream.next() {
+                        Some(Ok(ch)) => ch,
+                        Some(Err(err)) => return Some(Err(Error::IO(err))),
+                        None => return None
+                    };
+                }
+            }
+
+            let mut nonascii = false;
+            if is_potential_identifier_start(ch) {
+                let (mut saw_b, mut saw_r, mut saw_u, mut saw_f) = (false, false, false, false);
+                let _char = ch as char;
+
+                'validate_ident_start: loop {
+                    if !(saw_b || saw_u || saw_f) && (_char == 'b' || _char == 'b') {
+                        saw_b = true;
+                    } else if !(saw_b || saw_u || saw_r || saw_f) && (_char == 'u' || _char == 'U') {
+                        saw_u = true;
+                    } else if !(saw_r || saw_u) && (_char == 'r' || _char == 'R') {
+                        saw_r = true;
+                    } else if !(saw_f || saw_b || saw_u) && (_char == 'f' || _char == 'F') {
+                        saw_f = true;
+                    } else {
+                        break 'validate_ident_start;
+                    }
+
+                    ch = match self.stream.next() {
+                        Some(Ok(ch)) => ch,
+                        Some(Err(err)) => return Some(Err(Error::IO(err))),
+                        None => return None
+                    };
+
+                    match ch as char {
+                        '"' | '\'' => {},// TODO: fix goto quote
+                        _ => {}
+                    }
+                }
+                while is_potential_identifier_char(ch) {
+                    if ch >= ASCII_MAX {
+                        nonascii = true;
+                    }
+
+                    let ch = match self.stream.next() {
+                        Some(Ok(ch)) => ch,
+                        Some(Err(err)) => return Some(Err(Error::IO(err))),
+                        None => return None
+                    };
+                }
+            }
+
+
             // This is just code to break out of the inf loop
             if let Ok(ch) = self.stream.next().unwrap() {
                 return Some(Ok(self.match_one_byte(ch)))
@@ -403,45 +462,26 @@ impl Tokenizer {
 
             return Some(Err(Error::Parse()))
         }
+
+//        /* Keep track of parentheses nesting level */
+//
+//        switch (c) {
+//            case '(':
+//                case '[':
+//                case '{':
+//                tok->level++;
+//            break;
+//            case ')':
+//                case ']':
+//                case '}':
+//                tok->level--;
+//            break;
+//        }
     }
 }
 
 
-//
-//impl Iterator for Tokenizer {
-//    type Item = TokenResult;
-//
-//    fn next(&mut self) -> Option<Self::Item> {
-//        let mut buf: RefMut<Bytes<File>> =  self.buffer.borrow_mut();
-//
-//        match buf.next() {
-//            // For file iterators None represents EOF and the iteration returns
-//            // Option<Result<u8, IOError>> which introduces double nested matching
-//            // to get to the next byte.
-//            Some(result) => {
-//                match result {
-//                    Ok(byte) => self.process_next_byte(byte),
-//                    Err(err) => Some(Err(err))
-//                }
-//            },
-//            Option::None => Option::None
-//        }
-//    }
-//}
 
-
-//impl Itertools for Tokenizer {}
-//impl Iterator for ByteStream {
-//    type Item = Result<u8, std::io::Error>;
-//
-//    fn next(&mut self) -> Option<Self::Item> {
-//        if self.buffer.is_empty() {
-//            self.buffer.push(self.source.next())
-//        }
-//
-//        self.buffer.pop().unwrap_or(None)
-//    }
-//}
 
 /// An iterator adaptor that allows putting multiple
 /// items in front of the iterator.
