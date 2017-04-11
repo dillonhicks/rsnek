@@ -1,7 +1,7 @@
-use nom::{IResult,digit,multispace,space, newline};
+use nom::{IResult,digit,multispace, newline};
 use itertools::Itertools;
 use std::collections::VecDeque;
-
+use token::Id;
 // Parser definition
 
 use std::str;
@@ -22,31 +22,41 @@ use std;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PythonSource<'a> {
-    pub encoding: Option<&'a [u8]>,
-    pub shebang: Option<&'a [u8]>,
+//    pub encoding: Option<&'a [u8]>,
+//    pub shebang: Option<&'a [u8]>,
     pub lines: Vec<Line<'a>>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Line<'a> {
-    indent: usize,
     tokens: Vec<Token<'a>>
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Token<'a> {
     Identifier(&'a[u8]),
-    Unknown(&'a[u8])
+    Unknown(&'a[u8]),
+    WhiteSpace(&'a [u8]),
+    NewLine(&'a [u8]),
+    Number(&'a [u8]),
+    Operator(&'a [u8]),
+//    Other(Id, &'a [u8]),
 }
 
+//impl<'a> Token<'a> {
+//    pub fn new(id: Id, bytes: &'a [u8]) -> Self{
+//        Token::Other(id, bytes)
+//    }
+//}
+
 named!(parse_python <PythonSource>, do_parse!(
-        opt!(multispace) >>
-        encoding: opt!(encoding) >>
-        shebang: opt!(shebang) >>
+//        opt!(multispace) >>
+//        encoding: opt!(encoding) >>
+//        shebang: opt!(shebang) >>
         tokens:  many0!(start_line) >>
         (PythonSource {
-            encoding: encoding,
-            shebang: shebang,
+//            encoding: encoding,
+//            shebang: shebang,
             lines: tokens,
         })
  ));
@@ -68,30 +78,92 @@ named!(shebang <&[u8]>, do_parse!(
 
 
 named!(start_line <Line>, do_parse!(
-    tag!("\n") >>
-    spaces: opt!(is_a!(" ")) >>
     tokens: many0!(line) >>
     (Line {
-        indent: if spaces.is_some() {spaces.unwrap().len()} else {0},
-        tokens: tokens.iter().flat_map(|x| x.iter()).map(|t| t.clone()).collect(),
+        tokens: tokens,
         })
 ));
 
-named!(line <VecDeque<Token>>, do_parse!(
-    tokens: alt!(identifier | until_eol) >>
-    (tokens)
+named!(line <Token>, do_parse!(
+    token: alt_complete!(space | endline | operator | number | identifier | unknown) >>
+    (token)
 ));
 
-named!(until_eol <VecDeque<Token>>, do_parse!(
-    content: opt!(is_not!("\n")) >>
-    (VecDeque::from([Token::Unknown(match content {Some(c) => c, None => &[]})].to_vec()))
+named!(number <Token>, do_parse!(
+    nl: digit >>
+    (Token::Number(nl))
 ));
 
+named!(endline <Token>, do_parse!(
+    nl: tag!("\n") >>
+    (Token::NewLine(nl))
+));
 
-named!(identifier <VecDeque<Token>>, do_parse!(
-    ident: re_bytes_find_static!(r"[a-zA-Z_][[:word:]]*") >>
-    rest: until_eol >>
-    ({let mut b = VecDeque::from(rest); b.push_front(Token::Identifier(ident)); b})
+named!(space <Token>, do_parse!(
+    sp: is_a!(" ") >>
+    (Token::WhiteSpace(sp))
+));
+
+named!(unknown <Token>, do_parse!(
+    content: is_not!("\n") >>
+    (Token::Unknown(content))
+));
+
+named!(identifier <Token>, do_parse!(
+    ident: re_bytes_find_static!(r"[a-zA-Z_]([[:word:]]*)") >>
+    (Token::Identifier(ident))
+));
+
+named!(operator <Token>, do_parse!(
+    op: alt_complete!(
+            tag!(r"<<=") |
+            tag!(r">>=") |
+            tag!(r"**=") |
+            tag!(r"//=") |
+            tag!(r"...") |
+            tag!(r"==") | 
+            tag!(r"!=") | 
+            tag!(r"<>") | 
+            tag!(r"<=") | 
+            tag!(r"<<") | 
+            tag!(r">=") | 
+            tag!(r">>") | 
+            tag!(r"+=") | 
+            tag!(r"-=") | 
+            tag!(r"->") | 
+            tag!(r"**") | 
+            tag!(r"*=") | 
+            tag!(r"//") | 
+            tag!(r"/=") | 
+            tag!(r"|=") | 
+            tag!(r"%=") | 
+            tag!(r"&=") | 
+            tag!(r"^=") | 
+            tag!(r"@=") |
+            tag!(r"(r") | 
+            tag!(r")") | 
+            tag!(r"[") | 
+            tag!(r"]") | 
+            tag!(r":") | 
+            tag!(r",") | 
+            tag!(r";") | 
+            tag!(r"+") | 
+            tag!(r"-") | 
+            tag!(r"*") | 
+            tag!(r"/") | 
+            tag!(r"|") | 
+            tag!(r"&") | 
+            tag!(r"<") | 
+            tag!(r">") | 
+            tag!(r"=") | 
+            tag!(r".") | 
+            tag!(r"%") | 
+            tag!(r"{") | 
+            tag!(r"}") | 
+            tag!(r"^") | 
+            tag!(r"~") | 
+            tag!(r"@")) >>
+       (Token::Operator(op))
 ));
 
 
@@ -165,57 +237,9 @@ mod _api{
 
     #[test]
     fn module() {
-        println!("{:?}", parse_python(r#"#!/usr/bin/env python
-                          k
-            potato
-k
-   k
-
-
-dj;salkfj;asdjkfsd;alkfj;dl
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   x = 3
-"#.as_bytes()));
+        println!("{:?}", start_line(
+r#"x += 24354353
+  y = 3
+  Q -> c"#.as_bytes()));
     }
 }

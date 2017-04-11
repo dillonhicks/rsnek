@@ -213,6 +213,7 @@ impl Tokenizer {
             "&=" => Token::new(Id::AMPEREQUAL, bytes),
             "^=" => Token::new(Id::CIRCUMFLEXEQUAL, bytes),
             "@=" => Token::new(Id::ATEQUAL, bytes),
+
             _ => Token::new(Id::OP, bytes)
         }
     }
