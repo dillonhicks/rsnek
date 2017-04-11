@@ -13,8 +13,6 @@ use nom::{IResult,digit};
 use token::{Token, Id, NewToken};
 
 
-
-
 fn is_potential_identifier_start(ch: u8) -> bool {
     match ch as char {
         'A' ... 'Z' |

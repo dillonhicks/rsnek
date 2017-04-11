@@ -13,4 +13,9 @@ const_fn = []
 rsnek_proc_macros =  { version = "*", path = "../rsnek_proc_macros" }
 num = "*"
 itertools = "*"
+regex = "0.2"
+lazy_static = "*"
 
+[dependencies.nom]
+version = "^2.2"
+features = ["regexp", "regexp_macros", "verbose-errors"]
