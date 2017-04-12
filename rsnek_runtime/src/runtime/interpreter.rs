@@ -49,17 +49,17 @@ impl Interpreter {
         });
 
         let mut prev: Option<i64> = None;
+        let mut loops=  0;
         loop {
             let out = gen.resume(());
             match out {
-                None => {
-                    println!("{:?}", prev);
-                    break
-                },
+                None => {break},
                 _ => (),
             };
+            loops += 1;
             prev = out;
         }
+        println!("{:?} {}", prev, loops);
     }
 }
 

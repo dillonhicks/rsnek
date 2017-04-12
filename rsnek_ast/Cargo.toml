@@ -15,6 +15,12 @@ num = "*"
 itertools = "*"
 regex = "0.2"
 lazy_static = "*"
+serde = "*"
+serde_yaml = "*"
+serde_json = "*"
+serde_derive = "*"
+serde_bytes = "*"
+serde-pickle = "*"
 
 [dependencies.nom]
 version = "^2.2"

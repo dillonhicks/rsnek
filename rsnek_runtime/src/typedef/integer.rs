@@ -19,7 +19,7 @@ use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
 
-const STATIC_INT_RANGE: std::ops::Range<isize> = -5..1025;
+const STATIC_INT_RANGE: std::ops::Range<isize> = -5..1024;
 
 
 #[inline(always)]
@@ -41,7 +41,7 @@ impl typing::BuiltinType for PyIntegerType {
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: native::Integer) -> ObjectRef {
         match value.to_isize() {
-            Some(idx @ -5..1015) => self.static_integers[(idx + 5) as usize].clone(),
+            Some(idx @ -5..1024) => self.static_integers[(idx + 5) as usize].clone(),
             Some(_) |
             None => PyIntegerType::inject_selfref(PyIntegerType::alloc(value))
         }
