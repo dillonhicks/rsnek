@@ -1,33 +1,28 @@
-
-use std::collections::VecDeque;
+use std;
 use std::str;
 use std::str::FromStr;
-use std;
 use std::rc::Rc;
-
-use nom::{IResult,digit,multispace, newline, Needed};
 use std::fmt::Debug;
-//use nom::internal::*;
-//use nom::internal::IResult::*;
-use nom::ErrorKind;
-use nom::{AsChar,InputLength,InputIter};
-use nom::{Compare,CompareResult,Slice};
-
+use std::collections::VecDeque;
 use std::ops::{Range,RangeFrom,RangeTo};
 
+use nom::{IResult,digit,multispace, newline, Needed};
+use nom::{AsChar, InputLength, InputIter, Compare, CompareResult, Slice, ErrorKind};
+
+use num;
 use itertools::Itertools;
 use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
 
-use num;
+use token::{Id, Tk, pprint_tokens, New, Tag};
 
-use token::{Id, Tk, pprint_tokens};
 
 pub struct Lexer;
 
 impl Lexer {
+    /// Convert a slice of bytes into a r
     pub fn tokenize(bytes: &[u8]) -> Rc<IResult<&[u8], Vec<Tk>>> {
-       let result = start_line(bytes);
+        let result = start_line(bytes);
         Rc::new(result)
     }
 }
@@ -39,16 +34,17 @@ named!(start_line <Vec<Tk>>, do_parse!(
 
 named!(line <Tk>, do_parse!(
     token: alt_complete!(
-        space |
-        endline |
-        symbol |
-        operator |
-        number |
-        string |
-        identifier |
+        space       |
+        endline     |
+        symbol      |
+        operator    |
+        number      |
+        string      |
+        identifier  |
         error_marker) >>
     (token)
 ));
+
 
 named!(number <Tk>, do_parse!(
     digits : digit >>
@@ -67,21 +63,16 @@ named!(space <Tk>, do_parse!(
 
 named!(error_marker <Tk>, do_parse!(
     content: take!(1) >>
-    ({
-        println!("error: {:?}", content);
-        Tk::new(Id::ErrorMarker, content)
-    })
+    (Tk::new(Id::ErrorMarker, content, Tag::None))
 ));
 
 named!(identifier <Tk>, do_parse!(
     name: call!(ident) >>
-    ({
-        println!("identifier: {:?}", String::from_utf8_lossy(name));
-        match is_keyword(name) {
-            Some(id) => Tk::new(id, name),
-            None => Tk::Identifier(name)
+    (match is_keyword(name) {
+            Some(tag) => Tk::new(Id::Name, name, tag),
+            None => Tk::new(Id::Name, name, Tag::None)
         }
-    })
+    )
 ));
 
 pub trait Ident: where Self: AsChar {
@@ -125,19 +116,49 @@ pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
 
 named!(string <Tk>, do_parse!(
     result: call!(sublex_string) >>
-    (Tk::new(Id::String, result))
+    (Tk::new(Id::String, result.0, result.1))
 ));
 
 
-named!(sublex_string <&[u8]>, do_parse!(
+named!(sublex_string <(&[u8], Tag)>, do_parse!(
     result: switch!(peek!(take!(1)),
-        b"'" => call!(sublex_squote_string)   |
-        b"\"" => call!(sublex_dquote_string)  |
-        b"r" => call!(sublex_prefixed_string) |
-        b"b" => call!(sublex_prefixed_string) |
-        b"f" => call!(sublex_prefixed_string)
-    ) >>
+        b"#" =>  call!(sublex_comment_string)       |
+        b"'" =>  call!(sublex_plain_squote_string)  |
+        b"\"" => call!(sublex_plain_dquote_string)  |
+        b"r" =>  call!(sublex_rprefix_string)       |
+        b"b" =>  call!(sublex_bprefix_string)       |
+        b"f" =>  call!(sublex_fprefix_string)       ) >>
     (result)
+));
+
+named!(sublex_comment_string <(&[u8], Tag)>, do_parse!(
+    result: preceded!(take!(1), is_not!("\n")) >>
+    ((result, Tag::Comment))
+));
+
+named!(sublex_rprefix_string <(&[u8], Tag)>, do_parse!(
+    result: sublex_prefixed_string >>
+    ((result, Tag::RawString))
+));
+
+named!(sublex_bprefix_string <(&[u8], Tag)>, do_parse!(
+    result: sublex_prefixed_string >>
+    ((result, Tag::ByteString))
+));
+
+named!(sublex_fprefix_string <(&[u8], Tag)>, do_parse!(
+    result: sublex_prefixed_string >>
+    ((result, Tag::FormatString))
+));
+
+named!(sublex_plain_squote_string <(&[u8], Tag)>, do_parse!(
+    result: sublex_squote_string >>
+    ((result, Tag::None))
+));
+
+named!(sublex_plain_dquote_string <(&[u8], Tag)>, do_parse!(
+    result: sublex_dquote_string >>
+    ((result, Tag::None))
 ));
 
 
@@ -145,9 +166,8 @@ named!(sublex_prefixed_string <&[u8]>,  do_parse!(
     result: preceded!(
         take!(1),
         call!(sublex_string)) >>
-        (result)
+        (result.0)
 ));
-
 
 named!(sublex_squote_string <&[u8]>, do_parse!(
     result: switch!(peek!(take!(3)),
@@ -157,8 +177,8 @@ named!(sublex_squote_string <&[u8]>, do_parse!(
     (result)
 ));
 
+
 named!(sublex_dquote_string <&[u8]>, do_parse!(
-    //result: delimited!(tag!("\""), take_until!("\""), tag!("\"")) >>
     result: switch!(peek!(take!(3)),
         b"\"\"\"" => recognize!(delimited!(take!(3), take_until!("\"\"\""), take!(3))) |
         _ => recognize!(delimited!(tag!("\""), take_until!("\""), tag!("\"")))
@@ -167,111 +187,69 @@ named!(sublex_dquote_string <&[u8]>, do_parse!(
 ));
 
 
-//
-//named!(std_string <&[u8]>, do_parse!(
-//    start: tag!("\"")     >>
-//    middle: is_not!("\"\n")  >>
-//    end: tag!("\"") >>
-//    ([start, middle, end].concat())
-//));
-//
-//
-//named!(r_string <&[u8]>, do_parse!(
-//    start: tag!("r\"")     >>
-//    middle: is_not!("\"\n")  >>
-//    end: tag!("\"") >>
-//    ([start, middle, end].concat())
-//));
-//
-//
-//named!(b_string <&[u8]>, do_parse!(
-//    start: tag!("r\"")     >>
-//    middle: is_not!("\"\n")  >>
-//    end: tag!("\"") >>
-//    ([start, middle, end].concat())
-//));
-//
-//named!(f_string <&[u8]>, do_parse!(
-//    start: tag!("r\"")     >>
-//    middle: is_not!("\"\n")  >>
-//    end: tag!("\"") >>
-//    ([start, middle, end].concat())
-//));
-
-
 named!(symbol <Tk>, do_parse!(
-    sym: alt!(
-        tag!("(") |
-        tag!("[") |
-        tag!("{") |
-        tag!("}") |
-        tag!("]") |
-        tag!(")") |
-        tag!(",") |
-        tag!(";") |
-        tag!(":") |
-        tag!("\\")
-//        tag!("\"") |
-//        tag!("'")
-    ) >>
-    (Tk::Symbol(sym))
+    result: alt!(
+        tag!("(")   => { |r: &'a[u8]| (&r[..], Tag::LeftParen)      } |
+        tag!("[")   => { |r: &'a[u8]| (&r[..], Tag::LeftBracket)    } |
+        tag!("{")   => { |r: &'a[u8]| (&r[..], Tag::LeftBrace)      } |
+        tag!("}")   => { |r: &'a[u8]| (&r[..], Tag::RightBrace)     } |
+        tag!("]")   => { |r: &'a[u8]| (&r[..], Tag::RightBracket)   } |
+        tag!(")")   => { |r: &'a[u8]| (&r[..], Tag::RightParen)     } |
+        tag!(",")   => { |r: &'a[u8]| (&r[..], Tag::Comma)          } |
+        tag!(";")   => { |r: &'a[u8]| (&r[..], Tag::Semicolon)      } |
+        tag!(":")   => { |r: &'a[u8]| (&r[..], Tag::Colon)          } |
+        tag!("\\")  => { |r: &'a[u8]| (&r[..], Tag::Backslash)      }) >>
+    (Tk::new(Id::Symbol, result.0, result.1))
 ));
 
 
 named!(operator <Tk>, do_parse!(
-    op: alt_complete!(
-            tag!(r"<<=") |
-            tag!(r">>=") |
-            tag!(r"**=") |
-            tag!(r"//=") |
-            tag!(r"...") |
-            tag!(r"==") |
-            tag!(r"!=") |
-            tag!(r"<>") |
-            tag!(r"<=") |
-            tag!(r"<<") |
-            tag!(r">=") |
-            tag!(r">>") |
-            tag!(r"+=") |
-            tag!(r"-=") |
-            tag!(r"->") |
-            tag!(r"**") |
-            tag!(r"*=") |
-            tag!(r"//") |
-            tag!(r"/=") |
-            tag!(r"|=") |
-            tag!(r"%=") |
-            tag!(r"&=") |
-            tag!(r"^=") |
-            tag!(r"@=") |
-            tag!(r"(r") |
-            tag!(r")") |
-            tag!(r"[") |
-            tag!(r"]") |
-            tag!(r":") |
-            tag!(r",") |
-            tag!(r";") |
-            tag!(r"+") |
-            tag!(r"-") |
-            tag!(r"*") |
-            tag!(r"/") |
-            tag!(r"|") |
-            tag!(r"&") |
-            tag!(r"<") |
-            tag!(r">") |
-            tag!(r"=") |
-            tag!(r".") |
-            tag!(r"%") |
-            tag!(r"{") |
-            tag!(r"}") |
-            tag!(r"^") |
-            tag!(r"~") |
-            tag!(r"@") |
-            tag!(r".")) >>
-       (Tk::Operator(op))
+    result : alt_complete!(
+            // r: &'a [u8] are the bytes captured by the tag on the LHS.
+            // that is mapped with the closure to a tuple of the slice of the
+            // result mapped to its appropriate tag.
+            tag!(r"<<=") => { |r: &'a[u8]| (&r[..], Tag::LeftShiftEqual)    } |
+            tag!(r">>=") => { |r: &'a[u8]| (&r[..], Tag::RightShiftEqual)   } |
+            tag!(r"**=") => { |r: &'a[u8]| (&r[..], Tag::DoubleStarEqual)   } |
+            tag!(r"//=") => { |r: &'a[u8]| (&r[..], Tag::DoubleSlashEqual)  } |
+            tag!(r"...") => { |r: &'a[u8]| (&r[..], Tag::Ellipsis)          } |
+            tag!(r"==") =>  { |r: &'a[u8]| (&r[..], Tag::DoubleEqual)       } |
+            tag!(r"!=") =>  { |r: &'a[u8]| (&r[..], Tag::NotEqual)          } |
+            tag!(r"<>") =>  { |r: &'a[u8]| (&r[..], Tag::NotEqual)          } |
+            tag!(r"<=") =>  { |r: &'a[u8]| (&r[..], Tag::LessOrEqual)       } |
+            tag!(r"<<") =>  { |r: &'a[u8]| (&r[..], Tag::LeftShift)         } |
+            tag!(r">=") =>  { |r: &'a[u8]| (&r[..], Tag::GreaterOrEqual)    } |
+            tag!(r">>") =>  { |r: &'a[u8]| (&r[..], Tag::RightShift)        } |
+            tag!(r"+=") =>  { |r: &'a[u8]| (&r[..], Tag::PlusEqual)         } |
+            tag!(r"-=") =>  { |r: &'a[u8]| (&r[..], Tag::MinusEqual)        } |
+            tag!(r"->") =>  { |r: &'a[u8]| (&r[..], Tag::RightArrow)        } |
+            tag!(r"**") =>  { |r: &'a[u8]| (&r[..], Tag::DoubleStar)        } |
+            tag!(r"*=") =>  { |r: &'a[u8]| (&r[..], Tag::StarEqual)         } |
+            tag!(r"//") =>  { |r: &'a[u8]| (&r[..], Tag::DoubleSlash)       } |
+            tag!(r"/=") =>  { |r: &'a[u8]| (&r[..], Tag::SlashEqual)        } |
+            tag!(r"|=") =>  { |r: &'a[u8]| (&r[..], Tag::PipeEqual)         } |
+            tag!(r"%=") =>  { |r: &'a[u8]| (&r[..], Tag::PercentEqual)      } |
+            tag!(r"&=") =>  { |r: &'a[u8]| (&r[..], Tag::AmpEqual)          } |
+            tag!(r"^=") =>  { |r: &'a[u8]| (&r[..], Tag::CaretEqual)        } |
+            tag!(r"@=") =>  { |r: &'a[u8]| (&r[..], Tag::AtEqual)           } |
+            tag!(r"+") =>   { |r: &'a[u8]| (&r[..], Tag::Plus)              } |
+            tag!(r"-") =>   { |r: &'a[u8]| (&r[..], Tag::Minus)             } |
+            tag!(r"*") =>   { |r: &'a[u8]| (&r[..], Tag::Star)              } |
+            tag!(r"/") =>   { |r: &'a[u8]| (&r[..], Tag::Slash)             } |
+            tag!(r"|") =>   { |r: &'a[u8]| (&r[..], Tag::Pipe)              } |
+            tag!(r"&") =>   { |r: &'a[u8]| (&r[..], Tag::Amp)               } |
+            tag!(r"<") =>   { |r: &'a[u8]| (&r[..], Tag::LeftAngle)         } |
+            tag!(r">") =>   { |r: &'a[u8]| (&r[..], Tag::RightAngle)        } |
+            tag!(r"=") =>   { |r: &'a[u8]| (&r[..], Tag::Equal)             } |
+            tag!(r"%") =>   { |r: &'a[u8]| (&r[..], Tag::Percent)           } |
+            tag!(r"^") =>   { |r: &'a[u8]| (&r[..], Tag::Caret)             } |
+            tag!(r"~") =>   { |r: &'a[u8]| (&r[..], Tag::Tilde)             } |
+            tag!(r"@") =>   { |r: &'a[u8]| (&r[..], Tag::At)                } |
+            tag!(r".") =>   { |r: &'a[u8]| (&r[..], Tag::Dot)               }) >>
+       (Tk::new(Id::Operator, result.0, result.1))
 ));
 
-fn is_keyword(bytes: &[u8]) -> Option<Id> {
+fn is_keyword(bytes: &[u8]) -> Option<Tag> {
     let string = match str::from_utf8(bytes) {
         Ok(string) => string,
         err => return None
@@ -310,7 +288,7 @@ fn is_keyword(bytes: &[u8]) -> Option<Id> {
         "try"      |
         "while"    |
         "with"     |
-        "yield"    => Some(Id::Keyword),
+        "yield"    => Some(Tag::Keyword),
         _ => None
     }
 }
@@ -323,6 +301,7 @@ mod _api{
     use serde_yaml;
     use serde_json;
     use serde_pickle;
+    use bincode;
 
     #[test]
     fn tk_space() {
@@ -348,34 +327,80 @@ mod _api{
         pprint_tokens(&value.1);
     }
 
+    fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
+        pprint_tokens(&value.1);
+        assert_eq!(value.1.len(), 1);
+        let ref token = value.1[0];
+        assert_eq!(token.id(), id);
+        assert_eq!(token.tag(), tag);
+    }
+
     #[test]
     fn tk_string() {
-        let value = start_line(r#"  "abc'"  "#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
+
+        // just "abc"
+        let value = start_line(r#"  "abc"  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        // Double quoted strings containing single quotes are ok
+        let value = start_line(r#"  "Dillon's String!"  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        // Single quoted strings containing double quotes are ok
+        let value = start_line(r#"  'Thing"s and stuff'   "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        // Triple double quoted multiline
+        let value = start_line(
+r#"  """Line 0
+Line 1
+Line 2
+Line 3
+Line 4"""
+"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        // Triple double quoted multiline
+        let value = start_line(
+            r#"  '''alpha
+beta
+delta
+gamma'''
+"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        // Quoted keywords should still be strings
+        let value = start_line(r#"  'def'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        // Unicode
+        let value = start_line(r#"  "שּׂθשּׂઊ" "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::None);
+
+        let value = start_line(r#"  r'things'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::RawString);
+
+        let value = start_line(r#"  b'\x94\x54'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::ByteString);
+
+        let value = start_line(r#"  f'{number}'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::FormatString);
+
+        let value = start_line(
+            r#"  # Never compromise, even in the face of armageddon "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::Comment);
     }
 
-    #[test]
-    fn tk_squote_string() {
-        let value = start_line(r#"  'def'  "#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
-    }
-
-    #[test]
-    fn tk_string_unicode() {
-        let value = start_line(r#"  "שּׂθשּׂઊ" "#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
-    }
 
     #[test]
     fn tk_name() {
-        let value = start_line(r#" _hello "#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
+        let value = start_line(r#" _hello "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Name, Tag::None);
     }
 
     #[test]
     fn tk_keyword() {
-        let value = start_line(r#" def "#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
+        let value = start_line(r#" def "#.trim().as_bytes()).unwrap();
     }
 
     #[test]
@@ -386,8 +411,7 @@ mod _api{
 
     #[test]
     fn module() {
-        let value = start_line(
-            r#"x += 24354353
+        let input = r#"x += 24354353
   y = 3
   Q -> c
   x = [1, 2, 3, 4, 5];
@@ -399,15 +423,229 @@ mod _api{
         self.thing = 4
         self.more_things = 5
 
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
+    def is_couch(self):
+        return 'duh'
+        x += 24354353
+  y = 3
+  Q -> c
+  x = [1, 2, 3, 4, 5];
+  global KLINGON
+  \
+θθθ
+θclass Potato(Mike):
+    def __init__(self):
+        self.thing = 4
+        self.more_things = 5
+
+    # this is a comment
     def is_couch(self):
         return 'duh'
 
-  "#.as_bytes()).unwrap();
+  "#.as_bytes();
 
+        let value = start_line(input).unwrap();
         pprint_tokens(&value.1);
 
 //        println!("{:?}", value.1);
-//        println!("{}", serde_json::to_string(&value.1).unwrap());
+        let json = serde_json::to_string_pretty(&value.1).unwrap();
 //        println!("{}", unsafe {String::from_utf8_unchecked(serde_pickle::to_vec(&value.1, true).unwrap())});
+        let i = bincode::serialize(&value.1, bincode::Infinite).unwrap();
+        println!("bincode size: {}", i.len());
+        println!("input size: {}", input.len());
+        println!("json size: {}", json.len());
     }
 }

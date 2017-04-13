@@ -17,14 +17,130 @@ pub struct Tk<'a> {
     id: Id,
 
     #[serde(with = "serde_bytes")]
-    bytes: &'a [u8]
+    bytes: &'a [u8],
+
+    tag: Tag
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Tag {
+    Keyword,
+    None,
+
+    // Strings
+    Ascii,
+    Unicode,
+    Comment,
+    RawString,
+    ByteString,
+    FormatString,
+
+    // Symbols
+    //  Note: The (Left|Right) angle brackets are used as LESS and GREATER
+    //  operators as well.
+
+    // ( [ { <
+    LeftParen,
+    LeftBracket,
+    LeftBrace,
+    LeftAngle,
+
+    // ) ] } >
+    RightParen,
+    RightBracket,
+    RightBrace,
+    RightAngle,
+
+
+    Colon,
+    Comma,
+    Semicolon,
+    Backslash,
+
+
+    // Operators
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Pipe,
+    Amp,
+    Tilde,
+    At,
+    Dot,
+    Percent,
+    Caret,
+    Equal,
+    LeftShiftEqual,
+    RightShiftEqual,
+    DoubleSlashEqual,
+    DoubleStarEqual,
+    Ellipsis,
+    DoubleEqual,
+    NotEqual,
+    LessOrEqual,
+    LeftShift,
+    GreaterOrEqual,
+    RightShift,
+    PipeEqual,
+    PercentEqual,
+    AmpEqual,
+    DoubleSlash,
+    PlusEqual,
+    MinusEqual,
+    RightArrow,
+    DoubleStar,
+    StarEqual,
+    SlashEqual,
+    CaretEqual,
+    AtEqual,
+
+//    SEMI,
+//    PLUS,
+//    MINUS,
+//    STAR,
+//    SLASH,
+//    VBAR,
+//    AMPER,
+//    LESS,
+//    GREATER,
+//    EQUAL,
+//    DOT,
+//    PERCENT,
+//    LBRACE,
+//    RBRACE,
+//    EQEQUAL,
+//    NOTEQUAL,
+//    LESSEQUAL,
+//    GREATEREQUAL,
+//    TILDE,
+//    CIRCUMFLEX,
+//    LEFTSHIFT,
+//    RIGHTSHIFT,
+//    DOUBLESTAR,
+//    PLUSEQUAL,
+//    MINEQUAL,
+//    STAREQUAL,
+//    SLASHEQUAL,
+//    PERCENTEQUAL,
+//    AMPEREQUAL,
+//    VBAREQUAL,
+//    CIRCUMFLEXEQUAL,
+//    LEFTSHIFTEQUAL,
+//    RIGHTSHIFTEQUAL,
+//    DOUBLESTAREQUAL,
+//    DOUBLESLASH,
+//    DOUBLESLASHEQUAL,
+//    AT,
+//    ATEQUAL,
+//    RARROW,
+//    ELLIPSIS,
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]
 pub enum Id {
-    Unknown,
     Name,
     Number,
     String,
@@ -32,49 +148,50 @@ pub enum Id {
     Space,
     Operator,
     Symbol,
-    Keyword,
-
-    LeftParen,
-    RightParen,
-    LeftBracket,
-    RightBracket,
-
-
     ErrorMarker,
 }
 
+
+pub trait New<'a> {
+    fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self;
+}
+
+
+
+impl<'a> New<'a> for Tk<'a> {
+    fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self {
+        Tk {
+            id: id,
+            bytes: bytes,
+            tag: tag
+        }
+    }
+}
 
 impl<'a> Tk<'a> {
     pub fn bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
-
     pub fn id(&self) -> Id {
         self.id
     }
+    pub fn tag(&self) -> Tag { self.tag }
 
-    pub fn Identifier(bytes: &'a[u8]) -> Self { Tk { id: Id::Name, bytes: bytes } }
-    pub fn Unknown(bytes: &'a[u8]) -> Self { Tk { id: Id::Unknown, bytes: bytes } }
-    pub fn Space(bytes: &'a [u8]) -> Self { Tk { id: Id::Space, bytes: bytes } }
-    pub fn NewLine(bytes: &'a [u8]) -> Self { Tk { id: Id::Newline, bytes: bytes } }
-    pub fn Number(bytes: &'a [u8]) -> Self { Tk { id: Id::Number, bytes: bytes } }
-    pub fn Operator(bytes: &'a [u8]) -> Self { Tk { id: Id::Operator, bytes: bytes } }
-    pub fn Symbol(bytes: &'a [u8]) -> Self { Tk { id: Id::Symbol, bytes: bytes } }
+    pub fn Identifier(bytes: &'a[u8]) -> Self { New::new( Id::Name,  bytes, Tag::None)}
+    pub fn Space(bytes: &'a [u8]) -> Self { New::new( Id::Space,  bytes, Tag::None)}
+    pub fn NewLine(bytes: &'a [u8]) -> Self { New::new( Id::Newline,  bytes, Tag::None)}
+    pub fn Number(bytes: &'a [u8]) -> Self { New::new( Id::Number,  bytes, Tag::None)}
+    pub fn Operator(bytes: &'a [u8]) -> Self { New::new( Id::Operator,  bytes, Tag::None)}
+    pub fn Symbol(bytes: &'a [u8]) -> Self { New::new( Id::Symbol,  bytes, Tag::None)}
 
-    pub fn new(id: Id, bytes: &'a [u8]) -> Self {
-        Tk {
-            id: id,
-            bytes: bytes
-        }
-    }
 }
 
 pub fn pprint_tokens(tokens: &Vec<Tk>) {
-    for t in tokens {
+    for (idx, t) in tokens.iter().enumerate() {
         match t.id() {
             Id::Space => continue,
-            Id::Newline => println!("{:>10} \t\\n", format!("{:?}", t.id())),
-            _ => println!("{:>10} \t{}", format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()))
+            Id::Newline => println!("{:>3}: {:>15} {:^20}{:>10}", idx, format!("{:?}", t.id()), "\\n", format!("{:?}", t.tag())),
+            _ => println!("{:>3}: {:>15} {:^20}{:>10}", idx, format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()), format!("{:?}", t.tag()))
 
         }
     }
@@ -98,9 +215,6 @@ mod _old {
         fn new(id: Id, value: T) -> Self;
     }
 
-    // Created with regex replace of TokenType Body:
-    //  search: ([a-z]+)
-    //  replace: "pub fn new_$1() -> Self {\n        Token::new(TokenType::\U$1)\n    }"
     impl Token {}
 
     impl NewToken<u8> for Token {

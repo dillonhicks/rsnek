@@ -18,6 +18,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 extern crate serde_bytes;
 extern crate serde_pickle;
+extern crate bincode;
 
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate regex;
@@ -26,10 +27,11 @@ extern crate serde_pickle;
 #[macro_use] extern crate rsnek_proc_macros;
 
 mod token;
-mod tokenizer;
+pub mod tokenizer;
 pub mod parser;
 mod ast;
 
+pub use tokenizer as lexer;
 
 #[cfg(test)]
 mod tests {

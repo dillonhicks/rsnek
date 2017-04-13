@@ -1,7 +1,7 @@
 use std::env;
-extern crate rsnek_ast;
+extern crate rsnek_compile;
 
-use rsnek_ast::parser::Parser;
+use rsnek_compile::parser::Parser;
 
 fn main() {
     if let Some(filename) = env::args().nth(1) {

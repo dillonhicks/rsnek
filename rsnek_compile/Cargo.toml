@@ -1,10 +1,10 @@
 [package]
-name = "rsnek_ast"
+name = "rsnek_compile"
 version = "0.0.1"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
 [lib]
-name = "rsnek_ast"
+name = "rsnek_compile"
 
 [features]
 const_fn = []
@@ -21,6 +21,7 @@ serde_json = "*"
 serde_derive = "*"
 serde_bytes = "*"
 serde-pickle = "*"
+bincode = "*"
 
 [dependencies.nom]
 version = "^2.2"
