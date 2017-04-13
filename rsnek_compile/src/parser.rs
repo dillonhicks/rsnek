@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::rc::Rc;
 
-use tokenizer::Tokenizer;
-use token::{Id, Tk};
+use tokenizer::Lexer;
+use token::{Id, Tk, pprint_tokens};
 
 use nom::IResult;
 
@@ -25,26 +25,17 @@ impl Parser {
         }
 
         let bytes = contents.as_slice();
-        let r: Rc<IResult<&[u8], Vec<Tk>>> = Tokenizer::tokenize(bytes);
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(bytes);
         let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
         match b {
             &IResult::Done(_, ref tokens) => {
-                pprint(&tokens)
+                pprint_tokens(&tokens)
             },
             _ => {}
         }
     }
 }
 
-
-fn pprint(tokens: &Vec<Tk>) {
-    for t in tokens {
-        if t.id() == Id::Space {
-            continue
-        }
-        println!("{:<?}: {:?}", t.id(), String::from_utf8_lossy(t.bytes()))
-    }
-}
 
 
 

@@ -38,6 +38,9 @@ pub enum Id {
     RightParen,
     LeftBracket,
     RightBracket,
+
+
+    ErrorMarker,
 }
 
 
@@ -62,6 +65,17 @@ impl<'a> Tk<'a> {
         Tk {
             id: id,
             bytes: bytes
+        }
+    }
+}
+
+pub fn pprint_tokens(tokens: &Vec<Tk>) {
+    for t in tokens {
+        match t.id() {
+            Id::Space => continue,
+            Id::Newline => println!("{:>10} \t\\n", format!("{:?}", t.id())),
+            _ => println!("{:>10} \t{}", format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()))
+
         }
     }
 }
