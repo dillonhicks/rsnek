@@ -35,6 +35,7 @@ pub mod tokenizer;
 pub mod parser;
 pub mod keyword;
 mod ast;
+mod blockbuf;
 
 pub use tokenizer as lexer;
 

@@ -1,4 +1,7 @@
 
+pub enum Expression {
+    BinOp()
+}
 
 /*
 -- ASDL's 7 builtin types are:
