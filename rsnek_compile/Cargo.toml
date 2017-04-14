@@ -22,6 +22,8 @@ serde_derive = "*"
 serde_bytes = "*"
 serde-pickle = "*"
 bincode = "*"
+phf = "*"
+phf_macros = "*"
 
 [dependencies.nom]
 version = "^2.2"

@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use std::collections::VecDeque;
 use std::ops::{Range,RangeFrom,RangeTo};
 
-use nom::{IResult,digit,multispace, newline, Needed};
+use nom::{IResult, hex_digit, oct_digit, digit, multispace, newline, Needed};
 use nom::{AsChar, InputLength, InputIter, Compare, CompareResult, Slice, ErrorKind};
 
 use num;
@@ -15,7 +15,7 @@ use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
 
 use token::{Id, Tk, pprint_tokens, New, Tag};
-
+use keyword;
 
 pub struct Lexer;
 
@@ -47,9 +47,45 @@ named!(line <Tk>, do_parse!(
 
 
 named!(number <Tk>, do_parse!(
-    digits : digit >>
-    (Tk::Number(digits))
+    digits : switch!(peek!(take!(2)),
+        b"0x" => call!(sublex_hex)            |
+        b"0b" => call!(sublex_bin)            |
+        b"0o" => call!(sublex_octal)          |
+        _     => alt_complete!(
+                    call!(sublex_float)  |
+                    call!(sublex_int))        ) >>
+    (Tk::new(Id::Number, digits.0, digits.1))
 ));
+
+named!(sublex_hex <(&[u8], Tag)>, do_parse!(
+     num: recognize!(preceded!(tag!("0x"), hex_digit)) >>
+    ((num, Tag::Hex))
+));
+
+
+named!(sublex_bin <(&[u8], Tag)>, do_parse!(
+     num:  recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))) >>
+    ((num, Tag::Binary))
+));
+
+
+named!(sublex_octal <(&[u8], Tag)>, do_parse!(
+     num: recognize!(preceded!(tag!("0o"), hex_digit)) >>
+    ((num, Tag::Octal))
+));
+
+
+named!(sublex_float <(&[u8], Tag)>, do_parse!(
+     num: recognize!(delimited!(digit, tag!("."), digit)) >>
+    ((num, Tag::Float))
+));
+
+
+named!(sublex_int <(&[u8], Tag)>, do_parse!(
+     num: digit >>
+    ((num, Tag::Int))
+));
+
 
 named!(endline <Tk>, do_parse!(
     nl: tag!("\n") >>
@@ -249,48 +285,18 @@ named!(operator <Tk>, do_parse!(
        (Tk::new(Id::Operator, result.0, result.1))
 ));
 
+
 fn is_keyword(bytes: &[u8]) -> Option<Tag> {
     let string = match str::from_utf8(bytes) {
         Ok(string) => string,
         err => return None
     };
 
-    match string {
-        "False"    |
-        "None"     |
-        "True"     |
-        "and"      |
-        "as"       |
-        "assert"   |
-        "break"    |
-        "class"    |
-        "continue" |
-        "def"      |
-        "del"      |
-        "elif"     |
-        "else"     |
-        "except"   |
-        "finally"  |
-        "for"      |
-        "from"     |
-        "global"   |
-        "if"       |
-        "import"   |
-        "in"       |
-        "is"       |
-        "lambda"   |
-        "nonlocal" |
-        "not"      |
-        "or"       |
-        "pass"     |
-        "raise"    |
-        "return"   |
-        "try"      |
-        "while"    |
-        "with"     |
-        "yield"    => Some(Tag::Keyword),
-        _ => None
+    if keyword::is_keyword(string) {
+        return Some(Tag::Keyword)
     }
+
+    None
 }
 
 
@@ -303,6 +309,14 @@ mod _api{
     use serde_pickle;
     use bincode;
 
+    fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
+        pprint_tokens(&value.1);
+        assert_eq!(value.1.len(), 1);
+        let ref token = value.1[0];
+        assert_eq!(token.id(), id);
+        assert_eq!(token.tag(), tag);
+    }
+
     #[test]
     fn tk_space() {
         let value = start_line(r#" "#.as_bytes()).unwrap();
@@ -311,8 +325,20 @@ mod _api{
 
     #[test]
     fn tk_number() {
-        let value = start_line(r#"12345"#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
+        let value = start_line(r#"12345"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::Int);
+
+        let value = start_line(r#"12.34"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::Float);
+
+        let value = start_line(r#"0x2345"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::Hex);
+
+        let value = start_line(r#"0o2345"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::Octal);
+
+        let value = start_line(r#"0b0101"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::Binary);
     }
 
     #[test]
@@ -325,14 +351,6 @@ mod _api{
     fn tk_operator() {
         let value = start_line(r#"+="#.as_bytes()).unwrap();
         pprint_tokens(&value.1);
-    }
-
-    fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
-        pprint_tokens(&value.1);
-        assert_eq!(value.1.len(), 1);
-        let ref token = value.1[0];
-        assert_eq!(token.id(), id);
-        assert_eq!(token.tag(), tag);
     }
 
     #[test]
@@ -432,208 +450,6 @@ x += 24354353
   x = [1, 2, 3, 4, 5];
   global KLINGON
   \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
-        x += 24354353
-  y = 3
-  Q -> c
-  x = [1, 2, 3, 4, 5];
-  global KLINGON
-  \
-θθθ
-θclass Potato(Mike):
-    def __init__(self):
-        self.thing = 4
-        self.more_things = 5
-
-    # this is a comment
-    def is_couch(self):
-        return 'duh'
 
   "#.as_bytes();
 

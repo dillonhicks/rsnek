@@ -6,12 +6,16 @@
 #![allow(private_in_public)]
 #![allow(non_snake_case)]
 #![allow(unused_assignments)]
+#![feature(plugin)]
+#![plugin(phf_macros)]
 
 #![feature(const_fn)]
 #![feature(associated_consts)]
 #![feature(custom_attribute)]
 
 extern crate num;
+extern crate phf;
+
 #[macro_use] extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
@@ -29,6 +33,7 @@ extern crate bincode;
 mod token;
 pub mod tokenizer;
 pub mod parser;
+pub mod keyword;
 mod ast;
 
 pub use tokenizer as lexer;

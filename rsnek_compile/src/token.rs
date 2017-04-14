@@ -36,6 +36,14 @@ pub enum Tag {
     ByteString,
     FormatString,
 
+
+    // Numbers
+    Int,
+    Hex,
+    Binary,
+    Octal,
+    Float,
+
     // Symbols
     //  Note: The (Left|Right) angle brackets are used as LESS and GREATER
     //  operators as well.
