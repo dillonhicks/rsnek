@@ -3,13 +3,18 @@
 extern crate test;
 extern crate num;
 extern crate rsnek_compile;
+extern crate nom;
 
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 
+
 use test::Bencher;
+use nom::FileProducer;
+
 use rsnek_compile::lexer::Lexer;
+
 
 fn text(path: &str) -> String {
     let file = File::open(path).unwrap();
@@ -18,6 +23,7 @@ fn text(path: &str) -> String {
     buf_reader.read_to_string(&mut contents).unwrap();
     contents.clone()
 }
+
 
 #[bench]
 fn lex_warnings(b: &mut Bencher) {
@@ -28,6 +34,8 @@ fn lex_warnings(b: &mut Bencher) {
        Lexer::tokenize(&txt.as_bytes());
     });
 
+    let p = FileProducer::new("/usr/lib/python3.6/warnings.py", 2048).unwrap();
+    Lexer::tokenize(&p.app);
 }
 
 #[bench]

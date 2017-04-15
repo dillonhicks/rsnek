@@ -24,41 +24,37 @@ pub struct Tk<'a> {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]
+pub enum Error {
+    Unrecognized
+}
+
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
 pub enum Tag {
     Keyword,
     None,
+    Ident,
 
-    // Strings
-    Ascii,
-    Unicode,
-    Comment,
-    RawString,
-    ByteString,
-    FormatString,
-
-
-    // Numbers
-    Int,
-    Hex,
-    Binary,
-    Octal,
-    Float,
+    // Number
+    N(Num),
+    S(Str),
+    O(Op),
+    K(Kw),
+    W(Ws),
+    M(Sym),
+    E(Error),
 
     // Symbols
     //  Note: The (Left|Right) angle brackets are used as LESS and GREATER
     //  operators as well.
 
     // ( [ { <
-    LeftParen,
-    LeftBracket,
-    LeftBrace,
-    LeftAngle,
-
-    // ) ] } >
-    RightParen,
-    RightBracket,
-    RightBrace,
-    RightAngle,
+    Paren(Dir),
+    Bracket(Dir),
+    Brace(Dir),
+    Angle(Dir),
+    Arrow(Dir),
 
 
     Colon,
@@ -98,6 +94,7 @@ pub enum Tag {
     PlusEqual,
     MinusEqual,
     RightArrow,
+
     DoubleStar,
     StarEqual,
     SlashEqual,
@@ -148,6 +145,153 @@ pub enum Tag {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]
+pub enum Dir {
+    L,
+    R
+}
+
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Sym {
+    // -> =>
+    Arrow,
+    BigArrow,
+
+    // ) ] } >
+    RightParen,
+    RightBracket,
+    RightBrace,
+    RightAngle,
+
+    // ( [ { <
+    LeftArrow,
+    LeftAngle,
+    LeftParen,
+    LeftBracket,
+    LeftBrace,
+
+    // : , ; \
+    Colon,
+    Comma,
+    Semicolon,
+    Backslash,
+}
+
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Ws {
+    // \n
+    Newline,
+    // ' '
+    Space,
+    // \t
+    Tab,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Kw {
+    False,
+    None,
+    True,
+    And,
+    As,
+    Assert,
+    Break,
+    Class,
+    Continue,
+    Def,
+    Del,
+    Elif,
+    Else,
+    Except,
+    Finally,
+    For,
+    From,
+    Global,
+    If,
+    Import,
+    In,
+    Is,
+    Lambda,
+    Nonlocal,
+    Not,
+    Or,
+    Pass,
+    Raise,
+    Return,
+    Try,
+    While,
+    With,
+    Yield
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Op {
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Pipe,
+    Amp,
+    Tilde,
+    At,
+    Dot,
+    Percent,
+    Caret,
+    Equal,
+    LeftShiftEqual,
+    RightShiftEqual,
+    DoubleSlashEqual,
+    DoubleStarEqual,
+    Ellipsis,
+    DoubleEqual,
+    NotEqual,
+    LessOrEqual,
+    LeftShift,
+    GreaterOrEqual,
+    RightShift,
+    PipeEqual,
+    PercentEqual,
+    AmpEqual,
+    DoubleSlash,
+    PlusEqual,
+    MinusEqual,
+    RightArrow,
+    DoubleStar,
+    StarEqual,
+    SlashEqual,
+    CaretEqual,
+    AtEqual,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Num {
+    Int,
+    Hex,
+    Binary,
+    Octal,
+    Float,
+    Complex,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
+pub enum Str {
+    Ascii,
+    Unicode,
+    Bytes,
+    Comment,
+    Raw,
+    Format
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[repr(usize)]
 pub enum Id {
     Name,
     Number,
@@ -157,6 +301,79 @@ pub enum Id {
     Operator,
     Symbol,
     ErrorMarker,
+
+
+    Keyword,
+    None,
+
+    // Strings
+    Comment,
+
+
+    RawString,
+    ByteString,
+    FormatString,
+
+
+
+    // Symbols
+    //  Note: The (Left|Right) angle brackets are used as LESS and GREATER
+    //  operators as well.
+
+    // ( [ { <
+    LeftParen,
+    LeftBracket,
+    LeftBrace,
+    LeftAngle,
+
+    // ) ] } >
+    RightParen,
+    RightBracket,
+    RightBrace,
+    RightAngle,
+
+    Colon,
+    Comma,
+    Semicolon,
+    Backslash,
+
+    // Operators
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Pipe,
+    Amp,
+    Tilde,
+    At,
+    Dot,
+    Percent,
+    Caret,
+    Equal,
+    LeftShiftEqual,
+    RightShiftEqual,
+    DoubleSlashEqual,
+    DoubleStarEqual,
+    Ellipsis,
+    DoubleEqual,
+    NotEqual,
+    LessOrEqual,
+    LeftShift,
+    GreaterOrEqual,
+    RightShift,
+    PipeEqual,
+    PercentEqual,
+    AmpEqual,
+    DoubleSlash,
+    PlusEqual,
+    MinusEqual,
+    RightArrow,
+    DoubleStar,
+    StarEqual,
+    SlashEqual,
+    CaretEqual,
+    AtEqual,
+
 }
 
 

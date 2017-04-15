@@ -14,23 +14,26 @@ use itertools::Itertools;
 use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
 
-use token::{Id, Tk, pprint_tokens, New, Tag};
+use token::{Id, Tk, pprint_tokens, New, Tag, Str, Num, Dir, Op, Kw, Sym, Ws};
 use keyword;
+
 
 pub struct Lexer;
 
 impl Lexer {
     /// Convert a slice of bytes into a r
     pub fn tokenize(bytes: &[u8]) -> Rc<IResult<&[u8], Vec<Tk>>> {
-        let result = start_line(bytes);
+        let result = tokenize_bytes(bytes);
         Rc::new(result)
     }
 }
 
-named!(start_line <Vec<Tk>>, do_parse!(
+
+named!(pub tokenize_bytes <Vec<Tk>>, do_parse!(
     tokens: many0!(line) >>
     (tokens)
 ));
+
 
 named!(line <Tk>, do_parse!(
     token: alt_complete!(
@@ -52,50 +55,55 @@ named!(number <Tk>, do_parse!(
         b"0b" => call!(sublex_bin)            |
         b"0o" => call!(sublex_octal)          |
         _     => alt_complete!(
-                    call!(sublex_float)  |
-                    call!(sublex_int))        ) >>
+                    call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
+                    call!(sublex_complex) => { |r: &'a[u8]| (&r[..], Tag::N(Num::Complex))  } |
+                    call!(digit)          => { |r: &'a[u8]| (&r[..], Tag::N(Num::Int))      } )
+                                              ) >>
     (Tk::new(Id::Number, digits.0, digits.1))
 ));
 
+
 named!(sublex_hex <(&[u8], Tag)>, do_parse!(
      num: recognize!(preceded!(tag!("0x"), hex_digit)) >>
-    ((num, Tag::Hex))
+    ((num, Tag::N(Num::Hex)))
 ));
 
 
 named!(sublex_bin <(&[u8], Tag)>, do_parse!(
      num:  recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))) >>
-    ((num, Tag::Binary))
+    ((num, Tag::N(Num::Binary)))
 ));
 
 
 named!(sublex_octal <(&[u8], Tag)>, do_parse!(
      num: recognize!(preceded!(tag!("0o"), hex_digit)) >>
-    ((num, Tag::Octal))
+    ((num, Tag::N(Num::Octal)))
 ));
 
 
-named!(sublex_float <(&[u8], Tag)>, do_parse!(
+named!(sublex_float <&[u8]>, do_parse!(
      num: recognize!(delimited!(digit, tag!("."), digit)) >>
-    ((num, Tag::Float))
+    (num)
 ));
 
 
-named!(sublex_int <(&[u8], Tag)>, do_parse!(
-     num: digit >>
-    ((num, Tag::Int))
+named!(sublex_complex <&[u8]>, do_parse!(
+     num: recognize!(preceded!(digit, tag!("j"))) >>
+    (num)
 ));
 
 
 named!(endline <Tk>, do_parse!(
     nl: tag!("\n") >>
-    (Tk::NewLine(nl))
+    (Tk::new(Id::Newline,  nl, Tag::W(Ws::Newline)))
 ));
 
+
 named!(space <Tk>, do_parse!(
-    sp: is_a!(" ") >>
-    (Tk::Space(sp))
+    sp: tag!(" ") >>
+    (Tk::new(Id::Space, sp, Tag::W(Ws::Space)))
 ));
+
 
 named!(error_marker <Tk>, do_parse!(
     content: take!(1) >>
@@ -106,7 +114,7 @@ named!(identifier <Tk>, do_parse!(
     name: call!(ident) >>
     (match is_keyword(name) {
             Some(tag) => Tk::new(Id::Name, name, tag),
-            None => Tk::new(Id::Name, name, Tag::None)
+            None => Tk::new(Id::Name, name, Tag::Ident)
         }
     )
 ));
@@ -169,32 +177,32 @@ named!(sublex_string <(&[u8], Tag)>, do_parse!(
 
 named!(sublex_comment_string <(&[u8], Tag)>, do_parse!(
     result: preceded!(take!(1), is_not!("\n")) >>
-    ((result, Tag::Comment))
+    ((result, Tag::S(Str::Comment)))
 ));
 
 named!(sublex_rprefix_string <(&[u8], Tag)>, do_parse!(
     result: sublex_prefixed_string >>
-    ((result, Tag::RawString))
+    ((result, Tag::S(Str::Raw)))
 ));
 
 named!(sublex_bprefix_string <(&[u8], Tag)>, do_parse!(
     result: sublex_prefixed_string >>
-    ((result, Tag::ByteString))
+    ((result, Tag::S(Str::Bytes)))
 ));
 
 named!(sublex_fprefix_string <(&[u8], Tag)>, do_parse!(
     result: sublex_prefixed_string >>
-    ((result, Tag::FormatString))
+    ((result, Tag::S(Str::Format)))
 ));
 
 named!(sublex_plain_squote_string <(&[u8], Tag)>, do_parse!(
     result: sublex_squote_string >>
-    ((result, Tag::None))
+    ((result, Tag::S(Str::Unicode)))
 ));
 
 named!(sublex_plain_dquote_string <(&[u8], Tag)>, do_parse!(
     result: sublex_dquote_string >>
-    ((result, Tag::None))
+    ((result, Tag::S(Str::Unicode)))
 ));
 
 
@@ -225,16 +233,16 @@ named!(sublex_dquote_string <&[u8]>, do_parse!(
 
 named!(symbol <Tk>, do_parse!(
     result: alt!(
-        tag!("(")   => { |r: &'a[u8]| (&r[..], Tag::LeftParen)      } |
-        tag!("[")   => { |r: &'a[u8]| (&r[..], Tag::LeftBracket)    } |
-        tag!("{")   => { |r: &'a[u8]| (&r[..], Tag::LeftBrace)      } |
-        tag!("}")   => { |r: &'a[u8]| (&r[..], Tag::RightBrace)     } |
-        tag!("]")   => { |r: &'a[u8]| (&r[..], Tag::RightBracket)   } |
-        tag!(")")   => { |r: &'a[u8]| (&r[..], Tag::RightParen)     } |
-        tag!(",")   => { |r: &'a[u8]| (&r[..], Tag::Comma)          } |
-        tag!(";")   => { |r: &'a[u8]| (&r[..], Tag::Semicolon)      } |
-        tag!(":")   => { |r: &'a[u8]| (&r[..], Tag::Colon)          } |
-        tag!("\\")  => { |r: &'a[u8]| (&r[..], Tag::Backslash)      }) >>
+        tag!("(")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftParen))       } |
+        tag!("[")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftBracket))     } |
+        tag!("{")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftBrace))       } |
+        tag!("}")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightBrace))      } |
+        tag!("]")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightBracket))    } |
+        tag!(")")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightParen))      } |
+        tag!(",")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Comma))           } |
+        tag!(";")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Semicolon))       } |
+        tag!(":")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Colon))           } |
+        tag!("\\")  => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Backslash))       }) >>
     (Tk::new(Id::Symbol, result.0, result.1))
 ));
 
@@ -244,44 +252,44 @@ named!(operator <Tk>, do_parse!(
             // r: &'a [u8] are the bytes captured by the tag on the LHS.
             // that is mapped with the closure to a tuple of the slice of the
             // result mapped to its appropriate tag.
-            tag!(r"<<=") => { |r: &'a[u8]| (&r[..], Tag::LeftShiftEqual)    } |
-            tag!(r">>=") => { |r: &'a[u8]| (&r[..], Tag::RightShiftEqual)   } |
-            tag!(r"**=") => { |r: &'a[u8]| (&r[..], Tag::DoubleStarEqual)   } |
-            tag!(r"//=") => { |r: &'a[u8]| (&r[..], Tag::DoubleSlashEqual)  } |
-            tag!(r"...") => { |r: &'a[u8]| (&r[..], Tag::Ellipsis)          } |
-            tag!(r"==") =>  { |r: &'a[u8]| (&r[..], Tag::DoubleEqual)       } |
-            tag!(r"!=") =>  { |r: &'a[u8]| (&r[..], Tag::NotEqual)          } |
-            tag!(r"<>") =>  { |r: &'a[u8]| (&r[..], Tag::NotEqual)          } |
-            tag!(r"<=") =>  { |r: &'a[u8]| (&r[..], Tag::LessOrEqual)       } |
-            tag!(r"<<") =>  { |r: &'a[u8]| (&r[..], Tag::LeftShift)         } |
-            tag!(r">=") =>  { |r: &'a[u8]| (&r[..], Tag::GreaterOrEqual)    } |
-            tag!(r">>") =>  { |r: &'a[u8]| (&r[..], Tag::RightShift)        } |
-            tag!(r"+=") =>  { |r: &'a[u8]| (&r[..], Tag::PlusEqual)         } |
-            tag!(r"-=") =>  { |r: &'a[u8]| (&r[..], Tag::MinusEqual)        } |
-            tag!(r"->") =>  { |r: &'a[u8]| (&r[..], Tag::RightArrow)        } |
-            tag!(r"**") =>  { |r: &'a[u8]| (&r[..], Tag::DoubleStar)        } |
-            tag!(r"*=") =>  { |r: &'a[u8]| (&r[..], Tag::StarEqual)         } |
-            tag!(r"//") =>  { |r: &'a[u8]| (&r[..], Tag::DoubleSlash)       } |
-            tag!(r"/=") =>  { |r: &'a[u8]| (&r[..], Tag::SlashEqual)        } |
-            tag!(r"|=") =>  { |r: &'a[u8]| (&r[..], Tag::PipeEqual)         } |
-            tag!(r"%=") =>  { |r: &'a[u8]| (&r[..], Tag::PercentEqual)      } |
-            tag!(r"&=") =>  { |r: &'a[u8]| (&r[..], Tag::AmpEqual)          } |
-            tag!(r"^=") =>  { |r: &'a[u8]| (&r[..], Tag::CaretEqual)        } |
-            tag!(r"@=") =>  { |r: &'a[u8]| (&r[..], Tag::AtEqual)           } |
-            tag!(r"+") =>   { |r: &'a[u8]| (&r[..], Tag::Plus)              } |
-            tag!(r"-") =>   { |r: &'a[u8]| (&r[..], Tag::Minus)             } |
-            tag!(r"*") =>   { |r: &'a[u8]| (&r[..], Tag::Star)              } |
-            tag!(r"/") =>   { |r: &'a[u8]| (&r[..], Tag::Slash)             } |
-            tag!(r"|") =>   { |r: &'a[u8]| (&r[..], Tag::Pipe)              } |
-            tag!(r"&") =>   { |r: &'a[u8]| (&r[..], Tag::Amp)               } |
-            tag!(r"<") =>   { |r: &'a[u8]| (&r[..], Tag::LeftAngle)         } |
-            tag!(r">") =>   { |r: &'a[u8]| (&r[..], Tag::RightAngle)        } |
-            tag!(r"=") =>   { |r: &'a[u8]| (&r[..], Tag::Equal)             } |
-            tag!(r"%") =>   { |r: &'a[u8]| (&r[..], Tag::Percent)           } |
-            tag!(r"^") =>   { |r: &'a[u8]| (&r[..], Tag::Caret)             } |
-            tag!(r"~") =>   { |r: &'a[u8]| (&r[..], Tag::Tilde)             } |
-            tag!(r"@") =>   { |r: &'a[u8]| (&r[..], Tag::At)                } |
-            tag!(r".") =>   { |r: &'a[u8]| (&r[..], Tag::Dot)               }) >>
+            tag!(r"<<=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::LeftShiftEqual))    } |
+            tag!(r">>=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::RightShiftEqual))   } |
+            tag!(r"**=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleStarEqual))   } |
+            tag!(r"//=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleSlashEqual))  } |
+            tag!(r"...") => { |r: &'a[u8]| (&r[..], Tag::O(Op::Ellipsis))          } |
+            tag!(r"==") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleEqual))       } |
+            tag!(r"!=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::NotEqual))          } |
+            tag!(r"<>") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::NotEqual))          } |
+            tag!(r"<=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::LessOrEqual))       } |
+            tag!(r"<<") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::LeftShift))         } |
+            tag!(r">=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::GreaterOrEqual))    } |
+            tag!(r">>") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::RightShift))        } |
+            tag!(r"+=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::PlusEqual))         } |
+            tag!(r"-=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::MinusEqual))        } |
+            tag!(r"->") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::RightArrow))        } |
+            tag!(r"**") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleStar))        } |
+            tag!(r"*=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::StarEqual))         } |
+            tag!(r"//") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleSlash))       } |
+            tag!(r"/=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::SlashEqual))        } |
+            tag!(r"|=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::PipeEqual))         } |
+            tag!(r"%=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::PercentEqual))      } |
+            tag!(r"&=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::AmpEqual))          } |
+            tag!(r"^=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::CaretEqual))        } |
+            tag!(r"@=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::AtEqual))           } |
+            tag!(r"+") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Plus))              } |
+            tag!(r"-") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Minus))             } |
+            tag!(r"*") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Star))              } |
+            tag!(r"/") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Slash))             } |
+            tag!(r"|") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Pipe))              } |
+            tag!(r"&") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Amp))               } |
+            tag!(r"<") =>   { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftAngle))        } |
+            tag!(r">") =>   { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightAngle))        } |
+            tag!(r"=") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Equal))             } |
+            tag!(r"%") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Percent))           } |
+            tag!(r"^") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Caret))             } |
+            tag!(r"~") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Tilde))             } |
+            tag!(r"@") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::At))                } |
+            tag!(r".") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Dot))               }) >>
        (Tk::new(Id::Operator, result.0, result.1))
 ));
 
@@ -291,12 +299,43 @@ fn is_keyword(bytes: &[u8]) -> Option<Tag> {
         Ok(string) => string,
         err => return None
     };
-
-    if keyword::is_keyword(string) {
-        return Some(Tag::Keyword)
+    
+    match string {
+        "False"     => Some(Tag::K(Kw::False)),
+        "None"      => Some(Tag::K(Kw::None)),
+        "True"      => Some(Tag::K(Kw::True)),
+        "and"       => Some(Tag::K(Kw::And)),
+        "as"        => Some(Tag::K(Kw::As)),
+        "assert"    => Some(Tag::K(Kw::Assert)),
+        "break"     => Some(Tag::K(Kw::Break)),
+        "class"     => Some(Tag::K(Kw::Class)),
+        "continue"  => Some(Tag::K(Kw::Continue)),
+        "def"       => Some(Tag::K(Kw::Def)),
+        "del"       => Some(Tag::K(Kw::Del)),
+        "elif"      => Some(Tag::K(Kw::Elif)),
+        "else"      => Some(Tag::K(Kw::Else)),
+        "except"    => Some(Tag::K(Kw::Except)),
+        "finally"   => Some(Tag::K(Kw::Finally)),
+        "for"       => Some(Tag::K(Kw::For)),
+        "from"      => Some(Tag::K(Kw::From)),
+        "global"    => Some(Tag::K(Kw::Global)),
+        "if"        => Some(Tag::K(Kw::If)),
+        "import"    => Some(Tag::K(Kw::Import)),
+        "in"        => Some(Tag::K(Kw::In)),
+        "is"        => Some(Tag::K(Kw::Is)),
+        "lambda"    => Some(Tag::K(Kw::Lambda)),
+        "nonlocal"  => Some(Tag::K(Kw::Nonlocal)),
+        "not"       => Some(Tag::K(Kw::Not)),
+        "or"        => Some(Tag::K(Kw::Or)),
+        "pass"      => Some(Tag::K(Kw::Pass)),
+        "raise"     => Some(Tag::K(Kw::Raise)),
+        "return"    => Some(Tag::K(Kw::Return)),
+        "try"       => Some(Tag::K(Kw::Try)),
+        "while"     => Some(Tag::K(Kw::While)),
+        "with"      => Some(Tag::K(Kw::With)),
+        "yield"     => Some(Tag::K(Kw::Yield)),
+        _           => None
     }
-
-    None
 }
 
 
@@ -319,37 +358,37 @@ mod _api{
 
     #[test]
     fn tk_space() {
-        let value = start_line(r#" "#.as_bytes()).unwrap();
+        let value = tokenize_bytes(r#" "#.as_bytes()).unwrap();
         pprint_tokens(&value.1);
     }
 
     #[test]
     fn tk_number() {
-        let value = start_line(r#"12345"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::Int);
+        let value = tokenize_bytes(r#"12345"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::N(Num::Int));
 
-        let value = start_line(r#"12.34"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::Float);
+        let value = tokenize_bytes(r#"12.34"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::N(Num::Float));
 
-        let value = start_line(r#"0x2345"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::Hex);
+        let value = tokenize_bytes(r#"0x2345"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::N(Num::Hex));
 
-        let value = start_line(r#"0o2345"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::Octal);
+        let value = tokenize_bytes(r#"0o2345"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::N(Num::Octal));
 
-        let value = start_line(r#"0b0101"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::Binary);
+        let value = tokenize_bytes(r#"0b0101"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::N(Num::Binary));
     }
 
     #[test]
     fn tk_symbol() {
-        let value = start_line(r#":"#.as_bytes()).unwrap();
+        let value = tokenize_bytes(r#":"#.as_bytes()).unwrap();
         pprint_tokens(&value.1);
     }
 
     #[test]
     fn tk_operator() {
-        let value = start_line(r#"+="#.as_bytes()).unwrap();
+        let value = tokenize_bytes(r#"+="#.as_bytes()).unwrap();
         pprint_tokens(&value.1);
     }
 
@@ -357,73 +396,73 @@ mod _api{
     fn tk_string() {
 
         // just "abc"
-        let value = start_line(r#"  "abc"  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        let value = tokenize_bytes(r#"  "abc"  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
         // Double quoted strings containing single quotes are ok
-        let value = start_line(r#"  "Dillon's String!"  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        let value = tokenize_bytes(r#"  "Dillon's String!"  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
         // Single quoted strings containing double quotes are ok
-        let value = start_line(r#"  'Thing"s and stuff'   "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        let value = tokenize_bytes(r#"  'Thing"s and stuff'   "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
         // Triple double quoted multiline
-        let value = start_line(
+        let value = tokenize_bytes(
 r#"  """Line 0
 Line 1
 Line 2
 Line 3
 Line 4"""
 "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
         // Triple double quoted multiline
-        let value = start_line(
+        let value = tokenize_bytes(
             r#"  '''alpha
 beta
 delta
 gamma'''
 "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
         // Quoted keywords should still be strings
-        let value = start_line(r#"  'def'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        let value = tokenize_bytes(r#"  'def'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
         // Unicode
-        let value = start_line(r#"  "שּׂθשּׂઊ" "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::None);
+        let value = tokenize_bytes(r#"  "שּׂθשּׂઊ" "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Unicode));
 
-        let value = start_line(r#"  r'things'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::RawString);
+        let value = tokenize_bytes(r#"  r'things'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Raw));
 
-        let value = start_line(r#"  b'\x94\x54'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::ByteString);
+        let value = tokenize_bytes(r#"  b'\x94\x54'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Bytes));
 
-        let value = start_line(r#"  f'{number}'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::FormatString);
+        let value = tokenize_bytes(r#"  f'{number}'  "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::String, Tag::S(Str::Format));
 
-        let value = start_line(
+        let value = tokenize_bytes(
             r#"  # Never compromise, even in the face of armageddon "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::Comment);
+        assert_token(&value, Id::String, Tag::S(Str::Comment));
     }
 
 
     #[test]
     fn tk_name() {
-        let value = start_line(r#" _hello "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Name, Tag::None);
+        let value = tokenize_bytes(r#" _hello "#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Name, Tag::Ident);
     }
 
     #[test]
     fn tk_keyword() {
-        let value = start_line(r#" def "#.trim().as_bytes()).unwrap();
+        let value = tokenize_bytes(r#" def "#.trim().as_bytes()).unwrap();
     }
 
     #[test]
     fn expr_x_eq_1() {
-        let value = start_line(r#"x = 1"#.as_bytes()).unwrap();
+        let value = tokenize_bytes(r#"x = 1"#.as_bytes()).unwrap();
         pprint_tokens(&value.1);
     }
 
@@ -453,7 +492,7 @@ x += 24354353
 
   "#.as_bytes();
 
-        let value = start_line(input).unwrap();
+        let value = tokenize_bytes(input).unwrap();
         pprint_tokens(&value.1);
 
 //        println!("{:?}", value.1);
@@ -465,3 +504,4 @@ x += 24354353
         println!("json size: {}", json.len());
     }
 }
+
