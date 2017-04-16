@@ -12,7 +12,7 @@ use num;
 use num::FromPrimitive;
 
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Tk<'a> {
     id: Id,
 

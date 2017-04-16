@@ -27,11 +27,15 @@ extern crate bincode;
 #[macro_use] extern crate rsnek_proc_macros;
 
 mod token;
+mod slice;
+#[macro_use] mod macros;
+mod traits;
+
 pub mod tokenizer;
 pub mod parser;
 pub mod keyword;
 mod ast;
-mod slice;
+
 // for ast examples
 // mod blockbuf;
 extern crate bytes;

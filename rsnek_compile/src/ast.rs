@@ -10,7 +10,7 @@ use serde_bytes;
 
 use tokenizer::Lexer;
 use token::{Id, Tk, pprint_tokens};
-use slice::TokenSlice;
+use slice::{TkSlice, TokenSlice};
 
 use nom::{IResult, digit, multispace};
 
@@ -53,7 +53,8 @@ pub enum Expr<'a> {
     Bool {logic: Logic, values: Vec<DynExpr<'a>>},
     BinOp {op: Op, left: DynExpr<'a>, right: DynExpr<'a>},
     Any(Vec<TokenSlice<'a>>),
-    Atom(TokenSlice<'a>)
+    Atom(TokenSlice<'a>),
+    Sanity(Vec<TkSlice<'a>>)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
