@@ -22,6 +22,24 @@ pub struct Tk<'a> {
     tag: Tag
 }
 
+impl<'a> Tk<'a> {
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+    pub fn id(&self) -> Id {
+        self.id
+    }
+    pub fn tag(&self) -> Tag { self.tag }
+
+    pub fn Identifier(bytes: &'a[u8]) -> Self { New::new( Id::Name,  bytes, Tag::None)}
+    pub fn Space(bytes: &'a [u8]) -> Self { New::new( Id::Space,  bytes, Tag::None)}
+    pub fn NewLine(bytes: &'a [u8]) -> Self { New::new( Id::Newline,  bytes, Tag::None)}
+    pub fn Number(bytes: &'a [u8]) -> Self { New::new( Id::Number,  bytes, Tag::None)}
+    pub fn Operator(bytes: &'a [u8]) -> Self { New::new( Id::Operator,  bytes, Tag::None)}
+    pub fn Symbol(bytes: &'a [u8]) -> Self { New::new( Id::Symbol,  bytes, Tag::None)}
+
+}
+
 impl<'a, 'b> FindToken<&'b [Id]> for Tk<'a> {
     fn find_token(&self, input: &[Id]) -> bool {
         for &i in input.iter() {
@@ -31,6 +49,56 @@ impl<'a, 'b> FindToken<&'b [Id]> for Tk<'a> {
         false
     }
 }
+
+
+pub trait New<'a> {
+    fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self;
+}
+
+
+
+impl<'a> New<'a> for Tk<'a> {
+    fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self {
+        Tk {
+            id: id,
+            bytes: bytes,
+            tag: tag
+        }
+    }
+}
+
+pub fn pprint_tokens(tokens: &Vec<Tk>) {
+    for (idx, t) in tokens.iter().enumerate() {
+        match format_token(&t) {
+            Some(token) => println!("{:>3}: {}", idx, token),
+            None => continue
+        }
+    }
+}
+
+pub fn format_token(t: &Tk) -> Option<String> {
+
+    let formatted = match t.id() {
+        Id::Space => return None,
+        Id::Tab |
+        Id::Newline => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), format!("{:?}", String::from_utf8_lossy(t.bytes())), format!("{:?}", t.tag())),
+        _ => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()), format!("{:?}", t.tag()))
+    };
+
+    Some(formatted)
+}
+
+pub fn format_tokens(tokens: &Vec<Tk>) -> String {
+    let result: Vec<String> = tokens.iter().enumerate().map(|(idx, t)| {
+        match format_token(&t) {
+            Some(token) => format!("{:>3}: {}", idx, token),
+            None => "".to_string()
+        }
+    }).filter(String::is_empty).collect();
+
+    result.join("\n")
+}
+
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]
@@ -42,7 +110,6 @@ pub enum Error {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]
 pub enum Tag {
-    Keyword,
     None,
     Ident,
 
@@ -66,91 +133,6 @@ pub enum Tag {
     Angle(Dir),
     Arrow(Dir),
 
-
-    Colon,
-    Comma,
-    Semicolon,
-    Backslash,
-
-
-    // Operators
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Pipe,
-    Amp,
-    Tilde,
-    At,
-    Dot,
-    Percent,
-    Caret,
-    Equal,
-    LeftShiftEqual,
-    RightShiftEqual,
-    DoubleSlashEqual,
-    DoubleStarEqual,
-    Ellipsis,
-    DoubleEqual,
-    NotEqual,
-    LessOrEqual,
-    LeftShift,
-    GreaterOrEqual,
-    RightShift,
-    PipeEqual,
-    PercentEqual,
-    AmpEqual,
-    DoubleSlash,
-    PlusEqual,
-    MinusEqual,
-    RightArrow,
-
-    DoubleStar,
-    StarEqual,
-    SlashEqual,
-    CaretEqual,
-    AtEqual,
-
-//    SEMI,
-//    PLUS,
-//    MINUS,
-//    STAR,
-//    SLASH,
-//    VBAR,
-//    AMPER,
-//    LESS,
-//    GREATER,
-//    EQUAL,
-//    DOT,
-//    PERCENT,
-//    LBRACE,
-//    RBRACE,
-//    EQEQUAL,
-//    NOTEQUAL,
-//    LESSEQUAL,
-//    GREATEREQUAL,
-//    TILDE,
-//    CIRCUMFLEX,
-//    LEFTSHIFT,
-//    RIGHTSHIFT,
-//    DOUBLESTAR,
-//    PLUSEQUAL,
-//    MINEQUAL,
-//    STAREQUAL,
-//    SLASHEQUAL,
-//    PERCENTEQUAL,
-//    AMPEREQUAL,
-//    VBAREQUAL,
-//    CIRCUMFLEXEQUAL,
-//    LEFTSHIFTEQUAL,
-//    RIGHTSHIFTEQUAL,
-//    DOUBLESTAREQUAL,
-//    DOUBLESLASH,
-//    DOUBLESLASHEQUAL,
-//    AT,
-//    ATEQUAL,
-//    RARROW,
-//    ELLIPSIS,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
@@ -425,69 +407,4 @@ pub enum Id {
 }
 
 
-pub trait New<'a> {
-    fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self;
-}
-
-
-
-impl<'a> New<'a> for Tk<'a> {
-    fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self {
-        Tk {
-            id: id,
-            bytes: bytes,
-            tag: tag
-        }
-    }
-}
-
-impl<'a> Tk<'a> {
-    pub fn bytes(&self) -> &[u8] {
-        &self.bytes[..]
-    }
-    pub fn id(&self) -> Id {
-        self.id
-    }
-    pub fn tag(&self) -> Tag { self.tag }
-
-    pub fn Identifier(bytes: &'a[u8]) -> Self { New::new( Id::Name,  bytes, Tag::None)}
-    pub fn Space(bytes: &'a [u8]) -> Self { New::new( Id::Space,  bytes, Tag::None)}
-    pub fn NewLine(bytes: &'a [u8]) -> Self { New::new( Id::Newline,  bytes, Tag::None)}
-    pub fn Number(bytes: &'a [u8]) -> Self { New::new( Id::Number,  bytes, Tag::None)}
-    pub fn Operator(bytes: &'a [u8]) -> Self { New::new( Id::Operator,  bytes, Tag::None)}
-    pub fn Symbol(bytes: &'a [u8]) -> Self { New::new( Id::Symbol,  bytes, Tag::None)}
-
-}
-
-pub fn pprint_tokens(tokens: &Vec<Tk>) {
-    for (idx, t) in tokens.iter().enumerate() {
-        match format_token(&t) {
-            Some(token) => println!("{:>3}: {}", idx, token),
-            None => continue
-        }
-    }
-}
-
-pub fn format_token(t: &Tk) -> Option<String> {
-
-    let formatted = match t.id() {
-        Id::Space => return None,
-        Id::Tab |
-        Id::Newline => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), format!("{:?}", String::from_utf8_lossy(t.bytes())), format!("{:?}", t.tag())),
-        _ => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()), format!("{:?}", t.tag()))
-    };
-
-    Some(formatted)
-}
-
-pub fn format_tokens(tokens: &Vec<Tk>) -> String {
-    let result: Vec<String> = tokens.iter().enumerate().map(|(idx, t)| {
-        match format_token(&t) {
-            Some(token) => format!("{:>3}: {}", idx, token),
-            None => "".to_string()
-        }
-    }).filter(String::is_empty).collect();
-
-    result.join("\n")
-}
 

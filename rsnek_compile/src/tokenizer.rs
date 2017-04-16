@@ -15,10 +15,10 @@ use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
 
 use token::{Id, Tk, pprint_tokens, New, Tag, Str, Num, Dir, Op, Kw, Sym, Ws};
-use keyword;
 
 
 pub struct Lexer;
+
 
 impl Lexer {
     /// Convert a slice of bytes into a r
@@ -51,9 +51,9 @@ named!(line <Tk>, do_parse!(
 
 named!(number <Tk>, do_parse!(
     tuple : alt_complete!(
-            call!(sublex_hex)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
-            call!(sublex_bin)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
-            call!(sublex_octal)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
+            call!(sublex_hex)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Hex))    } |
+            call!(sublex_bin)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Binary))    } |
+            call!(sublex_octal)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Octal))    } |
             call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
             call!(sublex_complex) => { |r: &'a[u8]| (&r[..], Tag::N(Num::Complex))  } |
             call!(digit)          => { |r: &'a[u8]| (&r[..], Tag::N(Num::Int))      } ) >>

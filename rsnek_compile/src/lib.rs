@@ -33,7 +33,6 @@ mod traits;
 
 pub mod tokenizer;
 pub mod parser;
-pub mod keyword;
 mod ast;
 
 // for ast examples
