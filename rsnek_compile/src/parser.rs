@@ -117,25 +117,7 @@ mod tk_impl {
     use super::*;
     use nom::ErrorKind;
 
-
-    tk_named!(tk_sanity <Vec<TkSlice<'a>>>, do_parse!(
-        tks: many0!(take!(1)) >>
-        ({tks})
-    ));
-
-    tk_named!(tk_sanity2 <TkSlice<'a>>, do_parse!(
-        tks: tag!(&[Id::Name, Id::Equal, Id::Number]) >>
-        ({tks})
-    ));
-
-    tk_named!(tk_sanity3 <Ast<'a>>, do_parse!(
-    ast: alt!(
-            ignore_spaces!(tk_sanity) => { |r: Vec<TkSlice<'a>> | (Ast::Expression(Expr::Sanity(r))) } ) >>
-    (ast)
-    ));
-
-    //
-
+    // Specific Tokens and Groups of Tokens
     tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
     tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
     tk_named!(assign_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
@@ -163,6 +145,13 @@ mod tk_impl {
         )
      ));
 
+    tk_named!(constant_token <TkSlice<'a>>, ignore_spaces!(
+        alt_complete!(
+            tag!(&[Id::Name])             |
+            tag!(&[Id::String])           |
+            tag!(&[Id::Number])
+        )
+     ));
 
     tk_named!(augassign_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
@@ -183,12 +172,13 @@ mod tk_impl {
      ));
 
 
+    // AST Builders
+
     /// START(ast)
     tk_named!(tkslice_to_ast <Ast<'a>>, do_parse!(
     ast: alt!(
             module_start               => { |m: Module<'a> | (Ast::Module(m))     } |
-            ignore_spaces!(stmt_start) => { |r: Stmt<'a>   | (Ast::Statement(r))  } |
-            tk_sanity                  => { |r: Vec<TkSlice<'a>> | (Ast::Expression(Expr::Sanity(r))) } ) >>
+            ignore_spaces!(stmt_start) => { |r: Stmt<'a>   | (Ast::Statement(r))  } ) >>
     (ast)
     ));
 
@@ -208,12 +198,13 @@ mod tk_impl {
 
     /// 5.   | Assign(expr* targets, expr value)
     tk_named!(sub_stmt_assign <Stmt<'a>>, do_parse!(
-        target: atom_name    >>
-                assign_token >>
-        number: atom_number  >>
+         // TODO: Allow subparsing of target and number as actual expr
+        target: atom_name           >>
+                assign_token        >>
+         value: alt!(sub_expr_nameconstant | sub_expr_constant) >>
         (Stmt::Assign {
-            target: Box::new(Expr::Atom(Atom::Name(target))),
-            value: Box::new(Expr::Atom(Atom::Number(number)))
+            target: Box::new(Expr::Constant(target)),
+            value: Box::new(value)
          })
     ));
 
@@ -233,7 +224,7 @@ mod tk_impl {
     /// 20.   | Expr(expr value)
     tk_named!(sub_stmt_expr <Stmt<'a>>, do_parse!(
         expression: start_expr >>
-        (Stmt::Expr { value: expression })
+        (Stmt::Expr(expression))
     ));
 
 
@@ -258,13 +249,14 @@ mod tk_impl {
 
     /// 5.   | Assign(expr* targets, expr value)
     tk_named!(sub_expr_binop <Expr<'a>>, do_parse!(
-        target: atom_name   >>
-            op: binop_token >>
-        number: atom_number >>
+        // TODO: Generalize to allow recursion on start_expr not just the constant expressions
+        lhs: sub_expr_constant  >>
+         op: binop_token        >>
+        rhs: sub_expr_constant >>
         (Expr::BinOp {
             op: Op(op),
-            left: Box::new(Expr::Atom(Atom::Name(target))),
-            right: Box::new(Expr::Atom(Atom::Number(number)))
+            left: Box::new(lhs),
+            right: Box::new(rhs)
          })
     ));
 
@@ -277,9 +269,7 @@ mod tk_impl {
     ));
 
     tk_named!(sub_expr_constant <Expr<'a>>, do_parse!(
-        constant: alt!(
-                atom_name    |
-                atom_number  )>>
+        constant: constant_token >>
         (Expr::Constant(constant))
     ));
 
@@ -304,128 +294,8 @@ mod tk_impl {
         use tokenizer::Lexer;
         use super::*;
 
-        fn assert_complete<'a>(tokens: &Vec<Tk<'a>>, result: &IResult<TkSlice<'a>,Ast<'a>>) {
-            match *result {
-                IResult::Error(_) => panic!("AST Error"),
-                IResult::Incomplete(_) => panic!("Ast Incomplete"),
-                IResult::Done(left, ref ast) if left.len() == 0 => {
-                    println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
-                    println!("Ast({:?}) \n{:?}", tokens.len(), ast);
-                },
-                IResult::Done(_, _) => panic!("Ast did not consume all tokens"),
-            }
-        }
-
-        //#[test]
-        fn sanity() {
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI=3.14159".as_bytes());
-            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-            match b {
-                &IResult::Done(_, ref tokens) => {
-                    let slice = TkSlice(tokens);
-
-                    match tk_sanity(slice) {
-                        IResult::Error(_) => panic!("AST Error"),
-                        IResult::Incomplete(_) => panic!("Ast Incomplete"),
-                        IResult::Done(left, ref ast) if left.len() == 0 => {
-                            println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
-                        },
-                        IResult::Done(_, _) => panic!("Ast did not consume all tokens"),
-                    }
-                },
-                _ => unreachable!()
-            }
-        }
-
-
-        //#[test]
-        fn sanity2() {
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI=3.14159".as_bytes());
-            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-            match b {
-                &IResult::Done(_, ref tokens) => {
-                    let slice = TkSlice(tokens);
-
-                    match tk_sanity2(slice) {
-                        IResult::Error(_) => panic!("AST Error"),
-                        IResult::Incomplete(_) => panic!("Ast Incomplete"),
-                        IResult::Done(left, ref ast) if left.len() == 0 => {
-                            println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
-                        },
-                        IResult::Done(_, _) => panic!("Ast did not consume all tokens"),
-                    }
-                },
-                _ => unreachable!()
-            }
-        }
-
-        //#[test]
-        fn sanity3() {
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI=3.14159".as_bytes());
-            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-            match b {
-                &IResult::Done(_, ref tokens) => {
-                    let slice = TkSlice(tokens);
-
-                    match tk_sanity3(slice) {
-                        IResult::Error(_) => panic!("AST Error"),
-                        IResult::Incomplete(_) => panic!("Ast Incomplete"),
-                        IResult::Done(left, ref ast) if left.len() == 0 => {
-                            println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
-                            println!("Ast({:?}) \n{:?}", tokens.len(), ast);
-                        },
-                        IResult::Done(_, _) => panic!("Ast did not consume all tokens"),
-                    }
-                },
-                _ => unreachable!()
-            }
-        }
-
-        #[test]
-        fn ast_simple_assign() {
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI   =   3.14159".as_bytes());
-            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-            match b {
-                &IResult::Done(_, ref tokens) => {
-                    let slice = TkSlice(tokens);
-                    let result = tkslice_to_ast(slice);
-                    assert_complete(&tokens, &result);
-                },
-                _ => unreachable!()
-            }
-        }
-
-        #[test]
-        fn ast_simple_augassign() {
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(r#"f **= 14"#.as_bytes());
-            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-            match b {
-                &IResult::Done(_, ref tokens) => {
-                    let slice = TkSlice(tokens);
-                    let result = tkslice_to_ast(slice);
-                    assert_complete(&tokens, &result);
-                },
-                _ => unreachable!()
-            }
-        }
-
-        #[test]
-        fn ast_multiple_stmts() {
-            let input =
-r#"
-f **= 14
-g = 0x00123
-"#;
-
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(r#"
-f **= 14
-g = 0x00123
-"#.as_bytes());
+        fn assert_parsable(input: &str) {
+            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(input.as_bytes());
             let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
 
             match b {
@@ -439,6 +309,58 @@ g = 0x00123
                 _ => unreachable!()
             }
         }
+
+        fn assert_complete<'a>(tokens: &Vec<Tk<'a>>, result: &IResult<TkSlice<'a>,Ast<'a>>) {
+            match *result {
+                IResult::Error(_) => panic!("AST Error"),
+                IResult::Incomplete(_) => {
+                    panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tokens);
+                },
+                IResult::Done(left, ref ast) if left.len() == 0 => {
+                    println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
+                },
+                IResult::Done(ref remaining, ref ast) => {
+                    panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
+                           tokens, serde_json::to_string_pretty(&remaining).unwrap(),
+                           serde_json::to_string_pretty(&ast).unwrap());
+                }
+
+
+            }
+        }
+
+
+        #[test]
+        fn ast_simple_assign() {
+            assert_parsable("PI = 3.14159");
+            assert_parsable("stuff = 'hello world!'");
+            assert_parsable("spaghetti = True")
+        }
+
+        #[test]
+        fn ast_simple_augassign() {
+            assert_parsable("f **= 14");
+        }
+
+        #[test]
+        fn ast_multiple_stmts() {
+            let input =
+r#"
+f **= 14
+g = 0x00123
+"#;
+            assert_parsable(input);
+        }
+
+        #[test]
+        fn ast_expr_binop_simple() {
+            assert_parsable("y + 1");
+            assert_parsable("1 + 1");
+            assert_parsable(r#" "string" * 0o472 "#);
+            // FIXME: Failing, lack of proper parse stacking or folding
+            // assert_parsable("y + 1 + 4");
+        }
+
 
     }
 

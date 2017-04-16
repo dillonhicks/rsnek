@@ -48,7 +48,7 @@ pub enum Stmt<'a> {
 //        stmt* body, expr* decorator_list, expr? returns}
     Assign { target: DynExpr<'a>, value: DynExpr<'a>},
     AugAssign { target: DynExpr<'a>, op: Op<'a>, value: DynExpr<'a>},
-    Expr {value: Expr<'a>},
+    Expr(Expr<'a>),
     Newline,
     Any(TkSlice<'a>)
 }
