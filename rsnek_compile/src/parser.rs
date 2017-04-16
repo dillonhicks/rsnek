@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::rc::Rc;
 
 use nom;
-use nom::{IResult, Slice, Compare, CompareResult};
+use nom::{IResult, Slice, Compare, CompareResult, FindToken};
 
 
 use tokenizer::Lexer;
@@ -41,8 +41,60 @@ impl Parser {
     }
 }
 
+/// helper macros to build a separator parser
+///
+/// ```
+/// # #[macro_use] extern crate nom;
+/// # use nom::IResult::Done;
+///
+/// named!(pub consume_spaces_and_tabs, drop_tokens!(&[Id::Space, Id::Tab]));
+/// # fn main() {}
+/// ```
+macro_rules! drop_tokens (
+  ($i:expr, $arr:expr) => (
+    {
+      use nom::{AsChar,InputLength,InputIter,Slice,FindToken};
+      if ($i).input_len() == 0 {
+        nom::IResult::Done(($i).slice(0..), ($i).slice(0..0))
+      } else {
+        match ($i).iter_indices().map(|(j, item)| {
+
+            let f = (j, item.find_token($arr));
+            f
+            })
+            .filter(|&(_, is_token)| !is_token)
+            .map(|(j, _)| j)
+            .next() {
+          ::std::option::Option::Some(index) => {
+            nom::IResult::Done(($i).slice(index..), ($i).slice(..index))
+          },
+          ::std::option::Option::None        => {
+            nom::IResult::Done(($i).slice(($i).input_len()..), ($i))
+          }
+        }
+      }
+    }
+  );
+);
+
+
+/// For intra statement and expression space filtering
+tk_named!(pub consume_space_and_tab_tokens, drop_tokens!(&[Id::Space, Id::Tab]));
+
+
+/// Ignores spaces and tabs for the scope of the parser
+macro_rules! ignore_spaces (
+  ($i:expr, $($args:tt)*) => (
+    {
+      sep!($i, consume_space_and_tab_tokens, $($args)*)
+    }
+  )
+);
+
+
 mod tk_impl {
     use super::*;
+
 
     tk_named!(tk_sanity <Vec<TkSlice<'a>>>, do_parse!(
         tks: many0!(take!(1)) >>
@@ -56,9 +108,32 @@ mod tk_impl {
 
     tk_named!(tk_sanity3 <Ast<'a>>, do_parse!(
     ast: alt!(
+            ignore_spaces!(tk_sanity) => { |r: Vec<TkSlice<'a>> | (Ast::Expression(Expr::Sanity(r))) } ) >>
+    (ast)
+    ));
+
+    //
+
+    tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
+    tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
+    tk_named!(token_equal <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
+
+    tk_named!(tk_simple_stmt_assign <Stmt<'a>>, do_parse!(
+        target: atom_name >>
+                token_equal >>
+        number: atom_number >>
+        (Stmt::Assign {
+            target: Box::new(Expr::Atom(target)),
+            value: Box::new(Expr::Atom(number))
+         })
+    ));
+
+
+    tk_named!(tkslice_to_ast <Ast<'a>>, do_parse!(
+    ast: alt!(
 //            module  => { |r: Mod<'a> | (Ast::Module(r))     } |
-//            stmt    => { |r: Stmt<'a>| (Ast::Statement(r))  } |
-            tk_sanity   => { |r: Vec<TkSlice<'a>> | (Ast::Expression(Expr::Sanity(r))) } ) >>
+            ignore_spaces!(tk_simple_stmt_assign) => { |r: Stmt<'a>| (Ast::Statement(r))  } |
+            tk_sanity             => { |r: Vec<TkSlice<'a>> | (Ast::Expression(Expr::Sanity(r))) } ) >>
     (ast)
     ));
 
@@ -76,7 +151,7 @@ mod tk_impl {
         use tokenizer::Lexer;
         use super::*;
 
-        #[test]
+        //#[test]
         fn sanity() {
             let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI=3.14159".as_bytes());
             let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
@@ -99,7 +174,7 @@ mod tk_impl {
         }
 
 
-        #[test]
+        //#[test]
         fn sanity2() {
             let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI=3.14159".as_bytes());
             let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
@@ -121,7 +196,7 @@ mod tk_impl {
             }
         }
 
-        #[test]
+        //#[test]
         fn sanity3() {
             let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI=3.14159".as_bytes());
             let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
@@ -131,6 +206,29 @@ mod tk_impl {
                     let slice = TkSlice(tokens);
 
                     match tk_sanity3(slice) {
+                        IResult::Error(_) => panic!("AST Error"),
+                        IResult::Incomplete(_) => panic!("Ast Incomplete"),
+                        IResult::Done(left, ref ast) if left.len() == 0 => {
+                            println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
+                            println!("Ast({:?}) \n{:?}", tokens.len(), ast);
+                        },
+                        IResult::Done(_, _) => panic!("Ast did not consume all tokens"),
+                    }
+                },
+                _ => unreachable!()
+            }
+        }
+
+        #[test]
+        fn ast_simple_assign() {
+            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize("PI   =   3.14159".as_bytes());
+            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
+
+            match b {
+                &IResult::Done(_, ref tokens) => {
+                    let slice = TkSlice(tokens);
+
+                    match tkslice_to_ast(slice) {
                         IResult::Error(_) => panic!("AST Error"),
                         IResult::Incomplete(_) => panic!("Ast Incomplete"),
                         IResult::Done(left, ref ast) if left.len() == 0 => {
@@ -244,7 +342,7 @@ mod tokenslice_impl {
     tokenslice_named!(expr_atom <Expr<'a>>, do_parse!(
     slice: alt!(tag_id!(&[Id::Name]) |
                 tag_id!(&[Id::Number]) )>>
-    (Expr::Atom(slice))
+    (Expr::Any(vec![slice]))
 ));
 
 

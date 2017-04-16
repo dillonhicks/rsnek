@@ -64,6 +64,7 @@
 //! );
 //!
 #[allow(unused_variables)]
+use nom;
 use slice::TkSlice;
 
 

@@ -22,8 +22,6 @@ impl<'a, T> InputLength for &'a[T] {
     }
 }
 
-
-
 macro_rules! redef_array_impls {
   ($i:ty, $($N:expr)+) => {
     $(

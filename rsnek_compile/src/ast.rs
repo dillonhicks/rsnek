@@ -53,8 +53,8 @@ pub enum Expr<'a> {
     Bool {logic: Logic, values: Vec<DynExpr<'a>>},
     BinOp {op: Op, left: DynExpr<'a>, right: DynExpr<'a>},
     Any(Vec<TokenSlice<'a>>),
-    Atom(TokenSlice<'a>),
-    Sanity(Vec<TkSlice<'a>>)
+    Sanity(Vec<TkSlice<'a>>),
+    Atom(TkSlice<'a>)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]

@@ -3,7 +3,7 @@ use std::str;
 use std::str::FromStr;
 use std;
 
-use nom::{IResult,digit,multispace, newline};
+use nom::{IResult,digit,multispace, newline,FindToken};
 use itertools::Itertools;
 use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
@@ -20,6 +20,16 @@ pub struct Tk<'a> {
     bytes: &'a [u8],
 
     tag: Tag
+}
+
+impl<'a, 'b> FindToken<&'b [Id]> for Tk<'a> {
+    fn find_token(&self, input: &[Id]) -> bool {
+        for &i in input.iter() {
+            if self.id() == i { return true }
+        }
+
+        false
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
