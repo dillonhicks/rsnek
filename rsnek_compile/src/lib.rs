@@ -6,15 +6,13 @@
 #![allow(private_in_public)]
 #![allow(non_snake_case)]
 #![allow(unused_assignments)]
-#![feature(plugin)]
-#![plugin(phf_macros)]
+
 
 #![feature(const_fn)]
 #![feature(associated_consts)]
 #![feature(custom_attribute)]
 
 extern crate num;
-extern crate phf;
 
 #[macro_use] extern crate serde_derive;
 extern crate serde;
@@ -24,8 +22,6 @@ extern crate serde_bytes;
 extern crate serde_pickle;
 extern crate bincode;
 
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate regex;
 #[macro_use] extern crate itertools;
 #[macro_use] extern crate nom;
 #[macro_use] extern crate rsnek_proc_macros;
@@ -35,7 +31,10 @@ pub mod tokenizer;
 pub mod parser;
 pub mod keyword;
 mod ast;
+mod slice;
+// for ast examples
 // mod blockbuf;
+extern crate bytes;
 
 pub use tokenizer as lexer;
 

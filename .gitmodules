@@ -10,3 +10,6 @@
 [submodule "pypy"]
 	path = pypy
 	url = git@github.com:mozillazg/pypy.git
+[submodule "deps/bytes-more"]
+	path = deps/bytes-more
+	url = https://github.com/carllerche/bytes-more.git

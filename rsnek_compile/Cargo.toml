@@ -3,6 +3,12 @@ name = "rsnek_compile"
 version = "0.0.1"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
+include = [
+  "Cargo.toml",
+  "src/*.rs",
+  "tests/*.rs"
+]
+
 [lib]
 name = "rsnek_compile"
 
@@ -13,8 +19,6 @@ const_fn = []
 rsnek_proc_macros =  { version = "*", path = "../rsnek_proc_macros" }
 num = "*"
 itertools = "*"
-regex = "0.2"
-lazy_static = "*"
 serde = "*"
 serde_yaml = "*"
 serde_json = "*"
@@ -22,8 +26,9 @@ serde_derive = "*"
 serde_bytes = "*"
 serde-pickle = "*"
 bincode = "*"
-phf = "*"
-phf_macros = "*"
+
+
+bytes = {git = "https://github.com/carllerche/bytes", rev = "ec7d7f27fe04ca220caafd6691b06690cca7b698" }
 
 [dependencies.nom]
 version = "^2.2"

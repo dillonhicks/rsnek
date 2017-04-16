@@ -50,48 +50,22 @@ named!(line <Tk>, do_parse!(
 
 
 named!(number <Tk>, do_parse!(
-    digits : switch!(peek!(take!(2)),
-        b"0x" => call!(sublex_hex)            |
-        b"0b" => call!(sublex_bin)            |
-        b"0o" => call!(sublex_octal)          |
-        _     => alt_complete!(
-                    call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
-                    call!(sublex_complex) => { |r: &'a[u8]| (&r[..], Tag::N(Num::Complex))  } |
-                    call!(digit)          => { |r: &'a[u8]| (&r[..], Tag::N(Num::Int))      } )
-                                              ) >>
-    (Tk::new(Id::Number, digits.0, digits.1))
+    tuple : alt_complete!(
+            call!(sublex_hex)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
+            call!(sublex_bin)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
+            call!(sublex_octal)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
+            call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
+            call!(sublex_complex) => { |r: &'a[u8]| (&r[..], Tag::N(Num::Complex))  } |
+            call!(digit)          => { |r: &'a[u8]| (&r[..], Tag::N(Num::Int))      } ) >>
+    (Tk::new(Id::Number, tuple.0, tuple.1))
 ));
 
 
-named!(sublex_hex <(&[u8], Tag)>, do_parse!(
-     num: recognize!(preceded!(tag!("0x"), hex_digit)) >>
-    ((num, Tag::N(Num::Hex)))
-));
-
-
-named!(sublex_bin <(&[u8], Tag)>, do_parse!(
-     num:  recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))) >>
-    ((num, Tag::N(Num::Binary)))
-));
-
-
-named!(sublex_octal <(&[u8], Tag)>, do_parse!(
-     num: recognize!(preceded!(tag!("0o"), hex_digit)) >>
-    ((num, Tag::N(Num::Octal)))
-));
-
-
-named!(sublex_float <&[u8]>, do_parse!(
-     num: recognize!(delimited!(digit, tag!("."), digit)) >>
-    (num)
-));
-
-
-named!(sublex_complex <&[u8]>, do_parse!(
-     num: recognize!(preceded!(digit, tag!("j"))) >>
-    (num)
-));
-
+named!(sublex_hex <&[u8]>, recognize!(preceded!(tag!("0x"), hex_digit)));
+named!(sublex_bin <&[u8]>, recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))));
+named!(sublex_octal <&[u8]>, recognize!(preceded!(tag!("0o"), hex_digit)));
+named!(sublex_float <&[u8]>, recognize!(delimited!(digit, tag!("."), digit)));
+named!(sublex_complex <&[u8]>, recognize!(preceded!(digit, tag!("j"))));
 
 named!(endline <Tk>, do_parse!(
     nl: tag!("\n") >>
@@ -100,8 +74,10 @@ named!(endline <Tk>, do_parse!(
 
 
 named!(space <Tk>, do_parse!(
-    sp: tag!(" ") >>
-    (Tk::new(Id::Space, sp, Tag::W(Ws::Space)))
+    tk: alt!(
+        tag!(" ")  => { |r: &'a[u8]| (Tk::new(Id::Space, r, Tag::None)) } |
+        tag!("\t") => { |r: &'a[u8]| (Tk::new(Id::Tab, r, Tag::None))   } ) >>
+    (tk)
 ));
 
 
@@ -112,8 +88,8 @@ named!(error_marker <Tk>, do_parse!(
 
 named!(identifier <Tk>, do_parse!(
     name: call!(ident) >>
-    (match is_keyword(name) {
-            Some(tag) => Tk::new(Id::Name, name, tag),
+    (match as_keyword(name) {
+            Some(tag) => tag,
             None => Tk::new(Id::Name, name, Tag::Ident)
         }
     )
@@ -159,181 +135,177 @@ pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
 
 
 named!(string <Tk>, do_parse!(
-    result: call!(sublex_string) >>
-    (Tk::new(Id::String, result.0, result.1))
-));
-
-
-named!(sublex_string <(&[u8], Tag)>, do_parse!(
-    result: switch!(peek!(take!(1)),
+    token: switch!(peek!(take!(1)),
         b"#" =>  call!(sublex_comment_string)       |
-        b"'" =>  call!(sublex_plain_squote_string)  |
-        b"\"" => call!(sublex_plain_dquote_string)  |
+        b"'" =>  call!(sublex_string)               |
+        b"\"" => call!(sublex_string)               |
         b"r" =>  call!(sublex_rprefix_string)       |
         b"b" =>  call!(sublex_bprefix_string)       |
         b"f" =>  call!(sublex_fprefix_string)       ) >>
-    (result)
-));
-
-named!(sublex_comment_string <(&[u8], Tag)>, do_parse!(
-    result: preceded!(take!(1), is_not!("\n")) >>
-    ((result, Tag::S(Str::Comment)))
-));
-
-named!(sublex_rprefix_string <(&[u8], Tag)>, do_parse!(
-    result: sublex_prefixed_string >>
-    ((result, Tag::S(Str::Raw)))
-));
-
-named!(sublex_bprefix_string <(&[u8], Tag)>, do_parse!(
-    result: sublex_prefixed_string >>
-    ((result, Tag::S(Str::Bytes)))
-));
-
-named!(sublex_fprefix_string <(&[u8], Tag)>, do_parse!(
-    result: sublex_prefixed_string >>
-    ((result, Tag::S(Str::Format)))
-));
-
-named!(sublex_plain_squote_string <(&[u8], Tag)>, do_parse!(
-    result: sublex_squote_string >>
-    ((result, Tag::S(Str::Unicode)))
-));
-
-named!(sublex_plain_dquote_string <(&[u8], Tag)>, do_parse!(
-    result: sublex_dquote_string >>
-    ((result, Tag::S(Str::Unicode)))
+    (token)
 ));
 
 
-named!(sublex_prefixed_string <&[u8]>,  do_parse!(
+named!(sublex_comment_string <Tk>, do_parse!(
+    bytes: preceded!(take!(1), is_not!("\n")) >>
+    (Tk::new(Id::Comment, bytes, Tag::None))
+));
+
+named!(sublex_rprefix_string <Tk>, do_parse!(
+    bytes: sublex_prefixed_string_u8 >>
+    (Tk::new(Id::RawString, bytes, Tag::None))
+));
+
+named!(sublex_bprefix_string <Tk>, do_parse!(
+    bytes: sublex_prefixed_string_u8 >>
+    (Tk::new(Id::ByteString, bytes, Tag::None))
+));
+
+named!(sublex_fprefix_string <Tk>, do_parse!(
+    bytes: sublex_prefixed_string_u8 >>
+    (Tk::new(Id::FormatString, bytes, Tag::None))
+));
+
+named!(sublex_prefixed_string_u8 <&[u8]>,  do_parse!(
     result: preceded!(
         take!(1),
-        call!(sublex_string)) >>
-        (result.0)
+        call!(sublex_string_u8)) >>
+        (result)
 ));
 
-named!(sublex_squote_string <&[u8]>, do_parse!(
-    result: switch!(peek!(take!(3)),
+
+named!(sublex_squote_string_u8 <&[u8]>, do_parse!(
+    bytes: switch!(peek!(take!(3)),
         b"'''" => recognize!(delimited!(take!(3), take_until!("'''"), take!(3))) |
         _ => recognize!(delimited!(tag!("'"), take_until!("'"), tag!("'")))
     ) >>
-    (result)
+    (bytes)
 ));
 
 
-named!(sublex_dquote_string <&[u8]>, do_parse!(
-    result: switch!(peek!(take!(3)),
+named!(sublex_dquote_string_u8 <&[u8]>, do_parse!(
+    bytes: switch!(peek!(take!(3)),
         b"\"\"\"" => recognize!(delimited!(take!(3), take_until!("\"\"\""), take!(3))) |
         _ => recognize!(delimited!(tag!("\""), take_until!("\""), tag!("\"")))
     ) >>
-    (result)
+    (bytes)
 ));
 
+named!(sublex_string_u8 <&[u8]>, do_parse!(
+    bytes: switch!(peek!(take!(1)),
+        b"'" =>  call!(sublex_squote_string_u8)  |
+        b"\"" => call!(sublex_dquote_string_u8)  ) >>
+    (bytes)
+));
+
+named!(sublex_string <Tk>, do_parse!(
+    bytes: sublex_string_u8 >>
+    (Tk::new(Id::String, bytes, Tag::None))
+));
 
 named!(symbol <Tk>, do_parse!(
-    result: alt!(
-        tag!("(")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftParen))       } |
-        tag!("[")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftBracket))     } |
-        tag!("{")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftBrace))       } |
-        tag!("}")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightBrace))      } |
-        tag!("]")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightBracket))    } |
-        tag!(")")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightParen))      } |
-        tag!(",")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Comma))           } |
-        tag!(";")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Semicolon))       } |
-        tag!(":")   => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Colon))           } |
-        tag!("\\")  => { |r: &'a[u8]| (&r[..], Tag::M(Sym::Backslash))       }) >>
-    (Tk::new(Id::Symbol, result.0, result.1))
+    token: alt!(
+        tag!("(")   => { |r: &'a[u8]| (Tk::new(Id::LeftParen, r, Tag::None))       } |
+        tag!("[")   => { |r: &'a[u8]| (Tk::new(Id::LeftBracket, r, Tag::None))     } |
+        tag!("{")   => { |r: &'a[u8]| (Tk::new(Id::LeftBrace, r, Tag::None))       } |
+        tag!("}")   => { |r: &'a[u8]| (Tk::new(Id::RightBrace, r, Tag::None))      } |
+        tag!("]")   => { |r: &'a[u8]| (Tk::new(Id::RightBracket, r, Tag::None))    } |
+        tag!(")")   => { |r: &'a[u8]| (Tk::new(Id::RightParen, r, Tag::None))      } |
+        tag!(",")   => { |r: &'a[u8]| (Tk::new(Id::Comma, r, Tag::None))           } |
+        tag!(";")   => { |r: &'a[u8]| (Tk::new(Id::Semicolon, r, Tag::None))       } |
+        tag!(":")   => { |r: &'a[u8]| (Tk::new(Id::Colon, r, Tag::None))           } |
+        tag!("\\")  => { |r: &'a[u8]| (Tk::new(Id::Backslash, r, Tag::None))       }) >>
+    (token)
 ));
 
 
 named!(operator <Tk>, do_parse!(
-    result : alt_complete!(
+    token : alt_complete!(
             // r: &'a [u8] are the bytes captured by the tag on the LHS.
             // that is mapped with the closure to a tuple of the slice of the
             // result mapped to its appropriate tag.
-            tag!(r"<<=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::LeftShiftEqual))    } |
-            tag!(r">>=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::RightShiftEqual))   } |
-            tag!(r"**=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleStarEqual))   } |
-            tag!(r"//=") => { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleSlashEqual))  } |
-            tag!(r"...") => { |r: &'a[u8]| (&r[..], Tag::O(Op::Ellipsis))          } |
-            tag!(r"==") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleEqual))       } |
-            tag!(r"!=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::NotEqual))          } |
-            tag!(r"<>") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::NotEqual))          } |
-            tag!(r"<=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::LessOrEqual))       } |
-            tag!(r"<<") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::LeftShift))         } |
-            tag!(r">=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::GreaterOrEqual))    } |
-            tag!(r">>") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::RightShift))        } |
-            tag!(r"+=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::PlusEqual))         } |
-            tag!(r"-=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::MinusEqual))        } |
-            tag!(r"->") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::RightArrow))        } |
-            tag!(r"**") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleStar))        } |
-            tag!(r"*=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::StarEqual))         } |
-            tag!(r"//") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::DoubleSlash))       } |
-            tag!(r"/=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::SlashEqual))        } |
-            tag!(r"|=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::PipeEqual))         } |
-            tag!(r"%=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::PercentEqual))      } |
-            tag!(r"&=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::AmpEqual))          } |
-            tag!(r"^=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::CaretEqual))        } |
-            tag!(r"@=") =>  { |r: &'a[u8]| (&r[..], Tag::O(Op::AtEqual))           } |
-            tag!(r"+") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Plus))              } |
-            tag!(r"-") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Minus))             } |
-            tag!(r"*") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Star))              } |
-            tag!(r"/") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Slash))             } |
-            tag!(r"|") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Pipe))              } |
-            tag!(r"&") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Amp))               } |
-            tag!(r"<") =>   { |r: &'a[u8]| (&r[..], Tag::M(Sym::LeftAngle))        } |
-            tag!(r">") =>   { |r: &'a[u8]| (&r[..], Tag::M(Sym::RightAngle))        } |
-            tag!(r"=") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Equal))             } |
-            tag!(r"%") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Percent))           } |
-            tag!(r"^") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Caret))             } |
-            tag!(r"~") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Tilde))             } |
-            tag!(r"@") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::At))                } |
-            tag!(r".") =>   { |r: &'a[u8]| (&r[..], Tag::O(Op::Dot))               }) >>
-       (Tk::new(Id::Operator, result.0, result.1))
+            tag!(r"<<=") => { |r: &'a[u8]| (Tk::new(Id::LeftShiftEqual, r, Tag::None))    } |
+            tag!(r">>=") => { |r: &'a[u8]| (Tk::new(Id::RightShiftEqual, r, Tag::None))   } |
+            tag!(r"**=") => { |r: &'a[u8]| (Tk::new(Id::DoubleStarEqual, r, Tag::None))   } |
+            tag!(r"//=") => { |r: &'a[u8]| (Tk::new(Id::DoubleSlashEqual, r, Tag::None))  } |
+            tag!(r"...") => { |r: &'a[u8]| (Tk::new(Id::Ellipsis, r, Tag::None))          } |
+            tag!(r"==") =>  { |r: &'a[u8]| (Tk::new(Id::DoubleEqual, r, Tag::None))       } |
+            tag!(r"!=") =>  { |r: &'a[u8]| (Tk::new(Id::NotEqual, r, Tag::None))          } |
+            tag!(r"<>") =>  { |r: &'a[u8]| (Tk::new(Id::NotEqual, r, Tag::None))          } |
+            tag!(r"<=") =>  { |r: &'a[u8]| (Tk::new(Id::LessOrEqual, r, Tag::None))       } |
+            tag!(r"<<") =>  { |r: &'a[u8]| (Tk::new(Id::LeftShift, r, Tag::None))         } |
+            tag!(r">=") =>  { |r: &'a[u8]| (Tk::new(Id::GreaterOrEqual, r, Tag::None))    } |
+            tag!(r">>") =>  { |r: &'a[u8]| (Tk::new(Id::RightShift, r, Tag::None))        } |
+            tag!(r"+=") =>  { |r: &'a[u8]| (Tk::new(Id::PlusEqual, r, Tag::None))         } |
+            tag!(r"-=") =>  { |r: &'a[u8]| (Tk::new(Id::MinusEqual, r, Tag::None))        } |
+            tag!(r"->") =>  { |r: &'a[u8]| (Tk::new(Id::RightArrow, r, Tag::None))        } |
+            tag!(r"**") =>  { |r: &'a[u8]| (Tk::new(Id::DoubleStar, r, Tag::None))        } |
+            tag!(r"*=") =>  { |r: &'a[u8]| (Tk::new(Id::StarEqual, r, Tag::None))         } |
+            tag!(r"//") =>  { |r: &'a[u8]| (Tk::new(Id::DoubleSlash, r, Tag::None))       } |
+            tag!(r"/=") =>  { |r: &'a[u8]| (Tk::new(Id::SlashEqual, r, Tag::None))        } |
+            tag!(r"|=") =>  { |r: &'a[u8]| (Tk::new(Id::PipeEqual, r, Tag::None))         } |
+            tag!(r"%=") =>  { |r: &'a[u8]| (Tk::new(Id::PercentEqual, r, Tag::None))      } |
+            tag!(r"&=") =>  { |r: &'a[u8]| (Tk::new(Id::AmpEqual, r, Tag::None))          } |
+            tag!(r"^=") =>  { |r: &'a[u8]| (Tk::new(Id::CaretEqual, r, Tag::None))        } |
+            tag!(r"@=") =>  { |r: &'a[u8]| (Tk::new(Id::AtEqual, r, Tag::None))           } |
+            tag!(r"+") =>   { |r: &'a[u8]| (Tk::new(Id::Plus, r, Tag::None))              } |
+            tag!(r"-") =>   { |r: &'a[u8]| (Tk::new(Id::Minus, r, Tag::None))             } |
+            tag!(r"*") =>   { |r: &'a[u8]| (Tk::new(Id::Star, r, Tag::None))              } |
+            tag!(r"/") =>   { |r: &'a[u8]| (Tk::new(Id::Slash, r, Tag::None))             } |
+            tag!(r"|") =>   { |r: &'a[u8]| (Tk::new(Id::Pipe, r, Tag::None))              } |
+            tag!(r"&") =>   { |r: &'a[u8]| (Tk::new(Id::Amp, r, Tag::None))               } |
+            tag!(r"<") =>   { |r: &'a[u8]| (Tk::new(Id::LeftAngle, r, Tag::None))         } |
+            tag!(r">") =>   { |r: &'a[u8]| (Tk::new(Id::RightAngle, r, Tag::None))        } |
+            tag!(r"=") =>   { |r: &'a[u8]| (Tk::new(Id::Equal, r, Tag::None))             } |
+            tag!(r"%") =>   { |r: &'a[u8]| (Tk::new(Id::Percent, r, Tag::None))           } |
+            tag!(r"^") =>   { |r: &'a[u8]| (Tk::new(Id::Caret, r, Tag::None))             } |
+            tag!(r"~") =>   { |r: &'a[u8]| (Tk::new(Id::Tilde, r, Tag::None))             } |
+            tag!(r"@") =>   { |r: &'a[u8]| (Tk::new(Id::At, r, Tag::None))                } |
+            tag!(r".") =>   { |r: &'a[u8]| (Tk::new(Id::Dot, r, Tag::None))               }) >>
+       (token)
 ));
 
 
-fn is_keyword(bytes: &[u8]) -> Option<Tag> {
+fn as_keyword(bytes: &[u8]) -> Option<Tk> {
     let string = match str::from_utf8(bytes) {
         Ok(string) => string,
         err => return None
     };
-    
+
     match string {
-        "False"     => Some(Tag::K(Kw::False)),
-        "None"      => Some(Tag::K(Kw::None)),
-        "True"      => Some(Tag::K(Kw::True)),
-        "and"       => Some(Tag::K(Kw::And)),
-        "as"        => Some(Tag::K(Kw::As)),
-        "assert"    => Some(Tag::K(Kw::Assert)),
-        "break"     => Some(Tag::K(Kw::Break)),
-        "class"     => Some(Tag::K(Kw::Class)),
-        "continue"  => Some(Tag::K(Kw::Continue)),
-        "def"       => Some(Tag::K(Kw::Def)),
-        "del"       => Some(Tag::K(Kw::Del)),
-        "elif"      => Some(Tag::K(Kw::Elif)),
-        "else"      => Some(Tag::K(Kw::Else)),
-        "except"    => Some(Tag::K(Kw::Except)),
-        "finally"   => Some(Tag::K(Kw::Finally)),
-        "for"       => Some(Tag::K(Kw::For)),
-        "from"      => Some(Tag::K(Kw::From)),
-        "global"    => Some(Tag::K(Kw::Global)),
-        "if"        => Some(Tag::K(Kw::If)),
-        "import"    => Some(Tag::K(Kw::Import)),
-        "in"        => Some(Tag::K(Kw::In)),
-        "is"        => Some(Tag::K(Kw::Is)),
-        "lambda"    => Some(Tag::K(Kw::Lambda)),
-        "nonlocal"  => Some(Tag::K(Kw::Nonlocal)),
-        "not"       => Some(Tag::K(Kw::Not)),
-        "or"        => Some(Tag::K(Kw::Or)),
-        "pass"      => Some(Tag::K(Kw::Pass)),
-        "raise"     => Some(Tag::K(Kw::Raise)),
-        "return"    => Some(Tag::K(Kw::Return)),
-        "try"       => Some(Tag::K(Kw::Try)),
-        "while"     => Some(Tag::K(Kw::While)),
-        "with"      => Some(Tag::K(Kw::With)),
-        "yield"     => Some(Tag::K(Kw::Yield)),
+        "False"     => Some(Tk::new(Id::False, bytes, Tag::None)),
+        "None"      => Some(Tk::new(Id::None, bytes, Tag::None)),
+        "True"      => Some(Tk::new(Id::True, bytes, Tag::None)),
+        "and"       => Some(Tk::new(Id::And, bytes, Tag::None)),
+        "as"        => Some(Tk::new(Id::As, bytes, Tag::None)),
+        "assert"    => Some(Tk::new(Id::Assert, bytes, Tag::None)),
+        "break"     => Some(Tk::new(Id::Break, bytes, Tag::None)),
+        "class"     => Some(Tk::new(Id::Class, bytes, Tag::None)),
+        "continue"  => Some(Tk::new(Id::Continue, bytes, Tag::None)),
+        "def"       => Some(Tk::new(Id::Def, bytes, Tag::None)),
+        "del"       => Some(Tk::new(Id::Del, bytes, Tag::None)),
+        "elif"      => Some(Tk::new(Id::Elif, bytes, Tag::None)),
+        "else"      => Some(Tk::new(Id::Else, bytes, Tag::None)),
+        "except"    => Some(Tk::new(Id::Except, bytes, Tag::None)),
+        "finally"   => Some(Tk::new(Id::Finally, bytes, Tag::None)),
+        "for"       => Some(Tk::new(Id::For, bytes, Tag::None)),
+        "from"      => Some(Tk::new(Id::From, bytes, Tag::None)),
+        "global"    => Some(Tk::new(Id::Global, bytes, Tag::None)),
+        "if"        => Some(Tk::new(Id::If, bytes, Tag::None)),
+        "import"    => Some(Tk::new(Id::Import, bytes, Tag::None)),
+        "in"        => Some(Tk::new(Id::In, bytes, Tag::None)),
+        "is"        => Some(Tk::new(Id::Is, bytes, Tag::None)),
+        "lambda"    => Some(Tk::new(Id::Lambda, bytes, Tag::None)),
+        "nonlocal"  => Some(Tk::new(Id::Nonlocal, bytes, Tag::None)),
+        "not"       => Some(Tk::new(Id::Not, bytes, Tag::None)),
+        "or"        => Some(Tk::new(Id::Or, bytes, Tag::None)),
+        "pass"      => Some(Tk::new(Id::Pass, bytes, Tag::None)),
+        "raise"     => Some(Tk::new(Id::Raise, bytes, Tag::None)),
+        "return"    => Some(Tk::new(Id::Return, bytes, Tag::None)),
+        "try"       => Some(Tk::new(Id::Try, bytes, Tag::None)),
+        "while"     => Some(Tk::new(Id::While, bytes, Tag::None)),
+        "with"      => Some(Tk::new(Id::With, bytes, Tag::None)),
+        "yield"     => Some(Tk::new(Id::Yield, bytes, Tag::None)),
         _           => None
     }
 }
@@ -397,15 +369,15 @@ mod _api{
 
         // just "abc"
         let value = tokenize_bytes(r#"  "abc"  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         // Double quoted strings containing single quotes are ok
         let value = tokenize_bytes(r#"  "Dillon's String!"  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         // Single quoted strings containing double quotes are ok
         let value = tokenize_bytes(r#"  'Thing"s and stuff'   "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         // Triple double quoted multiline
         let value = tokenize_bytes(
@@ -415,7 +387,7 @@ Line 2
 Line 3
 Line 4"""
 "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         // Triple double quoted multiline
         let value = tokenize_bytes(
@@ -424,28 +396,28 @@ beta
 delta
 gamma'''
 "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         // Quoted keywords should still be strings
         let value = tokenize_bytes(r#"  'def'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         // Unicode
         let value = tokenize_bytes(r#"  "שּׂθשּׂઊ" "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Unicode));
+        assert_token(&value, Id::String, Tag::None);
 
         let value = tokenize_bytes(r#"  r'things'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Raw));
+        assert_token(&value, Id::RawString, Tag::None);
 
         let value = tokenize_bytes(r#"  b'\x94\x54'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Bytes));
+        assert_token(&value, Id::ByteString, Tag::None);
 
         let value = tokenize_bytes(r#"  f'{number}'  "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Format));
+        assert_token(&value, Id::FormatString, Tag::None);
 
         let value = tokenize_bytes(
             r#"  # Never compromise, even in the face of armageddon "#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::String, Tag::S(Str::Comment));
+        assert_token(&value, Id::Comment, Tag::None);
     }
 
 
@@ -468,10 +440,11 @@ gamma'''
 
     #[test]
     fn module() {
-        let input = r#"x += 24354353
+        let input = [r#"x += 24354353
   y = 3
   Q -> c
   x = [1, 2, 3, 4, 5];
+  \t
   global KLINGON
   \
 θθθ
@@ -489,10 +462,9 @@ x += 24354353
   x = [1, 2, 3, 4, 5];
   global KLINGON
   \
+  "#.as_bytes(), "\t".as_bytes()].join(&(' ' as u8)).into_boxed_slice();
 
-  "#.as_bytes();
-
-        let value = tokenize_bytes(input).unwrap();
+        let value = tokenize_bytes(&(*input)).unwrap();
         pprint_tokens(&value.1);
 
 //        println!("{:?}", value.1);
