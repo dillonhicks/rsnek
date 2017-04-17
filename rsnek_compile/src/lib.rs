@@ -13,6 +13,7 @@
 #![feature(custom_attribute)]
 
 extern crate num;
+extern crate time;
 
 #[macro_use] extern crate serde_derive;
 extern crate serde;
@@ -24,22 +25,23 @@ extern crate bincode;
 
 #[macro_use] extern crate itertools;
 #[macro_use] extern crate nom;
-#[macro_use] extern crate rsnek_proc_macros;
 
 mod token;
 mod slice;
 #[macro_use] mod macros;
 mod traits;
 
-pub mod tokenizer;
-pub mod parser;
+mod lexer;
+mod parser;
 mod ast;
+mod compiler;
 
-// for ast examples
-// mod blockbuf;
-extern crate bytes;
+pub mod util;
+pub mod fmt;
+pub use lexer::{Lexer, LexResult};
+pub use parser::{Parser, ParseResult};
+pub use compiler::Compiler;
 
-pub use tokenizer as lexer;
 
 #[cfg(test)]
 mod tests {

@@ -6,12 +6,13 @@ use std::rc::Rc;
 use nom;
 use nom::{IResult, Slice, Compare, CompareResult, FindToken};
 
-
-use tokenizer::Lexer;
+use lexer::Lexer;
 use token::{Id, Tk, pprint_tokens};
 use slice::{TkSlice};
 use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
 use traits::redefs_nom::InputLength;
+
+pub type ParseResult<'a> = IResult<TkSlice<'a>, Ast<'a>>;
 
 pub struct Parser {}
 
@@ -19,6 +20,10 @@ impl Parser {
 
     pub fn new() -> Self {
         Parser {}
+    }
+
+    pub fn parse_tokens<'a>(&self, tokens: &'a [Tk<'a>]) -> ParseResult<'a> {
+        self::parser_internal::parse_tokens(tokens)
     }
 
     pub fn parse_file(&self, filename: &str) {
@@ -41,82 +46,90 @@ impl Parser {
     }
 }
 
-/// helper macros to build a separator parser
-///
-/// ```
-/// # #[macro_use] extern crate nom;
-/// # use nom::IResult::Done;
-///
-/// named!(pub consume_spaces_and_tabs, drop_tokens!(&[Id::Space, Id::Tab]));
-/// # fn main() {}
-/// ```
-macro_rules! drop_tokens (
-  ($i:expr, $arr:expr) => (
-    {
-      use nom::{AsChar,InputLength,InputIter,Slice,FindToken};
-      if ($i).input_len() == 0 {
-        nom::IResult::Done(($i).slice(0..), ($i).slice(0..0))
-      } else {
-        match ($i).iter_indices().map(|(j, item)| {
-
-            let f = (j, item.find_token($arr));
-            f
-            })
-            .filter(|&(_, is_token)| !is_token)
-            .map(|(j, _)| j)
-            .next() {
-          ::std::option::Option::Some(index) => {
-            nom::IResult::Done(($i).slice(index..), ($i).slice(..index))
-          },
-          ::std::option::Option::None        => {
-            nom::IResult::Done(($i).slice(($i).input_len()..), ($i))
-          }
-        }
-      }
-    }
-  );
-);
-
-/// matches one of the provided tokens
-macro_rules! tk_is_one_of (
-  ($i:expr, $inp: expr) => (
-    {
-      use nom::Slice;
-      use nom::AsChar;
-      use nom::FindToken;
-      use nom::InputIter;
-
-      match ($i).iter_elements().next().map(|c| {
-        c.find_token($inp)
-      }) {
-        None        => nom::IResult::Incomplete::<_, _>(nom::Needed::Size(1)),
-        Some(false) => nom::IResult::Error(error_position!(nom::ErrorKind::OneOf, $i)),
-        //the unwrap should be safe here
-        Some(true)  => nom::IResult::Done($i.slice(1..), $i.iter_elements().next().unwrap())
-      }
-    }
-  );
-);
-
-
-/// For intra statement and expression space filtering
-tk_named!(pub consume_space_and_tab_tokens, drop_tokens!(&[Id::Space, Id::Tab]));
-
-
-/// Ignores spaces and tabs for the scope of the parser
-macro_rules! ignore_spaces (
-  ($i:expr, $($args:tt)*) => (
-    {
-      sep!($i, consume_space_and_tab_tokens, $($args)*)
-    }
-  )
-);
-
-
-mod tk_impl {
+mod parser_internal {
     use super::*;
     use nom::ErrorKind;
 
+    /// Public wrapper to the macro generated tkslice_to_ast which will take a slice of
+    /// tokens, turn those into a TkSlice, and parse that into an AST.
+    #[inline(always)]
+    pub fn parse_tokens<'a>(tokens: &'a [Tk<'a>]) -> ParseResult<'a> {
+        tkslice_to_ast(TkSlice(tokens))
+    }
+    
+    /// helper macros to build a separator parser
+    ///
+    /// ```
+    /// # #[macro_use] extern crate nom;
+    /// # use nom::IResult::Done;
+    ///
+    /// named!(pub consume_spaces_and_tabs, drop_tokens!(&[Id::Space, Id::Tab]));
+    /// # fn main() {}
+    /// ```
+    macro_rules! drop_tokens (
+      ($i:expr, $arr:expr) => (
+        {
+          use nom::{AsChar,InputLength,InputIter,Slice,FindToken};
+          if ($i).input_len() == 0 {
+            nom::IResult::Done(($i).slice(0..), ($i).slice(0..0))
+          } else {
+            match ($i).iter_indices().map(|(j, item)| {
+    
+                let f = (j, item.find_token($arr));
+                f
+                })
+                .filter(|&(_, is_token)| !is_token)
+                .map(|(j, _)| j)
+                .next() {
+              ::std::option::Option::Some(index) => {
+                nom::IResult::Done(($i).slice(index..), ($i).slice(..index))
+              },
+              ::std::option::Option::None        => {
+                nom::IResult::Done(($i).slice(($i).input_len()..), ($i))
+              }
+            }
+          }
+        }
+      );
+    );
+
+    /// matches one of the provided tokens
+    macro_rules! tk_is_one_of (
+      ($i:expr, $inp: expr) => (
+        {
+          use nom::Slice;
+          use nom::AsChar;
+          use nom::FindToken;
+          use nom::InputIter;
+    
+          match ($i).iter_elements().next().map(|c| {
+            c.find_token($inp)
+          }) {
+            None        => nom::IResult::Incomplete::<_, _>(nom::Needed::Size(1)),
+            Some(false) => nom::IResult::Error(error_position!(nom::ErrorKind::OneOf, $i)),
+            //the unwrap should be safe here
+            Some(true)  => nom::IResult::Done($i.slice(1..), $i.iter_elements().next().unwrap())
+          }
+        }
+      );
+    );
+    
+
+/// For intra statement and expression space filtering
+    tk_named!(pub consume_space_and_tab_tokens, drop_tokens!(&[Id::Space, Id::Tab]));
+    
+    
+    /// Ignores spaces and tabs for the scope of the parser
+    macro_rules! ignore_spaces (
+      ($i:expr, $($args:tt)*) => (
+        {
+          sep!($i, consume_space_and_tab_tokens, $($args)*)
+        }
+      )
+    );
+    
+        
+        
     // Specific Tokens and Groups of Tokens
     tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
     tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
@@ -136,6 +149,7 @@ mod tk_impl {
             tag!(&[Id::Plus])     |
             tag!(&[Id::Minus])    |
             tag!(&[Id::Star])     |
+            tag!(&[Id::DoubleStar])     |
             tag!(&[Id::Slash])    |
             tag!(&[Id::Pipe])     |
             tag!(&[Id::Percent])  |
@@ -192,7 +206,8 @@ mod tk_impl {
         statement: alt!(
             sub_stmt_assign      |
             sub_stmt_augassign   |
-            sub_stmt_expr        ) >>
+            sub_stmt_expr        |
+            sub_stmt_next_line   ) >>
         (statement)
     ));
 
@@ -201,9 +216,9 @@ mod tk_impl {
          // TODO: Allow subparsing of target and number as actual expr
         target: atom_name           >>
                 assign_token        >>
-         value: alt!(sub_expr_nameconstant | sub_expr_constant) >>
+         value: start_expr >>
         (Stmt::Assign {
-            target: Box::new(Expr::Constant(target)),
+            target: Box::new(Expr::Constant(target.as_token())),
             value: Box::new(value)
          })
     ));
@@ -215,7 +230,7 @@ mod tk_impl {
             op: augassign_token >>
         number: atom_number     >>
         (Stmt::AugAssign {
-            op: Op(op),
+            op: Op(op.as_token()),
             target: Box::new(Expr::Atom(Atom::Name(target))),
             value: Box::new(Expr::Atom(Atom::Number(number)))
          })
@@ -238,23 +253,24 @@ mod tk_impl {
 
     /// START(expr)
     tk_named!(start_expr <Expr<'a>>, do_parse!(
-        expression: alt!(
+        expression: alt_complete!(
             sub_expr_binop        |
             sub_expr_nameconstant |
-            sub_expr_constant     |
-            sub_expr_ended
+            sub_expr_constant
+            //sub_expr_ended
                                   ) >>
         (expression)
     ));
 
     /// 5.   | Assign(expr* targets, expr value)
     tk_named!(sub_expr_binop <Expr<'a>>, do_parse!(
-        // TODO: Generalize to allow recursion on start_expr not just the constant expressions
+        // TODO: Generalize to allow recursion into the L and R parts of a tree
+        // on start_expr not just the constant expressions
         lhs: sub_expr_constant  >>
          op: binop_token        >>
         rhs: sub_expr_constant >>
         (Expr::BinOp {
-            op: Op(op),
+            op: Op(op.as_token()),
             left: Box::new(lhs),
             right: Box::new(rhs)
          })
@@ -270,7 +286,7 @@ mod tk_impl {
 
     tk_named!(sub_expr_constant <Expr<'a>>, do_parse!(
         constant: constant_token >>
-        (Expr::Constant(constant))
+        (Expr::Constant(constant.as_token()))
     ));
 
     const LOOKAHEAD_ERROR: u32 = 1024;
@@ -281,87 +297,89 @@ mod tk_impl {
         (Expr::End)
     ));
 
+}
 
-    #[cfg(test)]
-    mod tests {
+#[cfg(test)]
+mod tests {
 
-        use std::borrow::Borrow;
-        use std::rc::Rc;
+    use std::borrow::Borrow;
+    use std::rc::Rc;
 
-        use nom::IResult;
-        use serde_json;
+    use nom::IResult;
+    use serde_json;
 
-        use tokenizer::Lexer;
-        use super::*;
+    use lexer::Lexer;
+    use super::*;
 
-        fn assert_parsable(input: &str) {
-            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(input.as_bytes());
-            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
+    fn assert_parsable(input: &str) {
+        let parser = Parser::new();
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(input.as_bytes());
+        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
 
-            match b {
-                &IResult::Done(_, ref tokens) => {
-                    println!("{}", input);
-                    pprint_tokens(tokens);
-                    let slice = TkSlice(tokens);
-                    let result = tkslice_to_ast(slice);
-                    assert_complete(&tokens, &result);
-                },
-                _ => unreachable!()
+        match b {
+            &IResult::Done(_, ref tokens) => {
+                println!("{}", input);
+                pprint_tokens(tokens);
+                let result = parser.parse_tokens(tokens);
+                assert_complete(&tokens, &result);
+            },
+            _ => unreachable!()
+        }
+    }
+
+    fn assert_complete<'a>(tokens: &Vec<Tk<'a>>, result: &IResult<TkSlice<'a>,Ast<'a>>) {
+        match *result {
+            IResult::Error(_) => panic!("AST Error"),
+            IResult::Incomplete(_) => {
+                panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tokens);
+            },
+            IResult::Done(left, ref ast) if left.len() == 0 => {
+                println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
+            },
+            IResult::Done(ref remaining, ref ast) => {
+                panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
+                       tokens, serde_json::to_string_pretty(&remaining).unwrap(),
+                       serde_json::to_string_pretty(&ast).unwrap());
             }
         }
+    }
 
-        fn assert_complete<'a>(tokens: &Vec<Tk<'a>>, result: &IResult<TkSlice<'a>,Ast<'a>>) {
-            match *result {
-                IResult::Error(_) => panic!("AST Error"),
-                IResult::Incomplete(_) => {
-                    panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tokens);
-                },
-                IResult::Done(left, ref ast) if left.len() == 0 => {
-                    println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
-                },
-                IResult::Done(ref remaining, ref ast) => {
-                    panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
-                           tokens, serde_json::to_string_pretty(&remaining).unwrap(),
-                           serde_json::to_string_pretty(&ast).unwrap());
-                }
+    #[test]
+    fn stmt_assign_constant_expr() {
+        assert_parsable("PI = 3.14159");
+        assert_parsable("stuff = 'hello world!'");
+        assert_parsable("spaghetti = True")
+    }
 
+    #[test]
+    fn stmt_assign_binop_expr() {
+        assert_parsable("z = x + y");
+    }
 
-            }
-        }
+    #[test]
+    fn ast_simple_augassign() {
+        assert_parsable("f **= 14");
+    }
 
-
-        #[test]
-        fn ast_simple_assign() {
-            assert_parsable("PI = 3.14159");
-            assert_parsable("stuff = 'hello world!'");
-            assert_parsable("spaghetti = True")
-        }
-
-        #[test]
-        fn ast_simple_augassign() {
-            assert_parsable("f **= 14");
-        }
-
-        #[test]
-        fn ast_multiple_stmts() {
-            let input =
-r#"
+    #[test]
+    fn ast_multiple_stmts() {
+        let input =
+            r#"
 f **= 14
 g = 0x00123
+fun = beer + jetski
 "#;
-            assert_parsable(input);
-        }
-
-        #[test]
-        fn ast_expr_binop_simple() {
-            assert_parsable("y + 1");
-            assert_parsable("1 + 1");
-            assert_parsable(r#" "string" * 0o472 "#);
-            // FIXME: Failing, lack of proper parse stacking or folding
-            // assert_parsable("y + 1 + 4");
-        }
-
-
+        assert_parsable(input);
     }
+
+    #[test]
+    fn ast_expr_binop_simple() {
+        assert_parsable("y + 1");
+        assert_parsable("1 + 1");
+        assert_parsable(r#" "string" * 0o472 "#);
+        // FIXME: Failing, lack of proper parse stacking or folding
+        // assert_parsable("y + 1 + 4");
+    }
+
 
 }

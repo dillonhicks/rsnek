@@ -27,6 +27,13 @@ impl<'a> TkSlice<'a> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    /// Convert the slice back into a token assuming it is a
+    /// slice of exactly len 1.
+    pub fn as_token(&self) -> Tk<'a> {
+        assert_eq!(self.len(), 1);
+        self.0[0].clone()
+    }
 }
 
 impl<'a> InputLength for TkSlice<'a> {

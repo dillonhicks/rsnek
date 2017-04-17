@@ -2,19 +2,23 @@ use std;
 use std::str;
 use std::str::FromStr;
 use std::rc::Rc;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display};
 use std::collections::VecDeque;
 use std::ops::{Range,RangeFrom,RangeTo};
 
 use nom::{IResult, hex_digit, oct_digit, digit, multispace, newline, Needed};
 use nom::{AsChar, InputLength, InputIter, Compare, CompareResult, Slice, ErrorKind};
 
+use time::{self, Duration};
 use num;
 use itertools::Itertools;
 use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
 
 use token::{Id, Tk, pprint_tokens, New, Tag, Str, Num, Dir, Op, Kw, Sym, Ws};
+use ::util::Micros;
+
+pub type LexResult<'a> = IResult<&'a [u8], Vec<Tk<'a>>>;
 
 
 pub struct Lexer;
@@ -22,9 +26,14 @@ pub struct Lexer;
 
 impl Lexer {
     /// Convert a slice of bytes into a r
-    pub fn tokenize(bytes: &[u8]) -> Rc<IResult<&[u8], Vec<Tk>>> {
+    pub fn tokenize(bytes: &[u8]) -> Rc<LexResult> {
         let result = tokenize_bytes(bytes);
         Rc::new(result)
+    }
+
+    /// Convert a slice of bytes into a r
+    pub fn tokenize2<'a>(bytes: &'a [u8]) -> LexResult<'a>{
+        tokenize_bytes(bytes)
     }
 }
 

@@ -15,8 +15,9 @@ name = "rsnek_compile"
 [features]
 const_fn = []
 
+
 [dependencies]
-rsnek_proc_macros =  { version = "*", path = "../rsnek_proc_macros" }
+time = "*"
 num = "*"
 itertools = "*"
 serde = "*"
@@ -27,9 +28,6 @@ serde_bytes = "*"
 serde-pickle = "*"
 bincode = "*"
 
-
-bytes = {git = "https://github.com/carllerche/bytes", rev = "ec7d7f27fe04ca220caafd6691b06690cca7b698" }
-
 [dependencies.nom]
 version = "^2.2"
-features = ["regexp", "regexp_macros", "verbose-errors"]
+features = ["verbose-errors"]

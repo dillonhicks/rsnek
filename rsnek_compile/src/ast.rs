@@ -8,7 +8,7 @@ use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
 
 
-use tokenizer::Lexer;
+use lexer::Lexer;
 use token::{Id, Tk, pprint_tokens};
 use slice::{TkSlice};
 
@@ -61,7 +61,7 @@ pub enum Expr<'a> {
     Sanity(Vec<TkSlice<'a>>),
     Atom(Atom<'a>),
     NameConstant(TkSlice<'a>),
-    Constant(TkSlice<'a>),
+    Constant(Tk<'a>),
     End,
 //| Num(object n) -- a number as a PyObject.
 //| Str(string s) -- need to specify raw, unicode, etc?
@@ -82,7 +82,7 @@ pub enum Atom<'a> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub struct Op<'a>(pub TkSlice<'a>);
+pub struct Op<'a>(pub Tk<'a>);
 
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
