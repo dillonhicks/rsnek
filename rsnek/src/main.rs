@@ -15,37 +15,21 @@ use rsnek_runtime::runtime::{NoneProvider, StringProvider, IntegerProvider, Runt
 use rsnek_compile::{Compiler, fmt};
 use rsnek_compile::compiler::{Instr, Value, OpCode};
 
+mod strings;
 
-const BANNER: &'static str = r#"
-                        `-._
-                 `:.`---.__         `-._
-                   `:.     `--.         `.
-                     \.        `.         `.
-             (,,(,    \.         `.   ____,-`.,
-          (,'     `/   \.   ,--.___`.'
-      ,  ,'  ,--.  `,   \.;'         `
-       `{D, {    \  :    \;
-         V,,'    /  /    //
-         j;;    /  ,' ,-//.    ,---.      ,
-         \;'   /  ,' /  _  \  /  _  \   ,'/
-               \   `'  / \  `'  / \  `.' /
-                `.___,'   `.__,'   `.__,'
-
-rsnek v0.2.1
-rustc 1.18.0-nightly (7627e3d31 2017-04-16)"#;
-
-const PROMPT: &'static str = "§> ";
 
 
 #[inline(always)]
 fn print_banner() {
-    println!("{}", BANNER);
+    println!("{}", strings::BANNER);
+    println!("{}", strings::VERSION);
+    println!("{}", strings::BUILD);
 }
 
 
 #[inline(always)]
 fn print_prompt() {
-    print!("\n{}", PROMPT);
+    print!("\n{}", strings::PROMPT);
     io::stdout().flush().unwrap();
 }
 

@@ -2,7 +2,11 @@
 name = "rsnek"
 version = "0.0.1"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
+build = "build.rs"
 
 [dependencies]
 rsnek_runtime =  { version = "*", path = "../rsnek_runtime" }
 rsnek_compile = { version = "*", path = "../rsnek_compile" }
+
+[build-dependencies]
+rustc_version = "*"
