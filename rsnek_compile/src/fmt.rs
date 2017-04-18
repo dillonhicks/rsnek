@@ -1,13 +1,24 @@
+use encoding::{Encoding, DecoderTrap};
+use encoding::all::ASCII;
+
 use serde::Serialize;
 use serde_json;
-
+use bincode;
 
 use ast::Ast;
 use token::{Tk, Id};
 
-pub fn pretty<'a, T: Serialize>(input: &'a T) -> String {
+pub fn json<'a, T: Serialize>(input: &'a T) -> String {
     match serde_json::to_string_pretty(&input) {
         Ok(string) => string,
+        Err(err) => format!("{:?}", err)
+    }
+}
+
+pub fn bincode<'a, T: Serialize>(input: &'a T) -> String {
+
+    match bincode::serialize(&input, bincode::Infinite) {
+        Ok(bytes) => ASCII.decode(&bytes, DecoderTrap::Strict).unwrap(),
         Err(err) => format!("{:?}", err)
     }
 }
@@ -35,5 +46,5 @@ pub fn tokens(tokens: &[Tk], filter_spaces: bool) -> String {
 
 
 pub fn ast<'a>(input: &Ast<'a>) -> String {
-    pretty(&input)
+    json(&input)
 }

@@ -17,6 +17,7 @@ const_fn = []
 
 
 [dependencies]
+encoding = "*"
 time = "*"
 num = "*"
 itertools = "*"

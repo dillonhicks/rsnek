@@ -1,14 +1,47 @@
+use std;
 use std::ops::Deref;
 
 use serde::Serialize;
+use nom::IResult;
 
 use ::fmt;
 use ::ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
-use ::token::{Tk, Id};
+use ::token::{Tk, Id, Tag, Num};
+use ::lexer::Lexer;
+use ::parser::Parser;
 
-pub struct Compiler;
 
-pub type Instr = String;
+#[derive(Debug, Clone, Serialize)]
+pub struct Instr(OpCode, Option<Value>);
+
+impl Instr {
+    pub fn tuple(&self) -> (OpCode, Option<Value>) {
+        (self.0.clone(), self.1.clone())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum Value {
+    Str(String),
+    Int(i64),
+}
+
+
+impl Value {
+
+    pub fn from<'a>(tk: &'a Tk<'a>) -> Self {
+        let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
+        let content = parsed.as_str();
+
+        match (tk.id(), tk.tag()) {
+            (Id::Name, _) |
+            (Id::String, _) => Value::Str(content.to_string()),
+            (Id::Number, Tag::N(Num::Int)) => Value::Int(content.parse::<i64>().unwrap()),
+            _ => unimplemented!()
+        }
+    }
+}
+
 
 #[derive(Debug, Copy, Clone, Serialize)]
 pub enum Context {
@@ -17,40 +50,49 @@ pub enum Context {
 }
 
 
+#[derive(Debug, Copy, Clone, Serialize)]
+pub struct Compiler{
+    lexer: Lexer,
+    parser: Parser
+}
+
+
 impl Compiler {
     pub fn new() -> Self {
-        Compiler {}
+        Compiler {
+            lexer: Lexer::new(),
+            parser: Parser::new(),
+        }
+
     }
 
     fn compile_expr_constant<'a>(&self, ctx: Context, tk: &'a Tk<'a>) -> Box<[Instr]> {
-        let (code, value) = match ctx {
+        let instr = match ctx {
             Context::Store => {
-                (OpCode::StoreName, String::from_utf8(tk.bytes().to_vec()).unwrap())
+                Instr(OpCode::StoreName, Some(Value::from(tk)))
             },
             Context::Load => {
                 let code = match tk.id() {
                     Id::Name => OpCode::LoadName,
                     _ => OpCode::LoadConst
                 };
-                (code, String::from_utf8(tk.bytes().to_vec()).unwrap())
+                Instr(code, Some(Value::from(tk)))
             }
         };
 
-        let instr = format!("{:>10} {:<16}", format!("{:?}", code), value);
         vec![instr].into_boxed_slice()
     }
 
     fn compile_expr_binop<'a>(&self, op: &'a Op, left: &'a Expr<'a>, right: &'a Expr<'a>) -> Box<[Instr]> {
-        println!("CompileBinOp({:?} {:?} {:?})", op, left, right);
+        // println!("CompileBinOp({:?} {:?} {:?})", op, left, right);
         let mut instructions: Vec<Instr> = vec![];
-
 
         match left.deref() {
             &Expr::Constant(ref tk) => {
                 let mut ins = self.compile_expr_constant(Context::Load, tk);
                 instructions.append(&mut ins.to_vec());
             },
-            _ => unreachable!()
+            _ => unimplemented!()
         };
 
         match right.deref() {
@@ -58,12 +100,12 @@ impl Compiler {
                 let mut ins = self.compile_expr_constant(Context::Load, tk);
                 instructions.append(&mut ins.to_vec());
             },
-            _ => unreachable!()
+            _ => unimplemented!()
         };
 
-        let mut code = match op.0.id() {
-            Id::Plus => format!("{:>10}", format!("{:?}", OpCode::BinaryAdd)),
-            _ => unreachable!()
+        let code = match op.0.id() {
+            Id::Plus => Instr(OpCode::BinaryAdd, None),
+            _ => unimplemented!()
         };
         instructions.push(code);
 
@@ -71,7 +113,7 @@ impl Compiler {
     }
 
     fn compile_stmt_assign<'a>(&self, target: &'a Expr<'a>, value: &'a Expr<'a>) -> Box<[Instr]> {
-        println!("CompileAssignment(target={:?}, value={:?})", target, value);
+        // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
 
         match value.deref() {
@@ -106,14 +148,14 @@ impl Compiler {
                 instructions.append(&mut ins.to_vec());
             },
             Stmt::Newline => {},
-            _ => println!("(noop)")
+            _ => {} //println!("(noop)")
         }
 
         instructions.into_boxed_slice()
     }
 
     pub fn compile_module(&self, module: &Module) -> Box<[Instr]> {
-        println!("CompileModule({:?})", module);
+        //println!("CompileModule({:?})", module);
 
         let mut instructions: Vec<Instr> = vec![];
 
@@ -130,8 +172,8 @@ impl Compiler {
         instructions.into_boxed_slice()
     }
 
-    pub fn compile(&self, ast: &Ast) -> Box<[Instr]>{
-        println!("CompileAST({:?})", ast);
+    pub fn compile_ast(&self, ast: &Ast) -> Box<[Instr]>{
+        //println!("CompileAST({:?})", ast);
         let mut instructions: Vec<Instr> = vec![];
 
         match *ast {
@@ -142,135 +184,144 @@ impl Compiler {
             _ => {}
         }
 
+        instructions.push(Instr(OpCode::ReturnValue, None));
         instructions.into_boxed_slice()
     }
 
+    pub fn compile_str(&self, input: &str) -> Box<[Instr]> {
+        let tokens = match self.lexer.tokenize2(input.as_bytes()) {
+            IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),
+            _ => panic!("Issue parsing input")
+        };
+
+        let ins = match self.parser.parse_tokens(&tokens) {
+            IResult::Done(left, ref ast) if left.len() == 0 => {
+                self.compile_ast(&ast)
+            },
+            result => panic!("\n\nERROR: {:#?}\n\n", result)
+        };
+
+        ins
+    }
 }
 
-#[derive(Debug, Hash, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Hash, Clone, Copy, Eq, PartialEq, Serialize)]
 #[repr(usize)]
 pub enum OpCode {
-    PopTop,
-    RotTwo,
-    RotThree,
-    DupTop,
-    DupTopTwo,
-    Nop,
-    UnaryPositive,
-    UnaryNegative,
-    UnaryNot,
-    UnaryInvert,
-    BinaryMatrixMultiply,
-    InplaceMatrixMultiply,
-    BinaryPower,
-    BinaryMultiply,
-    BinaryModulo,
-    BinaryAdd,
-    BinarySubtract,
-    BinarySubscr,
-    BinaryFloorDivide,
-    BinaryTrueDivide,
-    InplaceFloorDivide,
-    InplaceTrueDivide,
-    GetAiter,
-    GetAnext,
-    BeforeAsyncWith,
-    InplaceAdd,
-    InplaceSubtract,
-    InplaceMultiply,
-    InplaceModulo,
-    StoreSubscr,
-    DeleteSubscr,
-    BinaryLshift,
-    BinaryRshift,
-    BinaryAnd,
-    BinaryXor,
-    BinaryOr,
-    InplacePower,
-    GetIter,
-    GetYieldFromIter,
-    PrintExpr,
-    LoadBuildClass,
-    YieldFrom,
-    GetAwaitable,
-    InplaceLshift,
-    InplaceRshift,
-    InplaceAnd,
-    InplaceXor,
-    InplaceOr,
-    BreakLoop,
-    WithCleanupStart,
-    WithCleanupFinish,
-    ReturnValue,
-    ImportStar,
-    SetupAnnotations,
-    YieldValue,
-    PopBlock,
-    EndFinally,
-    PopExcept,
-    HaveArgument,
-    StoreName,
-    DeleteName,
-    UnpackSequence,
-    ForIter,
-    UnpackEx,
-    StoreAttr,
-    DeleteAttr,
-    StoreGlobal,
-    DeleteGlobal,
-    LoadConst,
-    LoadName,
-    BuildTuple,
-    BuildList,
-    BuildSet,
-    BuildMap,
-    LoadAttr,
-    CompareOp,
-    ImportName,
-    ImportFrom,
-    JumpForward,
-    JumpIfFalseOrPop,
-    JumpIfTrueOrPop,
-    JumpAbsolute,
-    PopJumpIfFalse,
-    PopJumpIfTrue,
-    LoadGlobal,
-    ContinueLoop,
-    SetupLoop,
-    SetupExcept,
-    SetupFinally,
-    LoadFast,
-    StoreFast,
-    DeleteFast,
-    StoreAnnotation,
-    RaiseVarargs,
-    CallFunction,
-    MakeFunction,
-    BuildSlice,
-    LoadClosure,
-    LoadDeref,
-    StoreDeref,
-    DeleteDeref,
-    CallFunctionKw,
-    CallFunctionEx,
-    SetupWith,
-    ExtendedArg,
-    ListAppend,
-    SetAdd,
-    MapAdd,
-    LoadClassderef,
-    BuildListUnpack,
-    BuildMapUnpack,
-    BuildMapUnpackWithCall,
-    BuildTupleUnpack,
-    BuildSetUnpack,
-    SetupAsyncWith,
-    FormatValue,
-    BuildConstKeyMap,
-    BuildString,
-    BuildTupleUnpackWithCall,
-    LoadMethod,
-    CallMethod
+    PopTop                   =   1,
+    RotTwo                   =   2,
+    RotThree                 =   3,
+    DupTop                   =   4,
+    DupTopTwo                =   5,
+    Nop                      =   9,
+    UnaryPositive            =  10,
+    UnaryNegative            =  11,
+    UnaryNot                 =  12,
+    UnaryInvert              =  15,
+    BinaryMatrixMultiply     =  16,
+    InplaceMatrixMultiply    =  17,
+    BinaryPower              =  19,
+    BinaryMultiply           =  20,
+    BinaryModulo             =  22,
+    BinaryAdd                =  23,
+    BinarySubtract           =  24,
+    BinarySubscr             =  25,
+    BinaryFloorDivide        =  26,
+    BinaryTrueDivide         =  27,
+    InplaceFloorDivide       =  28,
+    InplaceTrueDivide        =  29,
+    GetAiter                 =  50,
+    GetAnext                 =  51,
+    BeforeAsyncWith          =  52,
+    InplaceAdd               =  55,
+    InplaceSubtract          =  56,
+    InplaceMultiply          =  57,
+    InplaceModulo            =  59,
+    StoreSubscr              =  60,
+    DeleteSubscr             =  61,
+    BinaryLshift             =  62,
+    BinaryRshift             =  63,
+    BinaryAnd                =  64,
+    BinaryXor                =  65,
+    BinaryOr                 =  66,
+    InplacePower             =  67,
+    GetIter                  =  68,
+    GetYieldFromIter         =  69,
+    PrintExpr                =  70,
+    LoadBuildClass           =  71,
+    YieldFrom                =  72,
+    GetAwaitable             =  73,
+    InplaceLshift            =  75,
+    InplaceRshift            =  76,
+    InplaceAnd               =  77,
+    InplaceXor               =  78,
+    InplaceOr                =  79,
+    BreakLoop                =  80,
+    WithCleanupStart         =  81,
+    WithCleanupFinish        =  82,
+    ReturnValue              =  83,
+    ImportStar               =  84,
+    YieldValue               =  86,
+    PopBlock                 =  87,
+    EndFinally               =  88,
+    PopExcept                =  89,
+    StoreName                =  90,
+    DeleteName               =  91,
+    UnpackSequence           =  92,
+    ForIter                  =  93,
+    UnpackEx                 =  94,
+    StoreAttr                =  95,
+    DeleteAttr               =  96,
+    StoreGlobal              =  97,
+    DeleteGlobal             =  98,
+    LoadConst                = 100,
+    LoadName                 = 101,
+    BuildTuple               = 102,
+    BuildList                = 103,
+    BuildSet                 = 104,
+    BuildMap                 = 105,
+    LoadAttr                 = 106,
+    CompareOp                = 107,
+    ImportName               = 108,
+    ImportFrom               = 109,
+    JumpForward              = 110,
+    JumpIfFalseOrPop         = 111,
+    JumpIfTrueOrPop          = 112,
+    JumpAbsolute             = 113,
+    PopJumpIfFalse           = 114,
+    PopJumpIfTrue            = 115,
+    LoadGlobal               = 116,
+    ContinueLoop             = 119,
+    SetupLoop                = 120,
+    SetupExcept              = 121,
+    SetupFinally             = 122,
+    LoadFast                 = 124,
+    StoreFast                = 125,
+    DeleteFast               = 126,
+    RaiseVarargs             = 130,
+    CallFunction             = 131,
+    MakeFunction             = 132,
+    BuildSlice               = 133,
+    MakeClosure              = 134,
+    LoadClosure              = 135,
+    LoadDeref                = 136,
+    StoreDeref               = 137,
+    DeleteDeref              = 138,
+    CallFunctionVar          = 140,
+    CallFunctionKw           = 141,
+    CallFunctionVarKw        = 142,
+    SetupWith                = 143,
+    ExtendedArg              = 144,
+    ListAppend               = 145,
+    SetAdd                   = 146,
+    MapAdd                   = 147,
+    LoadClassderef           = 148,
+    BuildListUnpack          = 149,
+    BuildMapUnpack           = 150,
+    BuildMapUnpackWithCall   = 151,
+    BuildTupleUnpack         = 152,
+    BuildSetUnpack           = 153,
+    SetupAsyncWith           = 154
 }
 
 #[cfg(test)]
@@ -283,9 +334,10 @@ mod tests {
         println!("<Input>\n\n{}\n\n</Input>", text);
 
         let compiler = Compiler::new();
+        let lexer = Lexer::new();
         let parser = Parser::new();
 
-        let tokens = match Lexer::tokenize2(text.as_bytes()) {
+        let tokens = match lexer.tokenize2(text.as_bytes()) {
             IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),
             _ => unreachable!()
         };
@@ -296,12 +348,13 @@ mod tests {
         match parser.parse_tokens(&tokens) {
             IResult::Done(left, ref ast) if left.len() == 0 => {
                 println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::ast(&ast));
-                let ins = compiler.compile(&ast);
+                let ins = compiler.compile_ast(&ast);
 
                 println!();
                 println!("Compiled Instructions ({}):", ins.len());
                 println!("--------------------------------");
-                println!("{}", ins.join("\n"));
+                println!("{:#?}", ins);
+                println!("{}", fmt::bincode(&ins))
             },
             result => panic!("\n\nERROR: {:#?}\n\n", result)
         }
@@ -312,12 +365,17 @@ mod tests {
        // assert_compile("abcd = 1234");
         assert_compile(
 r#"
-x = 15
-y = 45j
+x = 123
+y = 45
 z = x + y
 "#)
     }
 
+    #[test]
+    fn compile_2() {
+        let compiler = Compiler::new();
+        println!("{}", fmt::json(&compiler.compile_str("x = x + 41")));
+    }
 }
 /*
 POP_TOP,

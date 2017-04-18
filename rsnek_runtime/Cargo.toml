@@ -6,9 +6,13 @@ authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 [lib]
 name = "rsnek_runtime"
 
+[features]
+fn_traits = []
+
 [dependencies.fringe]
 version = "1.2.1"
 
 [dependencies]
 num = "*"
 itertools = "*"
+rsnek_compile = {path = "../rsnek_compile" }

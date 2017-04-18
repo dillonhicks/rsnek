@@ -14,7 +14,9 @@ use traits::redefs_nom::InputLength;
 
 pub type ParseResult<'a> = IResult<TkSlice<'a>, Ast<'a>>;
 
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Parser {}
+
 
 impl Parser {
 
@@ -35,7 +37,7 @@ impl Parser {
         }
 
         let bytes = contents.as_slice();
-        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(bytes);
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(bytes);
         let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
         match b {
             &IResult::Done(_, ref tokens) => {
@@ -280,7 +282,7 @@ mod parser_internal {
         constant: alt_complete!(
             tag!(&[Id::True])     |
             tag!(&[Id::False])    |
-            tag!(&[Id::False])    ) >>
+            tag!(&[Id::None])     ) >>
         (Expr::NameConstant(constant))
     ));
 
@@ -313,7 +315,7 @@ mod tests {
 
     fn assert_parsable(input: &str) {
         let parser = Parser::new();
-        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::tokenize(input.as_bytes());
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
         let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
 
         match b {

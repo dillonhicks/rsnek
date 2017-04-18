@@ -20,19 +20,23 @@ use ::util::Micros;
 
 pub type LexResult<'a> = IResult<&'a [u8], Vec<Tk<'a>>>;
 
-
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Lexer;
 
 
 impl Lexer {
+    pub fn new() -> Self {
+        Lexer {}
+    }
+
     /// Convert a slice of bytes into a r
-    pub fn tokenize(bytes: &[u8]) -> Rc<LexResult> {
+    pub fn tokenize<'a>(&self, bytes: &'a [u8]) -> Rc<LexResult<'a>> {
         let result = tokenize_bytes(bytes);
         Rc::new(result)
     }
 
     /// Convert a slice of bytes into a r
-    pub fn tokenize2<'a>(bytes: &'a [u8]) -> LexResult<'a>{
+    pub fn tokenize2<'a>(&self, bytes: &'a [u8]) -> LexResult<'a>{
         tokenize_bytes(bytes)
     }
 }
@@ -94,6 +98,11 @@ named!(error_marker <Tk>, do_parse!(
     content: take!(1) >>
     (Tk::new(Id::ErrorMarker, content, Tag::None))
 ));
+
+
+//pub fn parse_identifier(input: &str) -> IResult {
+//    identifier(&input.as_bytes())
+//}
 
 named!(identifier <Tk>, do_parse!(
     name: call!(ident) >>
@@ -324,10 +333,13 @@ fn as_keyword(bytes: &[u8]) -> Option<Tk> {
 #[cfg(test)]
 mod _api{
     use super::*;
+    use ::fmt;
+
     use serde_yaml;
     use serde_json;
     use serde_pickle;
     use bincode;
+
 
     fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
         pprint_tokens(&value.1);
@@ -477,7 +489,7 @@ x += 24354353
         pprint_tokens(&value.1);
 
 //        println!("{:?}", value.1);
-        let json = serde_json::to_string_pretty(&value.1).unwrap();
+        let json = fmt::json(&value.1);
 //        println!("{}", unsafe {String::from_utf8_unchecked(serde_pickle::to_vec(&value.1, true).unwrap())});
         let i = bincode::serialize(&value.1, bincode::Infinite).unwrap();
         println!("bincode size: {}", i.len());

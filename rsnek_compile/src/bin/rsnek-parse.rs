@@ -89,7 +89,7 @@ fn repl_loop() {
         match parser.parse_tokens(&tokens) {
             IResult::Done(left, ref ast) if left.len() == 0 => {
                 println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::ast(&ast));
-                compiler.compile(&ast);
+                compiler.compile_ast(&ast);
             },
             result => println!("\n\nERROR: {:#?}\n\n", result)
         }

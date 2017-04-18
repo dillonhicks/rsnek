@@ -19,7 +19,8 @@ pub enum ErrorType {
     Value,
     Key,
     ModuleNotFound,
-    StopIteration
+    StopIteration,
+    Name
 }
 
 
@@ -58,6 +59,10 @@ impl Error {
 
     pub fn stop_iteration() -> Error {
         return Error(ErrorType::StopIteration, "".to_string());
+    }
+
+    pub fn name(name: &str) -> Error {
+         Error(ErrorType::Name, format!("name '{}' is not defined", name))
     }
 }
 

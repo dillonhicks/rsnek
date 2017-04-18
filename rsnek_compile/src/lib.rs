@@ -13,6 +13,7 @@
 #![feature(custom_attribute)]
 
 extern crate num;
+extern crate encoding;
 extern crate time;
 
 #[macro_use] extern crate serde_derive;
@@ -34,7 +35,7 @@ mod traits;
 mod lexer;
 mod parser;
 mod ast;
-mod compiler;
+pub mod compiler;
 
 pub mod util;
 pub mod fmt;

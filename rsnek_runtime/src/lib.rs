@@ -3,6 +3,8 @@
 #![feature(const_fn)]
 #![feature(exclusive_range_pattern)]
 #![feature(test)]
+#![feature(fn_traits)]
+
 /// # Notes and TODOS
 ///
 ///  - TODO: Consider having objects implement an `pub fn alloc(self, rt: Runtime) -> ObjectRef`
@@ -20,15 +22,17 @@ extern crate test;
 extern crate num;
 extern crate itertools;
 extern crate fringe;
+extern crate rsnek_compile;
 
 #[macro_use]
 mod macros;
 
-mod typedef;
-mod result;
-mod error;
-mod object;
+
 mod builtin;
 mod traits;
 
+pub mod object;
+pub mod result;
+pub mod error;
+pub mod typedef;
 pub mod runtime;

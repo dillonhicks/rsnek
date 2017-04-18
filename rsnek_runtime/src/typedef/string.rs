@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use result::{NativeResult, RuntimeResult};
-use runtime::{Runtime, IntegerProvider, BooleanProvider};
+use runtime::{Runtime, IntegerProvider, BooleanProvider, StringProvider};
 
 use object::{self, RtValue};
 use object::selfref::{self, SelfRef};
@@ -100,7 +100,22 @@ impl method::Hashed for PyString {
         Ok(s.finish())
     }
 }
-impl method::StringCast for PyString {}
+impl method::StringCast for PyString {
+
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        // TODO: Refs back to self in the object holder type - this should be just a
+        // return self.ref.clone().
+        match self.native_str() {
+            Ok(string) => Ok(rt.str(string)),
+            Err(err) => unreachable!(),
+        }
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        Ok(self.value.0.clone())
+    }
+
+}
 impl method::BytesCast for PyString {}
 impl method::StringFormat for PyString {}
 impl method::StringRepresentation for PyString {}
