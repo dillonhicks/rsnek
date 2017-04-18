@@ -1,7 +1,7 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 mod interpreter;
 
-pub use self::interpreter::{ThreadModel, Interpreter};
+pub use self::interpreter::{ThreadModel, Interpreter, Logging, Config};
 
 
 use std;
@@ -19,6 +19,7 @@ pub use traits::{
     ModuleFinder,
     BooleanProvider,
     IntegerProvider,
+    FloatProvider,
     IteratorProvider,
     StringProvider,
     BytesProvider,
@@ -41,6 +42,7 @@ use typedef::objectref::ObjectRef;
 use typedef::none::{PyNoneType, NONE};
 use typedef::boolean::PyBooleanType;
 use typedef::integer::PyIntegerType;
+use typedef::float::PyFloatType;
 use typedef::iterator::{PyIteratorType, IteratorValue};
 use typedef::string::PyStringType;
 use typedef::bytes::PyBytesType;
@@ -64,6 +66,7 @@ pub struct BuiltinTypes {
     none: PyNoneType,
     bool: PyBooleanType,
     int: PyIntegerType,
+    float: PyFloatType,
     iterator: PyIteratorType,
     dict: PyDictType,
     string: PyStringType,
@@ -120,6 +123,7 @@ impl Runtime {
             none: PyNoneType::init_type(),
             bool: PyBooleanType::init_type(),
             int: PyIntegerType::init_type(),
+            float: PyFloatType::init_type(),
             iterator: PyIteratorType::init_type(),
             dict: PyDictType::init_type(),
             string: PyStringType::init_type(),
@@ -263,7 +267,25 @@ impl IntegerProvider<i64> for Runtime {
 }
 
 //
+// Float
 //
+impl FloatProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn float(&self, value: native::None) -> ObjectRef {
+        self.0.types.float.new(&self, 0.0)
+    }
+}
+
+
+impl FloatProvider<native::Float> for Runtime {
+    fn float(&self, value: native::Float) -> ObjectRef {
+        self.0.types.float.new(&self, value)
+    }
+}
+
+
+//
+// Iterators
 //
 
 impl IteratorProvider<native::None> for Runtime {

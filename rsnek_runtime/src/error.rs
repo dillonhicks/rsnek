@@ -29,11 +29,11 @@ impl Error {
         return Error(ErrorType::Runtime, message.to_string());
     }
 
-    pub fn typerr(message: &'static str) -> Error {
+    pub fn typerr(message: &str) -> Error {
         return Error(ErrorType::Type, message.to_string());
     }
 
-    pub fn overflow(message: &'static str) -> Error {
+    pub fn overflow(message: &str) -> Error {
         return Error(ErrorType::Overflow, message.to_string());
     }
 

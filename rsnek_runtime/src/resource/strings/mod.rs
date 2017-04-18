@@ -1,0 +1,9 @@
+pub const PROGRAM: &'static str = include_str!("program.in");
+pub const AUTHORS: &'static str = include_str!("authors.in");
+pub const LICENSE: &'static str = include_str!("license.in");
+pub const ABOUT:   &'static str = include_str!("about.in");
+pub const BANNER:  &'static str = include_str!("banner.in");
+pub const BANNER2: &'static str = include_str!("banner2.in");
+pub const VERSION: &'static str = include_str!("version.in");
+pub const BUILD:   &'static str = include_str!("build.cfg.in");
+pub const PROMPT:  &'static str = include_str!("prompt.in");

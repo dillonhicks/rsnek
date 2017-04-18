@@ -9,10 +9,12 @@ name = "rsnek_runtime"
 [features]
 fn_traits = []
 
-[dependencies.fringe]
-version = "1.2.1"
-
 [dependencies]
 num = "*"
 itertools = "*"
+fringe = "*"
+
+serde = "*"
+serde_derive = "*"
+
 rsnek_compile = {path = "../rsnek_compile" }

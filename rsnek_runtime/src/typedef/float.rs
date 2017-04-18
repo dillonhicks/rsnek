@@ -1,3 +1,317 @@
+use std;
+use std::fmt;
+use std::borrow::Borrow;
+use std::ops::Deref;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+use num::Zero;
+use num::ToPrimitive;
+
+use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
+use error::Error;
+use result::{NativeResult, RuntimeResult};
+use object::{self, RtValue, method, typing};
+use object::selfref::{self, SelfRef};
+
+use typedef::native;
+use typedef::objectref::ObjectRef;
+use typedef::builtin::Builtin;
+
+
+#[inline(always)]
+pub fn format_float(float: &native::Float) -> native::String {
+    format!("{:?}", *float)
+
+}
+
+// To make int == float not such a pain in the ass
+struct IntWrapper<'a>(pub &'a native::Integer);
+struct FloatWrapper<'a>(pub &'a native::Float);
+
+impl<'a, 'b> std::cmp::PartialEq<IntWrapper<'b>> for FloatWrapper<'a> {
+    fn eq(&self, other: &IntWrapper) -> bool {
+        *self.0 == other.0.to_f64().unwrap()
+    }
+}
+
+#[derive(Clone)]
+pub struct PyFloatType {}
+
+
+impl typing::BuiltinType for PyFloatType {
+    type T = PyFloat;
+    type V = native::Float;
+
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: native::Float) -> ObjectRef {
+        // TODO: Interning?
+        PyFloatType::inject_selfref(PyFloatType::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyFloatType {}
+    }
+
+    fn inject_selfref(value: PyFloat) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::Float(value));
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::Float(ref int) => {
+                int.rc.set(&objref.clone());
+            }
+            _ => unreachable!(),
+        }
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyFloat {
+            value: FloatValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+}
+
+
+impl method::New for PyFloatType {}
+impl method::Init for PyFloatType {}
+impl method::Delete for PyFloatType {}
+
+
+pub struct FloatValue(pub native::Float);
+pub type PyFloat = RtValue<FloatValue>;
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//    Python Object Traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::PyAPI for PyFloat {}
+impl method::New for PyFloat {}
+impl method::Init for PyFloat {}
+impl method::Delete for PyFloat {}
+impl method::GetAttr for PyFloat {}
+impl method::GetAttribute for PyFloat {}
+impl method::SetAttr for PyFloat {}
+impl method::DelAttr for PyFloat {}
+impl method::Id for PyFloat {}
+impl method::Is for PyFloat {}
+impl method::IsNot for PyFloat {}
+impl method::Hashed for PyFloat {
+    // TODO: python has its own algo for hashing floats ensure to look at that for compat.
+}
+
+impl method::StringCast for PyFloat {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_str() {
+            Ok(string) => Ok(rt.str(string)),
+            Err(_) => unreachable!(),
+        }
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+        Ok(format_float(&self.value.0))
+    }
+}
+
+impl method::BytesCast for PyFloat {}
+impl method::StringFormat for PyFloat {}
+impl method::StringRepresentation for PyFloat {
+    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_repr() {
+            Ok(string) => Ok(rt.str(string)),
+            Err(_) => unreachable!(),
+        }
+    }
+
+    fn native_repr(&self) -> NativeResult<native::String> {
+        Ok(format_float(&self.value.0))
+    }
+}
+
+impl method::Equal for PyFloat {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match self.native_eq(builtin.deref()) {
+            Ok(value) => Ok(rt.bool(value)),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        match *other {
+            Builtin::Float(ref float) => Ok(self.value.0 == float.value.0),
+            Builtin::Int(ref int) => Ok(FloatWrapper(&self.value.0) == IntWrapper(&int.value.0)),
+            _ => Ok(false),
+        }
+    }
+}
+impl method::NotEqual for PyFloat {}
+impl method::LessThan for PyFloat {}
+impl method::LessOrEqual for PyFloat {}
+impl method::GreaterOrEqual for PyFloat {}
+impl method::GreaterThan for PyFloat {}
+impl method::BooleanCast for PyFloat {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        if self.native_bool().unwrap() {
+            Ok(rt.bool(true))
+        } else {
+            Ok(rt.bool(false))
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        return Ok(!self.value.0.is_zero());
+    }
+}
+
+impl method::IntegerCast for PyFloat {
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_int() {
+            Ok(int) => Ok(rt.int(int)),
+            _ => unreachable!()
+        }
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        return Ok(native::Integer::from(self.value.0 as i64));
+    }
+}
+impl method::FloatCast for PyFloat {
+    #[allow(unused_variables)]
+    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+        self.rc.upgrade()
+    }
+
+    fn native_float(&self) -> NativeResult<native::Float> {
+        return Ok(self.value.0);
+    }
+}
+impl method::ComplexCast for PyFloat {}
+impl method::Rounding for PyFloat {}
+impl method::Index for PyFloat {}
+impl method::NegateValue for PyFloat {}
+impl method::AbsValue for PyFloat {}
+impl method::PositiveValue for PyFloat {}
+impl method::InvertValue for PyFloat {}
+impl method::Add for PyFloat {
+    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Float(ref rhs) => {
+                // TODO: Check exceeds max?
+                Ok(rt.float(self.value.0 + rhs.value.0))
+            }
+            &Builtin::Int(ref rhs) => {
+                match rhs.value.0.to_f64() {
+                    Some(float) => Ok(rt.float(self.value.0 + float)),
+                    None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),
+                }
+            }
+            other => Err(Error::typerr(&format!("Cannot add {} to float", other.debug_name()))),
+        }
+    }
+
+}
+
+impl method::BitwiseAnd for PyFloat {}
+impl method::DivMod for PyFloat {}
+impl method::FloorDivision for PyFloat {}
+impl method::LeftShift for PyFloat {}
+impl method::Modulus for PyFloat {}
+impl method::Multiply for PyFloat {}
+impl method::MatrixMultiply for PyFloat {}
+impl method::BitwiseOr for PyFloat {}
+impl method::Pow for PyFloat {}
+impl method::RightShift for PyFloat {}
+impl method::Subtract for PyFloat {}
+impl method::TrueDivision for PyFloat {}
+impl method::XOr for PyFloat {}
+impl method::ReflectedAdd for PyFloat {}
+impl method::ReflectedBitwiseAnd for PyFloat {}
+impl method::ReflectedDivMod for PyFloat {}
+impl method::ReflectedFloorDivision for PyFloat {}
+impl method::ReflectedLeftShift for PyFloat {}
+impl method::ReflectedModulus for PyFloat {}
+impl method::ReflectedMultiply for PyFloat {}
+impl method::ReflectedMatrixMultiply for PyFloat {}
+impl method::ReflectedBitwiseOr for PyFloat {}
+impl method::ReflectedPow for PyFloat {}
+impl method::ReflectedRightShift for PyFloat {}
+impl method::ReflectedSubtract for PyFloat {}
+impl method::ReflectedTrueDivision for PyFloat {}
+impl method::ReflectedXOr for PyFloat {}
+impl method::InPlaceAdd for PyFloat {}
+impl method::InPlaceBitwiseAnd for PyFloat {}
+impl method::InPlaceDivMod for PyFloat {}
+impl method::InPlaceFloorDivision for PyFloat {}
+impl method::InPlaceLeftShift for PyFloat {}
+impl method::InPlaceModulus for PyFloat {}
+impl method::InPlaceMultiply for PyFloat {}
+impl method::InPlaceMatrixMultiply for PyFloat {}
+impl method::InPlaceBitwiseOr for PyFloat {}
+impl method::InPlacePow for PyFloat {}
+impl method::InPlaceRightShift for PyFloat {}
+impl method::InPlaceSubtract for PyFloat {}
+impl method::InPlaceTrueDivision for PyFloat {}
+impl method::InPlaceXOr for PyFloat {}
+impl method::Contains for PyFloat {}
+impl method::Iter for PyFloat {}
+impl method::Call for PyFloat {}
+impl method::Length for PyFloat {}
+impl method::LengthHint for PyFloat {}
+impl method::Next for PyFloat {}
+impl method::Reversed for PyFloat {}
+impl method::GetItem for PyFloat {}
+impl method::SetItem for PyFloat {}
+impl method::DeleteItem for PyFloat {}
+impl method::Count for PyFloat {}
+impl method::Append for PyFloat {}
+impl method::Extend for PyFloat {}
+impl method::Pop for PyFloat {}
+impl method::Remove for PyFloat {}
+impl method::IsDisjoint for PyFloat {}
+impl method::AddItem for PyFloat {}
+impl method::Discard for PyFloat {}
+impl method::Clear for PyFloat {}
+impl method::Get for PyFloat {}
+impl method::Keys for PyFloat {}
+impl method::Values for PyFloat {}
+impl method::Items for PyFloat {}
+impl method::PopItem for PyFloat {}
+impl method::Update for PyFloat {}
+impl method::SetDefault for PyFloat {}
+impl method::Await for PyFloat {}
+impl method::Send for PyFloat {}
+impl method::Throw for PyFloat {}
+impl method::Close for PyFloat {}
+impl method::Exit for PyFloat {}
+impl method::Enter for PyFloat {}
+impl method::DescriptorGet for PyFloat {}
+impl method::DescriptorSet for PyFloat {}
+impl method::DescriptorSetName for PyFloat {}
+
+
+// ---------------
+//  stdlib traits
+// ---------------
+
+
+impl fmt::Display for PyFloat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyFloat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value.0)
+    }
+}
+
 
 #[cfg(all(feature="old", test))]
 mod old {

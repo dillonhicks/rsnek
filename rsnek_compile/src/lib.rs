@@ -8,6 +8,7 @@
 #![allow(unused_assignments)]
 
 
+#![feature(try_from)]
 #![feature(const_fn)]
 #![feature(associated_consts)]
 #![feature(custom_attribute)]

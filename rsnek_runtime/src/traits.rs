@@ -18,6 +18,12 @@ pub trait IntegerProvider<T> {
     fn int(&self, value: T) -> ObjectRef;
 }
 
+
+pub trait FloatProvider<T> {
+    fn float(&self, value: T) -> ObjectRef;
+}
+
+
 pub trait IteratorProvider<T> {
     fn iter(&self, value: T) -> ObjectRef;
 }

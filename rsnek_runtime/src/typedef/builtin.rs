@@ -14,6 +14,7 @@ use typedef::dictionary::PyDict;
 use typedef::object::PyObject;
 use typedef::boolean::PyBoolean;
 use typedef::integer::PyInteger;
+use typedef::float::PyFloat;
 use typedef::iterator::PyIterator;
 use typedef::string::PyString;
 use typedef::bytes::PyBytes;
@@ -32,6 +33,7 @@ pub enum Builtin {
     None(PyNone),
     Bool(PyBoolean),
     Int(PyInteger),
+    Float(PyFloat),
     Iter(PyIterator),
     Complex(PyComplex),
     Str(PyString),
@@ -47,6 +49,28 @@ pub enum Builtin {
     DictKey(native::DictKey),
 }
 
+impl Builtin {
+    pub fn debug_name(&self) -> &str{
+        match *self {
+            Builtin::Object(_) => "object",
+            Builtin::None(_) => "none",
+            Builtin::Bool(_) => "bool",
+            Builtin::Int(_) => "int",
+            Builtin::Float(_) => "float",
+            Builtin::Iter(_) => "iter",
+            Builtin::Complex(_) => "complex",
+            Builtin::Str(_) => "str",
+            Builtin::Bytes(_) => "bytes",
+            Builtin::Dict(_) => "dict",
+            Builtin::Tuple(_) => "tuple",
+            Builtin::Type(_) => "type",
+            Builtin::Function(_) => "function",
+            Builtin::Module(_) => "module",
+            Builtin::Code(_) => "code",
+            Builtin::DictKey(_) => "dictkey",
+        } 
+    }
+}
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //     Struct Traits

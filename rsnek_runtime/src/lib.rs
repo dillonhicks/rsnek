@@ -22,6 +22,10 @@ extern crate test;
 extern crate num;
 extern crate itertools;
 extern crate fringe;
+
+#[macro_use] extern crate serde_derive;
+extern crate serde;
+
 extern crate rsnek_compile;
 
 #[macro_use]
@@ -30,9 +34,10 @@ mod macros;
 
 mod builtin;
 mod traits;
+mod object;
+mod result;
+mod error;
+mod typedef;
 
-pub mod object;
-pub mod result;
-pub mod error;
-pub mod typedef;
+pub mod resource;
 pub mod runtime;

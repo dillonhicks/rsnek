@@ -1,4 +1,7 @@
 // build.rs - This is just a test for now
+//
+// See: http://doc.crates.io/build-script.html
+
 extern crate rustc_version;
 use rustc_version::{version, version_meta, Channel, Version};
 

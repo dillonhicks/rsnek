@@ -1,5 +1,7 @@
 use std;
 use std::ops::Deref;
+use std::str::FromStr;
+use std::convert::TryFrom;
 
 use serde::Serialize;
 use nom::IResult;
@@ -20,27 +22,37 @@ impl Instr {
     }
 }
 
+// TODO: Use rsnek_runtime::typedef::native types here
 #[derive(Debug, Clone, Serialize)]
 pub enum Value {
     Str(String),
     Int(i64),
+    Float(f64)
 }
 
 
-impl Value {
+#[derive(Debug, Clone, Serialize)]
+pub struct ValueError(pub String);
 
-    pub fn from<'a>(tk: &'a Tk<'a>) -> Self {
+
+impl Value {
+    // TODO: Refactor to use stdlib traits From / TryFrom if possible
+    // TODO: unwrap() can cause panics, make this able to return a result
+    fn from<'a>(tk: &'a Tk<'a>) -> Self {
         let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
         let content = parsed.as_str();
 
         match (tk.id(), tk.tag()) {
             (Id::Name, _) |
-            (Id::String, _) => Value::Str(content.to_string()),
+            (Id::String, _) => Value::Str(parsed.clone()),
             (Id::Number, Tag::N(Num::Int)) => Value::Int(content.parse::<i64>().unwrap()),
+            (Id::Number, Tag::N(Num::Float)) => Value::Float(content.parse::<f64>().unwrap()),
             _ => unimplemented!()
         }
     }
+
 }
+
 
 
 #[derive(Debug, Copy, Clone, Serialize)]
