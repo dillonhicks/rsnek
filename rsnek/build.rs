@@ -3,7 +3,7 @@
 // See: http://doc.crates.io/build-script.html
 
 extern crate rustc_version;
-use rustc_version::{version, version_meta, Channel, Version};
+use rustc_version::{version, version_meta, Channel};
 
 fn main() {
     // Assert we haven't travelled back in time
