@@ -52,9 +52,9 @@ named!(line <Tk>, do_parse!(
     token: alt_complete!(
         space       |
         endline     |
+        number      |
         symbol      |
         operator    |
-        number      |
         string      |
         identifier  |
         error_marker) >>
@@ -77,7 +77,7 @@ named!(number <Tk>, do_parse!(
 named!(sublex_hex <&[u8]>, recognize!(preceded!(tag!("0x"), hex_digit)));
 named!(sublex_bin <&[u8]>, recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))));
 named!(sublex_octal <&[u8]>, recognize!(preceded!(tag!("0o"), hex_digit)));
-named!(sublex_float <&[u8]>, recognize!(delimited!(digit, tag!("."), digit)));
+named!(sublex_float <&[u8]>, recognize!(delimited!(opt!(digit), tag!("."), digit)));
 named!(sublex_complex <&[u8]>, recognize!(preceded!(digit, tag!("j"))));
 
 named!(endline <Tk>, do_parse!(
@@ -361,6 +361,10 @@ mod _api{
         assert_token(&value, Id::Number, Tag::N(Num::Int));
 
         let value = tokenize_bytes(r#"12.34"#.trim().as_bytes()).unwrap();
+        assert_token(&value, Id::Number, Tag::N(Num::Float));
+
+        // Fix for {T43}
+        let value = tokenize_bytes(r#".00033444"#.trim().as_bytes()).unwrap();
         assert_token(&value, Id::Number, Tag::N(Num::Float));
 
         let value = tokenize_bytes(r#"0x2345"#.trim().as_bytes()).unwrap();
