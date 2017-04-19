@@ -1,7 +1,7 @@
 /// runtime.rs - The RSnek Runtime which will eventually be the interpreter
 mod interpreter;
 
-pub use self::interpreter::{ThreadModel, Interpreter, Logging, Config};
+pub use self::interpreter::{ThreadModel, Interpreter, Logging, Config, Argv};
 
 
 use std;

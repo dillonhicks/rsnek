@@ -14,20 +14,6 @@ use rsnek_compile::fmt;
 use rsnek_compile::util::Micros;
 
 const BANNER: &'static str = r#"
-                        `-._
-                 `:.`---.__         `-._                       
-                   `:.     `--.         `.                     
-                     \.        `.         `.                   
-             (,,(,    \.         `.   ____,-`.,                
-          (,'     `/   \.   ,--.___`.'                         
-      ,  ,'  ,--.  `,   \.;'         `                         
-       `{D, {    \  :    \;                                    
-         V,,'    /  /    //                                    
-         j;;    /  ,' ,-//.    ,---.      ,                    
-         \;'   /  ,' /  _  \  /  _  \   ,'/                    
-               \   `'  / \  `'  / \  `.' /                     
-                `.___,'   `.__,'   `.__,'  
-
 rsnek ast demo program
 rustc 1.18.0-nightly (7627e3d31 2017-04-16)"#;
 
@@ -49,7 +35,8 @@ fn print_prompt() {
 
 pub fn timed_tokenize<'a>(bytes: &'a [u8]) -> (Micros, LexResult<'a>) {
     let mut result = IResult::Incomplete(Needed::Unknown);
-    let duration = match Duration::span(|| result = Lexer::tokenize2(bytes))
+    let lexer = Lexer::new();
+    let duration = match Duration::span(|| result = lexer.tokenize2(bytes))
         .num_microseconds() {
         Some(usecs) => Micros(usecs),
         None => Micros(-1)

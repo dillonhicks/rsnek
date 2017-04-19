@@ -1,3 +1,6 @@
+use std::io::prelude::*;
+use std::fs::File;
+use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
 use std::marker::Sync;
 
@@ -7,6 +10,7 @@ use std::collections::HashMap;
 
 use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
+use itertools::Itertools;
 use num::ToPrimitive;
 use serde::Serialize;
 
@@ -24,13 +28,26 @@ use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
 
+// TODO: get actual logging or move this to a proper place
+macro_rules! debug {
+    ($fmt:expr) => (print!(concat!("DEBUG:", $fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (print!(concat!("DEBUG:", $fmt, "\n"), $($arg)*));
+}
+
+pub type Argv<'a> =  &'a [&'a str];
+pub type MainFn = Fn(&Runtime) -> i64;
+pub type MainFnRef<'a> = &'a Fn(&Runtime) -> (i64);
+
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-pub struct Config {
+pub struct Config<'a> {
     pub interactive: bool,
+    pub arguments: Argv<'a>,
     pub debug_support: bool,
     pub thread_model: ThreadModel,
     pub logging: Logging
 }
+
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub struct Logging;
@@ -48,20 +65,21 @@ pub struct Interpreter {
 }
 
 
-
 impl Interpreter {
 
+    // TODO: Arguments plumbing via a sys module
     pub fn run(config: &Config) -> i64 {
-        let f = &python_main_interactive;
+        let interactive_main: MainFnRef = &python_main_interactive;
+        let main = create_python_main(config.arguments);
 
         let main_func = match config.interactive {
-            true => Box::new(f),
-            false => unimplemented!()
+            true => Box::new(interactive_main),
+            false => Box::new(&(*main)),
         };
 
         let main_thread: Box<Thread> = match config.thread_model {
             ThreadModel::OsThreads => Box::new(Pthread {func: (*main_func).clone()}),
-            ThreadModel::GreenThreads => Box::new(GreenThread {func: FnWrapper((*main_func).clone())})
+            ThreadModel::GreenThreads => Box::new(GreenThread {func: SharedMainFnRef((*main_func).clone())})
         };
 
         let rt = &Runtime::new();
@@ -87,7 +105,8 @@ impl InterpreterState {
         }
     }
 
-    fn exec(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
+    /// Execute exactly one instruction
+    fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
         match instr.tuple() {
             (OpCode::LoadConst, Some(value)) => {
                 let objref = match value {
@@ -159,6 +178,39 @@ impl InterpreterState {
             _ => unimplemented!()
         }
     }
+
+    ///
+    fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> RuntimeResult {
+        let mut objects: VecDeque<ObjectRef> = VecDeque::new();
+
+        let result = ins.iter()
+            .map(|ref instr| self.exec_one(&rt, instr))
+            .filter(Option::is_some)
+            .map(Option::unwrap)
+            .fold_results((&mut objects).clone(), |mut acc, i| {acc.push_back(i); acc});
+
+        let back = objects.back();
+        match (result, back) {
+            (Ok(_), Some(objref)) => Ok(objref.clone()),
+            (Ok(_), None)         => Ok(rt.none()),
+            (Err(err), _)         => Err(err)
+        }
+    }
+
+    pub fn debug_locals(&self) {
+        // FIXME: Remove when parser/compiler allows for an expression of a single name
+        // or maybe just hardcode that in?
+        let values: Vec<String> = self.namespace.iter().map(|(key, v): (&String, &ObjectRef)| {
+            let b: &Box<Builtin> = v.0.borrow();
+
+            match b.native_str() {
+                Ok(s) => format!("{}: {}", key, s),
+                Err(err) => format!("{}: ??", key),
+            }
+        }).collect();
+
+        debug!("\nlocals:\n----------\n{}", values.join("\n"));
+    }
 }
 
 trait Thread<'a> {
@@ -166,8 +218,9 @@ trait Thread<'a> {
     fn run<'b>(&self, rt: &'b Runtime) -> i64;
 }
 
+
 struct Pthread<'a>  {
-    func: &'a Fn(&Runtime) -> (i64)
+    func: MainFnRef<'a>
 }
 
 
@@ -185,7 +238,7 @@ impl<'a> Thread<'a> for Pthread<'a> {
 
 
 struct GreenThread<'a> {
-    func: FnWrapper<'a>
+    func: SharedMainFnRef<'a>
 }
 
 impl<'a> Thread<'a> for GreenThread<'a> {
@@ -194,6 +247,7 @@ impl<'a> Thread<'a> for GreenThread<'a> {
     }
 
     fn run<'b>(&self, rt: &'b Runtime) -> i64 {
+        /// Start the stack off with 4kb
         let stack = OsStack::new(1 << 16).unwrap();
 
         let mut gen = Generator::new(stack, move |yielder, ()| {
@@ -207,14 +261,14 @@ impl<'a> Thread<'a> for GreenThread<'a> {
         });
 
         let mut prev: Option<i64> = None;
-        let mut loops = 0;
+
+        /// The hallowed event loop
         loop {
             let out = gen.resume(());
             match out {
                 None => { break },
                 _ => (),
             };
-            loops += 1;
             prev = out;
         }
 
@@ -222,16 +276,20 @@ impl<'a> Thread<'a> for GreenThread<'a> {
     }
 }
 
+/// Wrapper around the `MainFnRef` so we have an owned
+/// type on which we can specify clone semantics for
+/// `Send` and `Sync` traits which allows the function reference
+/// to be shared across threads.
 #[derive(Clone)]
-struct FnWrapper<'a>(&'a Fn(&Runtime) -> (i64));
+struct SharedMainFnRef<'a>(MainFnRef<'a>);
 
-unsafe impl<'a> Sync for FnWrapper<'a> {}
-unsafe impl<'a> Send for FnWrapper<'a> {}
+unsafe impl<'a> Sync for SharedMainFnRef<'a> {}
+unsafe impl<'a> Send for SharedMainFnRef<'a> {}
 
 
 struct Greenlet<'a> {
     yielder: &'a mut Yielder<(), i64>,
-    func: FnWrapper<'a>,
+    func: SharedMainFnRef<'a>,
 }
 
 
@@ -248,6 +306,10 @@ impl<'a> Thread<'a> for Greenlet<'a> {
 }
 
 
+/// Two equally valid explanations exist for this banner
+///
+/// 1. Print the obligatory banner to let everyone know what program is running.
+/// 2. https://youtu.be/tHnA94-hTC8?t=2m47s
 #[inline(always)]
 fn print_banner() {
     println!("{}", resource::strings::BANNER2);
@@ -256,13 +318,72 @@ fn print_banner() {
 }
 
 
+/// Write the prompt to stdout without a newline and hard flush stdout
+/// for interactive mode.
 #[inline(always)]
 fn print_prompt() {
     print!("\n{} ", resource::strings::PROMPT);
-    io::stdout().flush().unwrap();
+    match io::stdout().flush() {
+        Err(err) => println!("Error Flushing STDOUT: {:?}", err),
+        _ => ()
+    }
 }
 
 
+#[repr(u8)]
+enum ErrorCode {
+    Unknown = 255
+}
+
+
+/// Create the closure with the `MainFn` signature that captures a copy
+/// of the arguments sent to `create_python_main`. The closure will try to use
+/// the first argument as the file to load.
+fn create_python_main(args: Argv) -> Box<MainFn> {
+    let myargs: Box<Vec<String>> = Box::new(args.iter().map(|s| s.to_string()).collect());
+
+    Box::new(move |rt: &Runtime| -> i64 {
+        let mut text: String = "".to_string();
+
+        if let Some(path) = myargs.get(0) {
+            let mut buf: Vec<u8> = Vec::new();
+
+            match File::open(&path) {
+                // TODO: Check size so we aren't going ham and trying to read a file the size
+                // of memory or something?
+                Ok(ref mut file) => {
+                    file.read_to_end(&mut buf);
+                    // TODO: Is using lossy here a good idea?
+                    text = String::from_utf8_lossy(&buf).to_string();
+                },
+                Err(err) => {
+                    debug!("{:?}", err);
+                    return match err.raw_os_error() {
+                        Some(code) => code as i64,
+                        _ => ErrorCode::Unknown as i64
+                    };
+                }
+            };
+
+        }
+
+        let compiler = Compiler::new();
+        let mut interpreter = InterpreterState::new();
+        let ins = compiler.compile_str(&text);
+
+        let result = interpreter.exec(&rt, &(*ins));
+        interpreter.debug_locals();
+
+        let code = match result {
+            Ok(objref) => {debug!("result: {:?}", objref); 0}
+            Err(err) => {debug!("{:?}", err); 1}
+        };
+
+        code
+    })
+}
+
+/// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
     let compiler = Compiler::new();
     let stdin = io::stdin();
@@ -278,12 +399,11 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             _ => continue
         };
 
-
         let ins = compiler.compile_str(&text);
         //println!("{}", fmt::json(&ins));
 
         'process_ins: for i in ins.iter() {
-            match interpreter.exec(rt, &i) {
+            match interpreter.exec_one(rt, &i) {
                 Some(Ok(objref)) => {
                     let boxed: &Box<Builtin> = objref.0.borrow();
                     let string = match boxed.native_str() {
@@ -301,41 +421,9 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             }
         }
 
-        let values: Vec<String> = interpreter.namespace.iter().map(|(key, v): (&String, &ObjectRef)| {
-            let b: &Box<Builtin> = v.0.borrow();
-
-            match b.native_str() {
-                Ok(s) => format!("{}: {}", key, s),
-                Err(err) => format!("{}: ??", key),
-            }
-        }).collect();
-
-        println!("\nlocals:\n----------\n{}", values.join("\n"));
-
+        interpreter.debug_locals();
         print_prompt();
-
     }
-
 
     0
-}
-
-fn green_test_1(rt: &Runtime) -> i64 {
-
-    let mut value = rt.int(0);
-
-    for datum in 1..10000000 {
-        let newvalue;
-        {
-            let boxed: &Box<Builtin> = value.0.borrow();
-            newvalue = boxed.op_add(&rt, &rt.int(datum)).unwrap();
-        }
-        value = newvalue;
-
-    }
-
-    let boxed: &Box<Builtin> = value.0.borrow();
-    let sum = boxed.native_int().unwrap();
-
-    sum.to_i64().unwrap()
 }
