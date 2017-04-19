@@ -17,23 +17,8 @@ use object::selfref::{self, SelfRef};
 use typedef::native;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
+use typedef::number::{self, FloatAdapter, IntAdapter};
 
-
-#[inline(always)]
-pub fn format_float(float: &native::Float) -> native::String {
-    format!("{:?}", *float)
-
-}
-
-// To make int == float not such a pain in the ass
-struct IntWrapper<'a>(pub &'a native::Integer);
-struct FloatWrapper<'a>(pub &'a native::Float);
-
-impl<'a, 'b> std::cmp::PartialEq<IntWrapper<'b>> for FloatWrapper<'a> {
-    fn eq(&self, other: &IntWrapper) -> bool {
-        *self.0 == other.0.to_f64().unwrap()
-    }
-}
 
 #[derive(Clone)]
 pub struct PyFloatType {}
@@ -111,7 +96,7 @@ impl method::StringCast for PyFloat {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        Ok(format_float(&self.value.0))
+        Ok(number::format_float(&self.value.0))
     }
 }
 
@@ -126,7 +111,7 @@ impl method::StringRepresentation for PyFloat {
     }
 
     fn native_repr(&self) -> NativeResult<native::String> {
-        Ok(format_float(&self.value.0))
+        Ok(number::format_float(&self.value.0))
     }
 }
 
@@ -143,7 +128,7 @@ impl method::Equal for PyFloat {
     fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         match *other {
             Builtin::Float(ref float) => Ok(self.value.0 == float.value.0),
-            Builtin::Int(ref int) => Ok(FloatWrapper(&self.value.0) == IntWrapper(&int.value.0)),
+            Builtin::Int(ref int) => Ok(FloatAdapter(&self.value.0) == IntAdapter(&int.value.0)),
             _ => Ok(false),
         }
     }
@@ -200,7 +185,7 @@ impl method::Add for PyFloat {
     fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
-        match builtin.deref() {
+        match builtin.deref(){
             &Builtin::Float(ref rhs) => {
                 // TODO: Check exceeds max?
                 Ok(rt.float(self.value.0 + rhs.value.0))

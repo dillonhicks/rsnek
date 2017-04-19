@@ -58,10 +58,12 @@ mod parser_internal {
     pub fn parse_tokens<'a>(tokens: &'a [Tk<'a>]) -> ParseResult<'a> {
         tkslice_to_ast(TkSlice(tokens))
     }
-    
+
+    /// Generalized form of nom's `eat_seperator!` macro
+    //
     /// helper macros to build a separator parser
     ///
-    /// ```
+    /// ```ignore
     /// # #[macro_use] extern crate nom;
     /// # use nom::IResult::Done;
     ///
@@ -95,7 +97,8 @@ mod parser_internal {
       );
     );
 
-    /// matches one of the provided tokens
+    /// Matches one of the provided tokens.
+    /// Generalized form of nom's `one_of!` macro.
     macro_rules! tk_is_one_of (
       ($i:expr, $inp: expr) => (
         {
@@ -117,7 +120,7 @@ mod parser_internal {
     );
     
 
-/// For intra statement and expression space filtering
+    /// For intra statement and expression space filtering
     tk_named!(pub consume_space_and_tab_tokens, drop_tokens!(&[Id::Space, Id::Tab]));
     
     
@@ -129,60 +132,70 @@ mod parser_internal {
         }
       )
     );
-    
-        
-        
+
     // Specific Tokens and Groups of Tokens
     tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
     tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
     tk_named!(assign_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
     tk_named!(newline_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
 
+
+    /// Binary Operators: `a + b`, `a | b`, etc.
+    tk_named!(binop_token <TkSlice<'a>>, ignore_spaces!(
+        alt_complete!(
+            tag!(&[Id::And])                |
+            tag!(&[Id::Or])                 |
+            tag!(&[Id::Plus])               |
+            tag!(&[Id::Minus])              |
+            tag!(&[Id::Star])               |
+            tag!(&[Id::DoubleStar])         |
+            tag!(&[Id::Slash])              |
+            tag!(&[Id::DoubleSlash])        |
+            tag!(&[Id::Pipe])               |
+            tag!(&[Id::Percent])            |
+            tag!(&[Id::Amp])                |
+            tag!(&[Id::At])                 |
+            tag!(&[Id::Caret])              |
+            tag!(&[Id::LeftShift])          |
+            tag!(&[Id::RightShift])
+        )
+    ));
+
+
+    /// Unary Operatos: `+`, `-`,
     tk_named!(unaryop_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
-            tag!(&[Id::Plus])     |
-            tag!(&[Id::Minus])    |
+            tag!(&[Id::Plus])               |
+            tag!(&[Id::Minus])              |
             tag!(&[Id::Tilde])
         )
      ));
 
-    tk_named!(binop_token <TkSlice<'a>>, ignore_spaces!(
-        alt_complete!(
-            tag!(&[Id::Plus])     |
-            tag!(&[Id::Minus])    |
-            tag!(&[Id::Star])     |
-            tag!(&[Id::DoubleStar])     |
-            tag!(&[Id::Slash])    |
-            tag!(&[Id::Pipe])     |
-            tag!(&[Id::Percent])  |
-            tag!(&[Id::Amp])      |
-            tag!(&[Id::At])       |
-            tag!(&[Id::Caret])
-        )
-     ));
 
     tk_named!(constant_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
-            tag!(&[Id::Name])             |
-            tag!(&[Id::String])           |
+            tag!(&[Id::Name])               |
+            tag!(&[Id::String])             |
             tag!(&[Id::Number])
         )
      ));
 
+
+    /// Augmented Assignment Operators: `a += b`, ` a <<= b`, etc.
     tk_named!(augassign_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
-            tag!(&[Id::LeftShiftEqual])   |
-            tag!(&[Id::RightShiftEqual])  |
-            tag!(&[Id::DoubleSlashEqual]) |
-            tag!(&[Id::DoubleStarEqual])  |
-            tag!(&[Id::PipeEqual])        |
-            tag!(&[Id::PercentEqual])     |
-            tag!(&[Id::AmpEqual])         |
-            tag!(&[Id::PlusEqual])        |
-            tag!(&[Id::MinusEqual])       |
-            tag!(&[Id::StarEqual])        |
-            tag!(&[Id::SlashEqual])       |
-            tag!(&[Id::CaretEqual])       |
+            tag!(&[Id::LeftShiftEqual])     |
+            tag!(&[Id::RightShiftEqual])    |
+            tag!(&[Id::DoubleSlashEqual])   |
+            tag!(&[Id::DoubleStarEqual])    |
+            tag!(&[Id::PipeEqual])          |
+            tag!(&[Id::PercentEqual])       |
+            tag!(&[Id::AmpEqual])           |
+            tag!(&[Id::PlusEqual])          |
+            tag!(&[Id::MinusEqual])         |
+            tag!(&[Id::StarEqual])          |
+            tag!(&[Id::SlashEqual])         |
+            tag!(&[Id::CaretEqual])         |
             tag!(&[Id::AtEqual])
         )
      ));
@@ -264,9 +277,12 @@ mod parser_internal {
         (expression)
     ));
 
-    /// 5.   | Assign(expr* targets, expr value)
+
+
+    /// 1.  =  BoolOp(boolop op, expr* values)
+    /// 2.  | BinOp(expr left, operator op, expr right)
     tk_named!(sub_expr_binop <Expr<'a>>, do_parse!(
-        // TODO: Generalize to allow recursion into the L and R parts of a tree
+        // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
         // on start_expr not just the constant expressions
         lhs: sub_expr_constant  >>
          op: binop_token        >>

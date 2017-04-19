@@ -45,7 +45,7 @@ impl Error {
         return Error(ErrorType::Attribute, "Attribute is not defined for type".to_string());
     }
 
-    pub fn value(message: &'static str) -> Self {
+    pub fn value(message: &str) -> Self {
         return Error(ErrorType::Value, message.to_string());
     }
 

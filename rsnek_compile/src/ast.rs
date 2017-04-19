@@ -37,15 +37,12 @@ pub enum Module<'a> {
          | IfExp(expr test, expr body, expr orelse)
          | Dict(expr* keys, expr* values)
 */
-
 pub type DynExpr<'a> = Box<Expr<'a>>;
+
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Stmt<'a> {
-//    FunctionDef {
-//        identifier: Atom, arguments args,
-//
-//        stmt* body, expr* decorator_list, expr? returns}
+
     Assign { target: DynExpr<'a>, value: DynExpr<'a>},
     AugAssign { target: DynExpr<'a>, op: Op<'a>, value: DynExpr<'a>},
     Expr(Expr<'a>),
@@ -55,24 +52,22 @@ pub enum Stmt<'a> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expr<'a> {
-    // TODO: Make assign expandable like a, b = ((a,v) => None None) ()
-    Bool {logic: Logic, values: Vec<DynExpr<'a>>},
     BinOp {op: Op<'a>, left: DynExpr<'a>, right: DynExpr<'a>},
     Sanity(Vec<TkSlice<'a>>),
     Atom(Atom<'a>),
     NameConstant(TkSlice<'a>),
     Constant(Tk<'a>),
     End,
-//| Num(object n) -- a number as a PyObject.
-//| Str(string s) -- need to specify raw, unicode, etc?
-//| FormattedValue(expr value, int? conversion, expr? format_spec)
-//| JoinedStr(expr* values)
-//| Bytes(bytes s)
-//| NameConstant(singleton value)
-//| Ellipsis
-//| Constant(constant value)
 
 }
+
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub enum Logic {
+    And,
+    Or
+}
+
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Atom<'a> {
@@ -83,19 +78,6 @@ pub enum Atom<'a> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct Op<'a>(pub Tk<'a>);
-
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub enum Logic {
-    Test(&'static str)
-}
-
-
-impl Logic {
-    pub const AND: Self = Logic::Test("and");
-    pub const OR: Self = Logic::Test("or");
-}
-
 
 
 pub enum Singleton {

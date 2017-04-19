@@ -22,7 +22,23 @@ use error::Error;
 use result::RuntimeResult;
 use runtime::Runtime;
 use traits::{NoneProvider, StringProvider, IntegerProvider, FloatProvider};
-use object::method::{Add, IntegerCast, StringCast};
+use object::method::{
+    Add,
+    Subtract,
+    Multiply,
+    Pow,
+    FloorDivision,
+    TrueDivision,
+    BitwiseAnd,
+    BitwiseOr,
+    MatrixMultiply,
+    LeftShift,
+    RightShift,
+    XOr,
+    Modulus,
+    IntegerCast,
+    StringCast
+};
 use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
@@ -38,6 +54,11 @@ pub type Argv<'a> =  &'a [&'a str];
 pub type MainFn = Fn(&Runtime) -> i64;
 pub type MainFnRef<'a> = &'a Fn(&Runtime) -> (i64);
 
+enum Mode {
+    Interactive,
+    Command,
+    File
+}
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub struct Config<'a> {
@@ -105,6 +126,29 @@ impl InterpreterState {
         }
     }
 
+    fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = lhs.0.borrow();
+
+        match opcode {
+            OpCode::LogicalAnd              => Err(Error::not_implemented()),
+            OpCode::LogicalOr               => Err(Error::not_implemented()),
+            OpCode::BinaryAdd               => boxed.op_add(&rt, &rhs),
+            OpCode::BinarySubtract          => boxed.op_sub(&rt, &rhs),
+            OpCode::BinaryMultiply          => boxed.op_mul(&rt, &rhs),
+            OpCode::BinaryPower             => boxed.op_pow(&rt, &rhs, &rt.int(1)),
+            OpCode::BinaryTrueDivide        => boxed.op_truediv(&rt, &rhs),
+            OpCode::BinaryFloorDivide       => boxed.op_floordiv(&rt, &rhs),
+            OpCode::BinaryOr                => boxed.op_or(&rt, &rhs),
+            OpCode::BinaryModulo            => boxed.op_mod(&rt, &rhs),
+            OpCode::BinaryAnd               => boxed.op_and(&rt, &rhs),
+            OpCode::BinaryMatrixMultiply    => boxed.op_matmul(&rt, &rhs),
+            OpCode::BinaryXor               => boxed.op_xor(&rt, &rhs),
+            OpCode::BinaryLshift            => boxed.op_lshift(&rt, &rhs),
+            OpCode::BinaryRshift            => boxed.op_rshift(&rt, &rhs),
+            _                               => Err(Error::runtime("THIS IS BAD VERY VERY BAD")),
+        }
+    }
+
     /// Execute exactly one instruction
     fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
         match instr.tuple() {
@@ -147,19 +191,32 @@ impl InterpreterState {
 
                 None
             },
-            (OpCode::BinaryAdd, None) => {
+            (OpCode::LogicalAnd, None)              |
+            (OpCode::LogicalOr, None)               |
+            (OpCode::BinaryAdd, None)               |
+            (OpCode::BinarySubtract, None)          |
+            (OpCode::BinaryMultiply, None)          |
+            (OpCode::BinaryPower, None)             |
+            (OpCode::BinaryTrueDivide, None)        |
+            (OpCode::BinaryFloorDivide, None)       |
+            (OpCode::BinaryAnd, None)               |
+            (OpCode::BinaryOr, None)                |
+            (OpCode::BinaryXor, None)               |
+            (OpCode::BinaryMatrixMultiply, None)    |
+            (OpCode::BinaryLshift, None)            |
+            (OpCode::BinaryRshift, None) => {
+
                 let rhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for binadd!")
+                    None => panic!("No values in value stack for binop!")
                 };
 
                 let lhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for binadd!")
+                    None => panic!("No values in value stack for binop!")
                 };
 
-                let boxed: &Box<Builtin> = lhs.0.borrow();
-                let result = match boxed.op_add(&rt, &rhs) {
+                let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
                 };
@@ -400,7 +457,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         };
 
         let ins = compiler.compile_str(&text);
-        //println!("{}", fmt::json(&ins));
+        println!("{}", fmt::json(&ins));
 
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {

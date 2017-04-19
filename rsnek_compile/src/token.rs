@@ -11,6 +11,7 @@ use serde_bytes;
 use num;
 use num::FromPrimitive;
 
+use ::fmt;
 
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Tk<'a> {
@@ -30,15 +31,8 @@ impl<'a> Tk<'a> {
         self.id
     }
     pub fn tag(&self) -> Tag { self.tag }
-
-    pub fn Identifier(bytes: &'a[u8]) -> Self { New::new( Id::Name,  bytes, Tag::None)}
-    pub fn Space(bytes: &'a [u8]) -> Self { New::new( Id::Space,  bytes, Tag::None)}
-    pub fn NewLine(bytes: &'a [u8]) -> Self { New::new( Id::Newline,  bytes, Tag::None)}
-    pub fn Number(bytes: &'a [u8]) -> Self { New::new( Id::Number,  bytes, Tag::None)}
-    pub fn Operator(bytes: &'a [u8]) -> Self { New::new( Id::Operator,  bytes, Tag::None)}
-    pub fn Symbol(bytes: &'a [u8]) -> Self { New::new( Id::Symbol,  bytes, Tag::None)}
-
 }
+
 
 impl<'a, 'b> FindToken<&'b [Id]> for Tk<'a> {
     fn find_token(&self, input: &[Id]) -> bool {
@@ -69,36 +63,12 @@ impl<'a> New<'a> for Tk<'a> {
 
 pub fn pprint_tokens(tokens: &Vec<Tk>) {
     for (idx, t) in tokens.iter().enumerate() {
-        match format_token(&t) {
-            Some(token) => println!("{:>3}: {}", idx, token),
-            None => continue
+        match fmt::token(&t).as_str() {
+            "" => continue,
+            string => println!("{:>3}: {}", idx, string),
         }
     }
 }
-
-pub fn format_token(t: &Tk) -> Option<String> {
-
-    let formatted = match t.id() {
-        Id::Space => return None,
-        Id::Tab |
-        Id::Newline => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), format!("{:?}", String::from_utf8_lossy(t.bytes())), format!("{:?}", t.tag())),
-        _ => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()), format!("{:?}", t.tag()))
-    };
-
-    Some(formatted)
-}
-
-pub fn format_tokens(tokens: &Vec<Tk>) -> String {
-    let result: Vec<String> = tokens.iter().enumerate().map(|(idx, t)| {
-        match format_token(&t) {
-            Some(token) => format!("{:>3}: {}", idx, token),
-            None => "".to_string()
-        }
-    }).filter(String::is_empty).collect();
-
-    result.join("\n")
-}
-
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]

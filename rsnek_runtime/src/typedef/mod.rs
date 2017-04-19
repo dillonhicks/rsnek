@@ -19,3 +19,4 @@ pub mod pytype;
 pub mod method;
 pub mod module;
 pub mod code;
+mod number;

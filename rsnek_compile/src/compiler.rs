@@ -43,16 +43,15 @@ impl Value {
         let content = parsed.as_str();
 
         match (tk.id(), tk.tag()) {
-            (Id::Name, _) |
-            (Id::String, _) => Value::Str(parsed.clone()),
-            (Id::Number, Tag::N(Num::Int)) => Value::Int(content.parse::<i64>().unwrap()),
+            (Id::Name, _)                    |
+            (Id::String, _)                  => Value::Str(parsed.clone()),
+            (Id::Number, Tag::N(Num::Int))   => Value::Int(content.parse::<i64>().unwrap()),
             (Id::Number, Tag::N(Num::Float)) => Value::Float(content.parse::<f64>().unwrap()),
             _ => unimplemented!()
         }
     }
 
 }
-
 
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -75,7 +74,6 @@ impl Compiler {
             lexer: Lexer::new(),
             parser: Parser::new(),
         }
-
     }
 
     fn compile_expr_constant<'a>(&self, ctx: Context, tk: &'a Tk<'a>) -> Box<[Instr]> {
@@ -96,7 +94,6 @@ impl Compiler {
     }
 
     fn compile_expr_binop<'a>(&self, op: &'a Op, left: &'a Expr<'a>, right: &'a Expr<'a>) -> Box<[Instr]> {
-        // println!("CompileBinOp({:?} {:?} {:?})", op, left, right);
         let mut instructions: Vec<Instr> = vec![];
 
         match left.deref() {
@@ -116,11 +113,42 @@ impl Compiler {
         };
 
         let code = match op.0.id() {
-            Id::Plus => Instr(OpCode::BinaryAdd, None),
+            Id::And         => Instr(OpCode::LogicalAnd, None),
+            Id::Or          => Instr(OpCode::LogicalOr, None),
+            Id::Plus        => Instr(OpCode::BinaryAdd, None),
+            Id::Minus       => Instr(OpCode::BinarySubtract, None),
+            Id::Star        => Instr(OpCode::BinaryMultiply, None),
+            Id::DoubleStar  => Instr(OpCode::BinaryPower, None),
+            Id::Slash       => Instr(OpCode::BinaryTrueDivide, None),
+            Id::DoubleSlash => Instr(OpCode::BinaryTrueDivide, None),
+            Id::Pipe        => Instr(OpCode::BinaryOr, None),
+            Id::Percent     => Instr(OpCode::BinaryModulo, None),
+            Id::Amp         => Instr(OpCode::BinaryAnd, None),
+            Id::At          => Instr(OpCode::BinaryMatrixMultiply, None),
+            Id::Caret       => Instr(OpCode::BinaryXor, None),
+            Id::LeftShift   => Instr(OpCode::BinaryLshift, None),
+            Id::RightShift  => Instr(OpCode::BinaryRshift, None),
+            _ => panic!("{:?} is not a binary op", op)
+        };
+
+        instructions.push(code);
+        instructions.into_boxed_slice()
+    }
+
+    fn compile_expr<'a>(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
+        let mut instructions: Vec<Instr> = vec![];
+
+        let mut ins: Box<[Instr]> = match *expr {
+            Expr::Constant(ref tk) => {
+                self.compile_expr_constant(ctx, tk)
+            },
+            Expr::BinOp {ref op, ref left, ref right} => {
+                self.compile_expr_binop(op, left, right)
+            }
             _ => unimplemented!()
         };
-        instructions.push(code);
 
+        instructions.append(&mut ins.to_vec());
         instructions.into_boxed_slice()
     }
 
@@ -128,25 +156,11 @@ impl Compiler {
         // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
 
-        match value.deref() {
-            &Expr::Constant(ref tk) => {
-                let mut ins = self.compile_expr_constant(Context::Load, tk);
-                instructions.append(&mut ins.to_vec());
-            },
-            &Expr::BinOp {ref op, ref left, ref right} => {
-                let mut ins = self.compile_expr_binop(op, left, right);
-                instructions.append(&mut ins.to_vec());
-            }
-            _ => unreachable!()
-        };
+        let mut ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
+        instructions.append(&mut ins.to_vec());
 
-        match target.deref() {
-            &Expr::Constant(ref tk) => {
-                let mut ins = self.compile_expr_constant(Context::Store, tk);
-                instructions.append(&mut ins.to_vec());
-            },
-            _ => unreachable!()
-        };
+        let mut ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
+        instructions.append(&mut ins.to_vec());
 
         instructions.into_boxed_slice()
     }
@@ -154,15 +168,14 @@ impl Compiler {
     fn compile_stmt<'a>(&self, stmt: &'a Stmt) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
-        match *stmt {
-            Stmt::Assign { ref target, ref value } => {
-                let mut ins = self.compile_stmt_assign(target, value);
-                instructions.append(&mut ins.to_vec());
-            },
-            Stmt::Newline => {},
-            _ => {} //println!("(noop)")
-        }
+        let mut ins: Box<[Instr]> = match *stmt {
+            Stmt::Assign { ref target, ref value } => self.compile_stmt_assign(target, value),
+            Stmt::Expr(ref expr) => self.compile_expr(expr, Context::Load),
+            Stmt::Newline => return instructions.into_boxed_slice(),  // TODO: add lineno attrs
+            _ => unimplemented!()
+        };
 
+        instructions.append(&mut ins.to_vec());
         instructions.into_boxed_slice()
     }
 
@@ -333,7 +346,11 @@ pub enum OpCode {
     BuildMapUnpackWithCall   = 151,
     BuildTupleUnpack         = 152,
     BuildSetUnpack           = 153,
-    SetupAsyncWith           = 154
+    SetupAsyncWith           = 154,
+
+    // Defined for rsnek
+    LogicalAnd               = 200,
+    LogicalOr                = 201
 }
 
 #[cfg(test)]
@@ -366,7 +383,7 @@ mod tests {
                 println!("Compiled Instructions ({}):", ins.len());
                 println!("--------------------------------");
                 println!("{:#?}", ins);
-                println!("{}", fmt::bincode(&ins))
+                println!("{}", fmt::json(&ins))
             },
             result => panic!("\n\nERROR: {:#?}\n\n", result)
         }
@@ -374,7 +391,6 @@ mod tests {
 
     #[test]
     fn compile_1() {
-       // assert_compile("abcd = 1234");
         assert_compile(
 r#"
 x = 123
@@ -384,9 +400,22 @@ z = x + y
     }
 
     #[test]
-    fn compile_2() {
-        let compiler = Compiler::new();
-        println!("{}", fmt::json(&compiler.compile_str("x = x + 41")));
+    fn compile_binops() {
+        assert_compile("a and b");
+        assert_compile("a or b");
+        assert_compile("a + b");
+        assert_compile("a - b");
+        assert_compile("a * b");
+        assert_compile("a ** b");
+        assert_compile("a / b");
+        assert_compile("a // b");
+        assert_compile("a | b");
+        assert_compile("a & b");
+        assert_compile("a ^ b");
+        assert_compile("a % b");
+        assert_compile("a @ b");
+        assert_compile("a << b");
+        assert_compile("a >> b");
     }
 }
 /*

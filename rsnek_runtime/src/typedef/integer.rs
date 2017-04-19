@@ -8,13 +8,13 @@ use std::collections::hash_map::DefaultHasher;
 use num::Zero;
 use num::ToPrimitive;
 
-use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider};
+use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use error::Error;
 use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 
-use typedef::native;
+use typedef::native::{self, Number};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
@@ -197,28 +197,109 @@ impl method::NegateValue for PyInteger {}
 impl method::AbsValue for PyInteger {}
 impl method::PositiveValue for PyInteger {}
 impl method::InvertValue for PyInteger {}
+
 impl method::Add for PyInteger {
     fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
+
         match builtin.deref() {
-            &Builtin::Int(ref obj) => Ok(rt.int(&self.value.0 + &obj.value.0)),
-            _ => Err(Error::typerr("TypeError cannot add to int")),
+            &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 + &rhs.value.0)),
+            &Builtin::Float(ref rhs) => {
+                match self.value.0.to_f64() {
+                    Some(lhs) => Ok(rt.float(lhs + rhs.value.0)),
+                    None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),
+                }
+            }
+            other => Err(Error::typerr(&format!("Cannot add {} to int", other.debug_name()))),
         }
     }
+
 }
 
 impl method::BitwiseAnd for PyInteger {}
 impl method::DivMod for PyInteger {}
 impl method::FloorDivision for PyInteger {}
-impl method::LeftShift for PyInteger {}
+impl method::LeftShift for PyInteger {
+    fn op_lshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref rhs) =>  {
+                match rhs.value.0.to_usize() {
+                    Some(int) if int < 0    => Err(Error::value("negative shift count")),
+                    Some(int) if int == 0   => self.rc.upgrade(),
+                    Some(int) if int > 0    => Ok(rt.int(&self.value.0 << int)),
+                    Some(_)                 => unreachable!(),
+                    None                    => Err(Error::overflow("Python int too large to convert to rust usize")),
+                }
+            },
+            other => Err(Error::typerr(&format!(
+                "unsupported operand type(s) for <<: 'int' and '{}'",
+                other.debug_name()))),
+        }
+    }
+}
+
 impl method::Modulus for PyInteger {}
-impl method::Multiply for PyInteger {}
+impl method::Multiply for PyInteger {
+    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 * &rhs.value.0)),
+            &Builtin::Float(ref rhs) => {
+                match self.value.0.to_f64() {
+                    Some(lhs) => Ok(rt.float(lhs * rhs.value.0)),
+                    None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),
+                }
+            }
+
+            other => Err(Error::typerr(&format!("Cannot subtract {} from int", other.debug_name()))),
+        }
+    }
+}
 impl method::MatrixMultiply for PyInteger {}
 impl method::BitwiseOr for PyInteger {}
 impl method::Pow for PyInteger {}
-impl method::RightShift for PyInteger {}
-impl method::Subtract for PyInteger {}
+impl method::RightShift for PyInteger {
+
+    fn op_rshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref rhs) =>  {
+                match rhs.value.0.to_usize() {
+                    Some(int) if int < 0    => Err(Error::value("negative shift count")),
+                    Some(int) if int == 0   => self.rc.upgrade(),
+                    Some(int) if int > 0    => Ok(rt.int(&self.value.0 >> int)),
+                    Some(_)                 => unreachable!(),
+                    None                    => Err(Error::overflow("Python int too large to convert to rust usize")),
+                }
+            },
+            other => Err(Error::typerr(&format!(
+                "unsupported operand type(s) for >>: 'int' and '{}'",
+                other.debug_name()))),
+        }
+    }
+}
+impl method::Subtract for PyInteger {
+    fn op_sub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 - &rhs.value.0)),
+            &Builtin::Float(ref rhs) => {
+                match self.value.0.to_f64() {
+                    Some(lhs) => Ok(rt.float(lhs - rhs.value.0)),
+                    None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),
+                }
+            }
+
+            other => Err(Error::typerr(&format!("Cannot subtract {} from int", other.debug_name()))),
+        }
+    }
+}
 impl method::TrueDivision for PyInteger {}
 impl method::XOr for PyInteger {}
 impl method::ReflectedAdd for PyInteger {}
