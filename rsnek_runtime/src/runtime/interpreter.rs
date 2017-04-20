@@ -54,15 +54,19 @@ pub type Argv<'a> =  &'a [&'a str];
 pub type MainFn = Fn(&Runtime) -> i64;
 pub type MainFnRef<'a> = &'a Fn(&Runtime) -> (i64);
 
-enum Mode {
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
+pub enum Mode {
     Interactive,
-    Command,
+    Command(String),
+    Module(String),
     File
 }
 
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
 pub struct Config<'a> {
-    pub interactive: bool,
+    pub mode: Mode,
     pub arguments: Argv<'a>,
     pub debug_support: bool,
     pub thread_model: ThreadModel,
@@ -81,21 +85,19 @@ pub enum ThreadModel {
 }
 
 
-pub struct Interpreter {
-    state: InterpreterState
-}
+pub struct Interpreter {}
 
 
 impl Interpreter {
 
-    // TODO: Arguments plumbing via a sys module
+    // TODO: Arguments plumbing via a sys module?
     pub fn run(config: &Config) -> i64 {
         let interactive_main: MainFnRef = &python_main_interactive;
-        let main = create_python_main(config.arguments);
+        let main = create_python_main(config.mode.clone(), config.arguments);
 
-        let main_func = match config.interactive {
-            true => Box::new(interactive_main),
-            false => Box::new(&(*main)),
+        let main_func = match config.mode {
+            Mode::Interactive => Box::new(interactive_main),
+            _ => Box::new(&(*main)),
         };
 
         let main_thread: Box<Thread> = match config.thread_model {
@@ -173,7 +175,6 @@ impl InterpreterState {
                     None => panic!("No values in value stack to store!")
                 };
 
-
                 None
             },
             (OpCode::LoadName, Some(value)) => {
@@ -232,7 +233,7 @@ impl InterpreterState {
 
                 Some(Ok(retval))
             }
-            _ => unimplemented!()
+            _ => Some(Err(Error::not_implemented()))
         }
     }
 
@@ -388,7 +389,10 @@ fn print_prompt() {
 
 
 #[repr(u8)]
-enum ErrorCode {
+enum ExitCode {
+    Ok = 0,
+    GenericError = 1,
+    NotImplemented = 254,
     Unknown = 255
 }
 
@@ -396,33 +400,41 @@ enum ErrorCode {
 /// Create the closure with the `MainFn` signature that captures a copy
 /// of the arguments sent to `create_python_main`. The closure will try to use
 /// the first argument as the file to load.
-fn create_python_main(args: Argv) -> Box<MainFn> {
+fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
+
     let myargs: Box<Vec<String>> = Box::new(args.iter().map(|s| s.to_string()).collect());
 
     Box::new(move |rt: &Runtime| -> i64 {
-        let mut text: String = "".to_string();
-
-        if let Some(path) = myargs.get(0) {
-            let mut buf: Vec<u8> = Vec::new();
-
-            match File::open(&path) {
-                // TODO: Check size so we aren't going ham and trying to read a file the size
-                // of memory or something?
-                Ok(ref mut file) => {
-                    file.read_to_end(&mut buf);
-                    // TODO: Is using lossy here a good idea?
-                    text = String::from_utf8_lossy(&buf).to_string();
-                },
-                Err(err) => {
-                    debug!("{:?}", err);
-                    return match err.raw_os_error() {
-                        Some(code) => code as i64,
-                        _ => ErrorCode::Unknown as i64
-                    };
+        let text: String = match (mode.clone(), myargs.get(0)) {
+            (Mode::Command(cmd), _) => cmd.clone(),
+            (Mode::Module(module), _) => {
+                debug!("Not Implemented");
+                return ExitCode::NotImplemented as i64
+            },
+            (Mode::File, Some(path)) => {
+                match File::open(&path) {
+                    // TODO: Check size so we aren't going ham and trying to read a file the size
+                    // of memory or something?
+                    Ok(ref mut file) => {
+                        let mut buf: Vec<u8> = Vec::new();
+                        file.read_to_end(&mut buf);
+                        // TODO: Is using lossy here a good idea?
+                        String::from_utf8_lossy(&buf).to_string()
+                    },
+                    Err(err) => {
+                        debug!("{:?}", err);
+                        return match err.raw_os_error() {
+                            Some(code) => code as i64,
+                            _ => ExitCode::Unknown as i64
+                        }
+                    }
                 }
-            };
-
-        }
+            },
+            _ => {
+                debug!("Unable to determine input type");
+                return ExitCode::Unknown as i64
+            }
+        };
 
         let compiler = Compiler::new();
         let mut interpreter = InterpreterState::new();
@@ -432,27 +444,58 @@ fn create_python_main(args: Argv) -> Box<MainFn> {
         interpreter.debug_locals();
 
         let code = match result {
-            Ok(objref) => {debug!("result: {:?}", objref); 0}
-            Err(err) => {debug!("{:?}", err); 1}
+            Ok(objref)    => {
+                debug!("result: {:?}", objref);
+                ExitCode::Ok as i64
+            },
+            Err(err)      => {
+                debug!("{:?}", err);
+                ExitCode::GenericError as i64
+            }
         };
 
         code
     })
 }
 
+
+use rustyline;
+use rustyline::Config as RLConfig;
+use rustyline::CompletionType;
+use rustyline::error::ReadlineError;
+
+
 /// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
     let compiler = Compiler::new();
     let stdin = io::stdin();
 
+    let config = RLConfig::builder()
+        .history_ignore_space(true)
+        .completion_type(CompletionType::List)
+        .build();
+
+    let mut rl = rustyline::Editor::<()>::with_config(config);
     let mut interpreter = InterpreterState::new();
 
-    print_banner();
-    print_prompt();
+    let prompt = format!("\n{} ", resource::strings::PROMPT);
 
-    for line in stdin.lock().lines() {
-        let text = match line {
-            Ok(t) => t,
+    print_banner();
+
+    loop {
+        let text = match rl.readline(&prompt){
+            Ok(line) => {
+                rl.add_history_entry(line.as_ref());
+                line
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
             _ => continue
         };
 
@@ -479,8 +522,55 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         }
 
         interpreter.debug_locals();
-        print_prompt();
+
+        match io::stdout().flush() {
+            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
+            _ => ()
+        }
+
     }
 
-    0
+    ExitCode::Ok as i64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Use to create a test case of a single line snippet of code.
+    /// `assert_run!(float_add_int, "x = 1.0 + 3", ExitCode::Ok)`
+    macro_rules! assert_run {
+        ($name:ident, $code:expr, $status:expr) => {
+            #[test]
+            fn $name() {
+                assert_eq!(run($code), $status as i64);
+            }
+        };
+    }
+
+    fn run(code: &str) -> i64 {
+        let config = Config {
+            mode: Mode::Command(code.to_string()),
+            arguments: &[],
+            thread_model: ThreadModel::OsThreads,
+            logging: Logging {},
+            debug_support: false,
+        };
+
+        Interpreter::run(&config)
+    }
+
+    // int + int simple binop test cases
+    assert_run!(int_add, "x = 1 + 2", ExitCode::Ok);
+    assert_run!(int_sub, "x = 3 - 4", ExitCode::Ok);
+    assert_run!(int_mul, "x = 5 * 6", ExitCode::Ok);
+    //assert_run!(int_pow, "x = 7 ** 8", ExitCode::Ok);
+    //assert_run!(int_truediv, "x = 9 / 10", ExitCode::Ok);
+    //assert_run!(int_floordiv, "x = 11 // 12", ExitCode::Ok);
+    //assert_run!(int_and, "x = 13 & 14",  ExitCode::Ok);
+    //assert_run!(int_or, "x = 14 | 15",  ExitCode::Ok);
+    //assert_run!(int_xor, "x = 16 ^ 17",  ExitCode::Ok);
+    assert_run!(int_matmul, "x = 18 @ 19",  ExitCode::GenericError);
+    assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
+    assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 }

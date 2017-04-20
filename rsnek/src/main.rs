@@ -1,10 +1,10 @@
 extern crate rsnek_runtime;
 extern crate clap;
 
-use clap::{Arg, App, SubCommand, ArgGroup};
+use clap::{Arg, App, ArgGroup};
 
 use rsnek_runtime::resource::strings;
-use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Argv};
+use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Mode};
 
 
 fn main() {
@@ -50,9 +50,23 @@ fn main() {
         false => ThreadModel::OsThreads
     };
 
+    let ms = (matches.value_of("cmd"), matches.value_of("mod"), args.get(0));
+
+    let mode = match ms {
+        (Some(cmd), None, None)     => Mode::Command(cmd.to_string()),
+        (None, Some(module), None)  => Mode::Module(module.to_string()),
+        (None, None, Some(_))       => Mode::File,
+        (None, None, None)          => Mode::Interactive,
+        _                           => {
+            println!("{}", matches.usage());
+            return
+        }
+    };
+
+
     let config = Config {
         // TODO: it is possible in cpython to force interactive mode after script executes
-        interactive: args.is_empty(),
+        mode: mode,
         arguments: args.as_slice(),
         thread_model: thread_model,
         logging: logging,

@@ -32,6 +32,7 @@ macro_rules! foreach_builtin {
     );
 }
 
+
 macro_rules! expr_foreach_builtin {
     ($obj:expr, $inner:ident, $e:block) => (
        match $obj {
@@ -429,7 +430,6 @@ macro_rules! api_trait {
 }
 
 
-
 macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         //#[test]
@@ -441,4 +441,12 @@ macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $($misc:ty),*) => {
         api_test_stub!($args, $sel, $pyname, $tname, $fname, $nfname);
     };
+}
+
+
+// Errors and stuff
+macro_rules! strings_error_bad_operand {
+        ($op:expr, $lhs:expr, $rhs:expr) => {
+            format!("unsupported operand type(s) for {}: '{}' and '{}'", $op, $lhs, $rhs);
+        }
 }
