@@ -109,13 +109,20 @@ use slice::TkSlice;
 #[macro_export]
 macro_rules! tk_method (
   // Non-public immutable self
-  ($name:ident<$a:ty>( $i:ty ) -> $o:ty, $self_:ident, $submac:ident!( $($args:tt)* )) => (
+    ($name:ident<$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
-      fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {
+      fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, $o<'a>, u32>) {
         let result = $submac!(i, $($args)*);
         ($self_, result)
       }
   );
+//  ($name:ident<$a:ty>( $i:ty ) -> $o:ty, $self_:ident, $submac:ident!( $($args:tt)* )) => (
+//      #[allow(unused_variables)]
+//      fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {
+//        let result = $submac!(i, $($args)*);
+//        ($self_, result)
+//      }
+//  );
   ($name:ident<$a:ty,$i:ty,$o:ty,$e:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
     #[allow(unused_variables)]
     fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i, $o, $e>) {
@@ -137,13 +144,7 @@ macro_rules! tk_method (
         ($self_, result)
       }
   );
-  ($name:ident<$lt:ident> <$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name<$lt>( $self_: $a, i: TkSlice<$lt> ) -> ($a, nom::IResult<TkSlice<$lt>, $o<$lt>, u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
+
   ($name:ident<$a:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
       fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
@@ -188,6 +189,13 @@ macro_rules! tk_method (
     }
   );
   // Non-public mutable self
+ ($name:ident, 'b, <$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
+      #[allow(unused_variables)]
+      fn $name<'b>( mut $self_: $a, i: TkSlice<'b> ) -> ($a, nom::IResult<TkSlice<'b>, $o, u32>) {
+        let result = $submac!(i, $($args)*);
+        ($self_, result)
+      }
+  );
   ($name:ident<$a:ty>( $i:ty ) -> $o:ty, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
       fn $name( mut $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {

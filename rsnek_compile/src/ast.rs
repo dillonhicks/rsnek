@@ -29,20 +29,14 @@ pub enum Module<'a> {
 }
 
 
-/*
-    expr = BoolOp(boolop op, expr* values)
-         | BinOp(expr left, operator op, expr right)
-         | UnaryOp(unaryop op, expr operand)
-         | Lambda(arguments args, expr body)
-         | IfExp(expr test, expr body, expr orelse)
-         | Dict(expr* keys, expr* values)
-*/
+/// Type alias for a boxed expression. The Expr enum needs this heap indirection to break
+/// a recursive type definition that would otherwise result in a struct of infinite size.
+///
 pub type DynExpr<'a> = Box<Expr<'a>>;
 
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Stmt<'a> {
-
     Assign { target: DynExpr<'a>, value: DynExpr<'a>},
     AugAssign { target: DynExpr<'a>, op: Op<'a>, value: DynExpr<'a>},
     Expr(Expr<'a>),
@@ -53,22 +47,18 @@ pub enum Stmt<'a> {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expr<'a> {
     BinOp {op: Op<'a>, left: DynExpr<'a>, right: DynExpr<'a>},
-    Sanity(Vec<TkSlice<'a>>),
-    Atom(Atom<'a>),
     NameConstant(TkSlice<'a>),
     Constant(Tk<'a>),
-    End,
 
+    #[deprecated]
+    Sanity(Vec<TkSlice<'a>>),
+
+    #[deprecated]
+    Atom(Atom<'a>),
 }
 
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub enum Logic {
-    And,
-    Or
-}
-
-
+#[deprecated]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Atom<'a> {
     Name(TkSlice<'a>),
@@ -78,14 +68,6 @@ pub enum Atom<'a> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct Op<'a>(pub Tk<'a>);
-
-
-pub enum Singleton {
-    None,
-    False,
-    True
-}
-
 
 
 /*

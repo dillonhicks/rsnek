@@ -4,9 +4,10 @@ use std::io::prelude::*;
 use std::rc::Rc;
 
 use nom;
-use nom::{IResult, Slice, Compare, CompareResult, FindToken};
+use nom::{IResult, Slice, Compare, CompareResult, FindToken, ErrorKind};
 
 use lexer::Lexer;
+use fmt;
 use token::{Id, Tk, pprint_tokens};
 use slice::{TkSlice};
 use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
@@ -62,12 +63,12 @@ tk_named!(pub consume_space_and_tab_tokens, drop_tokens!(&[Id::Space, Id::Tab]))
 
 /// Ignores spaces and tabs for the scope of the parser
 macro_rules! ignore_spaces (
-      ($i:expr, $($args:tt)*) => (
-        {
-          sep!($i, consume_space_and_tab_tokens, $($args)*)
-        }
-      )
-    );
+  ($i:expr, $($args:tt)*) => (
+    {
+      sep!($i, consume_space_and_tab_tokens, $($args)*)
+    }
+  )
+);
 
 
 
@@ -93,8 +94,9 @@ impl<'a> Parser<'a> {
 
     /// Public wrapper to the macro generated tkslice_to_ast which will take a slice of
     /// tokens, turn those into a TkSlice, and parse that into an AST.
-    pub fn parse_tokens<'b>(&mut self, tokens: &'b [Tk<'b>]) -> ParseResult {
-        self.tkslice_to_ast(TkSlice(tokens)).1
+    pub fn parse_tokens<'b>(&mut self, tokens: &'b [Tk<'b>]) -> ParseResult<'b> {
+        let slice: TkSlice<'b> = TkSlice(tokens);
+        self.tkslice_to_ast(slice).1
     }
 
     #[deprecated]
@@ -118,24 +120,31 @@ impl<'a> Parser<'a> {
     }
 
 
+    // Example of keeping parser state
+    fn inc_lineno(&mut self) {
+        self.state.line += 1;
+        //println!("{}", fmt::json(&self));
+    }
+
+
     // AST Builders
 
     /// START(ast)
-    tk_method!(tkslice_to_ast <Parser<'a>, Ast>, mut self, do_parse!(
+    tk_method!(tkslice_to_ast, 'b, <Parser<'a>, Ast<'b>>, mut self, do_parse!(
         ast: alt!(
-            call_m!(self.module_start)      => { |m: Module | (Ast::Module(m))     } |
+            call_m!(self.module_start)      => { |m: Module<'b> | (Ast::Module(m))     } |
             ignore_spaces!(
-                call_m!(self.stmt_start))   => { |r: Stmt   | (Ast::Statement(r))  } ) >>
+                call_m!(self.stmt_start))   => { |r: Stmt<'b>   | (Ast::Statement(r))  } ) >>
         (ast)
     ));
 
-    tk_method!(module_start <Parser<'a>, Module>, mut self, do_parse!(
+    tk_method!(module_start, 'b, <Parser<'a>, Module<'b>>, mut self, do_parse!(
         body: many0!(call_m!(self.stmt_start)) >>
         (Module::Body(body))
     ));
 
     /// START(stmt)
-    tk_method!(stmt_start <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(stmt_start, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
         statement: alt!(
             call_m!(self.sub_stmt_assign)      |
             call_m!(self.sub_stmt_augassign)   |
@@ -145,11 +154,11 @@ impl<'a> Parser<'a> {
     ));
 
     /// 5.   | Assign(expr* targets, expr value)
-    tk_method!(sub_stmt_assign <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
          // TODO: Allow subparsing of target and number as actual expr
         target: atom_name           >>
                 assign_token        >>
-         value: start_expr >>
+         value: call_m!(self.start_expr) >>
         (Stmt::Assign {
             target: Box::new(Expr::Constant(target.as_token())),
             value: Box::new(value)
@@ -157,7 +166,7 @@ impl<'a> Parser<'a> {
     ));
 
     /// 6.   | AugAssign(expr target, operator op, expr value)
-    tk_method!(sub_stmt_augassign <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
         // TODO: Allow subparsing of target and number as actual expr
         target: atom_name       >>
             op: augassign_token >>
@@ -170,7 +179,7 @@ impl<'a> Parser<'a> {
     ));
 
     /// 20.   | Expr(expr value)
-    tk_method!(sub_stmt_expr <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_expr, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
         expression: call_m!(self.start_expr) >>
         (Stmt::Expr(expression))
     ));
@@ -178,14 +187,14 @@ impl<'a> Parser<'a> {
 
     /// 22.   └ attributes (int lineno, int col_offset)
     /// Inject a empty statement for the next line
-    tk_method!(sub_stmt_next_line <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_next_line, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
         newline_token >>
-        (Stmt::Newline)
+        ({self.inc_lineno(); Stmt::Newline})
     ));
 
 
     /// START(expr)
-    tk_method!(start_expr <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(start_expr, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
         expression: alt_complete!(
             call_m!(self.sub_expr_binop)        |
             call_m!(self.sub_expr_nameconstant) |
@@ -196,7 +205,7 @@ impl<'a> Parser<'a> {
 
     /// 1.  =  BoolOp(boolop op, expr* values)
     /// 2.  | BinOp(expr left, operator op, expr right)
-    tk_method!(sub_expr_binop <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_binop, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
         // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
         // on start_expr not just the constant expressions
         lhs: call_m!(self.sub_expr_constant)  >>
@@ -209,7 +218,7 @@ impl<'a> Parser<'a> {
          })
     ));
 
-    tk_method!(sub_expr_nameconstant <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_nameconstant, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
         constant: alt_complete!(
             tag!(&[Id::True])     |
             tag!(&[Id::False])    |
@@ -217,37 +226,24 @@ impl<'a> Parser<'a> {
         (Expr::NameConstant(constant))
     ));
 
-    tk_method!(sub_expr_constant <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_constant, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
         constant: constant_token >>
         (Expr::Constant(constant.as_token()))
     ));
 
     /// 31.   └ attributes (int lineno, int col_offset)
-    tk_method!(sub_expr_ended <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_ended, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
         token: newline_token >>
         (Expr::End)
     ));
 }
 
 
-//
-//#[macro_use]
-//mod parser_internal {
-//    use super::*;
-    use nom::ErrorKind;
 
-
-    #[inline(always)]
-    pub fn parse_tokens<'a>(tokens: &'a [Tk<'a>]) -> ParseResult<'a> {
-        tkslice_to_ast(TkSlice(tokens))
-    }
-
-
-
-    /// Matches one of the provided tokens.
-    /// Generalized form of nom's `one_of!` macro.
-    macro_rules! tk_is_one_of (
-      ($i:expr, $inp: expr) => (
+/// Matches one of the provided tokens.
+/// Generalized form of nom's `one_of!` macro.
+macro_rules! tk_is_one_of (
+    ($i:expr, $inp: expr) => (
         {
           use nom::Slice;
           use nom::AsChar;
@@ -263,19 +259,19 @@ impl<'a> Parser<'a> {
             Some(true)  => nom::IResult::Done($i.slice(1..), $i.iter_elements().next().unwrap())
           }
         }
-      );
     );
+);
     
 
-    // Specific Tokens and Groups of Tokens
-    tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
-    tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
-    tk_named!(assign_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
-    tk_named!(newline_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
+// Specific Tokens and Groups of Tokens
+tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
+tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
+tk_named!(assign_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
+tk_named!(newline_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
 
 
-    /// Binary Operators: `a + b`, `a | b`, etc.
-    tk_named!(binop_token <TkSlice<'a>>, ignore_spaces!(
+/// Binary Operators: `a + b`, `a | b`, etc.
+tk_named!(binop_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
             tag!(&[Id::And])                |
             tag!(&[Id::Or])                 |
@@ -293,31 +289,31 @@ impl<'a> Parser<'a> {
             tag!(&[Id::LeftShift])          |
             tag!(&[Id::RightShift])
         )
-    ));
+));
 
 
-    /// Unary Operatos: `+`, `-`,
-    tk_named!(unaryop_token <TkSlice<'a>>, ignore_spaces!(
+/// Unary Operatos: `+`, `-`,
+tk_named!(unaryop_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
             tag!(&[Id::Plus])               |
             tag!(&[Id::Minus])              |
             tag!(&[Id::Tilde])
         )
-     ));
+));
 
 
-    tk_named!(constant_token <TkSlice<'a>>, ignore_spaces!(
+tk_named!(constant_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
             tag!(&[Id::Name])               |
             tag!(&[Id::String])             |
             tag!(&[Id::Number])
         )
-     ));
+));
 
 
-    /// Augmented Assignment Operators: `a += b`, ` a <<= b`, etc.
-    tk_named!(augassign_token <TkSlice<'a>>, ignore_spaces!(
-        alt_complete!(
+/// Augmented Assignment Operators: `a += b`, ` a <<= b`, etc.
+tk_named!(augassign_token <TkSlice<'a>>, ignore_spaces!(
+    alt_complete!(
             tag!(&[Id::LeftShiftEqual])     |
             tag!(&[Id::RightShiftEqual])    |
             tag!(&[Id::DoubleSlashEqual])   |
@@ -332,122 +328,8 @@ impl<'a> Parser<'a> {
             tag!(&[Id::CaretEqual])         |
             tag!(&[Id::AtEqual])
         )
-     ));
+));
 
-
-    // AST Builders
-
-    /// START(ast)
-    tk_named!(tkslice_to_ast <Ast<'a>>, do_parse!(
-    ast: alt!(
-            module_start               => { |m: Module<'a> | (Ast::Module(m))     } |
-            ignore_spaces!(stmt_start) => { |r: Stmt<'a>   | (Ast::Statement(r))  } ) >>
-    (ast)
-    ));
-
-    tk_named!(module_start <Module<'a>>, do_parse!(
-        body: many0!(stmt_start) >>
-        (Module::Body(body))
-    ));
-
-    /// START(stmt)
-    tk_named!(stmt_start <Stmt<'a>>, do_parse!(
-        statement: alt!(
-            sub_stmt_assign      |
-            sub_stmt_augassign   |
-            sub_stmt_expr        |
-            sub_stmt_next_line   ) >>
-        (statement)
-    ));
-
-    /// 5.   | Assign(expr* targets, expr value)
-    tk_named!(sub_stmt_assign <Stmt<'a>>, do_parse!(
-         // TODO: Allow subparsing of target and number as actual expr
-        target: atom_name           >>
-                assign_token        >>
-         value: start_expr >>
-        (Stmt::Assign {
-            target: Box::new(Expr::Constant(target.as_token())),
-            value: Box::new(value)
-         })
-    ));
-
-    /// 6.   | AugAssign(expr target, operator op, expr value)
-    tk_named!(sub_stmt_augassign <Stmt<'a>>, do_parse!(
-        // TODO: Allow subparsing of target and number as actual expr
-        target: atom_name       >>
-            op: augassign_token >>
-        number: atom_number     >>
-        (Stmt::AugAssign {
-            op: Op(op.as_token()),
-            target: Box::new(Expr::Atom(Atom::Name(target))),
-            value: Box::new(Expr::Atom(Atom::Number(number)))
-         })
-    ));
-
-    /// 20.   | Expr(expr value)
-    tk_named!(sub_stmt_expr <Stmt<'a>>, do_parse!(
-        expression: start_expr >>
-        (Stmt::Expr(expression))
-    ));
-
-
-    /// 22.   └ attributes (int lineno, int col_offset)
-    /// Inject a empty statement for the next line
-    tk_named!(sub_stmt_next_line<Stmt<'a>>, do_parse!(
-        newline_token >>
-        (Stmt::Newline)
-    ));
-
-
-    /// START(expr)
-    tk_named!(start_expr <Expr<'a>>, do_parse!(
-        expression: alt_complete!(
-            sub_expr_binop        |
-            sub_expr_nameconstant |
-            sub_expr_constant
-            //sub_expr_ended
-                                  ) >>
-        (expression)
-    ));
-
-
-
-    /// 1.  =  BoolOp(boolop op, expr* values)
-    /// 2.  | BinOp(expr left, operator op, expr right)
-    tk_named!(sub_expr_binop <Expr<'a>>, do_parse!(
-        // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
-        // on start_expr not just the constant expressions
-        lhs: sub_expr_constant  >>
-         op: binop_token        >>
-        rhs: sub_expr_constant >>
-        (Expr::BinOp {
-            op: Op(op.as_token()),
-            left: Box::new(lhs),
-            right: Box::new(rhs)
-         })
-    ));
-
-    tk_named!(sub_expr_nameconstant <Expr<'a>>, do_parse!(
-        constant: alt_complete!(
-            tag!(&[Id::True])     |
-            tag!(&[Id::False])    |
-            tag!(&[Id::None])     ) >>
-        (Expr::NameConstant(constant))
-    ));
-
-    tk_named!(sub_expr_constant <Expr<'a>>, do_parse!(
-        constant: constant_token >>
-        (Expr::Constant(constant.as_token()))
-    ));
-
-    /// 31.   └ attributes (int lineno, int col_offset)
-    tk_named!(sub_expr_ended<Expr<'a>>, do_parse!(
-        token: newline_token >>
-        (Expr::End)
-    ));
-
-//}
 
 #[cfg(test)]
 mod tests {

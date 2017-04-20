@@ -29,19 +29,19 @@ impl Lexer {
         Lexer {}
     }
 
-    /// Convert a slice of bytes into a r
+    /// Convert a slice of bytes into a Rc<Vec<Tk>>
     pub fn tokenize<'a>(&self, bytes: &'a [u8]) -> Rc<LexResult<'a>> {
         let result = tokenize_bytes(bytes);
         Rc::new(result)
     }
 
-    /// Convert a slice of bytes into a r
+    /// Convert a slice of bytes into Vec<Tk<'a>>
     pub fn tokenize2<'a>(&self, bytes: &'a [u8]) -> LexResult<'a>{
         tokenize_bytes(bytes)
     }
 }
 
-
+/// Entry point of the lexer into nom parser
 named!(pub tokenize_bytes <Vec<Tk>>, do_parse!(
     tokens: many0!(line) >>
     (tokens)
@@ -64,8 +64,8 @@ named!(line <Tk>, do_parse!(
 
 named!(number <Tk>, do_parse!(
     tuple : alt_complete!(
-            call!(sublex_hex)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Hex))    } |
-            call!(sublex_bin)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Binary))    } |
+            call!(sublex_hex)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Hex))      } |
+            call!(sublex_bin)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Binary))   } |
             call!(sublex_octal)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Octal))    } |
             call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
             call!(sublex_complex) => { |r: &'a[u8]| (&r[..], Tag::N(Num::Complex))  } |
@@ -79,6 +79,7 @@ named!(sublex_bin <&[u8]>, recognize!(preceded!(tag!("0b"), many1!(one_of!("01")
 named!(sublex_octal <&[u8]>, recognize!(preceded!(tag!("0o"), hex_digit)));
 named!(sublex_float <&[u8]>, recognize!(delimited!(opt!(digit), tag!("."), digit)));
 named!(sublex_complex <&[u8]>, recognize!(preceded!(digit, tag!("j"))));
+
 
 named!(endline <Tk>, do_parse!(
     nl: tag!("\n") >>
@@ -100,10 +101,6 @@ named!(error_marker <Tk>, do_parse!(
 ));
 
 
-//pub fn parse_identifier(input: &str) -> IResult {
-//    identifier(&input.as_bytes())
-//}
-
 named!(identifier <Tk>, do_parse!(
     name: call!(ident) >>
     (match as_keyword(name) {
@@ -112,44 +109,6 @@ named!(identifier <Tk>, do_parse!(
         }
     )
 ));
-
-pub trait Ident: where Self: AsChar {
-    fn is_ident_start(&self) -> bool;
-    fn is_ident(&self) -> bool;
-}
-
-
-impl Ident for u8 {
-    fn is_ident_start(&self) -> bool {
-        self.is_alpha() || (self.as_char() == '_' )
-    }
-
-    fn is_ident(&self) -> bool {
-        self.is_alphanum() || (self.as_char() == '_' )
-    }
-}
-
-
-/// Recognizes one or more numerical and alphabetic characters: 0-9a-zA-Z
-pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
-
-    let input_length = input.input_len();
-
-    if input_length == 0 {
-        return IResult::Incomplete(Needed::Unknown);
-    }
-
-    for (idx, item) in input.iter_indices() {
-        match (idx, item.is_ident_start(), item.is_ident()) {
-            (0, true, _) => continue,
-            (0, false, _) => return IResult::Error(error_position!(ErrorKind::AlphaNumeric, input)),
-            (_, _, true) => continue,
-            _ => return IResult::Done(input.slice(idx..), input.slice(0..idx))
-        }
-    }
-
-    IResult::Done(input.slice(input_length..), input)
-}
 
 
 named!(string <Tk>, do_parse!(
@@ -326,6 +285,52 @@ fn as_keyword(bytes: &[u8]) -> Option<Tk> {
         "yield"     => Some(Tk::new(Id::Yield, bytes, Tag::None)),
         _           => None
     }
+}
+
+
+/// The Ident trait and related function `ident()` are special forms if `nom::alphanum` to
+/// handle the special rules around identifiers instead of creating a more complex ident
+/// parser.
+pub trait Ident: where Self: AsChar {
+    fn is_ident_start(&self) -> bool;
+    fn is_ident(&self) -> bool;
+}
+
+
+/// Define the ident type for the u8 byte type like nom does with nom::AsChar.
+impl Ident for u8 {
+    fn is_ident_start(&self) -> bool {
+        self.is_alpha() || (self.as_char() == '_' )
+    }
+
+    fn is_ident(&self) -> bool {
+        self.is_alphanum() || (self.as_char() == '_' )
+    }
+}
+
+
+/// Recognizes a python identifier in a form defined
+/// by the regular expression `[_a-zA-Z][_a-zA-Z0-9]*`
+pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
+
+    let input_length = input.input_len();
+
+    if input_length == 0 {
+        return IResult::Incomplete(Needed::Unknown);
+    }
+
+    for (idx, item) in input.iter_indices() {
+        /// Now we get a sexy state [1 x 3] state matrix to compare
+        ///  (current_index, is_ident_start_char, is_ident_continuation_char)
+        match (idx, item.is_ident_start(), item.is_ident()) {
+            (0, true , _   ) => continue,
+            (0, false, _   ) => return IResult::Error(error_position!(ErrorKind::AlphaNumeric, input)),
+            (_, _    , true) => continue,
+            (_, _    , _   ) => return IResult::Done(input.slice(idx..), input.slice(0..idx))
+        }
+    }
+
+    IResult::Done(input.slice(input_length..), input)
 }
 
 

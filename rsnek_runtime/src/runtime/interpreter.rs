@@ -227,6 +227,7 @@ impl InterpreterState {
                     None => panic!("No values in value stack for binop!")
                 };
 
+                // TODO: Give `Instr` getters
                 let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
