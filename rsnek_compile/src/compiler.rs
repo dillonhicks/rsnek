@@ -62,13 +62,13 @@ pub enum Context {
 
 
 #[derive(Debug, Copy, Clone, Serialize)]
-pub struct Compiler{
+pub struct Compiler<'a>{
     lexer: Lexer,
-    parser: Parser
+    parser: Parser<'a>
 }
 
 
-impl Compiler {
+impl<'a> Compiler<'a> {
     pub fn new() -> Self {
         Compiler {
             lexer: Lexer::new(),
@@ -76,7 +76,7 @@ impl Compiler {
         }
     }
 
-    fn compile_expr_constant<'a>(&self, ctx: Context, tk: &'a Tk<'a>) -> Box<[Instr]> {
+    fn compile_expr_constant(&self, ctx: Context, tk: &'a Tk<'a>) -> Box<[Instr]> {
         let instr = match ctx {
             Context::Store => {
                 Instr(OpCode::StoreName, Some(Value::from(tk)))
@@ -93,7 +93,7 @@ impl Compiler {
         vec![instr].into_boxed_slice()
     }
 
-    fn compile_expr_binop<'a>(&self, op: &'a Op, left: &'a Expr<'a>, right: &'a Expr<'a>) -> Box<[Instr]> {
+    fn compile_expr_binop(&self, op: &'a Op, left: &'a Expr<'a>, right: &'a Expr<'a>) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
         match left.deref() {
@@ -135,7 +135,7 @@ impl Compiler {
         instructions.into_boxed_slice()
     }
 
-    fn compile_expr<'a>(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
+    fn compile_expr(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
         let mut ins: Box<[Instr]> = match *expr {
@@ -152,7 +152,7 @@ impl Compiler {
         instructions.into_boxed_slice()
     }
 
-    fn compile_stmt_assign<'a>(&self, target: &'a Expr<'a>, value: &'a Expr<'a>) -> Box<[Instr]> {
+    fn compile_stmt_assign(&self, target: &'a Expr<'a>, value: &'a Expr<'a>) -> Box<[Instr]> {
         // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
 
@@ -165,7 +165,7 @@ impl Compiler {
         instructions.into_boxed_slice()
     }
 
-    fn compile_stmt<'a>(&self, stmt: &'a Stmt) -> Box<[Instr]> {
+    fn compile_stmt(&self, stmt: &'a Stmt) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
         let mut ins: Box<[Instr]> = match *stmt {
@@ -213,18 +213,21 @@ impl Compiler {
         instructions.into_boxed_slice()
     }
 
-    pub fn compile_str(&self, input: &str) -> Box<[Instr]> {
+    pub fn compile_str<'b>(&mut self, input: &'b str) -> Box<[Instr]> {
+        let mut parser = Parser::new();
+
         let tokens = match self.lexer.tokenize2(input.as_bytes()) {
             IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),
             _ => panic!("Issue parsing input")
         };
 
-        let ins = match self.parser.parse_tokens(&tokens) {
+        let ins = match parser.parse_tokens(&tokens) {
             IResult::Done(left, ref ast) if left.len() == 0 => {
                 self.compile_ast(&ast)
             },
             result => panic!("\n\nERROR: {:#?}\n\n", result)
         };
+
 
         ins
     }
@@ -348,7 +351,7 @@ pub enum OpCode {
     BuildSetUnpack           = 153,
     SetupAsyncWith           = 154,
 
-    // Defined for rsnek
+    // Defined for rsnek becuase the jump instructions are kinda wierd
     LogicalAnd               = 200,
     LogicalOr                = 201
 }
@@ -364,7 +367,7 @@ mod tests {
 
         let compiler = Compiler::new();
         let lexer = Lexer::new();
-        let parser = Parser::new();
+        let mut parser = Parser::new();
 
         let tokens = match lexer.tokenize2(text.as_bytes()) {
             IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),

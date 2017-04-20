@@ -7,11 +7,12 @@ from rutabaga import Renderer
 _render = Renderer()
 
 
-@_render.context_for('{{type_prefix}}_macros.rs')
+@_render.context_for('(.+)[.]rs', regex=True)
 def ctx():
     return {
         'type_prefix': "tk",
         'crate_traits': "use $crate::traits::redefs_nom::InputLength;",
+        'path_input_slice_type': "slice::TkSlice",
         'input_slice_type_explicit_lifetime': "TkSlice<'a>",
         'input_slice_type_implicit_lifetime': "TkSlice<'a>"
     }

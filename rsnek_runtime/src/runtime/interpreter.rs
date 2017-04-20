@@ -84,6 +84,16 @@ pub enum ThreadModel {
     GreenThreads,
 }
 
+/// Exit codes for the main interpreter loops
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
+#[repr(u8)]
+enum ExitCode {
+    Ok = 0,
+    GenericError = 1,
+    NotImplemented = 254,
+    Unknown = 255
+}
+
 
 pub struct Interpreter {}
 
@@ -267,7 +277,7 @@ impl InterpreterState {
             }
         }).collect();
 
-        debug!("\nlocals:\n----------\n{}", values.join("\n"));
+        debug!("\nlocals:\n----------\n{}\n", values.join("\n"));
     }
 }
 
@@ -388,15 +398,6 @@ fn print_prompt() {
 }
 
 
-#[repr(u8)]
-enum ExitCode {
-    Ok = 0,
-    GenericError = 1,
-    NotImplemented = 254,
-    Unknown = 255
-}
-
-
 /// Create the closure with the `MainFn` signature that captures a copy
 /// of the arguments sent to `create_python_main`. The closure will try to use
 /// the first argument as the file to load.
@@ -436,7 +437,7 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
             }
         };
 
-        let compiler = Compiler::new();
+        let mut compiler = Compiler::new();
         let mut interpreter = InterpreterState::new();
         let ins = compiler.compile_str(&text);
 
@@ -467,7 +468,7 @@ use rustyline::error::ReadlineError;
 
 /// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
-    let compiler = Compiler::new();
+    let mut compiler = Compiler::new();
     let stdin = io::stdin();
 
     let config = RLConfig::builder()

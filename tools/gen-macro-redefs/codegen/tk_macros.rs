@@ -28,9 +28,9 @@
 //! that call to pass the input as first argument:
 //!
 //! ```ignore
-//! macro_rules! {{type_prefix}}_named (
+//! macro_rules! tk_named (
 //!   ($name:ident, $submac:ident!( $($args:tt)* )) => (
-//!     fn $name<'a>( i: {{input_slice_type_explicit_lifetime}} ) -> nom::IResult<'a,{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}> {
+//!     fn $name<'a>( i: TkSlice<'a> ) -> nom::IResult<'a,TkSlice<'a>, TkSlice<'a>> {
 //!       $submac!(i, $($args)*)
 //!     }
 //!   );
@@ -64,15 +64,15 @@
 //!
 #[allow(unused_variables)]
 use nom;
-use {{path_input_slice_type}};
+use slice::TkSlice;
 
 
 #[macro_export]
-macro_rules! {{type_prefix}}_tag (
+macro_rules! tk_tag (
   ($i:expr, $tag: expr) => (
     {
       use nom::{Compare,CompareResult,InputLength,Slice};
-      {{crate_traits}}
+      use $crate::traits::redefs_nom::InputLength;
       let res: nom::IResult<_,_> = match ($i).compare($tag) {
         CompareResult::Ok => {
           let blen = $tag.input_len();
@@ -96,21 +96,21 @@ macro_rules! {{type_prefix}}_tag (
 /// more information
 ///
 /// ```ignore
-/// named!(my_function( {{input_slice_type_implicit_lifetime}} ) -> {{input_slice_type_implicit_lifetime}}, tag!("abcd"));
+/// named!(my_function( TkSlice<'a> ) -> TkSlice<'a>, tag!("abcd"));
 /// // first type parameter is input, second is output
-/// named!(my_function<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}>,     tag!("abcd"));
-/// // will have {{input_slice_type_implicit_lifetime}} as input type, {{input_slice_type_implicit_lifetime}} as output type
+/// named!(my_function<TkSlice<'a>, TkSlice<'a>>,     tag!("abcd"));
+/// // will have TkSlice<'a> as input type, TkSlice<'a> as output type
 /// named!(my_function,                   tag!("abcd"));
-/// // will use {{input_slice_type_implicit_lifetime}} as input type (use this if the compiler
+/// // will use TkSlice<'a> as input type (use this if the compiler
 /// // complains about lifetime issues
-/// named!(my_function<{{input_slice_type_implicit_lifetime}}>,            tag!("abcd"));
+/// named!(my_function<TkSlice<'a>>,            tag!("abcd"));
 /// //prefix them with 'pub' to make the functions public
 /// named!(pub my_function,               tag!("abcd"));
 /// ```
 #[macro_export]
-macro_rules! {{type_prefix}}_named (
+macro_rules! tk_named (
     (#$($args:tt)*) => (
-        {{type_prefix}}_named_attr!(#$($args)*);
+        tk_named_attr!(#$($args)*);
     );
     ($name:ident( $i:ty ) -> $o:ty, $submac:ident!( $($args:tt)* )) => (
         #[allow(unused_variables)]
@@ -132,13 +132,13 @@ macro_rules! {{type_prefix}}_named (
     );
     ($name:ident<$o:ty>, $submac:ident!( $($args:tt)* )) => (
         #[allow(unused_variables)]
-        fn $name<'a>( i: {{input_slice_type_explicit_lifetime}} ) -> nom::IResult<{{input_slice_type_explicit_lifetime}}, $o, u32> {
+        fn $name<'a>( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, $o, u32> {
             $submac!(i, $($args)*)
         }
     );
     ($name:ident, $submac:ident!( $($args:tt)* )) => (
         #[allow(unused_variables)]
-        fn $name( i: {{input_slice_type_implicit_lifetime}} ) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32> {
+        fn $name( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, TkSlice<'a>, u32> {
             $submac!(i, $($args)*)
         }
     );
@@ -162,13 +162,13 @@ macro_rules! {{type_prefix}}_named (
     );
     (pub $name:ident<$o:ty>, $submac:ident!( $($args:tt)* )) => (
         #[allow(unused_variables)]
-        pub fn $name( i: {{input_slice_type_implicit_lifetime}} ) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, $o, u32> {
+        pub fn $name( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, $o, u32> {
             $submac!(i, $($args)*)
         }
     );
     (pub $name:ident, $submac:ident!( $($args:tt)* )) => (
         #[allow(unused_variables)]
-        pub fn $name<'a>( i: {{input_slice_type_explicit_lifetime}} ) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32> {
+        pub fn $name<'a>( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, TkSlice<'a>, u32> {
             $submac!(i, $($args)*)
         }
     );
@@ -176,24 +176,24 @@ macro_rules! {{type_prefix}}_named (
 
 /// Makes a function from a parser combination with arguments.
 #[macro_export]
-macro_rules! {{type_prefix}}_named_args {
+macro_rules! tk_named_args {
     (pub $func_name:ident ( $( $arg:ident : $typ:ty ),* ) < $return_type:ty > , $submac:ident!( $($args:tt)* ) ) => {
-        pub fn $func_name(input: {{input_slice_type_implicit_lifetime}}, $( $arg : $typ ),*) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, $return_type> {
+        pub fn $func_name(input: TkSlice<'a>, $( $arg : $typ ),*) -> nom::IResult<TkSlice<'a>, $return_type> {
             $submac!(input, $($args)*)
         }
     };
     (pub $func_name:ident < 'a > ( $( $arg:ident : $typ:ty ),* ) < $return_type:ty > , $submac:ident!( $($args:tt)* ) ) => {
-        pub fn $func_name<'a>(input: {{input_slice_type_explicit_lifetime}}, $( $arg : $typ ),*) -> nom::IResult<{{input_slice_type_explicit_lifetime}}, $return_type> {
+        pub fn $func_name<'a>(input: TkSlice<'a>, $( $arg : $typ ),*) -> nom::IResult<TkSlice<'a>, $return_type> {
             $submac!(input, $($args)*)
         }
     };
     ($func_name:ident ( $( $arg:ident : $typ:ty ),* ) < $return_type:ty > , $submac:ident!( $($args:tt)* ) ) => {
-        fn $func_name(input: {{input_slice_type_implicit_lifetime}}, $( $arg : $typ ),*) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, $return_type> {
+        fn $func_name(input: TkSlice<'a>, $( $arg : $typ ),*) -> nom::IResult<TkSlice<'a>, $return_type> {
             $submac!(input, $($args)*)
         }
     };
     ($func_name:ident < 'a > ( $( $arg:ident : $typ:ty ),* ) < $return_type:ty > , $submac:ident!( $($args:tt)* ) ) => {
-        fn $func_name<'a>(input: {{input_slice_type_explicit_lifetime}}, $( $arg : $typ ),*) -> nom::IResult<{{input_slice_type_explicit_lifetime}}, $return_type> {
+        fn $func_name<'a>(input: TkSlice<'a>, $( $arg : $typ ),*) -> nom::IResult<TkSlice<'a>, $return_type> {
             $submac!(input, $($args)*)
         }
     };
@@ -207,14 +207,14 @@ macro_rules! {{type_prefix}}_named_args {
 ///
 /// ```ignore
 /// // Create my_function as if you wrote it with the doc comment /// My Func
-/// named_attr!(#[doc = "My Func"], my_function( {{input_slice_type_implicit_lifetime}} ) -> {{input_slice_type_implicit_lifetime}}, tag!("abcd"));
+/// named_attr!(#[doc = "My Func"], my_function( TkSlice<'a> ) -> TkSlice<'a>, tag!("abcd"));
 /// // Also works for pub functions, and multiple lines
 /// named!(#[doc = "My Func\nRecognise abcd"], pub my_function, tag!("abcd"));
 /// // Multiple attributes can be passed if required
 /// named!(#[doc = "My Func"] #[inline(always)], pub my_function, tag!("abcd"));
 /// ```
 #[macro_export]
-macro_rules! {{type_prefix}}_named_attr (
+macro_rules! tk_named_attr (
     ($(#[$attr:meta])*, $name:ident( $i:ty ) -> $o:ty, $submac:ident!( $($args:tt)* )) => (
         $(#[$attr])*
         fn $name( i: $i ) -> nom::IResult<$i,$o,u32> {
@@ -235,13 +235,13 @@ macro_rules! {{type_prefix}}_named_attr (
     );
     ($(#[$attr:meta])*, $name:ident<$o:ty>, $submac:ident!( $($args:tt)* )) => (
         $(#[$attr])*
-        fn $name<'a>( i: {{input_slice_type_explicit_lifetime}} ) -> nom::IResult<{{input_slice_type_explicit_lifetime}}, $o, u32> {
+        fn $name<'a>( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, $o, u32> {
             $submac!(i, $($args)*)
         }
     );
     ($(#[$attr:meta])*, $name:ident, $submac:ident!( $($args:tt)* )) => (
         $(#[$attr])*
-        fn $name( i: {{input_slice_type_implicit_lifetime}} ) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32> {
+        fn $name( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, TkSlice<'a>, u32> {
             $submac!(i, $($args)*)
         }
     );
@@ -265,13 +265,13 @@ macro_rules! {{type_prefix}}_named_attr (
     );
     ($(#[$attr:meta])*, pub $name:ident<$o:ty>, $submac:ident!( $($args:tt)* )) => (
         $(#[$attr])*
-        pub fn $name( i: {{input_slice_type_implicit_lifetime}} ) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, $o, u32> {
+        pub fn $name( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, $o, u32> {
             $submac!(i, $($args)*)
         }
     );
     ($(#[$attr:meta])*, pub $name:ident, $submac:ident!( $($args:tt)* )) => (
         $(#[$attr])*
-        pub fn $name<'a>( i: {{input_slice_type_explicit_lifetime}} ) -> nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32> {
+        pub fn $name<'a>( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, TkSlice<'a>, u32> {
             $submac!(i, $($args)*)
         }
     );
@@ -376,14 +376,14 @@ macro_rules! {{type_prefix}}_named_attr (
 /// the information
 ///
 /// ```ignore
-/// {{type_prefix}}_method!(my_function<Parser<'a> >( {{input_slice_type_implicit_lifetime}} ) -> {{input_slice_type_implicit_lifetime}}, tag!("abcd"));
+/// tk_method!(my_function<Parser<'a> >( TkSlice<'a> ) -> TkSlice<'a>, tag!("abcd"));
 /// // first type parameter is `self`'s type, second is input, third is output
-/// {{type_prefix}}_method!(my_function<Parser<'a>, {{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}>,     tag!("abcd"));
+/// tk_method!(my_function<Parser<'a>, TkSlice<'a>, TkSlice<'a>>,     tag!("abcd"));
 /// //prefix them with 'pub' to make the methods public
-/// {{type_prefix}}_method!(pub my_function<Parser<'a>,{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}>, tag!("abcd"));
+/// tk_method!(pub my_function<Parser<'a>,TkSlice<'a>, TkSlice<'a>>, tag!("abcd"));
 /// ```
 #[macro_export]
-macro_rules! {{type_prefix}}_method (
+macro_rules! tk_method (
   // Non-public immutable self
   ($name:ident<$a:ty>( $i:ty ) -> $o:ty, $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
@@ -408,14 +408,14 @@ macro_rules! {{type_prefix}}_method (
   );
   ($name:ident<$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
-      fn $name( $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, $o, u32>) {
+      fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, $o, u32>) {
         let result = $submac!(i, $($args)*);
         ($self_, result)
       }
   );
   ($name:ident<$a:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
-      fn $name( $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32>) {
+      fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
         let result = $submac!(i, $($args)*);
         ($self_, result)
       }
@@ -444,14 +444,14 @@ macro_rules! {{type_prefix}}_method (
   );
   (pub $name:ident<$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
     #[allow(unused_variables)]
-    pub fn $name( $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, $o, u32>) {
+    pub fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, $o, u32>) {
       let result = $submac!(i, $($args)*);
       ($self_, result)
     }
   );
   (pub $name:ident<$a:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
     #[allow(unused_variables)]
-    pub fn $name( $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32>) {
+    pub fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
       let result = $submac!(i, $($args)*);
       ($self_, result)
     }
@@ -480,14 +480,14 @@ macro_rules! {{type_prefix}}_method (
   );
   ($name:ident<$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, $o, u32>) {
+      fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, $o, u32>) {
         let result = $submac!(i, $($args)*);
         ($self_, result)
       }
   );
   ($name:ident<$a:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
       #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32>) {
+      fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
         let result = $submac!(i, $($args)*);
         ($self_, result)
       }
@@ -516,14 +516,14 @@ macro_rules! {{type_prefix}}_method (
   );
   (pub $name:ident<$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
     #[allow(unused_variables)]
-    pub fn $name( mut $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, $o, u32>) {
+    pub fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, $o, u32>) {
       let result = $submac!(i, $($args)*);
       ($self_, result)
     }
   );
   (pub $name:ident<$a:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
     #[allow(unused_variables)]
-    pub fn $name( mut $self_: $a, i: {{input_slice_type_implicit_lifetime}} ) -> ($a, $nom::IResult<{{input_slice_type_implicit_lifetime}}, {{input_slice_type_implicit_lifetime}}, u32>) {
+    pub fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, $nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
       let result = $submac!(i, $($args)*);
       ($self_, result)
     }

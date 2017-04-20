@@ -47,7 +47,7 @@ pub fn timed_tokenize<'a>(bytes: &'a [u8]) -> (Micros, LexResult<'a>) {
 
 
 fn repl_loop() {
-    let parser = Parser::new();
+    let mut parser = Parser::new();
     let compiler = Compiler::new();
 
     let stdin = io::stdin();
