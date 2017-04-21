@@ -40,9 +40,12 @@ pub type DynExpr = Box<Expr>;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Stmt {
+    FunctionDef { name: OwnedTk, arguments: Vec<OwnedTk>, body: Box<Stmt> },
     Assign { target: Expr, value: Expr},
     AugAssign { target: Expr, op: Op, value: Expr},
     Expr(Expr),
+    Block(Vec<Stmt>), // TODO: Do blocks all share the same scope?
+    Return(Option<Expr>),
     Newline,
 }
 

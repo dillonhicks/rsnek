@@ -363,7 +363,7 @@ impl<'a> Parser<'a> {
                         p2_tokens: boxed_tks.iter().map(OwnedTk::from).collect()
                     })
             },
-            IResult::Done(ref left, ref ast) if left.len() == 0 => {
+            IResult::Done(ref remaining, ref ast) if remaining.len() == 0 => {
                 ParserResult::Ok(
                     ParsedAst {
                         ast: ast.clone(),
@@ -385,6 +385,7 @@ impl<'a> Parser<'a> {
 
         presult
     }
+
 
     #[deprecated]
     pub fn parse_file(&self, filename: &str) {
@@ -409,13 +410,11 @@ impl<'a> Parser<'a> {
 
     }
 
-
     // Example of keeping parser state
     fn inc_lineno(&mut self) {
         self.state.line += 1;
         //println!("{}", fmt::json(&self));
     }
-
 
     // AST Builders
 
@@ -436,6 +435,9 @@ impl<'a> Parser<'a> {
     /// START(stmt)
     tk_method!(stmt_start, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         statement: alt!(
+            call_m!(self.sub_stmt_funcdef)     |
+            call_m!(self.sub_stmt_block)       |
+            call_m!(self.sub_stmt_return)      |
             call_m!(self.sub_stmt_assign)      |
             call_m!(self.sub_stmt_augassign)   |
             call_m!(self.sub_stmt_expr)        |
@@ -443,12 +445,45 @@ impl<'a> Parser<'a> {
         (statement)
     ));
 
+    /// Functions are just some window dressing on blocks
+    tk_method!(sub_stmt_funcdef, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
+                   def_keyword                          >>
+        func_name: name_token                           >>
+                   lparen_token                         >>
+                   rparen_token                         >>
+                   colon_token                          >>
+       body_block: call_m!(self.sub_stmt_block)         >>
+          (Stmt::FunctionDef {
+                name: func_name.as_owned_token(),
+                body: Box::new(body_block),
+                arguments: Vec::new()
+           })
+    ));
+
+    /// Blocks are a unit of nesting that can contain many statements including
+    /// other nested blocks and functions and stuff.
+    ///
+    /// Note that they do not have a representation in Grammar.txt
+    tk_method!(sub_stmt_block, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
+               block_start                         >>
+        stmts: many0!(call_m!(self.stmt_start))    >>
+               block_end                           >>
+        (Stmt::Block(stmts))
+    ));
+
+    /// 4.   | Return(expr? value)
+    tk_method!(sub_stmt_return, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
+        return_keyword                          >>
+        value: opt!(call_m!(self.start_expr))   >>
+        (Stmt::Return(value))
+    ));
+
     /// 5.   | Assign(expr* targets, expr value)
     tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
          // TODO: Allow subparsing of target and number as actual expr
-        target: atom_name           >>
-                assign_token        >>
-         value: call_m!(self.start_expr) >>
+        target: name_token                  >>
+                assign_token                >>
+         value: call_m!(self.start_expr)    >>
         (Stmt::Assign {
             target: Expr::Constant(target.as_owned_token()),
             value: value
@@ -458,9 +493,9 @@ impl<'a> Parser<'a> {
     /// 6.   | AugAssign(expr target, operator op, expr value)
     tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         // TODO: Allow subparsing of target and number as actual expr
-        target: atom_name       >>
-            op: augassign_token >>
-        number: atom_number     >>
+        target: name_token       >>
+            op: augassign_token  >>
+        number: number_token     >>
         (Stmt::AugAssign {
             op: Op(op.as_owned_token()),
             target: Expr::Constant(target.as_owned_token()),
@@ -554,10 +589,19 @@ macro_rules! tk_is_one_of (
     
 
 // Specific Tokens and Groups of Tokens
-tk_named!(atom_name <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
-tk_named!(atom_number <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
-tk_named!(assign_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
+tk_named!(name_token    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
+tk_named!(number_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
+tk_named!(assign_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Equal])));
 tk_named!(newline_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
+tk_named!(lparen_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftParen])));
+tk_named!(rparen_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightParen])));
+tk_named!(colon_token   <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Colon])));
+
+// Special tokens
+tk_named!(def_keyword       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Def])));
+tk_named!(return_keyword    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Return])));
+tk_named!(block_start       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockStart])));
+tk_named!(block_end         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockEnd])));
 
 
 /// Binary Operators: `a + b`, `a | b`, etc.
@@ -709,9 +753,6 @@ def things():
     pass
 
 
-
-
-
 def morethings():
     pass
 
@@ -724,6 +765,34 @@ print("hello world")
         match b {
             &IResult::Done(_, ref tokens) => {
                 parser.parse_tokens(tokens);
+            },
+            _ => unreachable!()
+        }
+    }
+
+    #[test]
+    fn funcs_and_blocks() {
+        let input = r#"
+def hello():
+    x = 1
+    def potato():
+        y = 2
+        return "yup, a potato alright"
+    return potato
+
+"#;
+        let mut parser = Parser::new();
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
+        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
+
+        match b {
+            &IResult::Done(_, ref tokens) => {
+                match parser.parse_tokens(tokens) {
+                    ParserResult::Ok(parsed) => {
+                        println!("{}", fmt::json(&parsed.ast));
+                    },
+                    result => println!("{}", fmt::json(&result))
+                }
             },
             _ => unreachable!()
         }
