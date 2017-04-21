@@ -22,6 +22,11 @@ pub enum Ast<'a> {
     Any(TkSlice<'a>)
 }
 
+impl<'a> Default for Ast<'a> {
+    fn default() -> Self {
+        Ast::Module(Module::Body(Vec::new()))
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Module<'a> {

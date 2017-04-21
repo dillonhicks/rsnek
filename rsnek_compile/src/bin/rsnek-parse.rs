@@ -5,11 +5,12 @@ extern crate time;
 use std::io::prelude::*;
 use std::io;
 use std::env;
+use std::borrow::Borrow;
 
 use nom::{IResult, Needed};
 use time::Duration;
 
-use rsnek_compile::{LexResult, Lexer, Parser, Compiler};
+use rsnek_compile::{LexResult, Lexer, Parser, ParserResult, Compiler};
 use rsnek_compile::fmt;
 use rsnek_compile::util::Micros;
 
@@ -74,9 +75,9 @@ fn repl_loop() {
                  tokens.len(), fmt::tokens(&tokens, true));
 
         match parser.parse_tokens(&tokens) {
-            IResult::Done(left, ref ast) if left.len() == 0 => {
-                println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::ast(&ast));
-                compiler.compile_ast(&ast);
+            ParserResult::Ok(ref result) => {
+                println!("Ast\n, {}", fmt::json(&result));
+                compiler.compile_ast(result.ast.borrow());
             },
             result => println!("\n\nERROR: {:#?}\n\n", result)
         }

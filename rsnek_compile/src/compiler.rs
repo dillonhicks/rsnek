@@ -1,5 +1,6 @@
 use std;
 use std::ops::Deref;
+use std::borrow::Borrow;
 use std::str::FromStr;
 use std::convert::TryFrom;
 
@@ -10,7 +11,7 @@ use ::fmt;
 use ::ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
 use ::token::{Tk, Id, Tag, Num};
 use ::lexer::Lexer;
-use ::parser::Parser;
+use ::parser::{Parser, ParserResult, ParsedAst};
 
 
 #[derive(Debug, Clone, Serialize)]
@@ -61,7 +62,7 @@ pub enum Context {
 }
 
 
-#[derive(Debug, Copy, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Compiler<'a>{
     lexer: Lexer,
     parser: Parser<'a>
@@ -222,8 +223,8 @@ impl<'a> Compiler<'a> {
         };
 
         let ins = match parser.parse_tokens(&tokens) {
-            IResult::Done(left, ref ast) if left.len() == 0 => {
-                self.compile_ast(&ast)
+            ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
+                self.compile_ast(&result.ast.borrow())
             },
             result => panic!("\n\nERROR: {:#?}\n\n", result)
         };
@@ -378,9 +379,9 @@ mod tests {
                  tokens.len(), fmt::tokens(&tokens, true));
 
         match parser.parse_tokens(&tokens) {
-            IResult::Done(left, ref ast) if left.len() == 0 => {
-                println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::ast(&ast));
-                let ins = compiler.compile_ast(&ast);
+            ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
+                println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::ast(result.ast.borrow()));
+                let ins = compiler.compile_ast(result.ast.borrow());
 
                 println!();
                 println!("Compiled Instructions ({}):", ins.len());

@@ -13,9 +13,12 @@ use num::FromPrimitive;
 
 use ::fmt;
 
-pub const TK_BLOCK_START: Tk = Tk{ id: Id::BlockStart, bytes: &[], tag: Tag::None};
-pub const TK_BLOCK_END: Tk = Tk{ id: Id::BlockEnd, bytes: &[], tag: Tag::None};
+const NEWLINE_BYTES: &'static [u8] = &[10];
+pub const TK_NEWLINE: Tk = Tk {id: Id::Newline, bytes: NEWLINE_BYTES, tag: Tag::W(Ws::Newline)};
+pub const TK_BLOCK_START: Tk = Tk{ id: Id::BlockStart, bytes: NEWLINE_BYTES, tag: Tag::None};
+pub const TK_BLOCK_END: Tk = Tk{ id: Id::BlockEnd, bytes: NEWLINE_BYTES, tag: Tag::None};
 
+pub const NEWLINE: &'static [Tk] = &[TK_NEWLINE];
 pub const BLOCK_START: &'static [Tk] = &[TK_BLOCK_START];
 pub const BLOCK_END: &'static [Tk] = &[TK_BLOCK_END];
 

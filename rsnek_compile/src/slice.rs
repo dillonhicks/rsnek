@@ -35,6 +35,10 @@ impl<'a> TkSlice<'a> {
         self.0[0].clone()
     }
 
+    pub fn tokens(&self) -> &'a [Tk<'a>] {
+        &self.0[..]
+    }
+
     /// Convert a token slice to a string
     pub fn as_string(&self) -> String {
         self.iter()

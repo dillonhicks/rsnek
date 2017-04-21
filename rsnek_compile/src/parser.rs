@@ -8,15 +8,13 @@ use nom::{IResult, Slice, Compare, CompareResult, FindToken, ErrorKind};
 
 use lexer::Lexer;
 use fmt;
-use token::{Id, Tk, Tag, pprint_tokens, New, BLOCK_START, BLOCK_END, TK_BLOCK_END, TK_BLOCK_START};
+use token::{Id, Tk, Tag, pprint_tokens, New, BLOCK_START, BLOCK_END, TK_BLOCK_END, TK_BLOCK_START, NEWLINE};
 use slice::{TkSlice};
 use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
 use traits::redefs_nom::InputLength;
 
-pub type ParseResult<'a> = IResult<TkSlice<'a>, Ast<'a>>;
 const INDENT_STACK_SIZE: usize = 100;
 
-enum ParserPass {}
 
 /// Generalized form of nom's `eat_seperator!` macro
 //
@@ -85,66 +83,23 @@ macro_rules! strings_error_indent_overflow {
     }
 }
 
+trait Preprocessor<T, V> {
+    fn transform(&self, input: T) -> Result<V, String>;
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Default)]
-struct ParserState<'a> {
-    line: usize,
-    column: usize,
-    indent: usize,
-    unused: Option<TkSlice<'a>>
-}
+struct BlockScopeProcessor;
 
-
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct Parser<'a> {
-    state: ParserState<'a>,
-}
-
-
-
-impl<'a> Parser<'a> {
-
-    pub fn new() -> Self {
-        Parser { state: ParserState::default() }
-    }
-
-    /// Public wrapper to the macro generated tkslice_to_ast which will take a slice of
-    /// tokens, turn those into a TkSlice, and parse that into an AST.
-    pub fn parse_tokens<'b>(&mut self, tokens: &'b [Tk<'b>]) -> ParseResult<'b> {
-        let raw_slice: TkSlice<'b> = TkSlice(tokens);
-
-        let indent = self.determine_indent(&raw_slice);
-        println!("Indent is len: {}", indent);
-        let fixed_slice = self.materialize_block_scopes(indent, &raw_slice).unwrap();
-
-
-        self.tkslice_to_ast(raw_slice).1
-    }
-
-    #[deprecated]
-    pub fn parse_file(&self, filename: &str) {
-
-        let mut contents: Vec<u8> = Vec::new();
-        {
-            let mut file = File::open(filename).unwrap();
-            file.read_to_end(&mut contents).unwrap();
-        }
-
-        let bytes = contents.as_slice();
-        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(bytes);
-        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-        match b {
-            &IResult::Done(_, ref tokens) => {
-                pprint_tokens(&tokens)
-            },
-            _ => {}
-        }
+impl BlockScopeProcessor {
+    fn new() -> Self {
+        BlockScopeProcessor {}
     }
 
     /// Determine the length of an indent in spaces.
-    fn determine_indent<'b>(&self, tokens: &TkSlice<'b>) -> usize {
+    fn determine_indent<'a>(&self, tokens: &TkSlice<'a>) -> usize {
 
         let mut start: Option<usize> = None;
-        let mut last: (usize, Tk<'b>) = (0, Tk::default());
+        let mut last: (usize, Tk<'a>) = (0, Tk::default());
 
         for (idx, tk) in tokens.iter().enumerate() {
             match (last.1.id(), tk.id(), start) {
@@ -166,10 +121,54 @@ impl<'a> Parser<'a> {
         return 0
     }
 
-    /// Because python had the bright idea to use whitespace for scoping... fucking hipsters.
-    fn materialize_block_scopes<'b>(&self, indent: usize, tokens: &TkSlice<'b>) -> Result<TkSlice<'b>, String> {
+    ///
+    #[inline]
+    fn balance_scopes<'b>(&self, span_len: usize, indent: usize,
+                          stack_idx_start: usize, indent_stack: &mut [usize],
+                          acc: &mut Vec<TkSlice<'b>>) -> Result<usize, String> {
+
+        let mut stack_idx = stack_idx_start;
+
+        match indent_stack[stack_idx] {
+            curr if span_len == curr + indent => {
+                if INDENT_STACK_SIZE <= stack_idx + 1 {
+                    return Err(strings_error_indent_overflow!(INDENT_STACK_SIZE))
+                }
+                stack_idx += 1;
+                indent_stack[stack_idx] = curr + indent;
+                //println!("Emit: {:?}", TK_BLOCK_START.id());
+                acc.push(TkSlice(&BLOCK_START));
+            },
+            curr if span_len < curr => {
+                'backtrack: while stack_idx != 0 {
+                    stack_idx -= 1;
+
+                    //println!("Emit: {:?}", TK_BLOCK_END.id());
+                    acc.push(TkSlice(&BLOCK_END));
+
+                    if indent_stack[stack_idx] == span_len {
+                        break 'backtrack;
+                    }
+                }
+            },
+            _ => {
+                println!("No change in self.indent stack");
+                acc.push(TkSlice(&NEWLINE));
+            }
+        }
+
+        Ok(stack_idx)
+    }
+}
+
+impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
+
+    fn transform<'b>(&self, tokens: TkSlice<'b>) -> Result<Box<[Tk<'b>]>, String> {
+        let indent = self.determine_indent(&tokens);
+        println!("Indent is len: {}", indent);
+
         if indent == 0 {
-            return Ok(tokens.slice(..))
+            return Ok(tokens.tokens().to_owned().into_boxed_slice());
         }
 
         let mut acc: Vec<TkSlice<'b>> = Vec::new();
@@ -190,9 +189,9 @@ impl<'a> Parser<'a> {
                 // continuation so start collapsing the whitespace
                 (Id::Newline, Id::Space, false, false, None) => {
                     if let Some(e) = end{
-                        acc.push(tokens.slice(e..idx))
+                        acc.push(tokens.slice(e..idx - 1))
                     } else {
-                        acc.push(tokens.slice(..idx));
+                        acc.push(tokens.slice(..idx - 1));
                     }
 
                     start = Some(idx);
@@ -203,60 +202,52 @@ impl<'a> Parser<'a> {
                 // Found the first non ws char
                 (Id::Space, id, false, false, Some(s)) if id != Id::Space => {
                     // TODO: Emit expression start/end?
-
                     let span = tokens.slice(s..idx);
 
                     seen_non_ws = true;
                     start = None;
                     end = Some(idx);
 
-                    println!("Found indent span: {:?}", span.len());
+                    //println!("Found self.indent span: {:?}", span.len());
                     if span.len() % indent != 0 {
                         return Err(strings_error_indent_mismatch!(span.len(), indent));
                     }
 
-                    let span_len = span.len();
+                    match self.balance_scopes(span.len(), indent, stack_idx, &mut indent_stack, &mut acc) {
+                        Ok(new_stack_idx) => stack_idx = new_stack_idx,
+                        Err(string) => return Err(string)
+                    };
 
-                    match indent_stack[stack_idx] {
-                        curr if span_len == curr + indent => {
-                            if INDENT_STACK_SIZE <= stack_idx + 1 {
-                                return Err(strings_error_indent_overflow!(INDENT_STACK_SIZE))
-                            }
-                            stack_idx += 1;
-                            indent_stack[stack_idx] = curr + indent;
-                            println!("Emit: {:?}", TK_BLOCK_START.id());
-                            acc.push(TkSlice(&BLOCK_START));
-                        },
-                        curr if span_len < curr => {
-                            'backtrack: while stack_idx != 0 {
-                                stack_idx -= 1;
-
-                                println!("Emit: {:?}", TK_BLOCK_END.id());
-                                acc.push(TkSlice(&BLOCK_END));
-
-                                if indent_stack[stack_idx] == span_len {
-                                    break 'backtrack;
-                                }
-                            }
-                        },
-                        _ => println!("No change in indent stack")
-                    }
                     acc.push(span);
+                },
+                // A top level scope cannot close its scopes until it finds the next one
+                (Id::Newline, id, false, false, _) if id != Id::Space && id != Id::Newline => {
+                    // TODO: Emit expression start/end?
+
+                    if let Some(e) = end{
+                        acc.push(tokens.slice(e..idx - 1))
+                    } else {
+                        acc.push(tokens.slice(..idx - 1));
+                    }
+
+                    seen_non_ws = true;
+                    start = None;
+                    end = Some(idx);
+
+                    match self.balance_scopes(0, indent, stack_idx, &mut indent_stack, &mut acc) {
+                        Ok(new_stack_idx) => stack_idx = new_stack_idx,
+                        Err(string) => return Err(string)
+                    };
+
                 },
                 // Continuation case.
                 (_, Id::Backslash, _, _, _) => {
-                    // TODO: Handle backslash continuations... rewrite the newline masked as a Id::Space??
+                    // TODO: Handle backslash continuations... rewrite the
+                    //   newline masked as a Id::Space??
                 },
                 // Normal newline
                 (_, Id::Newline, false, _, _) => {
                     seen_non_ws = false;
-                },
-                _ if idx +1 == tokens.len() => {
-                    match (start, end) {
-                        (Some(i), _) |
-                        (_, Some(i)) => acc.push(tokens.slice(i..)),
-                        _ => unreachable!()
-                    };
                 },
                 _ => {}
             };
@@ -264,7 +255,20 @@ impl<'a> Parser<'a> {
             last_tk = (idx, tk.clone());
         }
 
+        // Put the rest of the tokens in the acc if the loops did not end on a
+        // scope boundary.
+        match (start, end) {
+            (Some(i), _) |
+            (_, Some(i)) => acc.push(tokens.slice(i..)),
+            _ => unreachable!()
+        };
 
+        'emit_trailing_end_scopes: while stack_idx != 0 {
+            stack_idx -= 1;
+            acc.push(TkSlice(&BLOCK_END));
+        }
+
+        //println!("ENDDEBUG: {:?} {:?}", start, end);
         // TODO: remove this debug shit. This dumps the contents of the accumulator
         // as a string
         let strings: String = acc.iter()
@@ -273,8 +277,128 @@ impl<'a> Parser<'a> {
             .concat();
         println!("CONCAT: {}", strings);
 
-        Ok(tokens.slice(..))
+        let scoped_tokens = acc.iter()
+            .flat_map(TkSlice::iter)
+            .map(Tk::clone)
+            .collect::<Vec<Tk<'b>>>();
+
+        for t in &scoped_tokens {
+            println!("{}", fmt::token(&t));
+        }
+
+        Ok(scoped_tokens.into_boxed_slice())
     }
+
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Default)]
+struct ParserState<'a> {
+    line: usize,
+    column: usize,
+    indent: usize,
+    //preprocessors: Vec<&'a Preprocessor<TkSlice<'a>>>,
+    unused: Option<TkSlice<'a>>
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ParserResult<'a> {
+    Ok(ParsedAst<'a>),
+    Error(ParsedAst<'a>),
+}
+
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ParsedAst<'a>{
+    pub ast: Box<Ast<'a>>,
+    pub tokens: Box<[Tk<'a>]>,
+    pub remaining_tokens: Box<[Tk<'a>]>,
+}
+
+
+#[derive(Debug, Copy, Clone, Serialize)]
+pub struct Parser<'a> {
+    state: ParserState<'a>,
+}
+
+
+impl<'a> Parser<'a> {
+
+    pub fn new() -> Self {
+        let mut state = ParserState::default();
+//        let block_pp: &Preprocessor<TkSlice<'a>> = &BlockScopeProcessor::new();
+//        state.preprocessors.push(block_pp);
+
+        Parser { state: state }
+    }
+
+    /// Public wrapper to the macro generated tkslice_to_ast which will take a slice of
+    /// tokens, turn those into a TkSlice, and parse that into an AST.
+    pub fn parse_tokens<'b, 'c>(&mut self, tokens: &'b [Tk<'b>]) -> ParserResult<'c> {
+        let raw_slice: TkSlice<'b> = TkSlice(tokens);
+
+        let pp = &BlockScopeProcessor::new();
+        let boxed_tks: Box<[Tk<'b>]> = pp.transform(raw_slice).unwrap();
+        // Dereference the box to remove the indirection and get the real
+        // address to the slice.
+        let slice = TkSlice(&(*boxed_tks));
+
+        let result = self.tkslice_to_ast(slice).1;
+
+        ParserResult::Error(
+            ParsedAst {
+                ast: Box::new(Ast::default()),
+                remaining_tokens: Box::new([]),
+                tokens: Box::new([]),
+            })
+
+//        match result {
+//            IResult::Error(ref remaining) => {
+//                ParseStatus::Error(
+//                    ParsedAst {
+//                        ast: Box::new(Ast::default()),
+//                        remaining_tokens: Box::new(remaining.clone()),
+//                        tokens: &[],
+//                    })
+//            }
+//            IResult::Incomplete(tks) => {
+//                panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tks);
+//            },
+//            IResult::Done(left, ref ast) if left.len() == 0 => {
+//                println!("Ast({:?}) \n{}", tokens.len(), fmt::json(&ast));
+//            },
+//            IResult::Done(ref remaining, ref ast) => {
+//                panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
+//                       slice, fmt::json(&remaining), fmt::json(&ast));
+//            }
+//        }
+//
+//
+//        self.tkslice_to_ast(raw_slice).1
+    }
+
+    #[deprecated]
+    pub fn parse_file(&self, filename: &str) {
+
+        let mut contents: Vec<u8> = Vec::new();
+        {
+            let mut file = File::open(filename).unwrap();
+            file.read_to_end(&mut contents).unwrap();
+        }
+
+        let bytes = contents.as_slice();
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(bytes);
+        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
+
+
+        match b {
+            &IResult::Done(_, ref tokens) => {
+                pprint_tokens(&tokens)
+            },
+            _ => {}
+        }
+
+    }
+
 
     // Example of keeping parser state
     fn inc_lineno(&mut self) {
@@ -495,7 +619,7 @@ mod tests {
 
     use nom::IResult;
     use serde_json;
-
+    use ast::Ast;
     use lexer::Lexer;
     use super::*;
 
@@ -515,20 +639,23 @@ mod tests {
         }
     }
 
-    fn assert_complete<'a>(tokens: &Vec<Tk<'a>>, result: &IResult<TkSlice<'a>,Ast<'a>>) {
+    fn assert_complete<'a>(tokens: &Vec<Tk<'a>>, result: &ParserResult) {
         match *result {
-            IResult::Error(_) => panic!("AST Error"),
-            IResult::Incomplete(_) => {
-                panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tokens);
+            ParserResult::Error(ref result) => {
+                println!("{}", fmt::json(&result));
+                panic!("AST Error")
             },
-            IResult::Done(left, ref ast) if left.len() == 0 => {
-                println!("Ast({:?}) \n{}", tokens.len(), serde_json::to_string_pretty(&ast).unwrap());
+//            IResult::Incomplete(_) => {
+//                panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tokens);
+//            },
+            ParserResult::Ok(ref result) => {
+                println!("Ast(ok) \n{}", fmt::json(&result));
             },
-            IResult::Done(ref remaining, ref ast) => {
-                panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
-                       tokens, serde_json::to_string_pretty(&remaining).unwrap(),
-                       serde_json::to_string_pretty(&ast).unwrap());
-            }
+//            IResult::Done(ref remaining, ref ast) => {
+//                panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
+//                       tokens, serde_json::to_string_pretty(&remaining).unwrap(),
+//                       serde_json::to_string_pretty(&ast).unwrap());
+//            }
         }
     }
 
@@ -576,7 +703,17 @@ fun = beer + jetski
 def things():
     if thing:
         thing2
+        thing3
     pass
+
+
+
+
+
+def morethings():
+    pass
+
+print("hello world")
 "#;
         let mut parser = Parser::new();
         let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
