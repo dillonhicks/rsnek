@@ -13,6 +13,13 @@ use num::FromPrimitive;
 
 use ::fmt;
 
+pub const TK_BLOCK_START: Tk = Tk{ id: Id::BlockStart, bytes: &[], tag: Tag::None};
+pub const TK_BLOCK_END: Tk = Tk{ id: Id::BlockEnd, bytes: &[], tag: Tag::None};
+
+pub const BLOCK_START: &'static [Tk] = &[TK_BLOCK_START];
+pub const BLOCK_END: &'static [Tk] = &[TK_BLOCK_END];
+
+
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Tk<'a> {
     id: Id,
@@ -31,6 +38,10 @@ impl<'a> Tk<'a> {
         self.id
     }
     pub fn tag(&self) -> Tag { self.tag }
+
+    pub fn as_string(&self) -> String {
+        String::from_utf8_lossy(self.bytes).to_string()
+    }
 }
 
 
@@ -41,6 +52,12 @@ impl<'a, 'b> FindToken<&'b [Id]> for Tk<'a> {
         }
 
         false
+    }
+}
+
+impl<'a> Default for Tk<'a> {
+    fn default() -> Self {
+        Tk::new(Id::None, &[], Tag::None)
     }
 }
 
@@ -264,6 +281,8 @@ pub enum Id {
     Symbol,
     ErrorMarker,
     Keyword,
+    BlockStart,
+    BlockEnd,
 
     // Strings
     Comment,

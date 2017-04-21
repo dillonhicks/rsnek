@@ -8,13 +8,13 @@ use nom::{IResult, Slice, Compare, CompareResult, FindToken, ErrorKind};
 
 use lexer::Lexer;
 use fmt;
-use token::{Id, Tk, pprint_tokens};
+use token::{Id, Tk, Tag, pprint_tokens, New, BLOCK_START, BLOCK_END, TK_BLOCK_END, TK_BLOCK_START};
 use slice::{TkSlice};
 use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
 use traits::redefs_nom::InputLength;
 
 pub type ParseResult<'a> = IResult<TkSlice<'a>, Ast<'a>>;
-
+const INDENT_STACK_SIZE: usize = 100;
 
 enum ParserPass {}
 
@@ -38,9 +38,9 @@ macro_rules! drop_tokens (
           } else {
             match ($i).iter_indices().map(|(j, item)| {
 
-                let f = (j, item.find_token($arr));
-                f
-                })
+                (j, item.find_token($arr))
+
+           })
                 .filter(|&(_, is_token)| !is_token)
                 .map(|(j, _)| j)
                 .next() {
@@ -71,12 +71,26 @@ macro_rules! ignore_spaces (
 );
 
 
+// TODO: move to rsnek_runtime::macros
+macro_rules! strings_error_indent_mismatch {
+    ($len:expr, $indent:expr) => {
+        format!("SPAN LEN {} IS NOT A MULTIPLE OF YOUR MOMS SPEED DIAL NUMBER {}", $len, $indent);
+    }
+}
+
+// TODO: move to rsnek_runtime::macros
+macro_rules! strings_error_indent_overflow {
+    ($max:expr) => {
+        format!("Number of INDENT is more than the max allowed {}", $max);
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Default)]
 struct ParserState<'a> {
     line: usize,
     column: usize,
-    indent: Option<TkSlice<'a>>
+    indent: usize,
+    unused: Option<TkSlice<'a>>
 }
 
 
@@ -84,6 +98,7 @@ struct ParserState<'a> {
 pub struct Parser<'a> {
     state: ParserState<'a>,
 }
+
 
 
 impl<'a> Parser<'a> {
@@ -95,8 +110,14 @@ impl<'a> Parser<'a> {
     /// Public wrapper to the macro generated tkslice_to_ast which will take a slice of
     /// tokens, turn those into a TkSlice, and parse that into an AST.
     pub fn parse_tokens<'b>(&mut self, tokens: &'b [Tk<'b>]) -> ParseResult<'b> {
-        let slice: TkSlice<'b> = TkSlice(tokens);
-        self.tkslice_to_ast(slice).1
+        let raw_slice: TkSlice<'b> = TkSlice(tokens);
+
+        let indent = self.determine_indent(&raw_slice);
+        println!("Indent is len: {}", indent);
+        let fixed_slice = self.materialize_block_scopes(indent, &raw_slice).unwrap();
+
+
+        self.tkslice_to_ast(raw_slice).1
     }
 
     #[deprecated]
@@ -119,6 +140,141 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Determine the length of an indent in spaces.
+    fn determine_indent<'b>(&self, tokens: &TkSlice<'b>) -> usize {
+
+        let mut start: Option<usize> = None;
+        let mut last: (usize, Tk<'b>) = (0, Tk::default());
+
+        for (idx, tk) in tokens.iter().enumerate() {
+            match (last.1.id(), tk.id(), start) {
+                (Id::Newline, Id::Space, _) => start = Some(idx),
+                (Id::Space, Id::Newline, _) => {
+                    start = None;
+                },
+                (Id::Space, id, Some(s)) => {
+                    if id != Id::Space && id != Id::Newline {
+                        return tokens.slice(s..idx).len();
+                    }
+                },
+                _ => {}
+            };
+
+            last = (idx, tk.clone());
+        }
+
+        return 0
+    }
+
+    /// Because python had the bright idea to use whitespace for scoping... fucking hipsters.
+    fn materialize_block_scopes<'b>(&self, indent: usize, tokens: &TkSlice<'b>) -> Result<TkSlice<'b>, String> {
+        if indent == 0 {
+            return Ok(tokens.slice(..))
+        }
+
+        let mut acc: Vec<TkSlice<'b>> = Vec::new();
+
+        let mut stack_idx = 0;
+        let mut indent_stack: [usize; INDENT_STACK_SIZE]  = [0; INDENT_STACK_SIZE];
+
+        let mut start: Option<usize>        = None;
+        let mut end: Option<usize>          = None;
+        let mut is_continuation             = false;
+        let mut seen_non_ws                 = false;
+
+        let mut last_tk: (usize, Tk<'b>)    = (0, Tk::default());
+
+        for (idx, tk) in tokens.iter().enumerate() {
+            match (last_tk.1.id(), tk.id(), is_continuation, seen_non_ws, start) {
+                // Just seen a newline on the last pass and it is not a \ escaped
+                // continuation so start collapsing the whitespace
+                (Id::Newline, Id::Space, false, false, None) => {
+                    if let Some(e) = end{
+                        acc.push(tokens.slice(e..idx))
+                    } else {
+                        acc.push(tokens.slice(..idx));
+                    }
+
+                    start = Some(idx);
+                    end = None;
+                },
+                // Continue to consume spaces
+                (Id::Space,   Id::Space, false, false, _) => {},
+                // Found the first non ws char
+                (Id::Space, id, false, false, Some(s)) if id != Id::Space => {
+                    // TODO: Emit expression start/end?
+
+                    let span = tokens.slice(s..idx);
+
+                    seen_non_ws = true;
+                    start = None;
+                    end = Some(idx);
+
+                    println!("Found indent span: {:?}", span.len());
+                    if span.len() % indent != 0 {
+                        return Err(strings_error_indent_mismatch!(span.len(), indent));
+                    }
+
+                    let span_len = span.len();
+
+                    match indent_stack[stack_idx] {
+                        curr if span_len == curr + indent => {
+                            if INDENT_STACK_SIZE <= stack_idx + 1 {
+                                return Err(strings_error_indent_overflow!(INDENT_STACK_SIZE))
+                            }
+                            stack_idx += 1;
+                            indent_stack[stack_idx] = curr + indent;
+                            println!("Emit: {:?}", TK_BLOCK_START.id());
+                            acc.push(TkSlice(&BLOCK_START));
+                        },
+                        curr if span_len < curr => {
+                            'backtrack: while stack_idx != 0 {
+                                stack_idx -= 1;
+
+                                println!("Emit: {:?}", TK_BLOCK_END.id());
+                                acc.push(TkSlice(&BLOCK_END));
+
+                                if indent_stack[stack_idx] == span_len {
+                                    break 'backtrack;
+                                }
+                            }
+                        },
+                        _ => println!("No change in indent stack")
+                    }
+                    acc.push(span);
+                },
+                // Continuation case.
+                (_, Id::Backslash, _, _, _) => {
+                    // TODO: Handle backslash continuations... rewrite the newline masked as a Id::Space??
+                },
+                // Normal newline
+                (_, Id::Newline, false, _, _) => {
+                    seen_non_ws = false;
+                },
+                _ if idx +1 == tokens.len() => {
+                    match (start, end) {
+                        (Some(i), _) |
+                        (_, Some(i)) => acc.push(tokens.slice(i..)),
+                        _ => unreachable!()
+                    };
+                },
+                _ => {}
+            };
+
+            last_tk = (idx, tk.clone());
+        }
+
+
+        // TODO: remove this debug shit. This dumps the contents of the accumulator
+        // as a string
+        let strings: String = acc.iter()
+            .map(TkSlice::as_string)
+            .collect::<Vec<String>>()
+            .concat();
+        println!("CONCAT: {}", strings);
+
+        Ok(tokens.slice(..))
+    }
 
     // Example of keeping parser state
     fn inc_lineno(&mut self) {
@@ -231,11 +387,11 @@ impl<'a> Parser<'a> {
         (Expr::Constant(constant.as_token()))
     ));
 
-    /// 31.   └ attributes (int lineno, int col_offset)
-    tk_method!(sub_expr_ended, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
-        token: newline_token >>
-        (Expr::End)
-    ));
+    // 31.   └ attributes (int lineno, int col_offset)
+//    tk_method!(sub_expr_ended, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+//        token: newline_token >>
+//        (Expr::End)
+//    ));
 }
 
 
@@ -414,4 +570,23 @@ fun = beer + jetski
     }
 
 
+    #[test]
+    fn determine_indent() {
+        let input = r#"
+def things():
+    if thing:
+        thing2
+    pass
+"#;
+        let mut parser = Parser::new();
+        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
+        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
+
+        match b {
+            &IResult::Done(_, ref tokens) => {
+                parser.parse_tokens(tokens);
+            },
+            _ => unreachable!()
+        }
+    }
 }

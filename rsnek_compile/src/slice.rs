@@ -34,6 +34,14 @@ impl<'a> TkSlice<'a> {
         assert_eq!(self.len(), 1);
         self.0[0].clone()
     }
+
+    /// Convert a token slice to a string
+    pub fn as_string(&self) -> String {
+        self.iter()
+            .map(Tk::as_string)
+            .collect::<Vec<String>>()
+            .concat()
+    }
 }
 
 impl<'a> InputLength for TkSlice<'a> {
