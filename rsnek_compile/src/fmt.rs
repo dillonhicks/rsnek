@@ -57,9 +57,3 @@ pub fn tokens(tokens: &[Tk], filter_spaces: bool) -> String {
 
     result.join("\n")
 }
-
-/// Deprecated in favor of `fmt::json`
-#[deprecated]
-pub fn ast<'a>(input: &Ast<'a>) -> String {
-    json(&input)
-}

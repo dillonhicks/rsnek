@@ -13,8 +13,7 @@ use nom;
 use nom::{Compare, AsChar,CompareResult,InputLength,InputIter,Slice,HexDisplay, InputTake, FindToken};
 use nom::{IResult, digit, multispace};
 use serde::Serialize;
-use token::{Tk, Id};
-
+use token::{Tk, Id, OwnedTk};
 
 #[derive(Clone, Debug, Copy, Serialize, Ord, Eq, PartialEq)]
 pub struct TkSlice<'a>(pub &'a [Tk<'a>]);
@@ -35,9 +34,21 @@ impl<'a> TkSlice<'a> {
         self.0[0].clone()
     }
 
+    /// Convert the slice back into a token assuming it is a
+    /// slice of exactly len 1.
+    pub fn as_owned_token(&self) -> OwnedTk {
+        assert_eq!(self.len(), 1);
+        OwnedTk::from(&self.0[0])
+    }
+
     pub fn tokens(&self) -> &'a [Tk<'a>] {
         &self.0[..]
     }
+
+    pub fn as_owned_tokens(&self) -> Vec<OwnedTk> {
+        self.iter().map(OwnedTk::from).collect()
+    }
+
 
     /// Convert a token slice to a string
     pub fn as_string(&self) -> String {
@@ -47,6 +58,8 @@ impl<'a> TkSlice<'a> {
             .concat()
     }
 }
+
+
 
 impl<'a> InputLength for TkSlice<'a> {
     fn input_len(&self) -> usize {

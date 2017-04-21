@@ -8,9 +8,9 @@ use nom::{IResult, Slice, Compare, CompareResult, FindToken, ErrorKind};
 
 use lexer::Lexer;
 use fmt;
-use token::{Id, Tk, Tag, pprint_tokens, New, BLOCK_START, BLOCK_END, TK_BLOCK_END, TK_BLOCK_START, NEWLINE};
+use token::{Id, Tk, Tag, OwnedTk, pprint_tokens, New, BLOCK_START, BLOCK_END, TK_BLOCK_END, TK_BLOCK_START, NEWLINE};
 use slice::{TkSlice};
-use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
+use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Op};
 use traits::redefs_nom::InputLength;
 
 const INDENT_STACK_SIZE: usize = 100;
@@ -301,17 +301,18 @@ struct ParserState<'a> {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub enum ParserResult<'a> {
-    Ok(ParsedAst<'a>),
-    Error(ParsedAst<'a>),
+pub enum ParserResult {
+    Ok(ParsedAst),
+    Error(ParsedAst),
 }
 
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ParsedAst<'a>{
-    pub ast: Box<Ast<'a>>,
-    pub tokens: Box<[Tk<'a>]>,
-    pub remaining_tokens: Box<[Tk<'a>]>,
+pub struct ParsedAst{
+    pub ast: Ast,
+    pub p1_tokens: Vec<OwnedTk>,
+    pub p2_tokens: Vec<OwnedTk>,
+    pub remaining_tokens: Vec<OwnedTk>,
 }
 
 
@@ -325,55 +326,64 @@ impl<'a> Parser<'a> {
 
     pub fn new() -> Self {
         let mut state = ParserState::default();
-//        let block_pp: &Preprocessor<TkSlice<'a>> = &BlockScopeProcessor::new();
-//        state.preprocessors.push(block_pp);
-
         Parser { state: state }
     }
 
     /// Public wrapper to the macro generated tkslice_to_ast which will take a slice of
     /// tokens, turn those into a TkSlice, and parse that into an AST.
-    pub fn parse_tokens<'b, 'c>(&mut self, tokens: &'b [Tk<'b>]) -> ParserResult<'c> {
-        let raw_slice: TkSlice<'b> = TkSlice(tokens);
+    pub fn parse_tokens<'b, 'c>(&mut self, tokens: &'b [Tk<'b>]) -> ParserResult {
 
-        let pp = &BlockScopeProcessor::new();
-        let boxed_tks: Box<[Tk<'b>]> = pp.transform(raw_slice).unwrap();
+        // TODO: Should this be part of some chain of preprocessors?
+        let bspp = BlockScopeProcessor::new();
+        let boxed_tks: Box<[Tk<'b>]> = bspp.transform(TkSlice(tokens)).unwrap();
         // Dereference the box to remove the indirection and get the real
         // address to the slice.
         let slice = TkSlice(&(*boxed_tks));
-
         let result = self.tkslice_to_ast(slice).1;
 
-        ParserResult::Error(
-            ParsedAst {
-                ast: Box::new(Ast::default()),
-                remaining_tokens: Box::new([]),
-                tokens: Box::new([]),
-            })
+        // TODO: Try to incorporate error messages here
+        let presult = match result {
+            IResult::Error(ref error) => {
+                // TODO: Consume error in parse result in some useful message
+                ParserResult::Error(
+                    ParsedAst {
+                        ast: Ast::default(),
+                        remaining_tokens: Vec::new(),
+                        p1_tokens: tokens.iter().map(OwnedTk::from).collect(),
+                        p2_tokens: boxed_tks.iter().map(OwnedTk::from).collect()
+                    })
+            }
+            IResult::Incomplete(_) => {
+                // TODO: nom::Needed enum has some extra info about parsing
+                ParserResult::Error(
+                    ParsedAst {
+                        ast: Ast::default(),
+                        remaining_tokens: Vec::new(),
+                        p1_tokens: tokens.iter().map(OwnedTk::from).collect(),
+                        p2_tokens: boxed_tks.iter().map(OwnedTk::from).collect()
+                    })
+            },
+            IResult::Done(ref left, ref ast) if left.len() == 0 => {
+                ParserResult::Ok(
+                    ParsedAst {
+                        ast: ast.clone(),
+                        remaining_tokens: Vec::new(),
+                        p1_tokens: tokens.iter().map(OwnedTk::from).collect(),
+                        p2_tokens: boxed_tks.iter().map(OwnedTk::from).collect()
+                    })
+            },
+            IResult::Done(ref remaining, ref ast) => {
+                ParserResult::Error(
+                    ParsedAst {
+                        ast: ast.clone(),
+                        remaining_tokens: remaining.iter().map(OwnedTk::from).collect(),
+                        p1_tokens: tokens.iter().map(OwnedTk::from).collect(),
+                        p2_tokens: boxed_tks.iter().map(OwnedTk::from).collect()
+                    })
+            }
+        };
 
-//        match result {
-//            IResult::Error(ref remaining) => {
-//                ParseStatus::Error(
-//                    ParsedAst {
-//                        ast: Box::new(Ast::default()),
-//                        remaining_tokens: Box::new(remaining.clone()),
-//                        tokens: &[],
-//                    })
-//            }
-//            IResult::Incomplete(tks) => {
-//                panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tks);
-//            },
-//            IResult::Done(left, ref ast) if left.len() == 0 => {
-//                println!("Ast({:?}) \n{}", tokens.len(), fmt::json(&ast));
-//            },
-//            IResult::Done(ref remaining, ref ast) => {
-//                panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
-//                       slice, fmt::json(&remaining), fmt::json(&ast));
-//            }
-//        }
-//
-//
-//        self.tkslice_to_ast(raw_slice).1
+        presult
     }
 
     #[deprecated]
@@ -410,21 +420,21 @@ impl<'a> Parser<'a> {
     // AST Builders
 
     /// START(ast)
-    tk_method!(tkslice_to_ast, 'b, <Parser<'a>, Ast<'b>>, mut self, do_parse!(
+    tk_method!(tkslice_to_ast, 'b, <Parser<'a>, Ast>, mut self, do_parse!(
         ast: alt!(
-            call_m!(self.module_start)      => { |m: Module<'b> | (Ast::Module(m))     } |
+            call_m!(self.module_start)      => { |m: Module | (Ast::Module(m))     } |
             ignore_spaces!(
-                call_m!(self.stmt_start))   => { |r: Stmt<'b>   | (Ast::Statement(r))  } ) >>
+                call_m!(self.stmt_start))   => { |r: Stmt   | (Ast::Statement(r))  } ) >>
         (ast)
     ));
 
-    tk_method!(module_start, 'b, <Parser<'a>, Module<'b>>, mut self, do_parse!(
+    tk_method!(module_start, 'b, <Parser<'a>, Module>, mut self, do_parse!(
         body: many0!(call_m!(self.stmt_start)) >>
         (Module::Body(body))
     ));
 
     /// START(stmt)
-    tk_method!(stmt_start, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(stmt_start, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         statement: alt!(
             call_m!(self.sub_stmt_assign)      |
             call_m!(self.sub_stmt_augassign)   |
@@ -434,32 +444,32 @@ impl<'a> Parser<'a> {
     ));
 
     /// 5.   | Assign(expr* targets, expr value)
-    tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
          // TODO: Allow subparsing of target and number as actual expr
         target: atom_name           >>
                 assign_token        >>
          value: call_m!(self.start_expr) >>
         (Stmt::Assign {
-            target: Box::new(Expr::Constant(target.as_token())),
-            value: Box::new(value)
+            target: Expr::Constant(target.as_owned_token()),
+            value: value
          })
     ));
 
     /// 6.   | AugAssign(expr target, operator op, expr value)
-    tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         // TODO: Allow subparsing of target and number as actual expr
         target: atom_name       >>
             op: augassign_token >>
         number: atom_number     >>
         (Stmt::AugAssign {
-            op: Op(op.as_token()),
-            target: Box::new(Expr::Atom(Atom::Name(target))),
-            value: Box::new(Expr::Atom(Atom::Number(number)))
+            op: Op(op.as_owned_token()),
+            target: Expr::Constant(target.as_owned_token()),
+            value: Expr::Constant(number.as_owned_token())
          })
     ));
 
     /// 20.   | Expr(expr value)
-    tk_method!(sub_stmt_expr, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_expr, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         expression: call_m!(self.start_expr) >>
         (Stmt::Expr(expression))
     ));
@@ -467,14 +477,14 @@ impl<'a> Parser<'a> {
 
     /// 22.   └ attributes (int lineno, int col_offset)
     /// Inject a empty statement for the next line
-    tk_method!(sub_stmt_next_line, 'b, <Parser<'a>, Stmt<'b>>, mut self, do_parse!(
+    tk_method!(sub_stmt_next_line, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         newline_token >>
         ({self.inc_lineno(); Stmt::Newline})
     ));
 
 
     /// START(expr)
-    tk_method!(start_expr, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(start_expr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         expression: alt_complete!(
             call_m!(self.sub_expr_binop)        |
             call_m!(self.sub_expr_nameconstant) |
@@ -485,34 +495,34 @@ impl<'a> Parser<'a> {
 
     /// 1.  =  BoolOp(boolop op, expr* values)
     /// 2.  | BinOp(expr left, operator op, expr right)
-    tk_method!(sub_expr_binop, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_binop, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
         // on start_expr not just the constant expressions
         lhs: call_m!(self.sub_expr_constant)  >>
          op: binop_token                      >>
         rhs: call_m!(self.sub_expr_constant)  >>
         (Expr::BinOp {
-            op: Op(op.as_token()),
+            op: Op(op.as_owned_token()),
             left: Box::new(lhs),
             right: Box::new(rhs)
          })
     ));
 
-    tk_method!(sub_expr_nameconstant, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_nameconstant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         constant: alt_complete!(
             tag!(&[Id::True])     |
             tag!(&[Id::False])    |
             tag!(&[Id::None])     ) >>
-        (Expr::NameConstant(constant))
+        (Expr::NameConstant(constant.as_owned_tokens()))
     ));
 
-    tk_method!(sub_expr_constant, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+    tk_method!(sub_expr_constant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         constant: constant_token >>
-        (Expr::Constant(constant.as_token()))
+        (Expr::Constant(constant.as_owned_token()))
     ));
 
     // 31.   └ attributes (int lineno, int col_offset)
-//    tk_method!(sub_expr_ended, 'b, <Parser<'a>, Expr<'b>>, mut self, do_parse!(
+//    tk_method!(sub_expr_ended, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
 //        token: newline_token >>
 //        (Expr::End)
 //    ));
@@ -645,17 +655,9 @@ mod tests {
                 println!("{}", fmt::json(&result));
                 panic!("AST Error")
             },
-//            IResult::Incomplete(_) => {
-//                panic!("<Panic>\nAst Incomplete\nTokens\n{:?}\n</Panic>", tokens);
-//            },
             ParserResult::Ok(ref result) => {
                 println!("Ast(ok) \n{}", fmt::json(&result));
             },
-//            IResult::Done(ref remaining, ref ast) => {
-//                panic!("<Panic>\nAst did not consume all tokens\nTokens\n{:?}\n\nRemaining:\n{}\n\nPartial AST:\n{}\n</Panic>\n",
-//                       tokens, serde_json::to_string_pretty(&remaining).unwrap(),
-//                       serde_json::to_string_pretty(&ast).unwrap());
-//            }
         }
     }
 

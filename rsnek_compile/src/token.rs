@@ -12,6 +12,7 @@ use num;
 use num::FromPrimitive;
 
 use ::fmt;
+use ::slice::TkSlice;
 
 const NEWLINE_BYTES: &'static [u8] = &[10];
 pub const TK_NEWLINE: Tk = Tk {id: Id::Newline, bytes: NEWLINE_BYTES, tag: Tag::W(Ws::Newline)};
@@ -23,7 +24,58 @@ pub const BLOCK_START: &'static [Tk] = &[TK_BLOCK_START];
 pub const BLOCK_END: &'static [Tk] = &[TK_BLOCK_END];
 
 
+/// Attempt to make an owned token to get out of lifetime hell. I found myself
+/// in trouble after trying to rewrite and inject values into the token slice
+/// in the parsing phase. This was to figure out block scopes and such since
+/// something something whitespace scoping.
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+pub struct OwnedTk {
+    id: Id,
+
+    #[serde(with = "serde_bytes")]
+    bytes: Vec<u8>,
+
+    tag: Tag
+}
+
+impl<'a> From<&'a Tk<'a>> for OwnedTk {
+    fn from(tk: &'a Tk<'a>) -> Self {
+        OwnedTk {
+            id: tk.id,
+            bytes: tk.bytes.to_vec(),
+            tag: tk.tag
+        }
+    }
+}
+
+impl<'a> From<&'a TkSlice<'a>> for OwnedTk {
+    fn from(tkslice: &'a TkSlice<'a>) -> Self {
+        let tk = tkslice.as_token();
+        OwnedTk {
+            id: tk.id,
+            bytes: tk.bytes.to_vec(),
+            tag: tk.tag
+        }
+    }
+}
+
+impl OwnedTk {
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+    pub fn id(&self) -> Id {
+        self.id
+    }
+    pub fn tag(&self) -> Tag { self.tag }
+
+    pub fn as_string(&self) -> String {
+        String::from_utf8_lossy(self.bytes()).to_string()
+    }
+
+}
+
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Tk<'a> {
     id: Id,
 
@@ -45,6 +97,7 @@ impl<'a> Tk<'a> {
     pub fn as_string(&self) -> String {
         String::from_utf8_lossy(self.bytes).to_string()
     }
+
 }
 
 

@@ -8,8 +8,8 @@ use serde::Serialize;
 use nom::IResult;
 
 use ::fmt;
-use ::ast::{self, Ast, Module, Stmt, Expr, DynExpr, Atom, Op};
-use ::token::{Tk, Id, Tag, Num};
+use ::ast::{self, Ast, Module, Stmt, Expr, DynExpr, Op};
+use ::token::{OwnedTk, Tk, Id, Tag, Num};
 use ::lexer::Lexer;
 use ::parser::{Parser, ParserResult, ParsedAst};
 
@@ -39,7 +39,8 @@ pub struct ValueError(pub String);
 impl Value {
     // TODO: Refactor to use stdlib traits From / TryFrom if possible
     // TODO: unwrap() can cause panics, make this able to return a result
-    fn from<'a>(tk: &'a Tk<'a>) -> Self {
+
+    fn from<'a>(tk: &'a OwnedTk) -> Self {
         let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
         let content = parsed.as_str();
 
@@ -77,7 +78,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn compile_expr_constant(&self, ctx: Context, tk: &'a Tk<'a>) -> Box<[Instr]> {
+    fn compile_expr_constant(&self, ctx: Context, tk: &'a OwnedTk) -> Box<[Instr]> {
         let instr = match ctx {
             Context::Store => {
                 Instr(OpCode::StoreName, Some(Value::from(tk)))
@@ -94,7 +95,7 @@ impl<'a> Compiler<'a> {
         vec![instr].into_boxed_slice()
     }
 
-    fn compile_expr_binop(&self, op: &'a Op, left: &'a Expr<'a>, right: &'a Expr<'a>) -> Box<[Instr]> {
+    fn compile_expr_binop(&self, op: &'a Op, left: &'a Expr, right: &'a Expr) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
         match left.deref() {
@@ -153,7 +154,7 @@ impl<'a> Compiler<'a> {
         instructions.into_boxed_slice()
     }
 
-    fn compile_stmt_assign(&self, target: &'a Expr<'a>, value: &'a Expr<'a>) -> Box<[Instr]> {
+    fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> Box<[Instr]> {
         // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
 
@@ -363,6 +364,20 @@ mod tests {
     use nom::IResult;
     use super::*;
 
+    /// Use to create a named test case of a single line snippet of code.
+    /// This `basic_test!(print_function, "print('hello world!')`
+    /// will create a test function named `print_function` that will try to compile the
+    /// string.
+    macro_rules! basic_test {
+        ($name:ident, $code:expr) => {
+            #[test]
+            fn $name() {
+               assert_compile($code);
+            }
+        };
+    }
+
+
     fn assert_compile<'a>(text: &'a str) {
         println!("<Input>\n\n{}\n\n</Input>", text);
 
@@ -380,7 +395,7 @@ mod tests {
 
         match parser.parse_tokens(&tokens) {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
-                println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::ast(result.ast.borrow()));
+                println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::json(result.ast.borrow()));
                 let ins = compiler.compile_ast(result.ast.borrow());
 
                 println!();
@@ -389,12 +404,12 @@ mod tests {
                 println!("{:#?}", ins);
                 println!("{}", fmt::json(&ins))
             },
-            result => panic!("\n\nERROR: {:#?}\n\n", result)
+            result => panic!("\n\nERROR: {}\n\n", fmt::json(&result))
         }
     }
 
     #[test]
-    fn compile_1() {
+    fn compile_multiple_simple_expr() {
         assert_compile(
 r#"
 x = 123
@@ -402,23 +417,27 @@ y = 45
 z = x + y
 "#)
     }
+    
+    basic_test!(binop_logicand,   "a and b");
+    basic_test!(binop_logicor,    "a or b");
+    basic_test!(binop_add,        "a + b");
+    basic_test!(binop_sub,        "a - b");
+    basic_test!(binop_mul,        "a * b");
+    basic_test!(binop_pow,        "a ** b");
+    basic_test!(binop_truediv,    "a / b");
+    basic_test!(binop_floordiv,   "a // b");
+    basic_test!(binop_or,         "a | b");
+    basic_test!(binop_and,        "a & b");
+    basic_test!(binop_xor,        "a ^ b");
+    basic_test!(binop_mod,        "a % b");
+    basic_test!(binop_matmul,     "a @ b");
+    basic_test!(binop_lshif,      "a << b");
+    basic_test!(binop_rshift,     "a >> b");
 
-    #[test]
-    fn compile_binops() {
-        assert_compile("a and b");
-        assert_compile("a or b");
-        assert_compile("a + b");
-        assert_compile("a - b");
-        assert_compile("a * b");
-        assert_compile("a ** b");
-        assert_compile("a / b");
-        assert_compile("a // b");
-        assert_compile("a | b");
-        assert_compile("a & b");
-        assert_compile("a ^ b");
-        assert_compile("a % b");
-        assert_compile("a @ b");
-        assert_compile("a << b");
-        assert_compile("a >> b");
-    }
+
+    basic_test!(multiline, r#"
+x = 1
+y = "somewhere over the dynamic language rainbow"
+z = x + y
+"#);
 }
