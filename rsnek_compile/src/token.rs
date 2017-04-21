@@ -7,6 +7,7 @@ use nom::{IResult,digit,multispace, newline,FindToken};
 use itertools::Itertools;
 use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
+use serde::ser::SerializeStruct;
 
 use num;
 use num::FromPrimitive;
@@ -28,13 +29,10 @@ pub const BLOCK_END: &'static [Tk] = &[TK_BLOCK_END];
 /// in trouble after trying to rewrite and inject values into the token slice
 /// in the parsing phase. This was to figure out block scopes and such since
 /// something something whitespace scoping.
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct OwnedTk {
     id: Id,
-
-    #[serde(with = "serde_bytes")]
     bytes: Vec<u8>,
-
     tag: Tag
 }
 
@@ -74,6 +72,19 @@ impl OwnedTk {
 
 }
 
+
+impl Serialize for OwnedTk {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        // 3 is the number of fields in the struct.
+        let mut state = serializer.serialize_struct("OwnedTk", 2)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("value", &self.as_string())?;
+        //state.serialize_field("tag", &self.tag)?;
+        state.end()
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Tk<'a> {
