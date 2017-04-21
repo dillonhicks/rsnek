@@ -12,6 +12,10 @@ use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
 use itertools::Itertools;
 use num::ToPrimitive;
+use rustyline;
+use rustyline::Config as RLConfig;
+use rustyline::CompletionType;
+use rustyline::error::ReadlineError;
 use serde::Serialize;
 
 use rsnek_compile::{Compiler, fmt};
@@ -273,8 +277,8 @@ impl InterpreterState {
             let b: &Box<Builtin> = v.0.borrow();
 
             match b.native_str() {
-                Ok(s) => format!("{}: {}", key, s),
-                Err(err) => format!("{}: ??", key),
+                Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
+                Err(err) => format!("{}: {} = ??", key, b.debug_name()),
             }
         }).collect();
 
@@ -459,12 +463,6 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         code
     })
 }
-
-
-use rustyline;
-use rustyline::Config as RLConfig;
-use rustyline::CompletionType;
-use rustyline::error::ReadlineError;
 
 
 /// Entry point for the interactive repl mode of the interpreter
