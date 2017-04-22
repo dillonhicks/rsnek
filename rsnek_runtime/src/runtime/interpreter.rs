@@ -276,13 +276,17 @@ impl InterpreterState {
                     },
                     &Builtin::Code(ref code) => {
                         if args.len() < code.value.0.co_names.len() {
-                            return Some(Err(Error::typerr(&format!("Expected {} args got {}", code.value.0.co_names.len(), args.len()))));
+                            return Some(Err(Error::typerr(
+                                &format!("Expected {} args got {}", code.value.0.co_names.len(),
+                                         args.len()))));
                         }
 
                         // Because overwriting the global namespace with function args is always a good decision....
                         for argname in code.value.0.co_names.iter() {
                             self.namespace.insert(argname.clone(), args.pop().unwrap());
                         }
+                        // Put back the args we didnt consume
+                        self.stack.append(&mut args);
 
                         let mut objects: VecDeque<ObjectRef> = VecDeque::new();
 
@@ -297,11 +301,12 @@ impl InterpreterState {
                         match (result, back) {
                             (Ok(_), Some(objref)) => Ok(objref.clone()),
                             (Ok(_), None)         => Ok(rt.none()),
-                            (Err(err), _)         => Err(err)
+                            (Err(err), _)         =>  Err(err)
                         }
                     },
-                    _ => Err(Error::typerr(""))
+                    _ => Err(Error::typerr(&format!("line {}",line!())))
                 };
+
                 match result {
                     Ok(objref) => self.stack.push(objref),
                     other => return Some(other),
@@ -310,10 +315,8 @@ impl InterpreterState {
                 None
             }
             (OpCode::ReturnValue, None) => {
-                match self.stack.pop() {
-                    Some(objref) => Some(Ok(objref)),
-                    None => None
-                }
+                // TODO: jump out of current frame
+                None
             },
             (OpCode::MakeFunction, None) => {
                 let name = match self.stack.pop() {
@@ -331,11 +334,12 @@ impl InterpreterState {
                 None
             }
             (OpCode::PopTop, None) => {
-//                match self.stack.pop() {
-//                    Some(objref) => Some(Ok(objref)),
-//                    None => None
-//                }
-                None
+
+                    match self.stack.pop() {
+                        Some(objref) => Some(Ok(objref)),
+                        None => None
+                    }
+
             }
             _ => Some(Err(Error::not_implemented()))
         }
