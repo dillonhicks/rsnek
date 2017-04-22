@@ -152,7 +152,7 @@ impl BlockScopeProcessor {
                 }
             },
             _ => {
-                println!("No change in self.indent stack");
+                //println!("No change in self.indent stack");
                 acc.push(TkSlice(&NEWLINE));
             }
         }
@@ -275,16 +275,16 @@ impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
             .map(TkSlice::as_string)
             .collect::<Vec<String>>()
             .concat();
-        println!("CONCAT: {}", strings);
+//        println!("CONCAT: {}", strings);
 
         let scoped_tokens = acc.iter()
             .flat_map(TkSlice::iter)
             .map(Tk::clone)
             .collect::<Vec<Tk<'b>>>();
 
-        for t in &scoped_tokens {
-            println!("{}", fmt::token(&t));
-        }
+//        for t in &scoped_tokens {
+//            println!("{}", fmt::token(&t));
+//        }
 
         Ok(scoped_tokens.into_boxed_slice())
     }

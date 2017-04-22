@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::io::prelude::*;
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
@@ -25,7 +26,7 @@ use resource;
 use error::Error;
 use result::RuntimeResult;
 use runtime::Runtime;
-use traits::{NoneProvider, StringProvider, IntegerProvider, FloatProvider, TupleProvider, DictProvider};
+use traits::{NoneProvider, StringProvider, CodeProvider, IntegerProvider, FloatProvider, TupleProvider, DictProvider};
 use object::method::{
     Add,
     Subtract,
@@ -95,8 +96,8 @@ pub enum ThreadModel {
 enum ExitCode {
     Ok = 0,
     GenericError = 1,
-    NotImplemented = 254,
-    Unknown = 255
+    SyntaxError = 2,
+    NotImplemented = 3,
 }
 
 
@@ -172,13 +173,23 @@ impl InterpreterState {
 
     /// Execute exactly one instruction
     fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
+       // println!("exec: {:?}", instr);
+
         match instr.tuple() {
             (OpCode::LoadConst, Some(value)) => {
                 let objref = match value {
                     Value::Str(string) => rt.str(string),
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
-                    Value::Code(c) => rt.none() // FIXME FIX ME FIX ME
+                    // TODO: This should be created in compiler.rs
+                    Value::Code(args, c) =>
+                        rt.code(native::Code {
+                        co_name: native::String::default(),
+                        co_names: args.iter().map(String::clone).collect(),
+                        co_varnames: native::Tuple::new(),
+                        co_code: c.to_vec(),
+                        co_consts: native::Tuple::new(),
+                    }),
                 };
 
                 self.stack.push(objref);
@@ -229,12 +240,12 @@ impl InterpreterState {
 
                 let rhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for binop!")
+                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
                 };
 
                 let lhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for binop!")
+                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
                 };
 
                 // TODO: Give `Instr` getters
@@ -259,7 +270,38 @@ impl InterpreterState {
 
 
                 let boxed: &Box<Builtin> = func.0.borrow();
-                let result = boxed.op_call(&rt, &rt.tuple(args), &rt.tuple(vec![]), &rt.dict(native::None()));
+                let result = match boxed.deref(){
+                    &Builtin::Function(_) => {
+                        boxed.op_call(&rt, &rt.tuple(args), &rt.tuple(vec![]), &rt.dict(native::None()))
+                    },
+                    &Builtin::Code(ref code) => {
+                        if args.len() < code.value.0.co_names.len() {
+                            return Some(Err(Error::typerr(&format!("Expected {} args got {}", code.value.0.co_names.len(), args.len()))));
+                        }
+
+                        // Because overwriting the global namespace with function args is always a good decision....
+                        for argname in code.value.0.co_names.iter() {
+                            self.namespace.insert(argname.clone(), args.pop().unwrap());
+                        }
+
+                        let mut objects: VecDeque<ObjectRef> = VecDeque::new();
+
+                        let result = code.value.0.co_code.iter()
+                            .map(|ref instr| self.exec_one(&rt, instr))
+                            .filter(Option::is_some)
+                            .map(Option::unwrap)
+                            .fold_results((&mut objects).clone(), |mut acc, i| {acc.push_back(i); acc});
+
+                        let back = objects.back();
+
+                        match (result, back) {
+                            (Ok(_), Some(objref)) => Ok(objref.clone()),
+                            (Ok(_), None)         => Ok(rt.none()),
+                            (Err(err), _)         => Err(err)
+                        }
+                    },
+                    _ => Err(Error::typerr(""))
+                };
                 match result {
                     Ok(objref) => self.stack.push(objref),
                     other => return Some(other),
@@ -273,6 +315,21 @@ impl InterpreterState {
                     None => None
                 }
             },
+            (OpCode::MakeFunction, None) => {
+                let name = match self.stack.pop() {
+                    Some(objref) => objref,
+                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                };
+
+//                let code = match self.stack.pop() {
+//                    Some(objref) => objref,
+//                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+//                };
+//
+//
+//                self.namespace.insert(name.to_string(), code);
+                None
+            }
             (OpCode::PopTop, None) => {
 //                match self.stack.pop() {
 //                    Some(objref) => Some(Ok(objref)),
@@ -461,20 +518,35 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
                         debug!("{:?}", err);
                         return match err.raw_os_error() {
                             Some(code) => code as i64,
-                            _ => ExitCode::Unknown as i64
+                            _ => ExitCode::GenericError as i64
                         }
                     }
                 }
             },
             _ => {
                 debug!("Unable to determine input type");
-                return ExitCode::Unknown as i64
+                return ExitCode::GenericError as i64
             }
         };
 
         let mut compiler = Compiler::new();
         let mut interpreter = InterpreterState::new();
-        let ins = compiler.compile_str(&text);
+        // TODO: use scope resolution in the future
+        // Manually load the builtin print function into the interpreter namespace
+        // since rsnek does not have a concept of modules at this time.
+        interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
+        interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
+        interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
+        interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
+        interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+
+        let ins = match compiler.compile_str(&text) {
+            Ok(ins) => ins,
+            Err(err) => {
+                println!("SyntaxError: Unable to compile input");
+                return ExitCode::SyntaxError as i64
+            },
+        };
 
         if let Some(path) = myargs.get(0) {
             let outpath = [path, "compiled"].join(".");
@@ -495,11 +567,11 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         }
 
         let result = interpreter.exec(&rt, &(*ins));
-        interpreter.print_debug_info();
+       // interpreter.print_debug_info();
 
         let code = match result {
             Ok(objref)    => {
-                debug!("result: {:?}", objref);
+                //debug!("result: {:?}", objref);
                 ExitCode::Ok as i64
             },
             Err(err)      => {
@@ -539,13 +611,20 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
     print_banner();
 
-    loop {
+    'repl: loop {
+        match io::stdout().flush() {
+            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
+            _ => ()
+        }
+
+
         lineno += 1;
         let prompt = format!("\nIn[{}] {} ", lineno, resource::strings::PROMPT);
 
-        let text = match rl.readline(&prompt){
+        let text = match rl.readline(&prompt) {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
+                println!();
                 line
             },
             Err(ReadlineError::Interrupted) => {
@@ -559,7 +638,16 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             _ => continue
         };
 
-        let ins = compiler.compile_str(&text);
+
+
+        let ins = match compiler.compile_str(&text) {
+            Ok(ins) => ins,
+            Err(err) => {
+                println!("\n\nSyntaxError: Unable to compile input\n\n");
+                continue 'repl
+            },
+        };
+
         //println!("{}", fmt::json(&ins));
 
         'process_ins: for i in ins.iter() {
@@ -573,7 +661,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
                 },
                 Some(Err(err)) => {
-                    println!("{:?}Error: {}", err.0, err.1);
+                    println!("\n\n{:?}Error: {}\n\n", err.0, err.1);
                     break 'process_ins
                 },
 
@@ -597,13 +685,9 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             _ => {},
         }
 
-        println!("                           ");
+
 
 //        interpreter.print_debug_info();
-        match io::stdout().flush() {
-            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
-            _ => ()
-        }
 
     }
 

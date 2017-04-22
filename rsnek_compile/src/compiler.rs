@@ -29,7 +29,7 @@ pub enum Value {
     Str(String),
     Int(i64),
     Float(f64),
-    Code(Box<[Instr]>)
+    Code(Vec<String>, Box<[Instr]>)
 }
 
 
@@ -79,6 +79,8 @@ pub struct Compiler<'a>{
     parser: Parser<'a>
 }
 
+pub type CompilerResult = Result<Box<[Instr]>, String>;
+
 
 impl<'a> Compiler<'a> {
     pub fn new() -> Self {
@@ -88,23 +90,23 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn compile_str<'b>(&mut self, input: &'b str) -> Box<[Instr]> {
+    pub fn compile_str<'b>(&mut self, input: &'b str) -> CompilerResult {
         let mut parser = Parser::new();
 
         let tokens = match self.lexer.tokenize2(input.as_bytes()) {
             IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),
-            _ => panic!("Issue parsing input")
+            _ => return Err("Issue parsing input".to_string())
         };
 
         let ins = match parser.parse_tokens(&tokens) {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
                 self.compile_ast(&result.ast.borrow())
             },
-            result => panic!("\n\nERROR: {:#?}\n\n", result)
+            result => return Err(format!("\n\nERROR: {:#?}\n\n", result))
         };
 
 
-        ins
+        Ok(ins)
     }
 
     // Ast Compiler Methods
@@ -147,9 +149,17 @@ impl<'a> Compiler<'a> {
 
         let mut ins: Box<[Instr]> = match *stmt {
             Stmt::FunctionDef {ref fntype, ref name, ref arguments, ref body } => {
+                let mut argnames: Vec<String> = Vec::new();
+                for arg in arguments {
+                    match arg {
+                        &Expr::Constant(ref owned_tk) => argnames.push(owned_tk.as_string()),
+                        _ => unreachable!()
+                    }
+                };
+
                 let mut func_ins: Vec<Instr> = vec![
-                    Instr(OpCode::LoadConst, Some(Value::Code(self.compile_stmt(body)))),
-                    //Instr(OpCode::LoadConst, Some(Value::from(name))),
+                    Instr(OpCode::LoadConst, Some(Value::Code(argnames, self.compile_stmt(body)))),
+                    Instr(OpCode::LoadConst, Some(Value::from(name))),
                     Instr(OpCode::MakeFunction, None),
                     Instr(OpCode::StoreName, Some(Value::from(name)))
                 ];

@@ -42,7 +42,7 @@ pub mod util;
 pub mod fmt;
 pub use lexer::{Lexer, LexResult};
 pub use parser::{Parser, ParserResult, ParsedAst};
-pub use compiler::Compiler;
+pub use compiler::{Instr, Compiler};
 
 
 #[cfg(test)]

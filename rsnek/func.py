@@ -7,3 +7,10 @@ def hello():
 
     return potato
 
+def operator():
+    return "call me anytime"
+
+
+operator()
+
+print(1)

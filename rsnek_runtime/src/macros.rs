@@ -451,3 +451,4 @@ macro_rules! strings_error_bad_operand {
         format!("unsupported operand type(s) for {}: '{}' and '{}'", $op, $lhs, $rhs);
     }
 }
+

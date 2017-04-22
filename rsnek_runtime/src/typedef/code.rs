@@ -37,8 +37,8 @@ impl typing::BuiltinType for PyCodeType {
 
         let boxed: &Box<Builtin> = objref.0.borrow();
         match boxed.deref() {
-            &Builtin::Str(ref string) => {
-                string.rc.set(&objref.clone());
+            &Builtin::Code(ref code) => {
+                code.rc.set(&objref.clone());
             }
             _ => unreachable!(),
         }
