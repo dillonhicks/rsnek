@@ -25,7 +25,7 @@ use resource;
 use error::Error;
 use result::RuntimeResult;
 use runtime::Runtime;
-use traits::{NoneProvider, StringProvider, IntegerProvider, FloatProvider};
+use traits::{NoneProvider, StringProvider, IntegerProvider, FloatProvider, TupleProvider, DictProvider};
 use object::method::{
     Add,
     Subtract,
@@ -41,7 +41,8 @@ use object::method::{
     XOr,
     Modulus,
     IntegerCast,
-    StringCast
+    StringCast,
+    Call
 };
 use typedef::native;
 use typedef::builtin::Builtin;
@@ -165,6 +166,10 @@ impl InterpreterState {
         }
     }
 
+    fn force_pop(&mut self) -> Option<ObjectRef> {
+        self.stack.pop()
+    }
+
     /// Execute exactly one instruction
     fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
         match instr.tuple() {
@@ -173,6 +178,7 @@ impl InterpreterState {
                     Value::Str(string) => rt.str(string),
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
+                    Value::Code(c) => rt.none() // FIXME FIX ME FIX ME
                 };
 
                 self.stack.push(objref);
@@ -240,13 +246,39 @@ impl InterpreterState {
                 self.stack.push(result.clone());
                 None
             },
-            (OpCode::ReturnValue, None) => {
-                let retval = match self.stack.pop() {
+            (OpCode::CallFunction, None) => {
+                let func = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => return None
+                    None => panic!("No values in value stack for call!")
                 };
 
-                Some(Ok(retval))
+                // TODO: this is obviously wrong, need a convention to get min number
+                // of args and restore stack context for function calls and shiz.
+                let mut args: Vec<ObjectRef> = Vec::new();
+                args.append(&mut self.stack); // todo: forgive me
+
+
+                let boxed: &Box<Builtin> = func.0.borrow();
+                let result = boxed.op_call(&rt, &rt.tuple(args), &rt.tuple(vec![]), &rt.dict(native::None()));
+                match result {
+                    Ok(objref) => self.stack.push(objref),
+                    other => return Some(other),
+                };
+
+                None
+            }
+            (OpCode::ReturnValue, None) => {
+                match self.stack.pop() {
+                    Some(objref) => Some(Ok(objref)),
+                    None => None
+                }
+            },
+            (OpCode::PopTop, None) => {
+//                match self.stack.pop() {
+//                    Some(objref) => Some(Ok(objref)),
+//                    None => None
+//                }
+                None
             }
             _ => Some(Err(Error::not_implemented()))
         }
@@ -270,9 +302,17 @@ impl InterpreterState {
         }
     }
 
-    pub fn debug_locals(&self) {
+    pub fn print_debug_info(&self) {
         // FIXME: Remove when parser/compiler allows for an expression of a single name
         // or maybe just hardcode that in?
+        let stack: String = self.stack.iter().enumerate().map(|(idx, objref)| {
+            let b: &Box<Builtin> = objref.0.borrow();
+            match b.native_str() {
+                Ok(s) => format!("{}: {} = {}", idx, b.debug_name(), s),
+                Err(err) => format!("{}: {} = ??", idx, b.debug_name()),
+            }
+        }).collect::<Vec<String>>().join("\n");
+
         let values: Vec<String> = self.namespace.iter().map(|(key, v): (&String, &ObjectRef)| {
             let b: &Box<Builtin> = v.0.borrow();
 
@@ -282,7 +322,9 @@ impl InterpreterState {
             }
         }).collect();
 
-        debug!("\nlocals:\n----------\n{}\n", values.join("\n"));
+        debug!("stack:\n{}\n\nlocals:\n----------\n{}\n",
+            stack,
+            values.join("\n"));
     }
 }
 
@@ -391,18 +433,6 @@ fn print_banner() {
 }
 
 
-/// Write the prompt to stdout without a newline and hard flush stdout
-/// for interactive mode.
-#[inline(always)]
-fn print_prompt() {
-    print!("\n{} ", resource::strings::PROMPT);
-    match io::stdout().flush() {
-        Err(err) => println!("Error Flushing STDOUT: {:?}", err),
-        _ => ()
-    }
-}
-
-
 /// Create the closure with the `MainFn` signature that captures a copy
 /// of the arguments sent to `create_python_main`. The closure will try to use
 /// the first argument as the file to load.
@@ -446,8 +476,26 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         let mut interpreter = InterpreterState::new();
         let ins = compiler.compile_str(&text);
 
+        if let Some(path) = myargs.get(0) {
+            let outpath = [path, "compiled"].join(".");
+
+            match File::create(&outpath) {
+                Ok(ref mut file) => {
+                   match file.write(fmt::json(&ins).as_bytes()) {
+                       Err(err) => {
+                           debug!("{:?}", err);
+                       }
+                       _ => {}
+                   };
+                },
+                Err(err) => {
+                    debug!("{:?}", err);
+                }
+            }
+        }
+
         let result = interpreter.exec(&rt, &(*ins));
-        interpreter.debug_locals();
+        interpreter.print_debug_info();
 
         let code = match result {
             Ok(objref)    => {
@@ -478,11 +526,23 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
     let mut rl = rustyline::Editor::<()>::with_config(config);
     let mut interpreter = InterpreterState::new();
 
-    let prompt = format!("\n{} ", resource::strings::PROMPT);
+    // TODO: use scope resolution in the future
+    // Manually load the builtin print function into the interpreter namespace
+    // since rsnek does not have a concept of modules at this time.
+    interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
+    interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
+    interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
+    interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
+    interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+
+    let mut lineno = 0;
 
     print_banner();
 
     loop {
+        lineno += 1;
+        let prompt = format!("\nIn[{}] {} ", lineno, resource::strings::PROMPT);
+
         let text = match rl.readline(&prompt){
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
@@ -500,7 +560,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         };
 
         let ins = compiler.compile_str(&text);
-        println!("{}", fmt::json(&ins));
+        //println!("{}", fmt::json(&ins));
 
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {
@@ -519,10 +579,27 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
                 _ => continue 'process_ins
             }
+
         }
 
-        interpreter.debug_locals();
+        // Force pop in interactive mode to clear return values?
+        match interpreter.force_pop() {
+            Some(objref) => {
+                if objref != rt.none() {
+                    let boxed: &Box<Builtin> = objref.0.borrow();
+                    let string = match boxed.native_str() {
+                        Ok(s) => s,
+                        Err(err) => format!("{:?}Error: {}", err.0, err.1),
+                    };
+                    println!("\nOut[{}]: {}\n\n", lineno, string);
+                }
+            }
+            _ => {},
+        }
 
+        println!("                           ");
+
+//        interpreter.print_debug_info();
         match io::stdout().flush() {
             Err(err) => println!("Error Flushing STDOUT: {:?}", err),
             _ => ()

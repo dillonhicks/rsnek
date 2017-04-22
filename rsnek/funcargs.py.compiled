@@ -1,0 +1,41 @@
+[
+  [
+    "LoadConst",
+    {
+      "Code": [
+        [
+          "LoadConst",
+          {
+            "Int": 1
+          }
+        ],
+        [
+          "LoadConst",
+          {
+            "Int": 3
+          }
+        ],
+        [
+          "BinaryAdd",
+          null
+        ],
+        [
+          "StoreName",
+          {
+            "Str": "x"
+          }
+        ]
+      ]
+    }
+  ],
+  [
+    "MakeFunction",
+    null
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "function"
+    }
+  ]
+]

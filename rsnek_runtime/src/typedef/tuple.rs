@@ -106,7 +106,25 @@ impl method::Hashed for PyTuple {
     }
 }
 
-impl method::StringCast for PyTuple {}
+impl method::StringCast for PyTuple {
+    fn native_str(&self) -> NativeResult<native::String> {
+
+        let mut strings: Vec<String> = Vec::new();
+
+        let result = self.value.0.iter()
+                .map(|ref item| {
+                     let boxed: &Box<Builtin> = item.0.borrow();
+                     return boxed.native_str()
+                 })
+                .fold_results("".to_string(), |acc, s| [&acc[..], &s[..]].join(", "));
+
+        match result {
+            Ok(s) => Ok(format!("({})", s)),
+            Err(err) => Err(err)
+        }
+
+    }
+}
 impl method::BytesCast for PyTuple {}
 impl method::StringFormat for PyTuple {}
 impl method::StringRepresentation for PyTuple {}

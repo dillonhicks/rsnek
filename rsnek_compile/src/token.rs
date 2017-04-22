@@ -368,6 +368,8 @@ pub enum Id {
     Complex,
 
     // Keywords
+    Async,
+    Await,
     False,
     True,
     None,

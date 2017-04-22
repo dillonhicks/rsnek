@@ -5,8 +5,7 @@ use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use num::Zero;
-use num::ToPrimitive;
+use num::{self, Zero, ToPrimitive};
 
 use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use resource::strings;
@@ -265,7 +264,26 @@ impl method::Multiply for PyInteger {
 }
 impl method::MatrixMultiply for PyInteger {}
 impl method::BitwiseOr for PyInteger {}
-impl method::Pow for PyInteger {}
+impl method::Pow for PyInteger {
+    fn op_pow(&self, rt: &Runtime, exponent: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = exponent.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref power) =>  {
+                let mut base = self.value.0.clone();
+
+                match power.value.0.to_usize() {
+                    Some(mut int)  => Ok(rt.int(num::pow::pow(base, int).clone())),
+                    None  => {
+                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
+                    },
+                }
+            },
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("**", "int", other.debug_name()))),
+        }
+    }
+}
 
 impl method::RightShift for PyInteger {
 

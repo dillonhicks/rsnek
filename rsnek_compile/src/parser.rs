@@ -10,7 +10,7 @@ use lexer::Lexer;
 use fmt;
 use token::{Id, Tk, Tag, OwnedTk, pprint_tokens, New, BLOCK_START, BLOCK_END, TK_BLOCK_END, TK_BLOCK_START, NEWLINE};
 use slice::{TkSlice};
-use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Op};
+use ast::{self, Ast, Module, Stmt, Expr, DynExpr, Op, FnType};
 use traits::redefs_nom::InputLength;
 
 const INDENT_STACK_SIZE: usize = 100;
@@ -165,7 +165,7 @@ impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
 
     fn transform<'b>(&self, tokens: TkSlice<'b>) -> Result<Box<[Tk<'b>]>, String> {
         let indent = self.determine_indent(&tokens);
-        println!("Indent is len: {}", indent);
+        //println!("Indent is len: {}", indent);
 
         if indent == 0 {
             return Ok(tokens.tokens().to_owned().into_boxed_slice());
@@ -450,13 +450,15 @@ impl<'a> Parser<'a> {
                    def_keyword                          >>
         func_name: name_token                           >>
                    lparen_token                         >>
+            args:  call_m!(self.sub_expr_func_args)     >>
                    rparen_token                         >>
                    colon_token                          >>
        body_block: call_m!(self.sub_stmt_block)         >>
           (Stmt::FunctionDef {
+                fntype: FnType::Sync ,
                 name: func_name.as_owned_token(),
                 body: Box::new(body_block),
-                arguments: Vec::new()
+                arguments: args //Vec::new() /vec![Expr::Constant(margs.as_owned_token())]//args.iter().map(|ts| Expr::Constant(ts.as_owned_token())).collect()
            })
     ));
 
@@ -522,14 +524,15 @@ impl<'a> Parser<'a> {
     tk_method!(start_expr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         expression: alt_complete!(
             call_m!(self.sub_expr_binop)        |
+            call_m!(self.sub_expr_call)         |
             call_m!(self.sub_expr_nameconstant) |
             call_m!(self.sub_expr_constant)     ) >>
         (expression)
     ));
 
 
-    /// 1.  =  BoolOp(boolop op, expr* values)
-    /// 2.  | BinOp(expr left, operator op, expr right)
+    /// 1.   =  BoolOp(boolop op, expr* values)
+    /// 2.   | BinOp(expr left, operator op, expr right)
     tk_method!(sub_expr_binop, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
         // on start_expr not just the constant expressions
@@ -543,6 +546,22 @@ impl<'a> Parser<'a> {
          })
     ));
 
+    /// 16.  | Call(expr func, expr* args, keyword* keywords)
+    tk_method!(sub_expr_call, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
+        // on start_expr not just the constant expressions
+        func_name: name_token                           >>
+                   lparen_token                         >>
+             args: call_m!(self.sub_expr_call_args)     >>
+                   rparen_token                         >>
+        (Expr::Call {
+            func: func_name.as_owned_token(),
+            args: args,
+            keywords: (),
+         })
+    ));
+
+    /// 22.  | NameConstant(singleton value)
     tk_method!(sub_expr_nameconstant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         constant: alt_complete!(
             tag!(&[Id::True])     |
@@ -551,6 +570,7 @@ impl<'a> Parser<'a> {
         (Expr::NameConstant(constant.as_owned_tokens()))
     ));
 
+    /// 24.  | Constant(constant value)
     tk_method!(sub_expr_constant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         constant: constant_token >>
         (Expr::Constant(constant.as_owned_token()))
@@ -561,6 +581,47 @@ impl<'a> Parser<'a> {
 //        token: newline_token >>
 //        (Expr::End)
 //    ));
+
+    tk_method!(sub_expr_func_args, 'b, <Parser<'a>, Vec<Expr>>, mut self, do_parse!(
+        opt_arg_names: opt!(pair!(name_token, many0!(
+                        preceded!(
+                            comma_token, name_token)))) >>
+
+        ({
+            match opt_arg_names {
+                Some(arg_names) => {
+                    let mut names: Vec<Expr> = Vec::new();
+                    names.push(Expr::Constant(arg_names.0.as_owned_token()));
+                    for tk in arg_names.1.iter() {
+                        names.push(Expr::Constant(tk.as_owned_token()));
+                    }
+
+                    names
+                },
+                None => Vec::new()
+            }
+        })
+    ));
+
+    tk_method!(sub_expr_call_args, 'b, <Parser<'a>, Vec<Expr>>, mut self, do_parse!(
+        opt_arg_names: opt!(pair!(call_m!(self.start_expr), many0!(
+                        preceded!(
+                            comma_token, call_m!(self.start_expr))))) >>
+        ({
+            match opt_arg_names {
+                Some(arg_names) => {
+                    let mut names: Vec<Expr> = Vec::new();
+                    names.push(arg_names.0);
+                    for tk in arg_names.1.iter() {
+                        names.push(tk.clone());
+                    }
+
+                    names
+                },
+                None => Vec::new()
+            }
+        })
+    ));
 }
 
 
@@ -596,9 +657,15 @@ tk_named!(newline_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
 tk_named!(lparen_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftParen])));
 tk_named!(rparen_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightParen])));
 tk_named!(colon_token   <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Colon])));
+tk_named!(comma_token   <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Comma])));
 
 // Special tokens
+tk_named!(async_keyword     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Async])));
+tk_named!(await_keyword     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Await])));
 tk_named!(def_keyword       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Def])));
+tk_named!(if_keyword        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::If])));
+tk_named!(else_keyword      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Else])));
+tk_named!(elif_keyword      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Elif])));
 tk_named!(return_keyword    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Return])));
 tk_named!(block_start       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockStart])));
 tk_named!(block_end         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockEnd])));

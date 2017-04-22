@@ -6,6 +6,7 @@ use std::collections::hash_map::DefaultHasher;
 
 use result::{NativeResult, RuntimeResult};
 use runtime::{Runtime, IntegerProvider, BooleanProvider, StringProvider};
+use error::Error;
 
 use object::{self, RtValue};
 use object::selfref::{self, SelfRef};
@@ -30,6 +31,8 @@ impl typing::BuiltinType for PyStringType {
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
         PyStringType::inject_selfref(PyStringType::alloc(value))
     }
+
+
 
     fn init_type() -> Self {
         PyStringType { empty: PyStringType::inject_selfref(PyStringType::alloc("".to_string())) }
@@ -151,7 +154,19 @@ impl method::NegateValue for PyString {}
 impl method::AbsValue for PyString {}
 impl method::PositiveValue for PyString {}
 impl method::InvertValue for PyString {}
-impl method::Add for PyString {}
+impl method::Add for PyString {
+
+    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+        match builtin.deref() {
+            &Builtin::Str(ref other) => Ok(rt.str([&self.value.0[..], &other.value.0[..]].concat())),
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("+", "str", other.debug_name()))),
+        }
+    }
+
+}
+
 impl method::BitwiseAnd for PyString {}
 impl method::DivMod for PyString {}
 impl method::FloorDivision for PyString {}
@@ -196,7 +211,15 @@ impl method::InPlaceXOr for PyString {}
 impl method::Contains for PyString {}
 impl method::Iter for PyString {}
 impl method::Call for PyString {}
-impl method::Length for PyString {}
+impl method::Length for PyString {
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(rt.int(self.value.0.len() as i64))
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        Ok(native::Integer::from(self.value.0.len()))
+    }
+}
 impl method::LengthHint for PyString {}
 impl method::Next for PyString {}
 impl method::Reversed for PyString {}

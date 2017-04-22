@@ -39,23 +39,53 @@ pub type DynExpr = Box<Expr>;
 
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub enum FnType {
+    Async,
+    Sync,
+}
+
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Stmt {
-    FunctionDef { name: OwnedTk, arguments: Vec<OwnedTk>, body: Box<Stmt> },
+    FunctionDef { fntype: FnType, name: OwnedTk, arguments: Vec<Expr>, body: Box<Stmt> },
+    Block(Vec<Stmt>), // TODO: Do blocks all share the same scope?
+    ClassDef {name: OwnedTk, bases: Vec<Expr>, body: Box<Stmt> },
+    Return(Option<Expr>),
+    Delete(Vec<Expr>),
     Assign { target: Expr, value: Expr},
     AugAssign { target: Expr, op: Op, value: Expr},
+//    | AnnAssign(expr target, expr annotation, expr? value, int simple)
+//
+//    -- use 'orelse' because else is a keyword in target languages
+//    | For(expr target, expr iter, stmt* body, stmt* orelse)
+//    | AsyncFor(expr target, expr iter, stmt* body, stmt* orelse)
+//    | While(expr test, stmt* body, stmt* orelse)
+//    | If(expr test, stmt* body, stmt* orelse)
+//    | With(withitem* items, stmt* body)
+//    | AsyncWith(withitem* items, stmt* body)
+//
+//    | Raise(expr? exc, expr? cause)
+//    | Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
+//    | Assert(expr test, expr? msg)
+
+    Import, //(alias* names)
+    ImportFrom, // (identifier? module, alias* names, int? level))
+    Global(Vec<OwnedTk>),
+    Nonlocal(Vec<OwnedTk>),
     Expr(Expr),
-    Block(Vec<Stmt>), // TODO: Do blocks all share the same scope?
-    Return(Option<Expr>),
+    Pass,
+    Break,
+    Continue,
     Newline,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expr {
     BinOp { op: Op, left: DynExpr, right: DynExpr },
+    Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
     NameConstant(Vec<OwnedTk>),
     Constant(OwnedTk)
 }
-
 
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]

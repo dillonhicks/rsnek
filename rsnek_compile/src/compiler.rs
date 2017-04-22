@@ -28,7 +28,8 @@ impl Instr {
 pub enum Value {
     Str(String),
     Int(i64),
-    Float(f64)
+    Float(f64),
+    Code(Box<[Instr]>)
 }
 
 
@@ -36,23 +37,32 @@ pub enum Value {
 pub struct ValueError(pub String);
 
 
-impl Value {
+impl<'a> From<&'a OwnedTk> for Value {
     // TODO: Refactor to use stdlib traits From / TryFrom if possible
     // TODO: unwrap() can cause panics, make this able to return a result
 
-    fn from<'a>(tk: &'a OwnedTk) -> Self {
+    fn from(tk: &'a OwnedTk) -> Self {
         let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
         let content = parsed.as_str();
 
         match (tk.id(), tk.tag()) {
-            (Id::Name, _)                    |
-            (Id::String, _)                  => Value::Str(parsed.clone()),
+            (Id::Name, _)     => Value::Str(parsed.clone()),
+                (Id::String, _)     => {
+                // TODO: This is a hack to get the " off of quoted strings
+                Value::Str(parsed[1..parsed.len()-1].to_string())
+            },
             (Id::Number, Tag::N(Num::Int))   => Value::Int(content.parse::<i64>().unwrap()),
             (Id::Number, Tag::N(Num::Float)) => Value::Float(content.parse::<f64>().unwrap()),
             _ => unimplemented!()
         }
     }
 
+}
+
+impl<'a> From<&'a str> for Value {
+    fn from(s: &'a str) -> Self {
+        Value::Str(s.to_string())
+    }
 }
 
 
@@ -78,21 +88,154 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn compile_expr_constant(&self, ctx: Context, tk: &'a OwnedTk) -> Box<[Instr]> {
-        let instr = match ctx {
-            Context::Store => {
-                Instr(OpCode::StoreName, Some(Value::from(tk)))
-            },
-            Context::Load => {
-                let code = match tk.id() {
-                    Id::Name => OpCode::LoadName,
-                    _ => OpCode::LoadConst
-                };
-                Instr(code, Some(Value::from(tk)))
-            }
+    pub fn compile_str<'b>(&mut self, input: &'b str) -> Box<[Instr]> {
+        let mut parser = Parser::new();
+
+        let tokens = match self.lexer.tokenize2(input.as_bytes()) {
+            IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),
+            _ => panic!("Issue parsing input")
         };
 
-        vec![instr].into_boxed_slice()
+        let ins = match parser.parse_tokens(&tokens) {
+            ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
+                self.compile_ast(&result.ast.borrow())
+            },
+            result => panic!("\n\nERROR: {:#?}\n\n", result)
+        };
+
+
+        ins
+    }
+
+    // Ast Compiler Methods
+
+    pub fn compile_ast(&self, ast: &Ast) -> Box<[Instr]>{
+        //println!("CompileAST({:?})", ast);
+        let mut instructions: Vec<Instr> = vec![];
+
+        let mut ins = match *ast {
+            Ast::Module(ref module) => {
+                self.compile_module(module)
+            },
+            _ => Box::new([])
+        };
+
+        instructions.append(&mut ins.to_vec());
+        instructions.into_boxed_slice()
+    }
+
+    pub fn compile_module(&self, module: &Module) -> Box<[Instr]> {
+        //println!("CompileModule({:?})", module);
+
+        let mut instructions: Vec<Instr> = vec![];
+
+        match *module {
+            Module::Body(ref stmts) => {
+
+                for stmt in stmts {
+                    let mut ins = self.compile_stmt(&stmt);
+                    instructions.append(&mut ins.to_vec());
+                }
+            }
+        }
+
+        instructions.into_boxed_slice()
+    }
+
+    fn compile_stmt(&self, stmt: &'a Stmt) -> Box<[Instr]> {
+        let mut instructions: Vec<Instr> = vec![];
+
+        let mut ins: Box<[Instr]> = match *stmt {
+            Stmt::FunctionDef {ref fntype, ref name, ref arguments, ref body } => {
+                let mut func_ins: Vec<Instr> = vec![
+                    Instr(OpCode::LoadConst, Some(Value::Code(self.compile_stmt(body)))),
+                    //Instr(OpCode::LoadConst, Some(Value::from(name))),
+                    Instr(OpCode::MakeFunction, None),
+                    Instr(OpCode::StoreName, Some(Value::from(name)))
+                ];
+
+                func_ins.into_boxed_slice()
+            },
+            Stmt::Block(ref stmts) => {
+                let mut block_ins: Vec<Instr> = vec![];
+
+                for stmt in stmts.iter().as_ref() {
+                    block_ins.append(&mut self.compile_stmt(&stmt).to_vec());
+                }
+
+                block_ins.into_boxed_slice()
+            },
+            Stmt::Return(Some(ref value)) => {
+                let mut return_ins: Vec<Instr> = vec![];
+                return_ins.append(&mut self.compile_expr(&value, Context::Load).to_vec());
+                return_ins.push(Instr(OpCode::ReturnValue, None));
+                return_ins.into_boxed_slice()
+            },
+            Stmt::Return(None) => {
+                let return_ins: Vec<Instr> = vec![
+                    Instr(OpCode::LoadName, Some(Value::from("None"))),
+                    Instr(OpCode::ReturnValue, None)
+                ];
+                return_ins.into_boxed_slice()
+            }
+            Stmt::Assign { ref target, ref value } => self.compile_stmt_assign(target, value),
+            Stmt::Expr(ref expr) => self.compile_expr(expr, Context::Load),
+            Stmt::Newline => return instructions.into_boxed_slice(),  // TODO: add lineno attrs
+            _ => unimplemented!()
+        };
+
+        instructions.append(&mut ins.to_vec());
+        instructions.into_boxed_slice()
+    }
+
+    fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> Box<[Instr]> {
+        // println!("CompileAssignment(target={:?}, value={:?})", target, value);
+        let mut instructions: Vec<Instr> = vec![];
+
+        let mut ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
+        instructions.append(&mut ins.to_vec());
+
+        let mut ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
+        instructions.append(&mut ins.to_vec());
+
+        instructions.into_boxed_slice()
+    }
+
+
+    fn compile_expr(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
+        let mut instructions: Vec<Instr> = vec![];
+
+        let mut ins: Box<[Instr]> = match *expr {
+            Expr::Constant(ref tk) => {
+                self.compile_expr_constant(ctx, tk)
+            },
+            Expr::BinOp {ref op, ref left, ref right} => {
+                self.compile_expr_binop(op, left, right)
+            },
+            Expr::Call {ref func, ref args, ref keywords} => {
+                self.compile_expr_call(func, args)
+            }
+            _ => unimplemented!()
+        };
+
+        instructions.append(&mut ins.to_vec());
+        instructions.into_boxed_slice()
+    }
+
+    fn compile_expr_call(&self, func: &'a OwnedTk, arg_exprs: &'a[Expr]) -> Box<[Instr]> {
+        let mut call_ins: Vec<Instr> = vec![];
+
+        for expr in arg_exprs.iter().as_ref() {
+            call_ins.append(&mut self.compile_expr(&expr, Context::Load).to_vec());
+        }
+
+        call_ins.append(&mut vec![
+            Instr(OpCode::LoadName, Some(Value::from(func))),
+            Instr(OpCode::CallFunction, None),
+            Instr(OpCode::PopTop, None)
+            ]);
+
+        call_ins.into_boxed_slice()
     }
 
     fn compile_expr_binop(&self, op: &'a Op, left: &'a Expr, right: &'a Expr) -> Box<[Instr]> {
@@ -137,102 +280,23 @@ impl<'a> Compiler<'a> {
         instructions.into_boxed_slice()
     }
 
-    fn compile_expr(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
-        let mut instructions: Vec<Instr> = vec![];
-
-        let mut ins: Box<[Instr]> = match *expr {
-            Expr::Constant(ref tk) => {
-                self.compile_expr_constant(ctx, tk)
+    fn compile_expr_constant(&self, ctx: Context, tk: &'a OwnedTk) -> Box<[Instr]> {
+        let instr = match ctx {
+            Context::Store => {
+                Instr(OpCode::StoreName, Some(Value::from(tk)))
             },
-            Expr::BinOp {ref op, ref left, ref right} => {
-                self.compile_expr_binop(op, left, right)
+            Context::Load => {
+                let code = match tk.id() {
+                    Id::Name => OpCode::LoadName,
+                    _ => OpCode::LoadConst
+                };
+                Instr(code, Some(Value::from(tk)))
             }
-            _ => unimplemented!()
         };
 
-        instructions.append(&mut ins.to_vec());
-        instructions.into_boxed_slice()
+        vec![instr].into_boxed_slice()
     }
 
-    fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> Box<[Instr]> {
-        // println!("CompileAssignment(target={:?}, value={:?})", target, value);
-        let mut instructions: Vec<Instr> = vec![];
-
-        let mut ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
-        instructions.append(&mut ins.to_vec());
-
-        let mut ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
-        instructions.append(&mut ins.to_vec());
-
-        instructions.into_boxed_slice()
-    }
-
-    fn compile_stmt(&self, stmt: &'a Stmt) -> Box<[Instr]> {
-        let mut instructions: Vec<Instr> = vec![];
-
-        let mut ins: Box<[Instr]> = match *stmt {
-            Stmt::Assign { ref target, ref value } => self.compile_stmt_assign(target, value),
-            Stmt::Expr(ref expr) => self.compile_expr(expr, Context::Load),
-            Stmt::Newline => return instructions.into_boxed_slice(),  // TODO: add lineno attrs
-            _ => unimplemented!()
-        };
-
-        instructions.append(&mut ins.to_vec());
-        instructions.into_boxed_slice()
-    }
-
-    pub fn compile_module(&self, module: &Module) -> Box<[Instr]> {
-        //println!("CompileModule({:?})", module);
-
-        let mut instructions: Vec<Instr> = vec![];
-
-        match *module {
-            Module::Body(ref stmts) => {
-
-                for stmt in stmts {
-                    let mut ins = self.compile_stmt(&stmt);
-                    instructions.append(&mut ins.to_vec());
-                }
-            }
-        }
-
-        instructions.into_boxed_slice()
-    }
-
-    pub fn compile_ast(&self, ast: &Ast) -> Box<[Instr]>{
-        //println!("CompileAST({:?})", ast);
-        let mut instructions: Vec<Instr> = vec![];
-
-        match *ast {
-            Ast::Module(ref module) => {
-                let mut ins = self.compile_module(module);
-                instructions.append(&mut ins.to_vec());
-            },
-            _ => {}
-        }
-
-        instructions.push(Instr(OpCode::ReturnValue, None));
-        instructions.into_boxed_slice()
-    }
-
-    pub fn compile_str<'b>(&mut self, input: &'b str) -> Box<[Instr]> {
-        let mut parser = Parser::new();
-
-        let tokens = match self.lexer.tokenize2(input.as_bytes()) {
-            IResult::Done(left, ref tokens) if left.len() == 0 => tokens.clone(),
-            _ => panic!("Issue parsing input")
-        };
-
-        let ins = match parser.parse_tokens(&tokens) {
-            ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
-                self.compile_ast(&result.ast.borrow())
-            },
-            result => panic!("\n\nERROR: {:#?}\n\n", result)
-        };
-
-
-        ins
-    }
 }
 
 #[derive(Debug, Hash, Clone, Copy, Eq, PartialEq, Serialize)]

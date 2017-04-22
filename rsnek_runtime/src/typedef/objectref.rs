@@ -10,7 +10,7 @@ use num::Zero;
 
 use error::{Error, ErrorType};
 use result::RuntimeResult;
-use object::method::{Id, Next};
+use object::method::{Id, Next, StringCast};
 
 use typedef::builtin::Builtin;
 use typedef::native;
@@ -44,6 +44,14 @@ impl ObjectRef {
 
     pub fn weak_count(&self) -> native::Integer {
         native::Integer::from(Rc::weak_count(&self.0))
+    }
+
+    pub fn to_string(&self) -> native::String {
+        let boxed: &Box<Builtin> = self.0.borrow();
+        match boxed.native_str() {
+            Ok(string) => string,
+            Err(err) => format!("{}", self)
+        }
     }
 }
 
