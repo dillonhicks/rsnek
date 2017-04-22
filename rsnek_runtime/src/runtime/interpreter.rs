@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::io::prelude::*;
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
@@ -12,6 +13,10 @@ use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
 use itertools::Itertools;
 use num::ToPrimitive;
+use rustyline;
+use rustyline::Config as RLConfig;
+use rustyline::CompletionType;
+use rustyline::error::ReadlineError;
 use serde::Serialize;
 
 use rsnek_compile::{Compiler, fmt};
@@ -21,7 +26,7 @@ use resource;
 use error::Error;
 use result::RuntimeResult;
 use runtime::Runtime;
-use traits::{NoneProvider, StringProvider, IntegerProvider, FloatProvider};
+use traits::{NoneProvider, StringProvider, CodeProvider, IntegerProvider, FloatProvider, TupleProvider, DictProvider};
 use object::method::{
     Add,
     Subtract,
@@ -37,7 +42,8 @@ use object::method::{
     XOr,
     Modulus,
     IntegerCast,
-    StringCast
+    StringCast,
+    Call
 };
 use typedef::native;
 use typedef::builtin::Builtin;
@@ -82,6 +88,16 @@ pub struct Logging;
 pub enum ThreadModel {
     OsThreads,
     GreenThreads,
+}
+
+/// Exit codes for the main interpreter loops
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
+#[repr(u8)]
+enum ExitCode {
+    Ok = 0,
+    GenericError = 1,
+    SyntaxError = 2,
+    NotImplemented = 3,
 }
 
 
@@ -151,14 +167,29 @@ impl InterpreterState {
         }
     }
 
+    fn force_pop(&mut self) -> Option<ObjectRef> {
+        self.stack.pop()
+    }
+
     /// Execute exactly one instruction
     fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
+       // println!("exec: {:?}", instr);
+
         match instr.tuple() {
             (OpCode::LoadConst, Some(value)) => {
                 let objref = match value {
                     Value::Str(string) => rt.str(string),
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
+                    // TODO: This should be created in compiler.rs
+                    Value::Code(args, c) =>
+                        rt.code(native::Code {
+                        co_name: native::String::default(),
+                        co_names: args.iter().map(String::clone).collect(),
+                        co_varnames: native::Tuple::new(),
+                        co_code: c.to_vec(),
+                        co_consts: native::Tuple::new(),
+                    }),
                 };
 
                 self.stack.push(objref);
@@ -209,14 +240,15 @@ impl InterpreterState {
 
                 let rhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for binop!")
+                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
                 };
 
                 let lhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for binop!")
+                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
                 };
 
+                // TODO: Give `Instr` getters
                 let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
@@ -225,13 +257,89 @@ impl InterpreterState {
                 self.stack.push(result.clone());
                 None
             },
-            (OpCode::ReturnValue, None) => {
-                let retval = match self.stack.pop() {
+            (OpCode::CallFunction, None) => {
+                let func = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => return None
+                    None => panic!("No values in value stack for call!")
                 };
 
-                Some(Ok(retval))
+                // TODO: this is obviously wrong, need a convention to get min number
+                // of args and restore stack context for function calls and shiz.
+                let mut args: Vec<ObjectRef> = Vec::new();
+                args.append(&mut self.stack); // todo: forgive me
+
+
+                let boxed: &Box<Builtin> = func.0.borrow();
+                let result = match boxed.deref(){
+                    &Builtin::Function(_) => {
+                        boxed.op_call(&rt, &rt.tuple(args), &rt.tuple(vec![]), &rt.dict(native::None()))
+                    },
+                    &Builtin::Code(ref code) => {
+                        if args.len() < code.value.0.co_names.len() {
+                            return Some(Err(Error::typerr(
+                                &format!("Expected {} args got {}", code.value.0.co_names.len(),
+                                         args.len()))));
+                        }
+
+                        // Because overwriting the global namespace with function args is always a good decision....
+                        for argname in code.value.0.co_names.iter() {
+                            self.namespace.insert(argname.clone(), args.pop().unwrap());
+                        }
+                        // Put back the args we didnt consume
+                        self.stack.append(&mut args);
+
+                        let mut objects: VecDeque<ObjectRef> = VecDeque::new();
+
+                        let result = code.value.0.co_code.iter()
+                            .map(|ref instr| self.exec_one(&rt, instr))
+                            .filter(Option::is_some)
+                            .map(Option::unwrap)
+                            .fold_results((&mut objects).clone(), |mut acc, i| {acc.push_back(i); acc});
+
+                        let back = objects.back();
+
+                        match (result, back) {
+                            (Ok(_), Some(objref)) => Ok(objref.clone()),
+                            (Ok(_), None)         => Ok(rt.none()),
+                            (Err(err), _)         =>  Err(err)
+                        }
+                    },
+                    _ => Err(Error::typerr(&format!("line {}",line!())))
+                };
+
+                match result {
+                    Ok(objref) => self.stack.push(objref),
+                    other => return Some(other),
+                };
+
+                None
+            }
+            (OpCode::ReturnValue, None) => {
+                // TODO: jump out of current frame
+                None
+            },
+            (OpCode::MakeFunction, None) => {
+                let name = match self.stack.pop() {
+                    Some(objref) => objref,
+                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                };
+
+//                let code = match self.stack.pop() {
+//                    Some(objref) => objref,
+//                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+//                };
+//
+//
+//                self.namespace.insert(name.to_string(), code);
+                None
+            }
+            (OpCode::PopTop, None) => {
+
+                    match self.stack.pop() {
+                        Some(objref) => Some(Ok(objref)),
+                        None => None
+                    }
+
             }
             _ => Some(Err(Error::not_implemented()))
         }
@@ -255,19 +363,29 @@ impl InterpreterState {
         }
     }
 
-    pub fn debug_locals(&self) {
+    pub fn print_debug_info(&self) {
         // FIXME: Remove when parser/compiler allows for an expression of a single name
         // or maybe just hardcode that in?
+        let stack: String = self.stack.iter().enumerate().map(|(idx, objref)| {
+            let b: &Box<Builtin> = objref.0.borrow();
+            match b.native_str() {
+                Ok(s) => format!("{}: {} = {}", idx, b.debug_name(), s),
+                Err(err) => format!("{}: {} = ??", idx, b.debug_name()),
+            }
+        }).collect::<Vec<String>>().join("\n");
+
         let values: Vec<String> = self.namespace.iter().map(|(key, v): (&String, &ObjectRef)| {
             let b: &Box<Builtin> = v.0.borrow();
 
             match b.native_str() {
-                Ok(s) => format!("{}: {}", key, s),
-                Err(err) => format!("{}: ??", key),
+                Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
+                Err(err) => format!("{}: {} = ??", key, b.debug_name()),
             }
         }).collect();
 
-        debug!("\nlocals:\n----------\n{}", values.join("\n"));
+        debug!("stack:\n{}\n\nlocals:\n----------\n{}\n",
+            stack,
+            values.join("\n"));
     }
 }
 
@@ -376,27 +494,6 @@ fn print_banner() {
 }
 
 
-/// Write the prompt to stdout without a newline and hard flush stdout
-/// for interactive mode.
-#[inline(always)]
-fn print_prompt() {
-    print!("\n{} ", resource::strings::PROMPT);
-    match io::stdout().flush() {
-        Err(err) => println!("Error Flushing STDOUT: {:?}", err),
-        _ => ()
-    }
-}
-
-
-#[repr(u8)]
-enum ExitCode {
-    Ok = 0,
-    GenericError = 1,
-    NotImplemented = 254,
-    Unknown = 255
-}
-
-
 /// Create the closure with the `MainFn` signature that captures a copy
 /// of the arguments sent to `create_python_main`. The closure will try to use
 /// the first argument as the file to load.
@@ -425,27 +522,60 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
                         debug!("{:?}", err);
                         return match err.raw_os_error() {
                             Some(code) => code as i64,
-                            _ => ExitCode::Unknown as i64
+                            _ => ExitCode::GenericError as i64
                         }
                     }
                 }
             },
             _ => {
                 debug!("Unable to determine input type");
-                return ExitCode::Unknown as i64
+                return ExitCode::GenericError as i64
             }
         };
 
-        let compiler = Compiler::new();
+        let mut compiler = Compiler::new();
         let mut interpreter = InterpreterState::new();
-        let ins = compiler.compile_str(&text);
+        // TODO: use scope resolution in the future
+        // Manually load the builtin print function into the interpreter namespace
+        // since rsnek does not have a concept of modules at this time.
+        interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
+        interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
+        interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
+        interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
+        interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+
+        let ins = match compiler.compile_str(&text) {
+            Ok(ins) => ins,
+            Err(err) => {
+                println!("SyntaxError: Unable to compile input");
+                return ExitCode::SyntaxError as i64
+            },
+        };
+
+        if let Some(path) = myargs.get(0) {
+            let outpath = [path, "compiled"].join(".");
+
+            match File::create(&outpath) {
+                Ok(ref mut file) => {
+                   match file.write(fmt::json(&ins).as_bytes()) {
+                       Err(err) => {
+                           debug!("{:?}", err);
+                       }
+                       _ => {}
+                   };
+                },
+                Err(err) => {
+                    debug!("{:?}", err);
+                }
+            }
+        }
 
         let result = interpreter.exec(&rt, &(*ins));
-        interpreter.debug_locals();
+       // interpreter.print_debug_info();
 
         let code = match result {
             Ok(objref)    => {
-                debug!("result: {:?}", objref);
+                //debug!("result: {:?}", objref);
                 ExitCode::Ok as i64
             },
             Err(err)      => {
@@ -459,15 +589,9 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 }
 
 
-use rustyline;
-use rustyline::Config as RLConfig;
-use rustyline::CompletionType;
-use rustyline::error::ReadlineError;
-
-
 /// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
-    let compiler = Compiler::new();
+    let mut compiler = Compiler::new();
     let stdin = io::stdin();
 
     let config = RLConfig::builder()
@@ -478,14 +602,33 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
     let mut rl = rustyline::Editor::<()>::with_config(config);
     let mut interpreter = InterpreterState::new();
 
-    let prompt = format!("\n{} ", resource::strings::PROMPT);
+    // TODO: use scope resolution in the future
+    // Manually load the builtin print function into the interpreter namespace
+    // since rsnek does not have a concept of modules at this time.
+    interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
+    interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
+    interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
+    interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
+    interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+
+    let mut lineno = 0;
 
     print_banner();
 
-    loop {
-        let text = match rl.readline(&prompt){
+    'repl: loop {
+        match io::stdout().flush() {
+            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
+            _ => ()
+        }
+
+
+        lineno += 1;
+        let prompt = format!("\nIn[{}] {} ", lineno, resource::strings::PROMPT);
+
+        let text = match rl.readline(&prompt) {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
+                println!();
                 line
             },
             Err(ReadlineError::Interrupted) => {
@@ -499,8 +642,17 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             _ => continue
         };
 
-        let ins = compiler.compile_str(&text);
-        println!("{}", fmt::json(&ins));
+
+
+        let ins = match compiler.compile_str(&text) {
+            Ok(ins) => ins,
+            Err(err) => {
+                println!("\n\nSyntaxError: Unable to compile input\n\n");
+                continue 'repl
+            },
+        };
+
+        //println!("{}", fmt::json(&ins));
 
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {
@@ -513,20 +665,33 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
                 },
                 Some(Err(err)) => {
-                    println!("{:?}Error: {}", err.0, err.1);
+                    println!("\n\n{:?}Error: {}\n\n", err.0, err.1);
                     break 'process_ins
                 },
 
                 _ => continue 'process_ins
             }
+
         }
 
-        interpreter.debug_locals();
-
-        match io::stdout().flush() {
-            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
-            _ => ()
+        // Force pop in interactive mode to clear return values?
+        match interpreter.force_pop() {
+            Some(objref) => {
+                if objref != rt.none() {
+                    let boxed: &Box<Builtin> = objref.0.borrow();
+                    let string = match boxed.native_str() {
+                        Ok(s) => s,
+                        Err(err) => format!("{:?}Error: {}", err.0, err.1),
+                    };
+                    println!("\nOut[{}]: {}\n\n", lineno, string);
+                }
+            }
+            _ => {},
         }
+
+
+
+//        interpreter.print_debug_info();
 
     }
 

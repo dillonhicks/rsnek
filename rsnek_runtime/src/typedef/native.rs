@@ -2,6 +2,8 @@ use std;
 use std::cell::Cell;
 use num::{self, Zero};
 
+use rsnek_compile::Instr;
+
 use runtime::Runtime;
 use typedef;
 use typedef::objectref::ObjectRef;
@@ -105,9 +107,9 @@ pub struct Type {
 
 pub struct Code {
     pub co_name: String,
-    pub co_names: Tuple,
+    pub co_names: Vec<String>,
     pub co_varnames: Tuple,
-    pub co_code: Bytes,
+    pub co_code: Vec<Instr>,
     pub co_consts: Tuple,
 
     //pub co_argcount: Int,

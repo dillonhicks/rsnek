@@ -444,9 +444,11 @@ macro_rules! api_test_stub {
 }
 
 
-// Errors and stuff
+// Errors that should be in resource::strings but constant format strings are
+// kind of an edge case I guess.
 macro_rules! strings_error_bad_operand {
-        ($op:expr, $lhs:expr, $rhs:expr) => {
-            format!("unsupported operand type(s) for {}: '{}' and '{}'", $op, $lhs, $rhs);
-        }
+    ($op:expr, $lhs:expr, $rhs:expr) => {
+        format!("unsupported operand type(s) for {}: '{}' and '{}'", $op, $lhs, $rhs);
+    }
 }
+

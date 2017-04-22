@@ -53,18 +53,24 @@ impl Builtin {
     pub fn debug_name(&self) -> &str{
         match *self {
             Builtin::Object(_) => "object",
-            Builtin::None(_) => "none",
+            Builtin::None(_) => "NoneType",
             Builtin::Bool(_) => "bool",
             Builtin::Int(_) => "int",
             Builtin::Float(_) => "float",
-            Builtin::Iter(_) => "iter",
+            Builtin::Iter(_) => "iterator",
             Builtin::Complex(_) => "complex",
             Builtin::Str(_) => "str",
             Builtin::Bytes(_) => "bytes",
             Builtin::Dict(_) => "dict",
             Builtin::Tuple(_) => "tuple",
             Builtin::Type(_) => "type",
-            Builtin::Function(_) => "function",
+            Builtin::Function(ref func) => {
+                match func.value.0 {
+                    native::Function::Native(_) => "native_function",
+                    native::Function::Wrapper(_) => "builtin_function_or_method",
+                    native::Function::ByteCode() => "function",
+                }
+            },
             Builtin::Module(_) => "module",
             Builtin::Code(_) => "code",
             Builtin::DictKey(_) => "dictkey",

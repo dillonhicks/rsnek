@@ -2,8 +2,10 @@ use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use result::{NativeResult, RuntimeResult};
 
+use itertools::Itertools;
+
+use result::{NativeResult, RuntimeResult};
 use runtime::{Runtime, IntegerProvider, NoneProvider, BooleanProvider};
 use error::Error;
 use typedef::objectref::ObjectRef;
@@ -11,7 +13,7 @@ use typedef::native::{self, DictKey};
 use typedef::builtin::Builtin;
 
 use object::{self, RtValue, typing};
-use object::method::{self, Hashed};
+use object::method::{self, Hashed, StringCast};
 use object::selfref::{self, SelfRef};
 
 
@@ -95,7 +97,31 @@ impl method::Hashed for PyDict {
         Err(Error::typerr("Unhashable type dict"))
     }
 }
-impl method::StringCast for PyDict {}
+impl method::StringCast for PyDict {
+    fn native_str(&self) -> NativeResult<native::String> {
+        let mut strings: Vec<String> = Vec::new();
+
+        for (key, value) in self.value.0.borrow().iter() {
+
+            let keyobj = &key.1;
+            let boxed: &Box<Builtin> = keyobj.0.borrow();
+            let ks = match boxed.native_str() {
+                Ok(s) => s,
+                Err(_) => format!("{}", boxed)
+            };
+
+            let boxed: &Box<Builtin> = value.0.borrow();
+            let vs = match boxed.native_str() {
+                Ok(s) => s,
+                Err(_) => format!("{}", boxed)
+            };
+
+            strings.push([ks, vs].join(": "));
+        }
+
+        Ok(format!("{{{}}}", strings.join(", ")))
+    }
+}
 impl method::BytesCast for PyDict {}
 impl method::StringFormat for PyDict {}
 impl method::StringRepresentation for PyDict {}

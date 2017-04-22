@@ -7,13 +7,86 @@ use nom::{IResult,digit,multispace, newline,FindToken};
 use itertools::Itertools;
 use serde::ser::{Serialize, Serializer, SerializeSeq};
 use serde_bytes;
+use serde::ser::SerializeStruct;
 
 use num;
 use num::FromPrimitive;
 
 use ::fmt;
+use ::slice::TkSlice;
 
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+const NEWLINE_BYTES: &'static [u8] = &[10];
+pub const TK_NEWLINE: Tk = Tk {id: Id::Newline, bytes: NEWLINE_BYTES, tag: Tag::W(Ws::Newline)};
+pub const TK_BLOCK_START: Tk = Tk{ id: Id::BlockStart, bytes: NEWLINE_BYTES, tag: Tag::None};
+pub const TK_BLOCK_END: Tk = Tk{ id: Id::BlockEnd, bytes: NEWLINE_BYTES, tag: Tag::None};
+
+pub const NEWLINE: &'static [Tk] = &[TK_NEWLINE];
+pub const BLOCK_START: &'static [Tk] = &[TK_BLOCK_START];
+pub const BLOCK_END: &'static [Tk] = &[TK_BLOCK_END];
+
+
+/// Attempt to make an owned token to get out of lifetime hell. I found myself
+/// in trouble after trying to rewrite and inject values into the token slice
+/// in the parsing phase. This was to figure out block scopes and such since
+/// something something whitespace scoping.
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub struct OwnedTk {
+    id: Id,
+    bytes: Vec<u8>,
+    tag: Tag
+}
+
+impl<'a> From<&'a Tk<'a>> for OwnedTk {
+    fn from(tk: &'a Tk<'a>) -> Self {
+        OwnedTk {
+            id: tk.id,
+            bytes: tk.bytes.to_vec(),
+            tag: tk.tag
+        }
+    }
+}
+
+impl<'a> From<&'a TkSlice<'a>> for OwnedTk {
+    fn from(tkslice: &'a TkSlice<'a>) -> Self {
+        let tk = tkslice.as_token();
+        OwnedTk {
+            id: tk.id,
+            bytes: tk.bytes.to_vec(),
+            tag: tk.tag
+        }
+    }
+}
+
+impl OwnedTk {
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+    pub fn id(&self) -> Id {
+        self.id
+    }
+    pub fn tag(&self) -> Tag { self.tag }
+
+    pub fn as_string(&self) -> String {
+        String::from_utf8_lossy(self.bytes()).to_string()
+    }
+
+}
+
+
+impl Serialize for OwnedTk {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        // 3 is the number of fields in the struct.
+        let mut state = serializer.serialize_struct("OwnedTk", 2)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("value", &self.as_string())?;
+        //state.serialize_field("tag", &self.tag)?;
+        state.end()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Tk<'a> {
     id: Id,
 
@@ -31,6 +104,11 @@ impl<'a> Tk<'a> {
         self.id
     }
     pub fn tag(&self) -> Tag { self.tag }
+
+    pub fn as_string(&self) -> String {
+        String::from_utf8_lossy(self.bytes).to_string()
+    }
+
 }
 
 
@@ -41,6 +119,12 @@ impl<'a, 'b> FindToken<&'b [Id]> for Tk<'a> {
         }
 
         false
+    }
+}
+
+impl<'a> Default for Tk<'a> {
+    fn default() -> Self {
+        Tk::new(Id::None, &[], Tag::None)
     }
 }
 
@@ -264,6 +348,8 @@ pub enum Id {
     Symbol,
     ErrorMarker,
     Keyword,
+    BlockStart,
+    BlockEnd,
 
     // Strings
     Comment,
@@ -282,6 +368,8 @@ pub enum Id {
     Complex,
 
     // Keywords
+    Async,
+    Await,
     False,
     True,
     None,

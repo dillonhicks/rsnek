@@ -155,7 +155,15 @@ impl Runtime {
         }
 
 
-        let (name, func) = builtin::LenFunction::create();
+        let (name, func) = builtin::LenFn::create();
+        rt.register_builtin(name, func);
+        let (name, func) = builtin::PrintFn::create();
+        rt.register_builtin(name, func);
+        let (name, func) = builtin::TypeFn::create();
+        rt.register_builtin(name, func);
+        let (name, func) = builtin::StrFn::create();
+        rt.register_builtin(name, func);
+        let (name, func) = builtin::IntFn::create();
         rt.register_builtin(name, func);
         rt
     }
