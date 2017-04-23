@@ -499,11 +499,11 @@ impl<'a> Parser<'a> {
         // TODO: {T95} Enabled parser to handle nested expressions
         target: name_token       >>
             op: augassign_token  >>
-        number: number_token     >>
+        value: call_m!(self.start_expr)  >>
         (Stmt::AugAssign {
             op: Op(op.as_owned_token()),
             target: Expr::Constant(target.as_owned_token()),
-            value: Expr::Constant(number.as_owned_token())
+            value: value
          })
     ));
 
@@ -706,8 +706,11 @@ tk_named!(unaryop_token <TkSlice<'a>>, ignore_spaces!(
 tk_named!(constant_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
             tag!(&[Id::Name])               |
+            tag!(&[Id::Number])             |
             tag!(&[Id::String])             |
-            tag!(&[Id::Number])
+            tag!(&[Id::RawString])          |
+            tag!(&[Id::FormatString])       |
+            tag!(&[Id::ByteString])
         )
 ));
 
@@ -732,6 +735,7 @@ tk_named!(augassign_token <TkSlice<'a>>, ignore_spaces!(
 ));
 
 
+// TODO: {107} Add asserts to verify values of produced asts
 #[cfg(test)]
 mod tests {
 
@@ -743,6 +747,20 @@ mod tests {
     use ast::Ast;
     use lexer::Lexer;
     use super::*;
+
+
+    /// Use to create a named test case of a single line snippet of code.
+    /// This `basic_test!(print_function, "print('hello world!')`
+    /// will create a test function named `print_function` that will try to parse the
+    /// string.
+    macro_rules! basic_test {
+        ($name:ident, $code:expr) => {
+            #[test]
+            fn $name() {
+               assert_parsable($code);
+            }
+        };
+    }
 
     fn assert_parsable(input: &str) {
         let mut parser = Parser::new();
@@ -772,22 +790,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn stmt_assign_constant_expr() {
-        assert_parsable("PI = 3.14159");
-        assert_parsable("stuff = 'hello world!'");
-        assert_parsable("spaghetti = True")
-    }
-
-    #[test]
-    fn stmt_assign_binop_expr() {
-        assert_parsable("z = x + y");
-    }
-
-    #[test]
-    fn ast_simple_augassign() {
-        assert_parsable("f **= 14");
-    }
 
     #[test]
     fn ast_multiple_stmts() {
@@ -864,4 +866,63 @@ def hello():
             _ => unreachable!()
         }
     }
+
+    // Stmt::Assign(Expr::Constant)
+    basic_test!(stmt_assign_int,         "x = 134567");
+    basic_test!(stmt_assign_hex,         "x = 0xabdef");
+    basic_test!(stmt_assign_bin,         "x = 0b01010");
+    basic_test!(stmt_assign_oct,         "o = 0o12377");
+    basic_test!(stmt_assign_float,       "y = 3.5");
+    basic_test!(stmt_assign_complex,     "x = 6j");
+    basic_test!(stmt_assign_bool,        "true = False");
+    basic_test!(stmt_assign_str,         r#"z = "Zoo""#);
+    basic_test!(stmt_assign_raw_str,     r#"mary = r"had a\blittle lamb\r""#);
+    basic_test!(stmt_assign_byte_str,    r#"buf = b"somanybytes""#);
+    basic_test!(stmt_assign_fmt_str,     r#"message = f"Hi, {name}!""#);
+    
+    // Stmt::Assign(Expr::BinOp)
+    basic_test!(stmt_assign_expr_binop_add, "r = 1 + 3");
+    basic_test!(stmt_assign_expr_binop_sub, "r = 2 - 3");
+    basic_test!(stmt_assign_expr_binop_mul, "r = 'abc' * 3");
+    basic_test!(stmt_assign_expr_binop_pow, "r = 5 ** 3");
+    basic_test!(stmt_assign_expr_binop_lsh, "r = 23 << 44");
+    basic_test!(stmt_assign_expr_binop_rsh, "r = 78 >> 3");
+    basic_test!(stmt_assign_expr_binop_div, "r = 1.0 / 3");
+    basic_test!(stmt_assign_expr_binop_fdv, "r = 6 // 3");
+    basic_test!(stmt_assign_expr_binop_mod, "r = 34.4 % 3");
+
+    // Stmt::Assign(Expr::Call)
+    basic_test!(stmt_assign_expr_call,  "x = type(532j)");
+
+    // Stmt::AugAssign(Expr::Call)
+    basic_test!(stmt_augassign_expr_call,   "percent += float(string)");
+
+    // Stmt::AugAssign(Expr::Constant)
+    basic_test!(stmt_augassign_add, "r += 3");
+    basic_test!(stmt_augassign_sub, "r -= 17.34");
+    basic_test!(stmt_augassign_mul, "r *= '4'");
+    basic_test!(stmt_augassign_pow, "r **= 5");
+    basic_test!(stmt_augassign_lsh, "r <<= 44");
+    basic_test!(stmt_augassign_rsh, "r >>= 3");
+    basic_test!(stmt_augassign_div, "r /= 75");
+    basic_test!(stmt_augassign_fdv, "r //= 98");
+    basic_test!(stmt_augassign_mod, "r %= 34.4");
+
+    // Expr::BinOp
+    basic_test!(expr_binop_add, "1 + 3");
+    basic_test!(expr_binop_sub, "2 - 3");
+    basic_test!(expr_binop_mul, "4 * 3");
+    basic_test!(expr_binop_pow, "5 ** 3");
+    basic_test!(expr_binop_lsh, "23 << 44");
+    basic_test!(expr_binop_rsh, "78 >> 3");
+    basic_test!(expr_binop_div, "1.0 / 3");
+    basic_test!(expr_binop_fdv, "6 // 3");
+    basic_test!(expr_binop_mod, "34.4 % 3");
+
+    // Expr::Call
+    basic_test!(expr_call_3_dbl_quote_str,  r#"print("""He sings the songs that""")"#);
+    basic_test!(expr_call_dbl_quote_str,    r#"hash("remind him of the good times")"#);
+    basic_test!(expr_call_nargs,            r#"sum_all(1,2,3,3,4,5,6,7,8,'9')"#);
+    basic_test!(expr_call_nested,           r#"int(str(sum(slice(list(range(1, 100)), 43))))"#);
+    
 }
