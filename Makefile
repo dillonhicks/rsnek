@@ -102,3 +102,10 @@ test:
 
 bench:
 	PATH="/root/.cargo/bin:$(PATH)" cargo bench --message-format=json -p rsnek*
+
+
+# Get the status of the stages of the AWS CodePipeline for this project and
+# print the status of each stage and url to stdout.
+#
+pipeline-status:
+	./tools/aws-cli-sugar/pipeline-status.sh
