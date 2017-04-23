@@ -1,0 +1,15 @@
+version: 0.1
+
+phases:
+  pre_build:
+    commands:
+      - echo Installing rust nightly toolchain
+      - make toolchain
+  build:
+    commands:
+      - echo Build started on `date`
+      - make build
+  post_build:
+    commands:
+      - echo Tests started on `date`
+      - make tests
