@@ -50,7 +50,7 @@ use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
 
-// TODO: get actual logging or move this to a proper place
+// TODO: {T100} {T73} get actual logging or move this to a proper place
 macro_rules! debug {
     ($fmt:expr) => (print!(concat!("DEBUG:", $fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => (print!(concat!("DEBUG:", $fmt, "\n"), $($arg)*));
@@ -106,7 +106,7 @@ pub struct Interpreter {}
 
 impl Interpreter {
 
-    // TODO: Arguments plumbing via a sys module?
+    // TODO: {T100} Arguments plumbing via a sys module?
     pub fn run(config: &Config) -> i64 {
         let interactive_main: MainFnRef = &python_main_interactive;
         let main = create_python_main(config.mode.clone(), config.arguments);
@@ -130,7 +130,7 @@ impl Interpreter {
 
 struct InterpreterState {
     interactive: bool,
-    // TODO: Change namespace to be PyDict or PyModule or PyObject or something
+    // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
     namespace: HashMap<native::String, ObjectRef>,
     stack: Vec<ObjectRef>,
 }
@@ -181,7 +181,7 @@ impl InterpreterState {
                     Value::Str(string) => rt.str(string),
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
-                    // TODO: This should be created in compiler.rs
+                    // TODO: {T100} This should be created in compiler.rs
                     Value::Code(args, c) =>
                         rt.code(native::Code {
                         co_name: native::String::default(),
@@ -248,7 +248,7 @@ impl InterpreterState {
                     None => panic!("No values in value stack for {:?}!", instr.tuple().0)
                 };
 
-                // TODO: Give `Instr` getters
+                // TODO: {T100} Give `Instr` getters
                 let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
@@ -263,10 +263,10 @@ impl InterpreterState {
                     None => panic!("No values in value stack for call!")
                 };
 
-                // TODO: this is obviously wrong, need a convention to get min number
+                // TODO: {T100} this is obviously wrong, need a convention to get min number
                 // of args and restore stack context for function calls and shiz.
                 let mut args: Vec<ObjectRef> = Vec::new();
-                args.append(&mut self.stack); // todo: forgive me
+                args.append(&mut self.stack); // forgive me,
 
 
                 let boxed: &Box<Builtin> = func.0.borrow();
@@ -315,7 +315,7 @@ impl InterpreterState {
                 None
             }
             (OpCode::ReturnValue, None) => {
-                // TODO: jump out of current frame
+                // TODO: {T100} jump out of current frame
                 None
             },
             (OpCode::MakeFunction, None) => {
@@ -510,12 +510,12 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
             },
             (Mode::File, Some(path)) => {
                 match File::open(&path) {
-                    // TODO: Check size so we aren't going ham and trying to read a file the size
+                    // TODO: {T100} Check size so we aren't going ham and trying to read a file the size
                     // of memory or something?
                     Ok(ref mut file) => {
                         let mut buf: Vec<u8> = Vec::new();
                         file.read_to_end(&mut buf);
-                        // TODO: Is using lossy here a good idea?
+                        // TODO: {T100} Is using lossy here a good idea?
                         String::from_utf8_lossy(&buf).to_string()
                     },
                     Err(err) => {
@@ -535,7 +535,7 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 
         let mut compiler = Compiler::new();
         let mut interpreter = InterpreterState::new();
-        // TODO: use scope resolution in the future
+        // TODO: {T100} use scope resolution in the future
         // Manually load the builtin print function into the interpreter namespace
         // since rsnek does not have a concept of modules at this time.
         interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
@@ -602,7 +602,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
     let mut rl = rustyline::Editor::<()>::with_config(config);
     let mut interpreter = InterpreterState::new();
 
-    // TODO: use scope resolution in the future
+    // TODO: {T100} use scope resolution in the future
     // Manually load the builtin print function into the interpreter namespace
     // since rsnek does not have a concept of modules at this time.
     interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));

@@ -532,8 +532,6 @@ mod old {
         fn op_int(&self, rt: &Runtime) -> RuntimeResult {
             match self.native_int() {
                 Ok(int) => {
-                    // TODO: once self refs are are implemented, just
-                    // clone the ref and pass it back
                     rt.alloc(IntegerObject::new_bigint(int).to())
                 }
                 Err(err) => Err(err),

@@ -23,7 +23,7 @@ impl Instr {
     }
 }
 
-// TODO: Use rsnek_runtime::typedef::native types here
+// TODO: {T96} Use rsnek_runtime::typedef::native types here
 #[derive(Debug, Clone, Serialize)]
 pub enum Value {
     Str(String),
@@ -38,8 +38,8 @@ pub struct ValueError(pub String);
 
 
 impl<'a> From<&'a OwnedTk> for Value {
-    // TODO: Refactor to use stdlib traits From / TryFrom if possible
-    // TODO: unwrap() can cause panics, make this able to return a result
+    // TODO: {T96} Refactor to use stdlib traits From / TryFrom if possible
+    // TODO: {T96} unwrap() can cause panics, make this able to return a result
 
     fn from(tk: &'a OwnedTk) -> Self {
         let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
@@ -48,7 +48,7 @@ impl<'a> From<&'a OwnedTk> for Value {
         match (tk.id(), tk.tag()) {
             (Id::Name, _)     => Value::Str(parsed.clone()),
                 (Id::String, _)     => {
-                // TODO: This is a hack to get the " off of quoted strings
+                // TODO: {T96} This is a hack to get the " off of quoted strings
                 Value::Str(parsed[1..parsed.len()-1].to_string())
             },
             (Id::Number, Tag::N(Num::Int))   => Value::Int(content.parse::<i64>().unwrap()),
@@ -190,7 +190,7 @@ impl<'a> Compiler<'a> {
             }
             Stmt::Assign { ref target, ref value } => self.compile_stmt_assign(target, value),
             Stmt::Expr(ref expr) => self.compile_expr(expr, Context::Load),
-            Stmt::Newline => return instructions.into_boxed_slice(),  // TODO: add lineno attrs
+            Stmt::Newline => return instructions.into_boxed_slice(),
             _ => unimplemented!()
         };
 

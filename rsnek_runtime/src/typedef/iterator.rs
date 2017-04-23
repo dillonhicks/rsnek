@@ -150,7 +150,7 @@ impl method::Next for PyIterator {
 
     fn op_next(&self, rt: &Runtime) -> RuntimeResult {
         match self.value.0 {
-            // TODO: Use weakref or some other mechanism to not keep a handle to source forever?
+            // TODO: {T82} Use weakref or some other mechanism to not keep a handle to source forever?
             _ => self.native_next()
         }
     }
@@ -159,7 +159,7 @@ impl method::Next for PyIterator {
         let ref rt = self.value.1;
 
         match self.value.0 {
-            // TODO: Use weakref or some other mechanism to not keep a handle to source forever?
+            // TODO: {T82} Use weakref or some other mechanism to not keep a handle to source forever?
             native::Iterator::Sequence {ref source, ref idx_next} => {
                 let boxed: &Box<Builtin> = source.0.borrow();
                 let mut idx = idx_next.get();

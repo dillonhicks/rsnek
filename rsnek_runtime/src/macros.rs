@@ -1,10 +1,4 @@
 
-// TODO: Replace this with an actual logging mod
-macro_rules! log {
-   ($fmt:expr) => (print!(concat!("DEBUG: ", $fmt, "\n")));
-   ($fmt:expr, $($arg:tt)*) => (print!(concat!("DEBUG: ", $fmt, "\n"), $($arg)*));
-}
-
 macro_rules! try_cast {
     ($out:ident, $objref:expr, $builtin:path) => (
         let boxed: &Box<Builtin> = $objref.0.borrow();
@@ -14,7 +8,6 @@ macro_rules! try_cast {
         }
     )
 }
-
 
 
 macro_rules! foreach_builtin {
@@ -55,6 +48,7 @@ macro_rules! expr_foreach_builtin {
     );
 }
 
+
 macro_rules! unary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => {
         match $obj {
@@ -76,6 +70,7 @@ macro_rules! unary_op_foreach{
         }
     };
 }
+
 
 macro_rules! binary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $rhs:ident) => {
@@ -99,6 +94,7 @@ macro_rules! binary_op_foreach{
     };
 }
 
+
 macro_rules! ternary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
@@ -120,6 +116,7 @@ macro_rules! ternary_op_foreach{
         }
     };
 }
+
 
 macro_rules! _4ary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
@@ -143,6 +140,7 @@ macro_rules! _4ary_op_foreach{
     };
 }
 
+
 macro_rules! native_foreach_builtin {
     ($sel:expr, $function:ident, $receiver:ident) => (
         native_unary_op_foreach!($sel, $function, $receiver)
@@ -157,6 +155,7 @@ macro_rules! native_foreach_builtin {
         native_4ary_op_foreach!($sel, $function, $receiver, $arg0, $arg1, $arg2)
     )
 }
+
 
 macro_rules! native_unary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident) => {
@@ -180,6 +179,7 @@ macro_rules! native_unary_op_foreach{
     };
 }
 
+
 macro_rules! native_binary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
@@ -201,6 +201,7 @@ macro_rules! native_binary_op_foreach{
         }
     };
 }
+
 
 macro_rules! native_ternary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
@@ -224,6 +225,7 @@ macro_rules! native_ternary_op_foreach{
     };
 }
 
+
 macro_rules! native_4ary_op_foreach {
     ($obj:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
         match $obj {
@@ -245,6 +247,8 @@ macro_rules! native_4ary_op_foreach {
         }
     };
 }
+
+
 /// Macro to create Object and native typed level hooks for
 /// the rsnek runtime. Each Function is generated with a default implementation
 /// that will return a NotImplemented error.
@@ -329,7 +333,6 @@ macro_rules! api_Function {
             }
     };
 }
-
 
 
 /// Macro to create Object and native typed level hooks for

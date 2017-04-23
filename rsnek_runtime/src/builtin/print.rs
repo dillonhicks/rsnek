@@ -26,9 +26,6 @@ fn rs_builtin_print(rt: &Runtime, pos_args: &ObjectRef,
                     starargs: &ObjectRef,
                     kwargs: &ObjectRef) -> RuntimeResult {
 
-    //println!("DEBUG: Print called with: {:?} {:?} {:?}", pos_args.to_string(), starargs.to_string(), kwargs.to_string());
-
-
     let mut strings: Vec<String> = Vec::new();
     let tuple_iterator = match native::Iterator::new(pos_args){
         Ok(iterator) => rt.iter(iterator),
@@ -45,7 +42,7 @@ fn rs_builtin_print(rt: &Runtime, pos_args: &ObjectRef,
         strings.push(s);
     }
 
-    // TODO: what is the io story?
+    // TODO: {T71} Wrap this in the "canblock" macro when implemented
     println!("{}\n", strings.join(" "));
     Ok(rt.none())
 }
