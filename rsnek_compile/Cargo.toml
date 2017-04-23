@@ -17,6 +17,9 @@ const_fn = []
 
 
 [dependencies]
+log = "^0.3.7"
+log4rs = "^0.6.3"
+
 encoding = "*"
 time = "*"
 num = "*"

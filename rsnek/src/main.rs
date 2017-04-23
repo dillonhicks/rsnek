@@ -1,5 +1,12 @@
 extern crate rsnek_runtime;
 extern crate clap;
+extern crate log;
+extern crate log4rs;
+
+use log::LogLevelFilter;
+
+use log4rs::append::console::ConsoleAppender;
+use log4rs::config::{Appender, Root};
 
 use clap::{Arg, App, ArgGroup};
 
@@ -35,6 +42,7 @@ fn main() {
         .get_matches();
 
 
+    // Parse Args
     let matched_args = matches.values_of_lossy("args");
 
     let args: Vec<&str> = matched_args.iter()
@@ -63,7 +71,18 @@ fn main() {
         }
     };
 
+    // Setup Logging
+    let stdout = ConsoleAppender::builder().build();
 
+    let config = log4rs::config::Config::builder()
+        .appender(Appender::builder().build("stdout", Box::new(stdout)))
+        .build(Root::builder().appender("stdout").build(LogLevelFilter::Trace))
+        .unwrap();
+
+    log4rs::init_config(config).unwrap();
+
+
+    // Build Interpreter Config
     let config = Config {
         // TODO: {T89} force interactive mode after script executes
         mode: mode,
@@ -73,6 +92,6 @@ fn main() {
         debug_support: debug_support,
     };
 
-    
+
     Interpreter::run(&config);
 }
