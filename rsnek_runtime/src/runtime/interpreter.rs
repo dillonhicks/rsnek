@@ -26,7 +26,16 @@ use resource;
 use error::Error;
 use result::RuntimeResult;
 use runtime::Runtime;
-use traits::{NoneProvider, StringProvider, CodeProvider, IntegerProvider, FloatProvider, TupleProvider, DictProvider};
+use traits::{
+    NoneProvider,
+    StringProvider,
+    CodeProvider,
+    IntegerProvider,
+    FloatProvider,
+    TupleProvider,
+    DictProvider,
+    BooleanProvider,
+};
 use object::method::{
     Add,
     Subtract,
@@ -49,12 +58,6 @@ use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
-
-// TODO: {T100} {T73} get actual logging or move this to a proper place
-macro_rules! debug {
-    ($fmt:expr) => (print!(concat!("DEBUG:", $fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!("DEBUG:", $fmt, "\n"), $($arg)*));
-}
 
 pub type Argv<'a> =  &'a [&'a str];
 pub type MainFn = Fn(&Runtime) -> i64;
@@ -181,6 +184,11 @@ impl InterpreterState {
                     Value::Str(string) => rt.str(string),
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
+                    Value::Bool(b) => rt.bool(b),
+                    Value::Complex(c) => {
+                        let msg = format!("Complex not impelmented! {}#{}", file!(), line!());
+                        return Some(Err(Error::runtime(&msg)));
+                    },
                     // TODO: {T100} This should be created in compiler.rs
                     Value::Code(args, c) =>
                         rt.code(native::Code {
@@ -363,7 +371,7 @@ impl InterpreterState {
         }
     }
 
-    pub fn print_debug_info(&self) {
+    pub fn log_state (&self) {
         // FIXME: Remove when parser/compiler allows for an expression of a single name
         // or maybe just hardcode that in?
         let stack: String = self.stack.iter().enumerate().map(|(idx, objref)| {
@@ -383,9 +391,9 @@ impl InterpreterState {
             }
         }).collect();
 
-        debug!("stack:\n{}\n\nlocals:\n----------\n{}\n",
-            stack,
-            values.join("\n"));
+
+        let state = format!("stack:\n{}\n\nlocals:\n----------\n{}\n", stack, values.join("\n"));
+        trace!("Interpreter State:\n{}", state);
     }
 }
 
@@ -689,10 +697,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             _ => {},
         }
 
-
-
-//        interpreter.print_debug_info();
-
+        interpreter.log_state();
     }
 
     ExitCode::Ok as i64

@@ -6,6 +6,9 @@
 #![feature(fn_traits)]
 
 extern crate test;
+#[macro_use]
+extern crate log;
+
 extern crate num;
 extern crate itertools;
 extern crate fringe;
