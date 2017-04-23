@@ -256,6 +256,7 @@ fn as_keyword(bytes: &[u8]) -> Option<Tk> {
         "and"       => Some(Tk::new(Id::And, bytes, Tag::None)),
         "as"        => Some(Tk::new(Id::As, bytes, Tag::None)),
         "assert"    => Some(Tk::new(Id::Assert, bytes, Tag::None)),
+        "async"     => Some(Tk::new(Id::Assert, bytes, Tag::None)),
         "break"     => Some(Tk::new(Id::Break, bytes, Tag::None)),
         "class"     => Some(Tk::new(Id::Class, bytes, Tag::None)),
         "continue"  => Some(Tk::new(Id::Continue, bytes, Tag::None)),
@@ -336,7 +337,7 @@ pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
 
 
 #[cfg(test)]
-mod _api{
+mod tests {
     use super::*;
     use ::fmt;
 
@@ -344,6 +345,21 @@ mod _api{
     use serde_json;
     use serde_pickle;
     use bincode;
+
+
+    /// Use to create a named test case of a single line snippet of code.
+    /// This `basic_test!(print_function, "print('hello world!')`
+    /// will create a test function named `print_function` that will try to parse the
+    /// string.
+    macro_rules! basic_test {
+        ($name:ident, $code:expr, $id:expr, $tag:expr) => {
+            #[test]
+            fn $name() {
+                let value = tokenize_bytes(($code).trim().as_bytes()).unwrap();
+                assert_token(&value, $id, $tag);
+            }
+        };
+    }
 
 
     fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
@@ -381,6 +397,8 @@ mod _api{
         let value = tokenize_bytes(r#"0b0101"#.trim().as_bytes()).unwrap();
         assert_token(&value, Id::Number, Tag::N(Num::Binary));
     }
+
+    basic_test!(complex_number, "135j", Id::Number, Tag::N(Num::Complex));
 
     #[test]
     fn tk_symbol() {
@@ -505,5 +523,42 @@ x += 24354353
         println!("input size: {}", input.len());
         println!("json size: {}", json.len());
     }
+
+
+    basic_test!(keyword_False, "False", Id::False, Tag::None);
+    basic_test!(keyword_None, "None", Id::None, Tag::None);
+    basic_test!(keyword_True, "True", Id::True, Tag::None);
+    basic_test!(keyword_and, "and", Id::And, Tag::None);
+    basic_test!(keyword_as, "as", Id::As, Tag::None);
+    basic_test!(keyword_assert, "assert", Id::Assert, Tag::None);
+    basic_test!(keyword_async, "async", Id::Assert, Tag::None);
+    basic_test!(keyword_break, "break", Id::Break, Tag::None);
+    basic_test!(keyword_class, "class", Id::Class, Tag::None);
+    basic_test!(keyword_continue, "continue", Id::Continue, Tag::None);
+    basic_test!(keyword_def, "def", Id::Def, Tag::None);
+    basic_test!(keyword_del, "del", Id::Del, Tag::None);
+    basic_test!(keyword_elif, "elif", Id::Elif, Tag::None);
+    basic_test!(keyword_else, "else", Id::Else, Tag::None);
+    basic_test!(keyword_except, "except", Id::Except, Tag::None);
+    basic_test!(keyword_finally, "finally", Id::Finally, Tag::None);
+    basic_test!(keyword_for, "for", Id::For, Tag::None);
+    basic_test!(keyword_from, "from", Id::From, Tag::None);
+    basic_test!(keyword_global, "global", Id::Global, Tag::None);
+    basic_test!(keyword_if, "if", Id::If, Tag::None);
+    basic_test!(keyword_import, "import", Id::Import, Tag::None);
+    basic_test!(keyword_in, "in", Id::In, Tag::None);
+    basic_test!(keyword_is, "is", Id::Is, Tag::None);
+    basic_test!(keyword_lambda, "lambda", Id::Lambda, Tag::None);
+    basic_test!(keyword_nonlocal, "nonlocal", Id::Nonlocal, Tag::None);
+    basic_test!(keyword_not, "not", Id::Not, Tag::None);
+    basic_test!(keyword_or, "or", Id::Or, Tag::None);
+    basic_test!(keyword_pass, "pass", Id::Pass, Tag::None);
+    basic_test!(keyword_raise, "raise", Id::Raise, Tag::None);
+    basic_test!(keyword_return, "return", Id::Return, Tag::None);
+    basic_test!(keyword_try, "try", Id::Try, Tag::None);
+    basic_test!(keyword_while, "while", Id::While, Tag::None);
+    basic_test!(keyword_with, "with", Id::With, Tag::None);
+    basic_test!(keyword_yield, "yield", Id::Yield, Tag::None);
+
 }
 
