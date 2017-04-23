@@ -2,6 +2,7 @@ use encoding::{Encoding, DecoderTrap};
 use encoding::all::ASCII;
 
 use serde::Serialize;
+use serde;
 use serde_json;
 use bincode;
 
@@ -21,12 +22,15 @@ pub fn json<'a, T: Serialize>(input: &'a T) -> String {
 /// Take some input that implements `serde::Serialize` and convert it to
 /// bincode format. Note that this encodes the result as ascii for human debugging
 /// and should not be used for actual serialization.
-pub fn bincode<'a, T: Serialize>(input: &'a T) -> String {
+///
+/// Broken as of {T88} due to some library update.
+pub fn bincode<'a, T>(input: &'a T) -> String {
 
-    match bincode::serialize(&input, bincode::Infinite) {
-        Ok(bytes) => ASCII.decode(&bytes, DecoderTrap::Strict).unwrap(),
-        Err(err) => format!("{:?}", err)
-    }
+    "".to_string()
+//    match bincode::serialize(&input, bincode::Infinite) {
+//        Ok(bytes) => ASCII.decode(&bytes, DecoderTrap::Strict).unwrap(),
+//        Err(err) => format!("{:?}", err)
+//    }
 }
 
 /// Take a token and output it in tabular format using text alignments
