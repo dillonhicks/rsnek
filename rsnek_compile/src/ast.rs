@@ -83,7 +83,7 @@ pub enum Stmt {
 pub enum Expr {
     BinOp { op: Op, left: DynExpr, right: DynExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
-    NameConstant(Vec<OwnedTk>),
+    NameConstant(OwnedTk),
     Constant(OwnedTk)
 }
 

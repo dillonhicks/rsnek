@@ -567,7 +567,7 @@ impl<'a> Parser<'a> {
             tag!(&[Id::True])     |
             tag!(&[Id::False])    |
             tag!(&[Id::None])     ) >>
-        (Expr::NameConstant(constant.as_owned_tokens()))
+        (Expr::NameConstant(constant.as_owned_token()))
     ));
 
     /// 24.  | Constant(constant value)
