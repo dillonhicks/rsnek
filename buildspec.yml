@@ -12,4 +12,4 @@ phases:
   post_build:
     commands:
       - echo Tests started on `date`
-      - make tests
+      - make test
