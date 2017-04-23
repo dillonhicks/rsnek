@@ -27,7 +27,6 @@ impl typing::BuiltinType for PyDictType {
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
-        // TODO: Add check for static range
         PyDictType::inject_selfref(PyDictType::alloc(value))
     }
 
@@ -235,8 +234,7 @@ impl method::GetItem for PyDict {
                           .get(&key) {
                     Some(objref) => Ok(objref.clone()),
                     None => {
-                        // TODO: use repr for this as per cPython default
-                        Err(Error::key("KeyError: no such key"))
+                        Err(Error::key(&format!("KeyError: {:?}", keyref.to_string())))
                     }
                 }
             }
@@ -509,7 +507,7 @@ mod old {
         }
 
         fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::NoneValue> {
-            // TODO: enforce all objects containing a weakref to itself so we can support
+            // enforce all objects containing a weakref to itself so we can support
             // the clone and upgrade here for the native map api. Should check if the strong count
             // exists or otherwise return Err because it would mean the value is unmanaged which
             // leads to memory leaks and such.
@@ -525,7 +523,7 @@ mod old {
                     match self.value.borrow().get(&key) {
                         Some(value) => Ok(value.clone()),
                         None => {
-                            // TODO: use repr for this as per cPython default
+                            //  use repr for this as per cPython default
                             Err(Error::key("KeyError: no such key"))
                         }
                     }

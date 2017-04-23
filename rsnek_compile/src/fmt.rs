@@ -42,7 +42,7 @@ pub fn token(t: &Tk) -> String {
         Id::Tab         |
         Id::BlockStart  |
         Id::BlockEnd    |
-        // TODO: Clean this dumb shit up.
+        // TODO: {T90} Cleanup token text formatting
         Id::Newline     => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), format!("{:?}", String::from_utf8_lossy(t.bytes())), format!("{:?}", t.tag())),
         _ => format!("{:>15} {:^20}{:>10}", format!("{:?}", t.id()), String::from_utf8_lossy(t.bytes()), format!("{:?}", t.tag()))
     }

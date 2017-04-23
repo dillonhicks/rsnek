@@ -30,7 +30,8 @@ impl typing::BuiltinType for PyFloatType {
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: native::Float) -> ObjectRef {
-        // TODO: Interning?
+        // TODO: {T99} Investigate object interning, see the methodology in integer.rs.
+        // Can that be generalized?
         PyFloatType::inject_selfref(PyFloatType::alloc(value))
     }
 
@@ -84,7 +85,7 @@ impl method::Id for PyFloat {}
 impl method::Is for PyFloat {}
 impl method::IsNot for PyFloat {}
 impl method::Hashed for PyFloat {
-    // TODO: python has its own algo for hashing floats ensure to look at that for compat.
+    // TODO: {T87} python has its own algo for hashing floats ensure to look at that for compat.
 }
 
 impl method::StringCast for PyFloat {
@@ -187,7 +188,9 @@ impl method::Add for PyFloat {
 
         match builtin.deref(){
             &Builtin::Float(ref rhs) => {
-                // TODO: Check exceeds max?
+                // TODO: {T103} Use checked arithmetic where appropriate... this is not the only
+                // example. But the float (and some int) methods are likely to be the highest
+                // frequency.
                 Ok(rt.float(self.value.0 + rhs.value.0))
             }
             &Builtin::Int(ref rhs) => {

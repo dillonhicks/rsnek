@@ -142,85 +142,16 @@ impl method::New for PyFunction {}
 impl method::Init for PyFunction {}
 impl method::Delete for PyFunction {}
 
-impl method::GetAttr for PyFunction {
-    //
-    //    // TODO: Need to search the base classes dicts as well, maybe need MRO
-    //    #[allow(unused_variables)]
-    //    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-    //        let boxed: &Box<Builtin> = name.0.borrow();
-    //        self.native_getattr(&boxed)
-    //    }
-    //
-    //    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
-    //        match name {
-    //            &Builtin::Str(ref string) => {
-    //                let stringref = match string.rc.upgrade() {
-    //                    Ok(objref) => objref,
-    //                    Err(err) => return Err(err)
-    //                };
-    //
-    //                let key = DictKey(string.native_hash().unwrap(), stringref);
-    //                let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
-    //                match dict.native_getitem(&Builtin::DictKey(key)) {
-    //                    Ok(objref) => Ok(objref),
-    //                    Err(err) => {
-    //                        let boxed: &Box<Builtin> = self.value.0.bases.0.borrow();
-    //
-    //                        match boxed.deref() {
-    //                            &Builtin::Tuple(ref tuple) => {
-    //                                for base in &tuple.value.0 {
-    //                                    println!("{:?}", base);
-    //                                }
-    //                            },
-    //                            _ => unreachable!()
-    //                        }
-    //                        println!("NOOPE!");
-    //                        Err(err)
-    //                    }
-    //                }
-    //            },
-    //            _ => Err(Error::typerr("getattr(): attribute name must be string"))
-    //        }
-    //    }
-}
+impl method::GetAttr for PyFunction {}
+
 impl method::GetAttribute for PyFunction {}
 
-impl method::SetAttr for PyFunction {
-    //    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
-    //        let boxed_name: &Box<Builtin> = name.0.borrow();
-    //        let boxed_value: &Box<Builtin> = value.0.borrow();
-    //        match self.native_setattr(&boxed_name, boxed_value) {
-    //            Ok(_) => Ok(rt.none()),
-    //            Err(err) => Err(err)
-    //        }
-    //    }
-    //
-    //    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
-    //
-    //        let hashid = match name.native_hash() {
-    //            Ok(hash) => hash,
-    //            Err(err) => return Err(err)
-    //        };
-    //
-    //        let key_ref = match name.upgrade() {
-    //            Ok(objref) => objref,
-    //            Err(err) => return Err(err)
-    //        };
-    //
-    //        let key = DictKey(hashid, key_ref);
-    //        let dict: &Box<Builtin> = self.value.0.dict.0.borrow();
-    //
-    //        match dict.native_setitem(&Builtin::DictKey(key), &value) {
-    //            Ok(_) => Ok(native::None()),
-    //            Err(_) => Err(Error::attribute())
-    //        }
-    //    }
-}
+impl method::SetAttr for PyFunction {}
 
 impl method::DelAttr for PyFunction {}
 
 impl method::Id for PyFunction {
-    // TODO: why do we have to go back through the builtin? Is there a good reason to
+    // TODO: {T104} why do we have to go back through the builtin? Is there a good reason to
     //  special case this at the builtin.rs layer?
     fn native_id(&self) -> native::ObjectId {
         match self.rc.upgrade() {

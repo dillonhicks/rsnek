@@ -80,7 +80,7 @@ pub struct BuiltinTypes {
 }
 
 /// Concrete struct that holds the current runtime state, heap, etc.
-/// TODO: add ability to intern objects?
+// TODO: {T99} add ability to intern objects
 struct RuntimeInternal {
     types: BuiltinTypes,
     modules: RefCell<ObjectRef>, // should be a dict

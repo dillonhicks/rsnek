@@ -27,7 +27,7 @@ pub struct PyObjectType {
 impl PyObjectType {
     pub fn init_type(typeref: &ObjectRef) -> Self {
 
-        // TODO: Fundamental objects should have __setitem__ set to a attribute error
+        // TODO: {T106} Fundamental objects should have __setitem__ set to a attribute error
         let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
             class: typeref.clone(),
             dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
@@ -99,7 +99,7 @@ impl method::Init for PyObject {}
 impl method::Delete for PyObject {}
 
 impl method::GetAttr for PyObject {
-    // TODO: Need to search the base classes dicts as well, maybe need MRO
+    // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
     #[allow(unused_variables)]
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = name.0.borrow();

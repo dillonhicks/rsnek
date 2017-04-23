@@ -65,7 +65,7 @@ fn main() {
 
 
     let config = Config {
-        // TODO: it is possible in cpython to force interactive mode after script executes
+        // TODO: {T89} force interactive mode after script executes
         mode: mode,
         arguments: args.as_slice(),
         thread_model: thread_model,

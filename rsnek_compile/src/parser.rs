@@ -69,14 +69,14 @@ macro_rules! ignore_spaces (
 );
 
 
-// TODO: move to rsnek_runtime::macros
+// TODO: {T91} move to rsnek_runtime::macros
 macro_rules! strings_error_indent_mismatch {
     ($len:expr, $indent:expr) => {
         format!("SPAN LEN {} IS NOT A MULTIPLE OF YOUR MOMS SPEED DIAL NUMBER {}", $len, $indent);
     }
 }
 
-// TODO: move to rsnek_runtime::macros
+// TODO: {T91} move to rsnek_runtime::macros
 macro_rules! strings_error_indent_overflow {
     ($max:expr) => {
         format!("Number of INDENT is more than the max allowed {}", $max);
@@ -201,7 +201,8 @@ impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
                 (Id::Space,   Id::Space, false, false, _) => {},
                 // Found the first non ws char
                 (Id::Space, id, false, false, Some(s)) if id != Id::Space => {
-                    // TODO: Emit expression start/end?
+                    // TODO: {T92} Formalize preprocessing to allow for injection of expression start
+                    // and end
                     let span = tokens.slice(s..idx);
 
                     seen_non_ws = true;
@@ -222,8 +223,8 @@ impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
                 },
                 // A top level scope cannot close its scopes until it finds the next one
                 (Id::Newline, id, false, false, _) if id != Id::Space && id != Id::Newline => {
-                    // TODO: Emit expression start/end?
-
+                    // TODO: {T92} Formalize preprocessing to allow for injection of expression start
+                    // and end
                     if let Some(e) = end{
                         acc.push(tokens.slice(e..idx - 1))
                     } else {
@@ -242,7 +243,9 @@ impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
                 },
                 // Continuation case.
                 (_, Id::Backslash, _, _, _) => {
-                    // TODO: Handle backslash continuations... rewrite the
+                    // TODO: {T92} Formalize preprocessing to allow for injection of expression start
+                    // and end
+                    // TODO: {T93} Handle backslash continuations... rewrite the
                     //   newline masked as a Id::Space??
                 },
                 // Normal newline
@@ -269,7 +272,7 @@ impl<'a> Preprocessor<TkSlice<'a>, Box<[Tk<'a>]>> for BlockScopeProcessor {
         }
 
         //println!("ENDDEBUG: {:?} {:?}", start, end);
-        // TODO: remove this debug shit. This dumps the contents of the accumulator
+        // TODO: {T94} remove this debug shit. This dumps the contents of the accumulator
         // as a string
         let strings: String = acc.iter()
             .map(TkSlice::as_string)
@@ -333,7 +336,6 @@ impl<'a> Parser<'a> {
     /// tokens, turn those into a TkSlice, and parse that into an AST.
     pub fn parse_tokens<'b, 'c>(&mut self, tokens: &'b [Tk<'b>]) -> ParserResult {
 
-        // TODO: Should this be part of some chain of preprocessors?
         let bspp = BlockScopeProcessor::new();
         let boxed_tks: Box<[Tk<'b>]> = bspp.transform(TkSlice(tokens)).unwrap();
         // Dereference the box to remove the indirection and get the real
@@ -341,10 +343,10 @@ impl<'a> Parser<'a> {
         let slice = TkSlice(&(*boxed_tks));
         let result = self.tkslice_to_ast(slice).1;
 
-        // TODO: Try to incorporate error messages here
+        // TODO: {T94} Try to incorporate error messages here
         let presult = match result {
             IResult::Error(ref error) => {
-                // TODO: Consume error in parse result in some useful message
+                // TODO: {T94} Consume error in parse result in some useful message
                 ParserResult::Error(
                     ParsedAst {
                         ast: Ast::default(),
@@ -354,7 +356,7 @@ impl<'a> Parser<'a> {
                     })
             }
             IResult::Incomplete(_) => {
-                // TODO: nom::Needed enum has some extra info about parsing
+                // TODO: {T94} nom::Needed enum has some extra info about parsing
                 ParserResult::Error(
                     ParsedAst {
                         ast: Ast::default(),
@@ -482,7 +484,7 @@ impl<'a> Parser<'a> {
 
     /// 5.   | Assign(expr* targets, expr value)
     tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-         // TODO: Allow subparsing of target and number as actual expr
+         // TODO: {T95} Enabled parser to handle nested expressions
         target: name_token                  >>
                 assign_token                >>
          value: call_m!(self.start_expr)    >>
@@ -494,7 +496,7 @@ impl<'a> Parser<'a> {
 
     /// 6.   | AugAssign(expr target, operator op, expr value)
     tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-        // TODO: Allow subparsing of target and number as actual expr
+        // TODO: {T95} Enabled parser to handle nested expressions
         target: name_token       >>
             op: augassign_token  >>
         number: number_token     >>
@@ -534,8 +536,7 @@ impl<'a> Parser<'a> {
     /// 1.   =  BoolOp(boolop op, expr* values)
     /// 2.   | BinOp(expr left, operator op, expr right)
     tk_method!(sub_expr_binop, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
-        // on start_expr not just the constant expressions
+        // TODO: {T95} Enabled parser to handle nested expressions
         lhs: call_m!(self.sub_expr_constant)  >>
          op: binop_token                      >>
         rhs: call_m!(self.sub_expr_constant)  >>
@@ -548,8 +549,7 @@ impl<'a> Parser<'a> {
 
     /// 16.  | Call(expr func, expr* args, keyword* keywords)
     tk_method!(sub_expr_call, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        // TODO: T45 - Generalize to allow recursion into the L and R parts of a tree
-        // on start_expr not just the constant expressions
+        // TODO: {T95} Enabled parser to handle nested expressions
         func_name: name_token                           >>
                    lparen_token                         >>
              args: call_m!(self.sub_expr_call_args)     >>

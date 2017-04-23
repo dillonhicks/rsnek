@@ -49,6 +49,7 @@ fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, k
         name = boxed.debug_name().to_string();
     }
 
-    // TODO: hack for demo purposes since there are not type and class objects yet
+    // Hack for demo purposes since there are not type and class objects yet
+    // TODO: {T49} return the type when type objects are a thing
     Ok(rt.str(name))
 }

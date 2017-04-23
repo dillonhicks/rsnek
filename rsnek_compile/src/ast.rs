@@ -48,7 +48,7 @@ pub enum FnType {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Stmt {
     FunctionDef { fntype: FnType, name: OwnedTk, arguments: Vec<Expr>, body: Box<Stmt> },
-    Block(Vec<Stmt>), // TODO: Do blocks all share the same scope?
+    Block(Vec<Stmt>),
     ClassDef {name: OwnedTk, bases: Vec<Expr>, body: Box<Stmt> },
     Return(Option<Expr>),
     Delete(Vec<Expr>),

@@ -85,7 +85,7 @@ impl SelfRef for RefCount {
         let mut rc = self.0.borrow_mut();
         match *rc {
             None => *rc = Some(selfref.downgrade()),
-            // TODO: Make this an error and not a panic
+            // TODO: {T97} Make this an error and not a panic
             _ => panic!("Tried to overwrite self reference"),
         }
     }
@@ -94,7 +94,7 @@ impl SelfRef for RefCount {
     fn get(&self) -> WeakObjectRef {
         match *self.0.borrow().deref() {
             Some(ref weak) => weak.clone(),
-            // TODO: Make this an error and not a runtime panic
+            // TODO: {T97} Make this an error and not a runtime panic
             None => panic!("Unable to retrieve unset weak object reference"),
         }
     }
