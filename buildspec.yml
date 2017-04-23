@@ -9,7 +9,12 @@ phases:
     commands:
       - echo Build started on `date`
       - make build
-  post_build:
-    commands:
-      - echo Tests started on `date`
+      - echo Test started on `date`
       - make test
+      - echo Bench started on `date`
+      - make bench
+      - echo Release started on `date`
+      - make release
+post_build:
+    commands:
+      - echo Finshed on `date`

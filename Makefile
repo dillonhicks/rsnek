@@ -88,9 +88,17 @@ toolchain:
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
 
 
-test:
-	PATH="/root/.cargo/bin:$(PATH)" cargo test --all
-
-
 build:
-	PATH="/root/.cargo/bin:$(PATH)" cargo build -p rsnek
+	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=json -p rsnek
+
+
+release:
+	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=json --release -p rsnek
+
+
+test:
+	PATH="/root/.cargo/bin:$(PATH)" cargo test --message-format=json --all
+
+
+bench:
+	PATH="/root/.cargo/bin:$(PATH)" cargo bench --message-format=json -p rsnek*

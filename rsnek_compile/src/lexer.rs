@@ -500,8 +500,8 @@ x += 24354353
 //        println!("{:?}", value.1);
         let json = fmt::json(&value.1);
 //        println!("{}", unsafe {String::from_utf8_unchecked(serde_pickle::to_vec(&value.1, true).unwrap())});
-        let i = bincode::serialize(&value.1, bincode::Infinite).unwrap();
-        println!("bincode size: {}", i.len());
+ //       let i = bincode::serde::serialize(&value.1, bincode::Infinite).unwrap();
+//        println!("bincode size: {}", i.len());
         println!("input size: {}", input.len());
         println!("json size: {}", json.len());
     }
