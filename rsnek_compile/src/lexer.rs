@@ -320,6 +320,7 @@ pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
     for (idx, item) in input.iter_indices() {
         /// Now we get a sexy state [1 x 3] state matrix to compare
         ///  (current_index, is_ident_start_char, is_ident_continuation_char)
+        ///
         match (idx, item.is_ident_start(), item.is_ident()) {
             (0, true , _   ) => continue,
             (0, false, _   ) => return IResult::Error(error_position!(ErrorKind::AlphaNumeric, input)),
