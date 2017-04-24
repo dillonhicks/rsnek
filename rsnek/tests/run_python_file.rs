@@ -9,7 +9,7 @@ use std::process::Command;
 #[test]
 fn run_file() {
 
-    let s: u64= env::vars_os().map(|v| {println!("{:?}", v); 1}).sum();
+    env::vars_os().map(|v| {println!("{:?}", v); 1}).sum::<usize>();
     let path = format!("../target/debug/{}", strings::PROGRAM);
 
     let result = Command::new(&path)

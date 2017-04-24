@@ -1,12 +1,18 @@
-extern crate rsnek_runtime;
+#[macro_use(o, kv, slog_info, slog_log, slog_record, slog_b, slog_kv, slog_record_static)]
+extern crate slog;
+extern crate slog_term;
+extern crate slog_async;
+#[macro_use]
+extern crate slog_scope;
+extern crate slog_bunyan;
+
+use slog::Drain;
+use std::sync::Arc;
+
+
 extern crate clap;
-extern crate log;
-extern crate log4rs;
+extern crate rsnek_runtime;
 
-use log::LogLevelFilter;
-
-use log4rs::append::console::ConsoleAppender;
-use log4rs::config::{Appender, Root};
 
 use clap::{Arg, App, ArgGroup};
 
@@ -15,6 +21,16 @@ use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Mode};
 
 
 fn main() {
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    //let drain = slog_bunyan::new(decorator).build();
+    let drain = slog_async::Async::new(drain).build();
+    let drain = drain.filter_level(slog::Level::Trace).fuse();
+
+    let log = slog::Logger::root(Arc::new(drain.fuse()), o!());
+    let _guard = slog_scope::set_global_logger(log);
+
+    info!("{}", format!("welcome to {}", strings::PROGRAM));
 
     let matches = App::new(strings::PROGRAM)
         .version(strings::VERSION)
@@ -70,17 +86,6 @@ fn main() {
             return
         }
     };
-
-    // Setup Logging
-    let stdout = ConsoleAppender::builder().build();
-
-    let config = log4rs::config::Config::builder()
-        .appender(Appender::builder().build("stdout", Box::new(stdout)))
-        .build(Root::builder().appender("stdout").build(LogLevelFilter::Trace))
-        .unwrap();
-
-    log4rs::init_config(config).unwrap();
-
 
     // Build Interpreter Config
     let config = Config {

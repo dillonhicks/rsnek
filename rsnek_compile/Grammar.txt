@@ -6,30 +6,30 @@
 
 module Python
 {
-    mod = Module(stmt* body)
-        | Interactive(stmt* body)
-        | Expression(expr body)
+1.    mod = Module(stmt* body)
+2.        | Interactive(stmt* body)
+3.        | Expression(expr body)
 
-        -- not really an actual node but useful in Jython's typesystem.
-        | Suite(stmt* body)
+         -- not really an actual node but useful in Jython's typesystem.
+         | Suite(stmt* body)
 
-    stmt = FunctionDef(identifier name, arguments args,
-                       stmt* body, expr* decorator_list, expr? returns)
-          | AsyncFunctionDef(identifier name, arguments args,
-                             stmt* body, expr* decorator_list, expr? returns)
+1.    stmt = FunctionDef(identifier name, arguments args,
+                         stmt* body, expr* decorator_list, expr? returns)
+2.          | AsyncFunctionDef(identifier name, arguments args,
+                               stmt* body, expr* decorator_list, expr? returns)
 
-          | ClassDef(identifier name,
-             expr* bases,
-             keyword* keywords,
-             stmt* body,
-             expr* decorator_list)
-          | Return(expr? value)
+3.          | ClassDef(identifier name,
+               expr* bases,
+               keyword* keywords,
+               stmt* body,
+               expr* decorator_list)
+4.          | Return(expr? value)
 
-          | Delete(expr* targets)
-          | Assign(expr* targets, expr value)
-          | AugAssign(expr target, operator op, expr value)
-          -- 'simple' indicates that we annotate simple name without parens
-          | AnnAssign(expr target, expr annotation, expr? value, int simple)
+5.          | Delete(expr* targets)
+6.          | Assign(expr* targets, expr value)
+7.          | AugAssign(expr target, operator op, expr value)
+            -- 'simple' indicates that we annotate simple name without parens
+8.          | AnnAssign(expr target, expr annotation, expr? value, int simple)
 
           -- use 'orelse' because else is a keyword in target languages
           | For(expr target, expr iter, stmt* body, stmt* orelse)

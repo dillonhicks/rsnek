@@ -1,18 +1,13 @@
-use std;
 use std::ops::Deref;
 use std::borrow::Borrow;
-use std::str::FromStr;
-use std::convert::TryFrom;
 use std::i64;
 
-use serde::Serialize;
 use nom::IResult;
 
-use ::fmt;
-use ::ast::{self, Ast, Module, Stmt, Expr, DynExpr, Op};
-use ::token::{OwnedTk, Tk, Id, Tag, Num};
+use ::ast::{Ast, Module, Stmt, Expr, Op};
+use ::token::{OwnedTk, Id, Tag, Num};
 use ::lexer::Lexer;
-use ::parser::{Parser, ParserResult, ParsedAst};
+use ::parser::{Parser, ParserResult};
 
 
 #[derive(Debug, Clone, Serialize)]
@@ -127,7 +122,7 @@ impl<'a> Compiler<'a> {
         //println!("CompileAST({:?})", ast);
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins = match *ast {
+        let ins = match *ast {
             Ast::Module(ref module) => {
                 self.compile_module(module)
             },
@@ -147,7 +142,7 @@ impl<'a> Compiler<'a> {
             Module::Body(ref stmts) => {
 
                 for stmt in stmts {
-                    let mut ins = self.compile_stmt(&stmt);
+                    let ins = self.compile_stmt(&stmt);
                     instructions.append(&mut ins.to_vec());
                 }
             }
@@ -159,8 +154,8 @@ impl<'a> Compiler<'a> {
     fn compile_stmt(&self, stmt: &'a Stmt) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins: Box<[Instr]> = match *stmt {
-            Stmt::FunctionDef {ref fntype, ref name, ref arguments, ref body } => {
+        let ins: Box<[Instr]> = match *stmt {
+            Stmt::FunctionDef {fntype: _, ref name, ref arguments, ref body } => {
                 let mut argnames: Vec<String> = Vec::new();
                 for arg in arguments {
                     match arg {
@@ -169,7 +164,7 @@ impl<'a> Compiler<'a> {
                     }
                 };
 
-                let mut func_ins: Vec<Instr> = vec![
+                let func_ins: Vec<Instr> = vec![
                     Instr(OpCode::LoadConst, Some(Value::Code(argnames, self.compile_stmt(body)))),
                     Instr(OpCode::LoadConst, Some(Value::from(name))),
                     Instr(OpCode::MakeFunction, None),
@@ -214,10 +209,10 @@ impl<'a> Compiler<'a> {
         // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
+        let ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
         instructions.append(&mut ins.to_vec());
 
-        let mut ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
+        let ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
         instructions.append(&mut ins.to_vec());
 
         instructions.into_boxed_slice()
@@ -227,7 +222,7 @@ impl<'a> Compiler<'a> {
     fn compile_expr(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins: Box<[Instr]> = match *expr {
+        let ins: Box<[Instr]> = match *expr {
             Expr::NameConstant(ref tk)  |
             Expr::Constant(ref tk)      => {
                 self.compile_expr_constant(ctx, tk)
@@ -235,7 +230,7 @@ impl<'a> Compiler<'a> {
             Expr::BinOp {ref op, ref left, ref right} => {
                 self.compile_expr_binop(op, left, right)
             },
-            Expr::Call {ref func, ref args, ref keywords} => {
+            Expr::Call {ref func, ref args, keywords: _} => {
                 self.compile_expr_call(func, args)
             }
         };
@@ -266,7 +261,7 @@ impl<'a> Compiler<'a> {
         match left.deref() {
             &Expr::NameConstant(ref tk) |
             &Expr::Constant(ref tk)     => {
-                let mut ins = self.compile_expr_constant(Context::Load, tk);
+                let ins = self.compile_expr_constant(Context::Load, tk);
                 instructions.append(&mut ins.to_vec());
             },
             _ => unimplemented!()
@@ -275,7 +270,7 @@ impl<'a> Compiler<'a> {
         match right.deref() {
             &Expr::NameConstant(ref tk) |
             &Expr::Constant(ref tk)     => {
-                let mut ins = self.compile_expr_constant(Context::Load, tk);
+                let ins = self.compile_expr_constant(Context::Load, tk);
                 instructions.append(&mut ins.to_vec());
             },
             _ => unimplemented!()

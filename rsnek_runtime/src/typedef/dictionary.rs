@@ -3,8 +3,6 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 
-use itertools::Itertools;
-
 use result::{NativeResult, RuntimeResult};
 use runtime::{Runtime, IntegerProvider, NoneProvider, BooleanProvider};
 use error::Error;
@@ -13,7 +11,7 @@ use typedef::native::{self, DictKey};
 use typedef::builtin::Builtin;
 
 use object::{self, RtValue, typing};
-use object::method::{self, Hashed, StringCast};
+use object::method::{self, Hashed};
 use object::selfref::{self, SelfRef};
 
 

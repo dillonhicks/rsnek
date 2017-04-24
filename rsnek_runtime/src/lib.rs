@@ -3,18 +3,21 @@
 #![feature(const_fn)]
 #![feature(exclusive_range_pattern)]
 #![feature(test)]
-#![feature(fn_traits)]
 
 extern crate test;
+
+#[macro_use(slog_info, slog_log, slog_record, slog_b, slog_crit, slog_debug, slog_error, slog_warn, slog_kv, slog_record_static)]
+extern crate slog;
 #[macro_use]
-extern crate log;
+extern crate slog_scope;
 
 extern crate num;
 extern crate itertools;
 extern crate fringe;
 extern crate rustyline;
 
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde;
 
 extern crate rsnek_compile;

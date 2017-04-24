@@ -1,7 +1,7 @@
 //! Native number coercions and comparisons
 use std;
 
-use num::{ToPrimitive, FromPrimitive};
+use num::{ToPrimitive};
 
 use typedef::native;
 

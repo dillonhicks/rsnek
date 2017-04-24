@@ -121,6 +121,10 @@ docs-%:
 	    --passes strip-priv-imports
 
 
+loc:
+	find rsnek* -name "*.rs" | grep -v expanded | xargs cat | wc
+
+
 # Generate the docs for all of dependencies and libraries Note that
 # cargo doc --all filters out private modules in in the generated
 # documentation, that is why there is a second pass using rustdoc

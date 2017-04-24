@@ -1,12 +1,6 @@
-use encoding::{Encoding, DecoderTrap};
-use encoding::all::ASCII;
-
 use serde::Serialize;
-use serde;
 use serde_json;
-use bincode;
 
-use ast::Ast;
 use token::{Tk, Id};
 
 
@@ -24,6 +18,7 @@ pub fn json<'a, T: Serialize>(input: &'a T) -> String {
 /// and should not be used for actual serialization.
 ///
 /// Broken as of {T88} due to some library update.
+#[allow(unused_variables)]
 pub fn bincode<'a, T>(input: &'a T) -> String {
 
     "".to_string()

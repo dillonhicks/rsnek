@@ -1,12 +1,10 @@
 use std::fmt;
-use std::rc::Rc;
-use std::cell::{RefMut, Ref, RefCell};
 use std::default::Default;
-use std::ops::{Deref, Add};
+use std::ops::{Deref};
 use std::borrow::Borrow;
 
 use error::{Error, ErrorType};
-use runtime::{WeakRuntime, Runtime, IntegerProvider};
+use runtime::{Runtime, IntegerProvider};
 use result::{RuntimeResult, NativeResult};
 use object::{self, RtValue, typing};
 use object::selfref::{self, SelfRef};
@@ -23,7 +21,7 @@ pub struct PyIteratorType {
 
 impl PyIteratorType {
 
-    fn empty(&self, rt: &Runtime) -> ObjectRef {
+    pub fn empty(&self, rt: &Runtime) -> ObjectRef {
         let value = IteratorValue(native::Iterator::Empty, rt.clone());
         self.new(&rt, value)
     }
@@ -148,6 +146,7 @@ impl method::Length for PyIterator {}
 impl method::LengthHint for PyIterator {}
 impl method::Next for PyIterator {
 
+    #[allow(unused_variables)]
     fn op_next(&self, rt: &Runtime) -> RuntimeResult {
         match self.value.0 {
             // TODO: {T82} Use weakref or some other mechanism to not keep a handle to source forever?
@@ -174,7 +173,7 @@ impl method::Next for PyIterator {
                         idx_next.set(idx);
                         Ok(objref)
                     },
-                    Err(err) => Err(Error::stop_iteration())
+                    Err(_) => Err(Error::stop_iteration())
                 }
             }
 
@@ -244,6 +243,7 @@ impl Iterator for PyIterator {
 
 #[cfg(test)]
 mod _api_method {
+    #[allow(unused_imports)]
     use runtime::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
     use object::method::*;
     use test::Bencher;
@@ -278,7 +278,8 @@ mod _api_method {
             let iterator = rt.iter(native::None());
 
             let boxed: &Box<Builtin> = iterator.0.borrow();
-            let result = boxed.op_next(&rt).unwrap();
+            // Should raise an StopIteration error
+            boxed.op_next(&rt).unwrap();
         }
 
         #[test]
@@ -298,6 +299,8 @@ mod _api_method {
             assert_eq!(result, rt.bool(true));
         }
 
+        /// See the time it takes to fully consume an iterator backed by a reasonably sized
+        /// tuple.
         #[bench]
         fn iter_objref(b: &mut Bencher) {
             let rt = setup_test();
@@ -309,7 +312,7 @@ mod _api_method {
                     &Builtin::Iter(ref iterator) => {
                         loop {
                             match iterator.native_next() {
-                                Ok(objref) => continue,
+                                Ok(_) => continue,
                                 Err(Error(ErrorType::StopIteration, _)) => break,
                                 Err(_) => panic!("Iterator logic fault")
                             };
@@ -318,13 +321,6 @@ mod _api_method {
                     },
                     _ => {}
                 }
-
-//                let mut results: Vec<ObjectRef> = vec![];
-//
-//                for i in iterator {
-//                    results.push(i)
-//                }
-
             });
 
             let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
@@ -336,7 +332,6 @@ mod _api_method {
             }
 
             println!("Total: {}", results.len());
-            //assert_eq!(results, vec![rt.none(), rt.int(1), rt.bool(true)]);
         }
 
     }

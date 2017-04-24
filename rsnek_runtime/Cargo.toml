@@ -10,8 +10,9 @@ name = "rsnek_runtime"
 fn_traits = []
 
 [dependencies]
-log4rs = "^0.6.3"
-log = "^0.3.7"
+slog = "2"
+slog-scope = "^3.0.0"
+
 itertools = "^0.6.0"
 
 # BigInt, BigComplex, and Num Traits

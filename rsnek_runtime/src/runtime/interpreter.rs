@@ -1,22 +1,19 @@
 use std::ops::Deref;
-use std::io::prelude::*;
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
 use std::marker::Sync;
-
-use std::io::{self, Read, Write, BufRead};
-
+use std::io::{self, Read, Write};
 use std::collections::HashMap;
 
 use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
 use itertools::Itertools;
-use num::ToPrimitive;
 use rustyline;
 use rustyline::Config as RLConfig;
 use rustyline::CompletionType;
 use rustyline::error::ReadlineError;
+#[allow(unused_imports)]
 use serde::Serialize;
 
 use rsnek_compile::{Compiler, fmt};
@@ -50,7 +47,6 @@ use object::method::{
     RightShift,
     XOr,
     Modulus,
-    IntegerCast,
     StringCast,
     Call
 };
@@ -132,7 +128,6 @@ impl Interpreter {
 
 
 struct InterpreterState {
-    interactive: bool,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
     namespace: HashMap<native::String, ObjectRef>,
     stack: Vec<ObjectRef>,
@@ -141,7 +136,6 @@ struct InterpreterState {
 impl InterpreterState {
     pub fn new() -> Self {
         InterpreterState {
-            interactive: true,
             namespace: HashMap::new(),
             stack: Vec::new(),
         }
@@ -185,7 +179,7 @@ impl InterpreterState {
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
                     Value::Bool(b) => rt.bool(b),
-                    Value::Complex(c) => {
+                    Value::Complex(_) => {
                         let msg = format!("Complex not impelmented! {}#{}", file!(), line!());
                         return Some(Err(Error::runtime(&msg)));
                     },
@@ -327,7 +321,7 @@ impl InterpreterState {
                 None
             },
             (OpCode::MakeFunction, None) => {
-                let name = match self.stack.pop() {
+                match self.stack.pop() {
                     Some(objref) => objref,
                     None => panic!("No values in value stack for {:?}!", instr.tuple().0)
                 };
@@ -378,7 +372,7 @@ impl InterpreterState {
             let b: &Box<Builtin> = objref.0.borrow();
             match b.native_str() {
                 Ok(s) => format!("{}: {} = {}", idx, b.debug_name(), s),
-                Err(err) => format!("{}: {} = ??", idx, b.debug_name()),
+                Err(_) => format!("{}: {} = ??", idx, b.debug_name()),
             }
         }).collect::<Vec<String>>().join("\n");
 
@@ -387,13 +381,13 @@ impl InterpreterState {
 
             match b.native_str() {
                 Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
-                Err(err) => format!("{}: {} = ??", key, b.debug_name()),
+                Err(_) => format!("{}: {} = ??", key, b.debug_name()),
             }
         }).collect();
 
 
-        let state = format!("stack:\n{}\n\nlocals:\n----------\n{}\n", stack, values.join("\n"));
-        trace!("Interpreter State:\n{}", state);
+        let state = format!("\nstack:\n{}\n\nlocals:\n----------\n{}\n", stack, values.join("\n"));
+        debug!("Interpreter"; "State" => state);
     }
 }
 
@@ -430,9 +424,14 @@ impl<'a> Thread<'a> for GreenThread<'a> {
        self.run(&rt)
     }
 
+    /// Note: Since `Runtime` doesn't implement Sync or Send
+    /// it cannot be passed into the context of the greenlet.
+    /// It is on the roadmap to fix that so there is not the
+    /// need to create 2 runtimes.
+    #[allow(unused_variables)]
     fn run<'b>(&self, rt: &'b Runtime) -> i64 {
         /// Start the stack off with 4kb
-        let stack = OsStack::new(1 << 16).unwrap();
+        let stack = OsStack::new(1 << 12).unwrap();
 
         let mut gen = Generator::new(stack, move |yielder, ()| {
             let main_thread = Greenlet {
@@ -496,9 +495,9 @@ impl<'a> Thread<'a> for Greenlet<'a> {
 /// 2. https://youtu.be/tHnA94-hTC8?t=2m47s
 #[inline(always)]
 fn print_banner() {
-    println!("{}", resource::strings::BANNER2);
-    println!("{}", resource::strings::VERSION);
-    println!("{}", resource::strings::BUILD);
+    info!("\n{}", resource::strings::BANNER2);
+    info!("{}", resource::strings::VERSION);
+    info!("{}", resource::strings::BUILD);
 }
 
 
@@ -512,8 +511,8 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
     Box::new(move |rt: &Runtime| -> i64 {
         let text: String = match (mode.clone(), myargs.get(0)) {
             (Mode::Command(cmd), _) => cmd.clone(),
-            (Mode::Module(module), _) => {
-                debug!("Not Implemented");
+            (Mode::Module(_), _) => {
+                error!("Not Implemented"; "mode" => "-m <module>");
                 return ExitCode::NotImplemented as i64
             },
             (Mode::File, Some(path)) => {
@@ -522,7 +521,17 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
                     // of memory or something?
                     Ok(ref mut file) => {
                         let mut buf: Vec<u8> = Vec::new();
-                        file.read_to_end(&mut buf);
+                        match file.read_to_end(&mut buf) {
+                            Err(err) => {
+                                debug!("{:?}", err);
+
+                                return match err.raw_os_error() {
+                                    Some(code) => code as i64,
+                                    _ => ExitCode::GenericError as i64
+                                };
+                            },
+                            _ => {}
+                        };
                         // TODO: {T100} Is using lossy here a good idea?
                         String::from_utf8_lossy(&buf).to_string()
                     },
@@ -554,8 +563,8 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
-            Err(err) => {
-                println!("SyntaxError: Unable to compile input");
+            Err(_) => {
+                error!("SyntaxError: Unable to compile input");
                 return ExitCode::SyntaxError as i64
             },
         };
@@ -579,11 +588,9 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         }
 
         let result = interpreter.exec(&rt, &(*ins));
-       // interpreter.print_debug_info();
 
         let code = match result {
-            Ok(objref)    => {
-                //debug!("result: {:?}", objref);
+            Ok(_)    => {
                 ExitCode::Ok as i64
             },
             Err(err)      => {
@@ -600,7 +607,6 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 /// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
     let mut compiler = Compiler::new();
-    let stdin = io::stdin();
 
     let config = RLConfig::builder()
         .history_ignore_space(true)
@@ -625,26 +631,25 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
     'repl: loop {
         match io::stdout().flush() {
-            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
+            Err(err) => error!("Error Flushing STDOUT: {:?}", err),
             _ => ()
         }
 
 
         lineno += 1;
-        let prompt = format!("\nIn[{}] {} ", lineno, resource::strings::PROMPT);
+        info!("In[{}] {} ", lineno, resource::strings::PROMPT);
 
-        let text = match rl.readline(&prompt) {
+        let text = match rl.readline(&"") {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
-                println!();
                 line
             },
             Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C");
+                warn!("CTRL-C");
                 break;
             }
             Err(ReadlineError::Eof) => {
-                println!("CTRL-D");
+                warn!("CTRL-D");
                 break;
             }
             _ => continue
@@ -654,26 +659,16 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
-            Err(err) => {
-                println!("\n\nSyntaxError: Unable to compile input\n\n");
+            Err(_) => {
+                error!("SyntaxError"; "message" => "Unable to compile input");
                 continue 'repl
             },
         };
 
-        //println!("{}", fmt::json(&ins));
-
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {
-                Some(Ok(objref)) => {
-                    let boxed: &Box<Builtin> = objref.0.borrow();
-                    let string = match boxed.native_str() {
-                        Ok(s) => s,
-                        Err(err) => format!("{:?}Error: {}", err.0, err.1),
-                    };
-
-                },
                 Some(Err(err)) => {
-                    println!("\n\n{:?}Error: {}\n\n", err.0, err.1);
+                    error!("{:?}Error", err.0; "message" => err.1.clone());
                     break 'process_ins
                 },
 
@@ -691,7 +686,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
                         Ok(s) => s,
                         Err(err) => format!("{:?}Error: {}", err.0, err.1),
                     };
-                    println!("\nOut[{}]: {}\n\n", lineno, string);
+                    info!("\nOut[{}]: {}\n\n", lineno, string);
                 }
             }
             _ => {},
