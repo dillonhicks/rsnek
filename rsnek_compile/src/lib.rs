@@ -12,8 +12,8 @@
 #![feature(associated_consts)]
 #![feature(custom_attribute)]
 
-#[macro_use]
-extern crate log;
+extern crate slog;
+extern crate slog_scope;
 
 extern crate num;
 extern crate encoding;

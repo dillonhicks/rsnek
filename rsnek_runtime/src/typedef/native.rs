@@ -1,6 +1,6 @@
 use std;
 use std::cell::Cell;
-use num::{self, Zero};
+use num;
 
 use rsnek_compile::Instr;
 

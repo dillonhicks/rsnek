@@ -105,6 +105,7 @@ impl method::Hashed for PyString {
 }
 impl method::StringCast for PyString {
 
+    #[allow(unused_variables)]
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
         self.rc.upgrade()
     }

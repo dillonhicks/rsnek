@@ -14,7 +14,7 @@ use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 
-use typedef::native::{self, Number};
+use typedef::native;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
@@ -208,10 +208,12 @@ impl method::Add for PyInteger {
             &Builtin::Float(ref rhs) => {
                 match self.value.0.to_f64() {
                     Some(lhs) => Ok(rt.float(lhs + rhs.value.0)),
-                    None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),
+                    None => Err(Error::overflow(
+                        &format!("{:?} + {} overflows float", self.value.0, rhs.value.0))),
                 }
             }
-            other => Err(Error::typerr(&format!("Cannot add {} to int", other.debug_name()))),
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("+", "int", other.debug_name())))
         }
     }
 
@@ -226,6 +228,7 @@ impl method::LeftShift for PyInteger {
 
         match builtin.deref() {
             &Builtin::Int(ref rhs) =>  {
+                #[allow(unused_comparisons)]
                 match rhs.value.0.to_usize() {
                     Some(int) if int < 0    => Err(Error::value(strings::ERROR_NEG_BIT_SHIFT)),
                     Some(int) if int == 0   => self.rc.upgrade(),
@@ -236,9 +239,8 @@ impl method::LeftShift for PyInteger {
                     },
                 }
             },
-            other => Err(Error::typerr(&format!(
-                "unsupported operand type(s) for <<: 'int' and '{}'",
-                other.debug_name()))),
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("<<", "int", other.debug_name())))
         }
     }
 }
@@ -253,7 +255,8 @@ impl method::Multiply for PyInteger {
             &Builtin::Float(ref rhs) => {
                 match self.value.0.to_f64() {
                     Some(lhs) => Ok(rt.float(lhs * rhs.value.0)),
-                    None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),
+                    None => Err(Error::overflow(
+                        &format!("{:?} + {} overflows float", self.value.0, rhs.value.0))),
                 }
             }
 
@@ -265,15 +268,18 @@ impl method::Multiply for PyInteger {
 impl method::MatrixMultiply for PyInteger {}
 impl method::BitwiseOr for PyInteger {}
 impl method::Pow for PyInteger {
+
+    // TODO: modulus not currently used
+    #[allow(unused_variables)]
     fn op_pow(&self, rt: &Runtime, exponent: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = exponent.0.borrow();
 
         match builtin.deref() {
             &Builtin::Int(ref power) =>  {
-                let mut base = self.value.0.clone();
+                let base = self.value.0.clone();
 
                 match power.value.0.to_usize() {
-                    Some(mut int)  => Ok(rt.int(num::pow::pow(base, int).clone())),
+                    Some(int)  => Ok(rt.int(num::pow::pow(base, int).clone())),
                     None  => {
                         Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
                     },
@@ -292,6 +298,7 @@ impl method::RightShift for PyInteger {
 
         match builtin.deref() {
             &Builtin::Int(ref rhs) =>  {
+                #[allow(unused_comparisons)]
                 match rhs.value.0.to_usize() {
                     Some(int) if int > 0    => Ok(rt.int(&self.value.0 >> int)),
                     Some(int) if int == 0   => self.rc.upgrade(),

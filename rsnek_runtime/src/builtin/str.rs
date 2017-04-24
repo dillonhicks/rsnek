@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 
-use object::method::{GetItem, Length, StringCast};
+use object::method::{GetItem, StringCast};
 use runtime::Runtime;
-use traits::{IntegerProvider, StringProvider};
+use traits::{IntegerProvider};
 
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
@@ -16,6 +16,7 @@ pub struct StrFn;
 
 impl StrFn {
     pub fn create() -> (&'static str, native::Function) {
+        info!("create builtin"; "function" => "str");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_str);
         ("str", native::Function::Wrapper(func))
     }
@@ -23,6 +24,8 @@ impl StrFn {
 
 
 fn rs_builtin_str(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    info!("call builtin"; "native" => "str");
+
     match check_args(1, &pos_args) {
         Err(err) => return Err(err),
         _ => {}
