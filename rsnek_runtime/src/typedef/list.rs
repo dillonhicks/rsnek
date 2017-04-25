@@ -42,7 +42,7 @@ mod old {
 
             match builtin.deref() {
                 &Builtin::List(ref obj) => {
-                    // TODO: Modify the new to allow runtime to give weakrefs back to self
+                    // Modify the new to allow runtime to give weakrefs back to self
                     let lhs_cell: Ref<Vec<ObjectRef>> = self.value.0.borrow();
                     let lhs_borrow: &Vec<ObjectRef> = lhs_cell.borrow().deref();
 

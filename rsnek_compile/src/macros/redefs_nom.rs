@@ -64,6 +64,7 @@
 //! );
 //!
 #[allow(unused_variables)]
+#[allow(unused_imports)]
 use slice::TkSlice;
 
 
@@ -71,8 +72,7 @@ use slice::TkSlice;
 macro_rules! tk_tag (
   ($i:expr, $tag: expr) => (
     {
-      use nom::{Compare,CompareResult,InputLength,Slice};
-      use $crate::traits::redefs_nom::InputLength;
+      use nom::{Compare,CompareResult,Slice};
       let res: nom::IResult<_,_> = match ($i).compare($tag) {
         CompareResult::Ok => {
           let blen = $tag.input_len();
@@ -162,7 +162,7 @@ macro_rules! tk_named (
     );
     (pub $name:ident<$o:ty>, $submac:ident!( $($args:tt)* )) => (
         #[allow(unused_variables)]
-        pub fn $name( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, $o, u32> {
+        pub fn $name<'a>( i: TkSlice<'a> ) -> nom::IResult<TkSlice<'a>, $o, u32> {
             $submac!(i, $($args)*)
         }
     );

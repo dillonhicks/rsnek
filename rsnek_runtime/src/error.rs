@@ -25,7 +25,7 @@ pub enum ErrorType {
 
 
 impl Error {
-    pub fn runtime(message: &'static str) -> Error {
+    pub fn runtime(message: &str) -> Error {
         return Error(ErrorType::Runtime, message.to_string());
     }
 
@@ -49,7 +49,7 @@ impl Error {
         return Error(ErrorType::Value, message.to_string());
     }
 
-    pub fn key(message: &'static str) -> Error {
+    pub fn key(message: &str) -> Error {
         return Error(ErrorType::Key, message.to_string());
     }
 

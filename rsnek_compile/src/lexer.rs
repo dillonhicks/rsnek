@@ -1,22 +1,11 @@
-use std;
 use std::str;
-use std::str::FromStr;
 use std::rc::Rc;
-use std::fmt::{self, Debug, Display};
-use std::collections::VecDeque;
-use std::ops::{Range,RangeFrom,RangeTo};
 
-use nom::{IResult, hex_digit, oct_digit, digit, multispace, newline, Needed};
-use nom::{AsChar, InputLength, InputIter, Compare, CompareResult, Slice, ErrorKind};
+use nom::{IResult, hex_digit, digit, Needed};
+use nom::{AsChar, InputLength, InputIter, Slice, ErrorKind};
 
-use time::{self, Duration};
-use num;
-use itertools::Itertools;
-use serde::ser::{Serialize, Serializer, SerializeSeq};
-use serde_bytes;
+use ::token::{Id, Tk, New, Tag, Num, Ws};
 
-use token::{Id, Tk, pprint_tokens, New, Tag, Str, Num, Dir, Op, Kw, Sym, Ws};
-use ::util::Micros;
 
 pub type LexResult<'a> = IResult<&'a [u8], Vec<Tk<'a>>>;
 
@@ -40,6 +29,7 @@ impl Lexer {
         tokenize_bytes(bytes)
     }
 }
+
 
 /// Entry point of the lexer into nom parser
 named!(pub tokenize_bytes <Vec<Tk>>, do_parse!(
@@ -67,8 +57,8 @@ named!(number <Tk>, do_parse!(
             call!(sublex_hex)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Hex))      } |
             call!(sublex_bin)     => { |r: &'a[u8]| (&r[..], Tag::N(Num::Binary))   } |
             call!(sublex_octal)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Octal))    } |
-            call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
             call!(sublex_complex) => { |r: &'a[u8]| (&r[..], Tag::N(Num::Complex))  } |
+            call!(sublex_float)   => { |r: &'a[u8]| (&r[..], Tag::N(Num::Float))    } |
             call!(digit)          => { |r: &'a[u8]| (&r[..], Tag::N(Num::Int))      } ) >>
     (Tk::new(Id::Number, tuple.0, tuple.1))
 ));
@@ -78,7 +68,7 @@ named!(sublex_hex <&[u8]>, recognize!(preceded!(tag!("0x"), hex_digit)));
 named!(sublex_bin <&[u8]>, recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))));
 named!(sublex_octal <&[u8]>, recognize!(preceded!(tag!("0o"), hex_digit)));
 named!(sublex_float <&[u8]>, recognize!(delimited!(opt!(digit), tag!("."), digit)));
-named!(sublex_complex <&[u8]>, recognize!(preceded!(digit, tag!("j"))));
+named!(sublex_complex <&[u8]>, recognize!(preceded!(alt!(sublex_float | digit), tag!("j"))));
 
 
 named!(endline <Tk>, do_parse!(
@@ -128,20 +118,24 @@ named!(sublex_comment_string <Tk>, do_parse!(
     (Tk::new(Id::Comment, bytes, Tag::None))
 ));
 
+
 named!(sublex_rprefix_string <Tk>, do_parse!(
     bytes: sublex_prefixed_string_u8 >>
     (Tk::new(Id::RawString, bytes, Tag::None))
 ));
+
 
 named!(sublex_bprefix_string <Tk>, do_parse!(
     bytes: sublex_prefixed_string_u8 >>
     (Tk::new(Id::ByteString, bytes, Tag::None))
 ));
 
+
 named!(sublex_fprefix_string <Tk>, do_parse!(
     bytes: sublex_prefixed_string_u8 >>
     (Tk::new(Id::FormatString, bytes, Tag::None))
 ));
+
 
 named!(sublex_prefixed_string_u8 <&[u8]>,  do_parse!(
     result: preceded!(
@@ -168,6 +162,7 @@ named!(sublex_dquote_string_u8 <&[u8]>, do_parse!(
     (bytes)
 ));
 
+
 named!(sublex_string_u8 <&[u8]>, do_parse!(
     bytes: switch!(peek!(take!(1)),
         b"'" =>  call!(sublex_squote_string_u8)  |
@@ -175,10 +170,12 @@ named!(sublex_string_u8 <&[u8]>, do_parse!(
     (bytes)
 ));
 
+
 named!(sublex_string <Tk>, do_parse!(
     bytes: sublex_string_u8 >>
     (Tk::new(Id::String, bytes, Tag::None))
 ));
+
 
 named!(symbol <Tk>, do_parse!(
     token: alt!(
@@ -246,7 +243,7 @@ named!(operator <Tk>, do_parse!(
 fn as_keyword(bytes: &[u8]) -> Option<Tk> {
     let string = match str::from_utf8(bytes) {
         Ok(string) => string,
-        err => return None
+        _ => return None
     };
 
     match string {
@@ -256,6 +253,7 @@ fn as_keyword(bytes: &[u8]) -> Option<Tk> {
         "and"       => Some(Tk::new(Id::And, bytes, Tag::None)),
         "as"        => Some(Tk::new(Id::As, bytes, Tag::None)),
         "assert"    => Some(Tk::new(Id::Assert, bytes, Tag::None)),
+        "async"     => Some(Tk::new(Id::Assert, bytes, Tag::None)),
         "break"     => Some(Tk::new(Id::Break, bytes, Tag::None)),
         "class"     => Some(Tk::new(Id::Class, bytes, Tag::None)),
         "continue"  => Some(Tk::new(Id::Continue, bytes, Tag::None)),
@@ -322,6 +320,7 @@ pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
     for (idx, item) in input.iter_indices() {
         /// Now we get a sexy state [1 x 3] state matrix to compare
         ///  (current_index, is_ident_start_char, is_ident_continuation_char)
+        ///
         match (idx, item.is_ident_start(), item.is_ident()) {
             (0, true , _   ) => continue,
             (0, false, _   ) => return IResult::Error(error_position!(ErrorKind::AlphaNumeric, input)),
@@ -336,63 +335,137 @@ pub fn ident(input: &[u8]) -> IResult<&[u8],&[u8]> {
 
 
 #[cfg(test)]
-mod _api{
+mod tests {
     use super::*;
     use ::fmt;
 
-    use serde_yaml;
-    use serde_json;
-    use serde_pickle;
-    use bincode;
+
+
+    /// Use to create a named test case of a single line snippet of code.
+    /// This `basic_test!(print_function, "print('hello world!')`
+    /// will create a test function named `print_function` that will try to parse the
+    /// string.
+    macro_rules! basic_test {
+        ($name:ident, $code:expr, $id:expr, $tag:expr) => {
+            basic_test!($name, $code, $id, $tag, true);
+        };
+        ($name:ident, $code:expr, $id:expr, $tag:expr, $trim:expr) => {
+            #[test]
+            fn $name() {
+                if $trim {
+                    let value = tokenize_bytes(($code).trim().as_bytes()).unwrap();
+                    assert_token(&value, $id, $tag);
+                } else {
+                    // For matching ws
+                    let value = tokenize_bytes(($code).as_bytes()).unwrap();
+                    assert_token(&value, $id, $tag);
+                }
+            }
+        };
+
+    }
 
 
     fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
-        pprint_tokens(&value.1);
+        fmt::tokens(&value.1, true);
         assert_eq!(value.1.len(), 1);
         let ref token = value.1[0];
         assert_eq!(token.id(), id);
         assert_eq!(token.tag(), tag);
     }
 
-    #[test]
-    fn tk_space() {
-        let value = tokenize_bytes(r#" "#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
-    }
 
-    #[test]
-    fn tk_number() {
-        let value = tokenize_bytes(r#"12345"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::N(Num::Int));
+    // The venerable whitespace tokens
+    basic_test!(tk_space,           " ",                Id::Space,      Tag::None,           false);
+    basic_test!(tk_newline,         "\n",               Id::Newline,    Tag::W(Ws::Newline), false);
 
-        let value = tokenize_bytes(r#"12.34"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::N(Num::Float));
+    // Numbers
+    basic_test!(tk_number_int,      "12345",            Id::Number, Tag::N(Num::Int));
+    basic_test!(tk_number_hex,      "0xdeadbeef12345",  Id::Number, Tag::N(Num::Hex));
+    basic_test!(tk_number_oct,      "0o70721",          Id::Number, Tag::N(Num::Octal));
+    basic_test!(tk_number_bin,      "0b01110",          Id::Number, Tag::N(Num::Binary));
+    basic_test!(tk_number_float,    "12.45",            Id::Number, Tag::N(Num::Float));
+    basic_test!(tk_number_float2,   ".45",              Id::Number, Tag::N(Num::Float));
+    basic_test!(tk_number_complex,  "42j",              Id::Number, Tag::N(Num::Complex));
+    basic_test!(tk_number_complex2, ".34j",             Id::Number, Tag::N(Num::Complex));
 
-        // Fix for {T43}
-        let value = tokenize_bytes(r#".00033444"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::N(Num::Float));
+    
+    basic_test!(tk_op_leftshiftequal,	    r"<<=",	Id::LeftShiftEqual,	    Tag::None);
+    basic_test!(tk_op_rightshiftequal,	    r">>=",	Id::RightShiftEqual,	Tag::None);
+    basic_test!(tk_op_doublestarequal,	    r"**=",	Id::DoubleStarEqual,	Tag::None);
+    basic_test!(tk_op_doubleslashequal,    r"//=",	Id::DoubleSlashEqual,	Tag::None);
+    basic_test!(tk_op_ellipsis,	            r"...",	Id::Ellipsis,	        Tag::None);
+    basic_test!(tk_op_doubleequal,	        r"==",	Id::DoubleEqual,	    Tag::None);
+    basic_test!(tk_op_notequal,	            r"!=",	Id::NotEqual,	        Tag::None);
+    basic_test!(tk_op_notequal2,            r"<>",	Id::NotEqual,	        Tag::None);
+    basic_test!(tk_op_lessorequal,	        r"<=",	Id::LessOrEqual,	    Tag::None);
+    basic_test!(tk_op_leftshift,	        r"<<",	Id::LeftShift,	        Tag::None);
+    basic_test!(tk_op_greaterorequal,	    r">=",	Id::GreaterOrEqual,	    Tag::None);
+    basic_test!(tk_op_rightshift,	        r">>",	Id::RightShift,	        Tag::None);
+    basic_test!(tk_op_plusequal,	        r"+=",	Id::PlusEqual,	        Tag::None);
+    basic_test!(tk_op_minusequal,	        r"-=",	Id::MinusEqual,	        Tag::None);
+    basic_test!(tk_op_rightarrow,	        r"->",	Id::RightArrow,	        Tag::None);
+    basic_test!(tk_op_doublestar,	        r"**",	Id::DoubleStar,	        Tag::None);
+    basic_test!(tk_op_starequal,	        r"*=",	Id::StarEqual,	        Tag::None);
+    basic_test!(tk_op_doubleslash,	        r"//",	Id::DoubleSlash,	    Tag::None);
+    basic_test!(tk_op_slashequal,	        r"/=",	Id::SlashEqual,	        Tag::None);
+    basic_test!(tk_op_pipeequal,	        r"|=",	Id::PipeEqual,	        Tag::None);
+    basic_test!(tk_op_percentequal, 	    r"%=",	Id::PercentEqual,	    Tag::None);
+    basic_test!(tk_op_ampequal,	            r"&=",	Id::AmpEqual,	        Tag::None);
+    basic_test!(tk_op_caretequal,	        r"^=",	Id::CaretEqual,	        Tag::None);
+    basic_test!(tk_op_atequal,	            r"@=",	Id::AtEqual,	        Tag::None);
+    basic_test!(tk_op_plus,	                r"+",	Id::Plus,	            Tag::None);
+    basic_test!(tk_op_minus,	            r"-",	Id::Minus,	            Tag::None);
+    basic_test!(tk_op_star,	                r"*",	Id::Star,	            Tag::None);
+    basic_test!(tk_op_slash,	            r"/",	Id::Slash,	            Tag::None);
+    basic_test!(tk_op_pipe,	                r"|",	Id::Pipe,	            Tag::None);
+    basic_test!(tk_op_amp,	                r"&",	Id::Amp,	            Tag::None);
+    basic_test!(tk_op_leftangle,	        r"<",	Id::LeftAngle,	        Tag::None);
+    basic_test!(tk_op_rightangle,	        r">",	Id::RightAngle,	        Tag::None);
+    basic_test!(tk_op_equal,	            r"=",	Id::Equal,	            Tag::None);
+    basic_test!(tk_op_percent,	            r"%",	Id::Percent,	        Tag::None);
+    basic_test!(tk_op_caret,	            r"^",	Id::Caret,	            Tag::None);
+    basic_test!(tk_op_tilde,	            r"~",	Id::Tilde,	            Tag::None);
+    basic_test!(tk_op_at,	                r"@",	Id::At,	                Tag::None);
+    basic_test!(tk_op_dot,	                r".",	Id::Dot,	            Tag::None);
 
-        let value = tokenize_bytes(r#"0x2345"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::N(Num::Hex));
 
-        let value = tokenize_bytes(r#"0o2345"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::N(Num::Octal));
+    // Keywords
+    basic_test!(keyword_false,          "False",    Id::False,      Tag::None);
+    basic_test!(keyword_none,           "None",     Id::None,       Tag::None);
+    basic_test!(keyword_true,           "True",     Id::True,       Tag::None);
+    basic_test!(keyword_and,            "and",      Id::And,        Tag::None);
+    basic_test!(keyword_as,             "as",       Id::As,         Tag::None);
+    basic_test!(keyword_assert,         "assert",   Id::Assert,     Tag::None);
+    basic_test!(keyword_async,          "async",    Id::Assert,     Tag::None);
+    basic_test!(keyword_break,          "break",    Id::Break,      Tag::None);
+    basic_test!(keyword_class,          "class",    Id::Class,      Tag::None);
+    basic_test!(keyword_continue,       "continue", Id::Continue,   Tag::None);
+    basic_test!(keyword_def,            "def",      Id::Def,        Tag::None);
+    basic_test!(keyword_del,            "del",      Id::Del,        Tag::None);
+    basic_test!(keyword_elif,           "elif",     Id::Elif,       Tag::None);
+    basic_test!(keyword_else,           "else",     Id::Else,       Tag::None);
+    basic_test!(keyword_except,         "except",   Id::Except,     Tag::None);
+    basic_test!(keyword_finally,        "finally",  Id::Finally,    Tag::None);
+    basic_test!(keyword_for,            "for",      Id::For,        Tag::None);
+    basic_test!(keyword_from,           "from",     Id::From,       Tag::None);
+    basic_test!(keyword_global,         "global",   Id::Global,     Tag::None);
+    basic_test!(keyword_if,             "if",       Id::If,         Tag::None);
+    basic_test!(keyword_import,         "import",   Id::Import,     Tag::None);
+    basic_test!(keyword_in,             "in",       Id::In,         Tag::None);
+    basic_test!(keyword_is,             "is",       Id::Is,         Tag::None);
+    basic_test!(keyword_lambda,         "lambda",   Id::Lambda,     Tag::None);
+    basic_test!(keyword_nonlocal,       "nonlocal", Id::Nonlocal,   Tag::None);
+    basic_test!(keyword_not,            "not",      Id::Not,        Tag::None);
+    basic_test!(keyword_or,             "or",       Id::Or,         Tag::None);
+    basic_test!(keyword_pass,           "pass",     Id::Pass,       Tag::None);
+    basic_test!(keyword_raise,          "raise",    Id::Raise,      Tag::None);
+    basic_test!(keyword_return,         "return",   Id::Return,     Tag::None);
+    basic_test!(keyword_try,            "try",      Id::Try,        Tag::None);
+    basic_test!(keyword_while,          "while",    Id::While,      Tag::None);
+    basic_test!(keyword_with,           "with",     Id::With,       Tag::None);
+    basic_test!(keyword_yield,          "yield",    Id::Yield,      Tag::None);
 
-        let value = tokenize_bytes(r#"0b0101"#.trim().as_bytes()).unwrap();
-        assert_token(&value, Id::Number, Tag::N(Num::Binary));
-    }
-
-    #[test]
-    fn tk_symbol() {
-        let value = tokenize_bytes(r#":"#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
-    }
-
-    #[test]
-    fn tk_operator() {
-        let value = tokenize_bytes(r#"+="#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
-    }
 
     #[test]
     fn tk_string() {
@@ -457,15 +530,10 @@ gamma'''
         assert_token(&value, Id::Name, Tag::Ident);
     }
 
-    #[test]
-    fn tk_keyword() {
-        let value = tokenize_bytes(r#" def "#.trim().as_bytes()).unwrap();
-    }
-
-    #[test]
+   #[test]
     fn expr_x_eq_1() {
         let value = tokenize_bytes(r#"x = 1"#.as_bytes()).unwrap();
-        pprint_tokens(&value.1);
+        println!("{}", fmt::tokens(&value.1, true));
     }
 
     #[test]
@@ -495,15 +563,15 @@ x += 24354353
   "#.as_bytes(), "\t".as_bytes()].join(&(' ' as u8)).into_boxed_slice();
 
         let value = tokenize_bytes(&(*input)).unwrap();
-        pprint_tokens(&value.1);
+        println!("{}", fmt::tokens(&value.1, true));
 
-//        println!("{:?}", value.1);
         let json = fmt::json(&value.1);
-//        println!("{}", unsafe {String::from_utf8_unchecked(serde_pickle::to_vec(&value.1, true).unwrap())});
- //       let i = bincode::serde::serialize(&value.1, bincode::Infinite).unwrap();
-//        println!("bincode size: {}", i.len());
         println!("input size: {}", input.len());
         println!("json size: {}", json.len());
     }
+
+
+
+
 }
 

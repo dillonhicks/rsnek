@@ -67,6 +67,7 @@ BUILD_DATETIME := $(shell date -u +%FT%TZ)
 
 
 VERSION ?= $(CODEBUILD_SOURCE_VERSION)
+LOG_FORMAT ?= human
 
 
 .PHONY: all toolchain build
@@ -89,16 +90,50 @@ toolchain:
 
 
 build:
-	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=json -p rsnek
+	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=$(LOG_FORMAT) -p rsnek
 
 
 release:
-	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=json --release -p rsnek
+	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=$(LOG_FORMAT) --release -p rsnek
 
 
 test:
-	PATH="/root/.cargo/bin:$(PATH)" cargo test --message-format=json --all
+	PATH="/root/.cargo/bin:$(PATH)" cargo test --message-format=$(LOG_FORMAT) --all
 
 
 bench:
-	PATH="/root/.cargo/bin:$(PATH)" cargo bench --message-format=json -p rsnek*
+	PATH="/root/.cargo/bin:$(PATH)" cargo bench --message-format=$(LOG_FORMAT) -p rsnek*
+
+
+# Get the status of the stages of the AWS CodePipeline for this project and
+# print the status of each stage and url to stdout.
+#
+pipeline-status:
+	./tools/aws-cli-sugar/pipeline-status.sh
+
+#
+docs-%:
+	cargo rustdoc --lib -p $* -- \
+	    --no-defaults \
+	    --passes strip-hidden \
+	    --passes collapse-docs \
+	    --passes unindent-comments \
+	    --passes strip-priv-imports
+
+
+# Generate the docs for all of dependencies and libraries Note that
+# cargo doc --all filters out private modules in in the generated
+# documentation, that is why there is a second pass using rustdoc
+# directly to ensure that the private modules are present in the
+# documentation.
+docs:
+	cargo doc --all
+	$(MAKE) docs-rsnek_compile
+	$(MAKE) docs-rsnek_runtime
+
+
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} \;
+	find . -type f -name "*.py.compiled" -exec rm -f {} \;
+	find . -type f -name "*.pyc" -exec rm -f {} \;
+	rm -rf target

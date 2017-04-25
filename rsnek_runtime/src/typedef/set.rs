@@ -43,7 +43,6 @@ mod old {
                     self.value.borrow_mut().insert(SetElement(hash_id, item.clone()));
                     Ok(rt.None())
                 }
-                // TODO: When objects are around we will need to match
                 // against builtin enum variants.
                 Err(err) => Err(err),
             }

@@ -1,8 +1,11 @@
-/// Wrapper for the runtime housekeeping
+/// Wrapper around the reference counted pointed to all
+/// runtime objects. In CPython, the refcount is as a field in the
+/// PyObject struct. Due to the design of rust, all access to the underlying
+/// structs must be proxied through the rc for ownership and lifetime analysis.
 use std;
 use std::rc::{Rc, Weak};
 
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{Borrow};
 use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 
@@ -50,7 +53,7 @@ impl ObjectRef {
         let boxed: &Box<Builtin> = self.0.borrow();
         match boxed.native_str() {
             Ok(string) => string,
-            Err(err) => format!("{}", self)
+            Err(_) => format!("{}", self)
         }
     }
 }
@@ -162,17 +165,23 @@ impl std::fmt::Debug for ObjectRef {
     }
 }
 
+/// While it is cool to be able to directly iterate over an objectref
+/// it is impractical and likely impossible to debug if the critical
+/// case is hit.
 impl Iterator for ObjectRef {
     type Item = ObjectRef;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut boxed: &Box<Builtin> = self.0.borrow();
+        let boxed: &Box<Builtin> = self.0.borrow();
         match boxed.deref() {
             &Builtin::Iter(ref iterator) => {
                 match iterator.native_next() {
                     Ok(objref) => Some(objref),
                     Err(Error(ErrorType::StopIteration, _)) => None,
-                    Err(_) => panic!("Iterator logic fault")
+                    Err(err) => {
+                        crit!("Iterator logic fault"; "cause" => format!("{:?}", err));
+                        None
+                    }
                 }
             }
             _ => None

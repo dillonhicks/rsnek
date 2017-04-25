@@ -1,6 +1,6 @@
 [package]
 name = "rsnek_compile"
-version = "0.0.1"
+version = "0.5.0"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
 include = [
@@ -17,17 +17,18 @@ const_fn = []
 
 
 [dependencies]
-encoding = "*"
+slog = "2"
+slog-scope = "^3.0.0"
+
+
 time = "*"
 num = "*"
 itertools = "*"
 serde = "*"
-serde_yaml = "*"
 serde_json = "*"
 serde_derive = "*"
 serde_bytes = "*"
-serde-pickle = "*"
-bincode = "*"
+
 
 [dependencies.nom]
 version = "^2.2"

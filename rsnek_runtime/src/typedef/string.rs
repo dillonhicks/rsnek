@@ -105,13 +105,9 @@ impl method::Hashed for PyString {
 }
 impl method::StringCast for PyString {
 
+    #[allow(unused_variables)]
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        // TODO: Refs back to self in the object holder type - this should be just a
-        // return self.ref.clone().
-        match self.native_str() {
-            Ok(string) => Ok(rt.str(string)),
-            Err(err) => unreachable!(),
-        }
+        self.rc.upgrade()
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
@@ -331,7 +327,7 @@ mod old {
         }
 
         fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-            // TODO: Refs back to self in the object holder type - this should be just a
+            // Refs back to self in the object holder type - this should be just a
             // return self.ref.clone().
             match self.native_str() {
                 Ok(string) => rt.alloc(StringObject::new(string).to()),

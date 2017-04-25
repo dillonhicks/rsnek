@@ -1,22 +1,19 @@
 use std::ops::Deref;
-use std::io::prelude::*;
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
 use std::marker::Sync;
-
-use std::io::{self, Read, Write, BufRead};
-
+use std::io::{self, Read, Write};
 use std::collections::HashMap;
 
 use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
 use itertools::Itertools;
-use num::ToPrimitive;
 use rustyline;
 use rustyline::Config as RLConfig;
 use rustyline::CompletionType;
 use rustyline::error::ReadlineError;
+#[allow(unused_imports)]
 use serde::Serialize;
 
 use rsnek_compile::{Compiler, fmt};
@@ -26,7 +23,16 @@ use resource;
 use error::Error;
 use result::RuntimeResult;
 use runtime::Runtime;
-use traits::{NoneProvider, StringProvider, CodeProvider, IntegerProvider, FloatProvider, TupleProvider, DictProvider};
+use traits::{
+    NoneProvider,
+    StringProvider,
+    CodeProvider,
+    IntegerProvider,
+    FloatProvider,
+    TupleProvider,
+    DictProvider,
+    BooleanProvider,
+};
 use object::method::{
     Add,
     Subtract,
@@ -41,7 +47,6 @@ use object::method::{
     RightShift,
     XOr,
     Modulus,
-    IntegerCast,
     StringCast,
     Call
 };
@@ -49,12 +54,6 @@ use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
-
-// TODO: get actual logging or move this to a proper place
-macro_rules! debug {
-    ($fmt:expr) => (print!(concat!("DEBUG:", $fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!("DEBUG:", $fmt, "\n"), $($arg)*));
-}
 
 pub type Argv<'a> =  &'a [&'a str];
 pub type MainFn = Fn(&Runtime) -> i64;
@@ -106,7 +105,7 @@ pub struct Interpreter {}
 
 impl Interpreter {
 
-    // TODO: Arguments plumbing via a sys module?
+    // TODO: {T100} Arguments plumbing via a sys module?
     pub fn run(config: &Config) -> i64 {
         let interactive_main: MainFnRef = &python_main_interactive;
         let main = create_python_main(config.mode.clone(), config.arguments);
@@ -129,8 +128,7 @@ impl Interpreter {
 
 
 struct InterpreterState {
-    interactive: bool,
-    // TODO: Change namespace to be PyDict or PyModule or PyObject or something
+    // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
     namespace: HashMap<native::String, ObjectRef>,
     stack: Vec<ObjectRef>,
 }
@@ -138,7 +136,6 @@ struct InterpreterState {
 impl InterpreterState {
     pub fn new() -> Self {
         InterpreterState {
-            interactive: true,
             namespace: HashMap::new(),
             stack: Vec::new(),
         }
@@ -181,7 +178,12 @@ impl InterpreterState {
                     Value::Str(string) => rt.str(string),
                     Value::Int(i) => rt.int(i),
                     Value::Float(f) => rt.float(f),
-                    // TODO: This should be created in compiler.rs
+                    Value::Bool(b) => rt.bool(b),
+                    Value::Complex(_) => {
+                        let msg = format!("Complex not impelmented! {}#{}", file!(), line!());
+                        return Some(Err(Error::runtime(&msg)));
+                    },
+                    // TODO: {T100} This should be created in compiler.rs
                     Value::Code(args, c) =>
                         rt.code(native::Code {
                         co_name: native::String::default(),
@@ -198,12 +200,14 @@ impl InterpreterState {
             (OpCode::StoreName, Some(value)) => {
                 let name = match value {
                     Value::Str(string) => string,
-                    _ => panic!("Attempt to store a non string named value!")
+                    _ => return Some(Err(
+                        Error::runtime("Attempt to store a non string named value!")))
                 };
 
                 match self.stack.pop() {
                     Some(objref) => self.namespace.insert(name, objref),
-                    None => panic!("No values in value stack to store!")
+                    None => return Some(Err(
+                        Error::runtime("No values in value stack to store!")))
                 };
 
                 None
@@ -211,7 +215,8 @@ impl InterpreterState {
             (OpCode::LoadName, Some(value)) => {
                 let name = match value {
                     Value::Str(string) => string,
-                    _ => panic!("Attempt to load a non string named value!")
+                    _ => return Some(Err(
+                        Error::runtime("Attempt to load a non string named value!")))
                 };
 
                 match self.namespace.get(&name) {
@@ -240,15 +245,17 @@ impl InterpreterState {
 
                 let rhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                    None => return Some(Err(Error::runtime(
+                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
                 let lhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                    None => return Some(Err(Error::runtime(
+                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
-                // TODO: Give `Instr` getters
+                // TODO: {T100} Give `Instr` getters
                 let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
@@ -260,13 +267,13 @@ impl InterpreterState {
             (OpCode::CallFunction, None) => {
                 let func = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for call!")
+                    None => return Some(Err(Error::runtime("No values in value stack for call!")))
                 };
 
-                // TODO: this is obviously wrong, need a convention to get min number
+                // TODO: {T100} this is obviously wrong, need a convention to get min number
                 // of args and restore stack context for function calls and shiz.
                 let mut args: Vec<ObjectRef> = Vec::new();
-                args.append(&mut self.stack); // todo: forgive me
+                args.append(&mut self.stack); // forgive me,
 
 
                 let boxed: &Box<Builtin> = func.0.borrow();
@@ -283,6 +290,7 @@ impl InterpreterState {
 
                         // Because overwriting the global namespace with function args is always a good decision....
                         for argname in code.value.0.co_names.iter() {
+                            // unwrap here should be safe because of the previous check
                             self.namespace.insert(argname.clone(), args.pop().unwrap());
                         }
                         // Put back the args we didnt consume
@@ -315,13 +323,14 @@ impl InterpreterState {
                 None
             }
             (OpCode::ReturnValue, None) => {
-                // TODO: jump out of current frame
+                // TODO: {T100} jump out of current frame
                 None
             },
             (OpCode::MakeFunction, None) => {
-                let name = match self.stack.pop() {
+                match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                    None => return Some(Err(Error::runtime(
+                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
 //                let code = match self.stack.pop() {
@@ -363,14 +372,14 @@ impl InterpreterState {
         }
     }
 
-    pub fn print_debug_info(&self) {
+    pub fn log_state (&self) {
         // FIXME: Remove when parser/compiler allows for an expression of a single name
         // or maybe just hardcode that in?
         let stack: String = self.stack.iter().enumerate().map(|(idx, objref)| {
             let b: &Box<Builtin> = objref.0.borrow();
             match b.native_str() {
                 Ok(s) => format!("{}: {} = {}", idx, b.debug_name(), s),
-                Err(err) => format!("{}: {} = ??", idx, b.debug_name()),
+                Err(_) => format!("{}: {} = ??", idx, b.debug_name()),
             }
         }).collect::<Vec<String>>().join("\n");
 
@@ -379,13 +388,13 @@ impl InterpreterState {
 
             match b.native_str() {
                 Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
-                Err(err) => format!("{}: {} = ??", key, b.debug_name()),
+                Err(_) => format!("{}: {} = ??", key, b.debug_name()),
             }
         }).collect();
 
-        debug!("stack:\n{}\n\nlocals:\n----------\n{}\n",
-            stack,
-            values.join("\n"));
+
+        let state = format!("\nstack:\n{}\n\nlocals:\n----------\n{}\n", stack, values.join("\n"));
+        debug!("Interpreter"; "State" => state);
     }
 }
 
@@ -422,9 +431,14 @@ impl<'a> Thread<'a> for GreenThread<'a> {
        self.run(&rt)
     }
 
+    /// Note: Since `Runtime` doesn't implement Sync or Send
+    /// it cannot be passed into the context of the greenlet.
+    /// It is on the roadmap to fix that so there is not the
+    /// need to create 2 runtimes.
+    #[allow(unused_variables)]
     fn run<'b>(&self, rt: &'b Runtime) -> i64 {
         /// Start the stack off with 4kb
-        let stack = OsStack::new(1 << 16).unwrap();
+        let stack = OsStack::new(1 << 12).unwrap();
 
         let mut gen = Generator::new(stack, move |yielder, ()| {
             let main_thread = Greenlet {
@@ -488,9 +502,9 @@ impl<'a> Thread<'a> for Greenlet<'a> {
 /// 2. https://youtu.be/tHnA94-hTC8?t=2m47s
 #[inline(always)]
 fn print_banner() {
-    println!("{}", resource::strings::BANNER2);
-    println!("{}", resource::strings::VERSION);
-    println!("{}", resource::strings::BUILD);
+    info!("\n{}", resource::strings::BANNER2);
+    info!("{}", resource::strings::VERSION);
+    info!("{}", resource::strings::BUILD);
 }
 
 
@@ -504,18 +518,28 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
     Box::new(move |rt: &Runtime| -> i64 {
         let text: String = match (mode.clone(), myargs.get(0)) {
             (Mode::Command(cmd), _) => cmd.clone(),
-            (Mode::Module(module), _) => {
-                debug!("Not Implemented");
+            (Mode::Module(_), _) => {
+                error!("Not Implemented"; "mode" => "-m <module>");
                 return ExitCode::NotImplemented as i64
             },
             (Mode::File, Some(path)) => {
                 match File::open(&path) {
-                    // TODO: Check size so we aren't going ham and trying to read a file the size
+                    // TODO: {T100} Check size so we aren't going ham and trying to read a file the size
                     // of memory or something?
                     Ok(ref mut file) => {
                         let mut buf: Vec<u8> = Vec::new();
-                        file.read_to_end(&mut buf);
-                        // TODO: Is using lossy here a good idea?
+                        match file.read_to_end(&mut buf) {
+                            Err(err) => {
+                                debug!("{:?}", err);
+
+                                return match err.raw_os_error() {
+                                    Some(code) => code as i64,
+                                    _ => ExitCode::GenericError as i64
+                                };
+                            },
+                            _ => {}
+                        };
+                        // TODO: {T100} Is using lossy here a good idea?
                         String::from_utf8_lossy(&buf).to_string()
                     },
                     Err(err) => {
@@ -535,7 +559,7 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 
         let mut compiler = Compiler::new();
         let mut interpreter = InterpreterState::new();
-        // TODO: use scope resolution in the future
+        // TODO: {T100} use scope resolution in the future
         // Manually load the builtin print function into the interpreter namespace
         // since rsnek does not have a concept of modules at this time.
         interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
@@ -546,8 +570,8 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
-            Err(err) => {
-                println!("SyntaxError: Unable to compile input");
+            Err(_) => {
+                error!("SyntaxError: Unable to compile input");
                 return ExitCode::SyntaxError as i64
             },
         };
@@ -571,11 +595,9 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         }
 
         let result = interpreter.exec(&rt, &(*ins));
-       // interpreter.print_debug_info();
 
         let code = match result {
-            Ok(objref)    => {
-                //debug!("result: {:?}", objref);
+            Ok(_)    => {
                 ExitCode::Ok as i64
             },
             Err(err)      => {
@@ -592,7 +614,6 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 /// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
     let mut compiler = Compiler::new();
-    let stdin = io::stdin();
 
     let config = RLConfig::builder()
         .history_ignore_space(true)
@@ -602,7 +623,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
     let mut rl = rustyline::Editor::<()>::with_config(config);
     let mut interpreter = InterpreterState::new();
 
-    // TODO: use scope resolution in the future
+    // TODO: {T100} use scope resolution in the future
     // Manually load the builtin print function into the interpreter namespace
     // since rsnek does not have a concept of modules at this time.
     interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
@@ -617,26 +638,25 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
     'repl: loop {
         match io::stdout().flush() {
-            Err(err) => println!("Error Flushing STDOUT: {:?}", err),
+            Err(err) => error!("Error Flushing STDOUT: {:?}", err),
             _ => ()
         }
 
 
         lineno += 1;
-        let prompt = format!("\nIn[{}] {} ", lineno, resource::strings::PROMPT);
+        info!("In[{}] {} ", lineno, resource::strings::PROMPT);
 
-        let text = match rl.readline(&prompt) {
+        let text = match rl.readline(&"") {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
-                println!();
                 line
             },
             Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C");
+                warn!("CTRL-C");
                 break;
             }
             Err(ReadlineError::Eof) => {
-                println!("CTRL-D");
+                warn!("CTRL-D");
                 break;
             }
             _ => continue
@@ -646,26 +666,16 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
-            Err(err) => {
-                println!("\n\nSyntaxError: Unable to compile input\n\n");
+            Err(_) => {
+                error!("SyntaxError"; "message" => "Unable to compile input");
                 continue 'repl
             },
         };
 
-        //println!("{}", fmt::json(&ins));
-
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {
-                Some(Ok(objref)) => {
-                    let boxed: &Box<Builtin> = objref.0.borrow();
-                    let string = match boxed.native_str() {
-                        Ok(s) => s,
-                        Err(err) => format!("{:?}Error: {}", err.0, err.1),
-                    };
-
-                },
                 Some(Err(err)) => {
-                    println!("\n\n{:?}Error: {}\n\n", err.0, err.1);
+                    error!("{:?}Error", err.0; "message" => err.1.clone());
                     break 'process_ins
                 },
 
@@ -683,16 +693,13 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
                         Ok(s) => s,
                         Err(err) => format!("{:?}Error: {}", err.0, err.1),
                     };
-                    println!("\nOut[{}]: {}\n\n", lineno, string);
+                    info!("\nOut[{}]: {}\n\n", lineno, string);
                 }
             }
             _ => {},
         }
 
-
-
-//        interpreter.print_debug_info();
-
+        interpreter.log_state();
     }
 
     ExitCode::Ok as i64

@@ -1,5 +1,18 @@
-extern crate rsnek_runtime;
+#[macro_use(o, kv, slog_info, slog_log, slog_record, slog_b, slog_kv, slog_record_static)]
+extern crate slog;
+extern crate slog_term;
+extern crate slog_async;
+#[macro_use]
+extern crate slog_scope;
+extern crate slog_bunyan;
+
+use slog::Drain;
+use std::sync::Arc;
+
+
 extern crate clap;
+extern crate rsnek_runtime;
+
 
 use clap::{Arg, App, ArgGroup};
 
@@ -8,6 +21,16 @@ use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Mode};
 
 
 fn main() {
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    //let drain = slog_bunyan::new(decorator).build();
+    let drain = slog_async::Async::new(drain).build();
+    let drain = drain.filter_level(slog::Level::Trace).fuse();
+
+    let log = slog::Logger::root(Arc::new(drain.fuse()), o!());
+    let _guard = slog_scope::set_global_logger(log);
+
+    info!("{}", format!("welcome to {}", strings::PROGRAM));
 
     let matches = App::new(strings::PROGRAM)
         .version(strings::VERSION)
@@ -35,6 +58,7 @@ fn main() {
         .get_matches();
 
 
+    // Parse Args
     let matched_args = matches.values_of_lossy("args");
 
     let args: Vec<&str> = matched_args.iter()
@@ -63,9 +87,9 @@ fn main() {
         }
     };
 
-
+    // Build Interpreter Config
     let config = Config {
-        // TODO: it is possible in cpython to force interactive mode after script executes
+        // TODO: {T89} force interactive mode after script executes
         mode: mode,
         arguments: args.as_slice(),
         thread_model: thread_model,
@@ -73,6 +97,6 @@ fn main() {
         debug_support: debug_support,
     };
 
-    
+
     Interpreter::run(&config);
 }

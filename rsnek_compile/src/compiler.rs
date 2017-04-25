@@ -1,17 +1,13 @@
-use std;
 use std::ops::Deref;
 use std::borrow::Borrow;
-use std::str::FromStr;
-use std::convert::TryFrom;
+use std::i64;
 
-use serde::Serialize;
 use nom::IResult;
 
-use ::fmt;
-use ::ast::{self, Ast, Module, Stmt, Expr, DynExpr, Op};
-use ::token::{OwnedTk, Tk, Id, Tag, Num};
+use ::ast::{Ast, Module, Stmt, Expr, Op};
+use ::token::{OwnedTk, Id, Tag, Num};
 use ::lexer::Lexer;
-use ::parser::{Parser, ParserResult, ParsedAst};
+use ::parser::{Parser, ParserResult};
 
 
 #[derive(Debug, Clone, Serialize)]
@@ -23,13 +19,15 @@ impl Instr {
     }
 }
 
-// TODO: Use rsnek_runtime::typedef::native types here
+// TODO: {T96} Use rsnek_runtime::typedef::native types here
 #[derive(Debug, Clone, Serialize)]
 pub enum Value {
     Str(String),
     Int(i64),
     Float(f64),
-    Code(Vec<String>, Box<[Instr]>)
+    Code(Vec<String>, Box<[Instr]>),
+    Bool(bool),
+    Complex(f64),
 }
 
 
@@ -38,8 +36,8 @@ pub struct ValueError(pub String);
 
 
 impl<'a> From<&'a OwnedTk> for Value {
-    // TODO: Refactor to use stdlib traits From / TryFrom if possible
-    // TODO: unwrap() can cause panics, make this able to return a result
+    // TODO: {T96} Refactor to use stdlib traits From / TryFrom if possible
+    // TODO: {T96} unwrap() can cause panics, make this able to return a result
 
     fn from(tk: &'a OwnedTk) -> Self {
         let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
@@ -47,12 +45,21 @@ impl<'a> From<&'a OwnedTk> for Value {
 
         match (tk.id(), tk.tag()) {
             (Id::Name, _)     => Value::Str(parsed.clone()),
-                (Id::String, _)     => {
-                // TODO: This is a hack to get the " off of quoted strings
+            (Id::String, _)         |
+            (Id::RawString, _)      |
+            (Id::FormatString, _)   |
+            (Id::ByteString, _)     => {
+                // TODO: {T96} This is a hack to get the " off of quoted strings
                 Value::Str(parsed[1..parsed.len()-1].to_string())
             },
             (Id::Number, Tag::N(Num::Int))   => Value::Int(content.parse::<i64>().unwrap()),
+            (Id::Number, Tag::N(Num::Binary))=> Value::Int(i64::from_str_radix(&parsed[2..], 2).unwrap()),
+            (Id::Number, Tag::N(Num::Octal)) => Value::Int(i64::from_str_radix(&parsed[2..], 8).unwrap()),
+            (Id::Number, Tag::N(Num::Hex))   => Value::Int(i64::from_str_radix(&parsed[2..], 16).unwrap()),
             (Id::Number, Tag::N(Num::Float)) => Value::Float(content.parse::<f64>().unwrap()),
+            (Id::Number, Tag::N(Num::Complex)) => Value::Complex(content[..content.len()-1].parse::<f64>().unwrap()),
+            (Id::True, _) => Value::Bool(true),
+            (Id::False, _) => Value::Bool(false),
             _ => unimplemented!()
         }
     }
@@ -115,7 +122,7 @@ impl<'a> Compiler<'a> {
         //println!("CompileAST({:?})", ast);
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins = match *ast {
+        let ins = match *ast {
             Ast::Module(ref module) => {
                 self.compile_module(module)
             },
@@ -135,7 +142,7 @@ impl<'a> Compiler<'a> {
             Module::Body(ref stmts) => {
 
                 for stmt in stmts {
-                    let mut ins = self.compile_stmt(&stmt);
+                    let ins = self.compile_stmt(&stmt);
                     instructions.append(&mut ins.to_vec());
                 }
             }
@@ -147,8 +154,8 @@ impl<'a> Compiler<'a> {
     fn compile_stmt(&self, stmt: &'a Stmt) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins: Box<[Instr]> = match *stmt {
-            Stmt::FunctionDef {ref fntype, ref name, ref arguments, ref body } => {
+        let ins: Box<[Instr]> = match *stmt {
+            Stmt::FunctionDef {fntype: _, ref name, ref arguments, ref body } => {
                 let mut argnames: Vec<String> = Vec::new();
                 for arg in arguments {
                     match arg {
@@ -157,7 +164,7 @@ impl<'a> Compiler<'a> {
                     }
                 };
 
-                let mut func_ins: Vec<Instr> = vec![
+                let func_ins: Vec<Instr> = vec![
                     Instr(OpCode::LoadConst, Some(Value::Code(argnames, self.compile_stmt(body)))),
                     Instr(OpCode::LoadConst, Some(Value::from(name))),
                     Instr(OpCode::MakeFunction, None),
@@ -190,7 +197,7 @@ impl<'a> Compiler<'a> {
             }
             Stmt::Assign { ref target, ref value } => self.compile_stmt_assign(target, value),
             Stmt::Expr(ref expr) => self.compile_expr(expr, Context::Load),
-            Stmt::Newline => return instructions.into_boxed_slice(),  // TODO: add lineno attrs
+            Stmt::Newline => return instructions.into_boxed_slice(),
             _ => unimplemented!()
         };
 
@@ -202,10 +209,10 @@ impl<'a> Compiler<'a> {
         // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
+        let ins: Box<[Instr]> = self.compile_expr(value, Context::Load);
         instructions.append(&mut ins.to_vec());
 
-        let mut ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
+        let ins: Box<[Instr]> = self.compile_expr(target, Context::Store);
         instructions.append(&mut ins.to_vec());
 
         instructions.into_boxed_slice()
@@ -215,17 +222,17 @@ impl<'a> Compiler<'a> {
     fn compile_expr(&self, expr: &'a Expr, ctx: Context) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
-        let mut ins: Box<[Instr]> = match *expr {
-            Expr::Constant(ref tk) => {
+        let ins: Box<[Instr]> = match *expr {
+            Expr::NameConstant(ref tk)  |
+            Expr::Constant(ref tk)      => {
                 self.compile_expr_constant(ctx, tk)
             },
             Expr::BinOp {ref op, ref left, ref right} => {
                 self.compile_expr_binop(op, left, right)
             },
-            Expr::Call {ref func, ref args, ref keywords} => {
+            Expr::Call {ref func, ref args, keywords: _} => {
                 self.compile_expr_call(func, args)
             }
-            _ => unimplemented!()
         };
 
         instructions.append(&mut ins.to_vec());
@@ -252,16 +259,18 @@ impl<'a> Compiler<'a> {
         let mut instructions: Vec<Instr> = vec![];
 
         match left.deref() {
-            &Expr::Constant(ref tk) => {
-                let mut ins = self.compile_expr_constant(Context::Load, tk);
+            &Expr::NameConstant(ref tk) |
+            &Expr::Constant(ref tk)     => {
+                let ins = self.compile_expr_constant(Context::Load, tk);
                 instructions.append(&mut ins.to_vec());
             },
             _ => unimplemented!()
         };
 
         match right.deref() {
-            &Expr::Constant(ref tk) => {
-                let mut ins = self.compile_expr_constant(Context::Load, tk);
+            &Expr::NameConstant(ref tk) |
+            &Expr::Constant(ref tk)     => {
+                let ins = self.compile_expr_constant(Context::Load, tk);
                 instructions.append(&mut ins.to_vec());
             },
             _ => unimplemented!()
@@ -283,7 +292,10 @@ impl<'a> Compiler<'a> {
             Id::Caret       => Instr(OpCode::BinaryXor, None),
             Id::LeftShift   => Instr(OpCode::BinaryLshift, None),
             Id::RightShift  => Instr(OpCode::BinaryRshift, None),
-            _ => panic!("{:?} is not a binary op", op)
+            _ =>  {
+                error!("{:?} is not a binary op, defaulting to no-op", op);
+                Instr(OpCode::Nop, None)
+            }
         };
 
         instructions.push(code);
@@ -491,22 +503,37 @@ y = 45
 z = x + y
 "#)
     }
-    
-    basic_test!(binop_logicand,   "a and b");
-    basic_test!(binop_logicor,    "a or b");
-    basic_test!(binop_add,        "a + b");
-    basic_test!(binop_sub,        "a - b");
-    basic_test!(binop_mul,        "a * b");
-    basic_test!(binop_pow,        "a ** b");
-    basic_test!(binop_truediv,    "a / b");
-    basic_test!(binop_floordiv,   "a // b");
-    basic_test!(binop_or,         "a | b");
-    basic_test!(binop_and,        "a & b");
-    basic_test!(binop_xor,        "a ^ b");
-    basic_test!(binop_mod,        "a % b");
-    basic_test!(binop_matmul,     "a @ b");
-    basic_test!(binop_lshif,      "a << b");
-    basic_test!(binop_rshift,     "a >> b");
+
+
+    // Stmt::Assign(Expr::Constant)
+    basic_test!(stmt_assign_int,         "x = 134567");
+    basic_test!(stmt_assign_hex,         "x = 0xabdef");
+    basic_test!(stmt_assign_bin,         "x = 0b01010");
+    basic_test!(stmt_assign_oct,         "o = 0o12377");
+    basic_test!(stmt_assign_float,       "y = 3.5");
+    basic_test!(stmt_assign_complex,     "x = 6j");
+    basic_test!(stmt_assign_bool,        "true = False");
+    basic_test!(stmt_assign_str,         r#"z = "Zoo""#);
+    basic_test!(stmt_assign_raw_str,     r#"mary = r"had a\blittle lamb\r""#);
+    basic_test!(stmt_assign_byte_str,    r#"buf = b"somanybytes""#);
+    basic_test!(stmt_assign_fmt_str,     r#"message = f"Hi, {name}!""#);
+
+    // Expr::BinOp
+    basic_test!(expr_binop_logicand,   "a and b");
+    basic_test!(expr_binop_logicor,    "a or b");
+    basic_test!(expr_binop_add,        "a + b");
+    basic_test!(expr_binop_sub,        "a - b");
+    basic_test!(expr_binop_mul,        "a * b");
+    basic_test!(expr_binop_pow,        "a ** b");
+    basic_test!(expr_binop_truediv,    "a / b");
+    basic_test!(expr_binop_floordiv,   "a // b");
+    basic_test!(expr_binop_or,         "a | b");
+    basic_test!(expr_binop_and,        "a & b");
+    basic_test!(expr_binop_xor,        "a ^ b");
+    basic_test!(expr_binop_mod,        "a % b");
+    basic_test!(expr_binop_matmul,     "a @ b");
+    basic_test!(expr_binop_lshif,      "a << b");
+    basic_test!(expr_binop_rshift,     "a >> b");
 
 
     basic_test!(multiline, r#"

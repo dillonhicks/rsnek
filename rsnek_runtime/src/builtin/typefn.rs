@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use object::method::{GetItem, Length};
+use object::method::{GetItem};
 use runtime::Runtime;
 use traits::{IntegerProvider, StringProvider};
 
@@ -16,6 +16,7 @@ pub struct TypeFn;
 
 impl TypeFn {
     pub fn create() -> (&'static str, native::Function) {
+        info!("create builtin"; "function" => "type");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_typefn);
         ("type", native::Function::Wrapper(func))
     }
@@ -23,6 +24,7 @@ impl TypeFn {
 
 
 fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    info!("call"; "native_builtin" => "type");
     match check_args(1, &pos_args) {
         Err(err) => return Err(err),
         _ => {}
@@ -41,7 +43,7 @@ fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, k
     let boxed: &Box<Builtin> = pos_args.0.borrow();
     let zero = rt.int(0);
 
-    let mut name = "??".to_string();
+    let name;
 
     {
         let value = boxed.op_getitem(&rt, &zero).unwrap();
@@ -49,6 +51,7 @@ fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, k
         name = boxed.debug_name().to_string();
     }
 
-    // TODO: hack for demo purposes since there are not type and class objects yet
+    // Hack for demo purposes since there are not type and class objects yet
+    // TODO: {T49} return the type when type objects are a thing
     Ok(rt.str(name))
 }

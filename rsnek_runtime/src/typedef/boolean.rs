@@ -1,14 +1,14 @@
 use std;
 use std::ops::{Deref, Neg};
 use std::borrow::Borrow;
-use num::{Signed, Zero, FromPrimitive};
+use num::{Signed, Zero, FromPrimitive, ToPrimitive};
 
 use object::{self, RtValue, typing, method};
 use object::method::{BooleanCast, IntegerCast, StringRepresentation};
 use object::selfref::{self, SelfRef};
 
 use runtime::{Runtime, BooleanProvider};
-use runtime::{StringProvider, IntegerProvider};
+use runtime::{StringProvider, IntegerProvider, FloatProvider};
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
@@ -113,10 +113,6 @@ impl method::StringCast for PyBoolean {
     }
 }
 impl method::BytesCast for PyBoolean {
-    //    fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
-    //        // TODO: Fix after PyBytes is implemented
-    //        Err(Error::not_implemented())
-    //    }
 
     fn native_bytes(&self) -> NativeResult<native::Bytes> {
         let result = if self.value.0.is_zero() {
@@ -220,36 +216,18 @@ impl method::IntegerCast for PyBoolean {
     }
 }
 
-// TODO: FIXME when float is finished
 impl method::FloatCast for PyBoolean {
-    //    fn op_float(&self, rt: &Runtime) -> RuntimeResult {
-    //        unimplemented!()
-    //        //        match self.native_float() {
-    //        //            Ok(float) => rt.alloc(FloatObject::new(float).to()),
-    //        //            Err(err) => Err(err),
-    ////        }
-    //
-    //    }
-    //
-    //    fn native_float(&self) -> NativeResult<native::Float> {
-    //        return Ok(self.value.0.to_f64().unwrap());
-    //    }
+        fn op_float(&self, rt: &Runtime) -> RuntimeResult {
+            let value = if self.value.0.is_zero() {0.0} else {1.0};
+            Ok(rt.float(value))
+        }
+
+        fn native_float(&self) -> NativeResult<native::Float> {
+            return Ok(self.value.0.to_f64().unwrap());
+        }
 }
 
-// TODO: FIXME when complex is finished
-impl method::ComplexCast for PyBoolean {
-    //    fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
-    //        unimplemented!()
-    //        //        match self.native_complex() {
-    //        //            Ok(value) => rt.alloc(ComplexObject::from_native(value).to()),
-    //        //            Err(err) => Err(err),
-    //        //        }
-    //    }
-    //
-    //    fn native_complex(&self) -> NativeResult<native::Complex> {
-    //        Ok(native::Complex::new(self.value.0.to_f64().unwrap(), 0.))
-    //    }
-}
+impl method::ComplexCast for PyBoolean {}
 
 /// `round(True) => 1` `round(False) => 0`
 impl method::Rounding for PyBoolean {
@@ -492,6 +470,21 @@ mod _api_method {
         let result = t_ref.op_int(&rt).unwrap();
         assert_eq!(result, one);
     }
+
+
+    #[test]
+    fn __float__() {
+        let rt = setup_test();
+
+        let one = rt.float(1.0);
+
+        let t = rt.bool(true);
+        let t_ref: &Box<Builtin> = t.0.borrow();
+
+        let result = t_ref.op_float(&rt).unwrap();
+        assert_eq!(result, one);
+    }
+
 }
 
 #[cfg(all(feature="old", test))]

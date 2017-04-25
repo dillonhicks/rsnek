@@ -104,167 +104,18 @@
 /// tk_method!(pub my_function<Parser<'a>,TkSlice<'a>, TkSlice<'a>>, tag!("abcd"));
 /// ```
 #[allow(unused_variables)]
-use slice::TkSlice;
 
+
+/// Other rules to this macro have been deleted for anti kruft enforcement and can be regenerated
+/// with tools/gen-macro-redefs
 #[macro_export]
 macro_rules! tk_method (
-  // Non-public immutable self
-    ($name:ident<$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, $o<'a>, u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-//  ($name:ident<$a:ty>( $i:ty ) -> $o:ty, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-//      #[allow(unused_variables)]
-//      fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {
-//        let result = $submac!(i, $($args)*);
-//        ($self_, result)
-//      }
-//  );
-  ($name:ident<$a:ty,$i:ty,$o:ty,$e:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i, $o, $e>) {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  ($name:ident<$a:ty,$i:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>)  {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  ($name:ident<$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name<'b>( $self_: $a, i: TkSlice<'b> ) -> ($a, nom::IResult<TkSlice<'b>, $o<'b>, u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-
-  ($name:ident<$a:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  // Public immutable self
-  (pub $name:ident<$a:ty>( $i:ty ) -> $o:ty, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      pub fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  (pub $name:ident<$a:ty,$i:ty,$o:ty,$e:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( $self_: $a, i: $i ) -> ($a, nom::IResult<$i, $o, $e>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  (pub $name:ident<$a:ty,$i:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    pub fn $name( $self_: $a,i: $i ) -> ($a, nom::IResult<$i,$o,u32>)  {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  (pub $name:ident<$a:ty,$o:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    pub fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, $o, u32>) {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  (pub $name:ident<$a:ty>, $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    pub fn $name( $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
   // Non-public mutable self
  ($name:ident, 'b, <$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
+      #[allow(unused_variables, unused_imports)]
       fn $name<'b>( mut $self_: $a, i: TkSlice<'b> ) -> ($a, nom::IResult<TkSlice<'b>, $o, u32>) {
         let result = $submac!(i, $($args)*);
         ($self_, result)
       }
-  );
-  ($name:ident<$a:ty>( $i:ty ) -> $o:ty, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  ($name:ident<$a:ty,$i:ty,$o:ty,$e:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: $i ) -> ($a, nom::IResult<$i, $o, $e>) {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-      }
-  );
-  ($name:ident<$a:ty,$i:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    fn $name( mut $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>)  {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  ($name:ident<$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, $o, u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  ($name:ident<$a:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  // Public mutable self
-  (pub $name:ident<$a:ty>( $i:ty ) -> $o:ty, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      pub fn $name( mut $self_: $a, i: $i ) -> ($a, nom::IResult<$i,$o,u32>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  (pub $name:ident<$a:ty,$i:ty,$o:ty,$e:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-      #[allow(unused_variables)]
-      fn $name( mut $self_: $a, i: $i ) -> ($a, nom::IResult<$i, $o, $e>) {
-        let result = $submac!(i, $($args)*);
-        ($self_, result)
-      }
-  );
-  (pub $name:ident<$a:ty,$i:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    pub fn $name( mut $self_: $a,i: $i ) -> ($a, nom::IResult<$i,$o,u32>)  {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  (pub $name:ident<$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    pub fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, $o, u32>) {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
-  );
-  (pub $name:ident<$a:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
-    #[allow(unused_variables)]
-    pub fn $name( mut $self_: $a, i: TkSlice<'a> ) -> ($a, nom::IResult<TkSlice<'a>, TkSlice<'a>, u32>) {
-      let result = $submac!(i, $($args)*);
-      ($self_, result)
-    }
   );
 );

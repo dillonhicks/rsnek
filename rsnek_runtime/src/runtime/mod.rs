@@ -80,7 +80,7 @@ pub struct BuiltinTypes {
 }
 
 /// Concrete struct that holds the current runtime state, heap, etc.
-/// TODO: add ability to intern objects?
+// TODO: {T99} add ability to intern objects
 struct RuntimeInternal {
     types: BuiltinTypes,
     modules: RefCell<ObjectRef>, // should be a dict
@@ -299,8 +299,7 @@ impl FloatProvider<native::Float> for Runtime {
 impl IteratorProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn iter(&self, value: native::None) -> ObjectRef {
-        let wrapped = IteratorValue(native::Iterator::Empty, self.clone());
-        self.iter(native::Iterator::Empty)
+        self.0.types.iterator.empty(&self)
     }
 }
 

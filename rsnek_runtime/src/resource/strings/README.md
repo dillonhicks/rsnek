@@ -1,6 +1,6 @@
 # mod strings: Keep human readable text out of your code
 
-This exists to experiment with keeping the constant strings and
+mod strings exists to experiment with keeping the constant strings and
 other build resources out of the codebase for locale targeting 
 among other things.
 

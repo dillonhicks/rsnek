@@ -1,19 +1,13 @@
-use std;
-use std::borrow::Borrow;
 use std::slice::Iter;
 use std::str;
-use std::str::FromStr;
-use std::ops::{Range,RangeTo,RangeFrom,RangeFull};
-use std::iter::{Enumerate,Iterator};
-use std::fmt;
-use std::cmp::{min,PartialEq,Ordering};
+use std::ops::{Range, RangeTo, RangeFrom, RangeFull};
+use std::iter::{Enumerate, Iterator};
+use std::cmp::Ordering;
 
-use itertools::Itertools;
-use nom;
-use nom::{Compare, AsChar,CompareResult,InputLength,InputIter,Slice,HexDisplay, InputTake, FindToken};
-use nom::{IResult, digit, multispace};
-use serde::Serialize;
-use token::{Tk, Id, OwnedTk};
+use nom::{Compare, AsChar, CompareResult, InputLength, InputIter, Slice, FindToken};
+
+
+use ::token::{Tk, Id, OwnedTk};
 
 #[derive(Clone, Debug, Copy, Serialize, Ord, Eq, PartialEq)]
 pub struct TkSlice<'a>(pub &'a [Tk<'a>]);

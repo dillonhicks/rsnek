@@ -1,19 +1,10 @@
-use std::collections::VecDeque;
-use std::str;
-use std::str::FromStr;
-use std;
+use nom::FindToken;
 
-use nom::{IResult,digit,multispace, newline,FindToken};
-use itertools::Itertools;
-use serde::ser::{Serialize, Serializer, SerializeSeq};
+use serde::ser::{SerializeStruct,Serialize, Serializer};
 use serde_bytes;
-use serde::ser::SerializeStruct;
 
-use num;
-use num::FromPrimitive;
-
-use ::fmt;
 use ::slice::TkSlice;
+
 
 const NEWLINE_BYTES: &'static [u8] = &[10];
 pub const TK_NEWLINE: Tk = Tk {id: Id::Newline, bytes: NEWLINE_BYTES, tag: Tag::W(Ws::Newline)};
@@ -145,14 +136,6 @@ impl<'a> New<'a> for Tk<'a> {
     }
 }
 
-pub fn pprint_tokens(tokens: &Vec<Tk>) {
-    for (idx, t) in tokens.iter().enumerate() {
-        match fmt::token(&t).as_str() {
-            "" => continue,
-            string => println!("{:>3}: {}", idx, string),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]

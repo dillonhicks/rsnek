@@ -1,6 +1,6 @@
 use std;
 use std::cell::Cell;
-use num::{self, Zero};
+use num;
 
 use rsnek_compile::Instr;
 
@@ -69,7 +69,8 @@ pub enum Iterator {
 
 impl Iterator {
     pub fn new(source: &ObjectRef) -> NativeResult<Self> {
-        // TODO: Assert type
+        // TODO: {T101} Type assertions on new iterators or make it part of the `iter()`
+        // builtin
         Ok(Iterator::Sequence {source: source.clone(), idx_next: Cell::new(0)})
     }
 }

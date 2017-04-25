@@ -20,7 +20,7 @@ pub trait HasDict {
 
 
 pub trait DefaultGetAttr: method::GetAttr + HasDict {
-    // TODO: Need to search the base classes dicts as well, maybe need MRO
+    // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
     #[allow(unused_variables)]
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = name.0.borrow();
@@ -38,7 +38,7 @@ pub trait DefaultGetAttr: method::GetAttr + HasDict {
                 let dict: &PyDict = self.get_dict();
                 let key = native::DictKey(string.native_hash().unwrap(), stringref);
                 match dict.native_getitem(&Builtin::DictKey(key)) {
-                    // TODO: Fixme
+                    // TODO: {T63} Improvements to namespace resolution
                     Ok(builtin) => Ok(builtin.clone()),
                     Err(err) => Err(err),
                 }

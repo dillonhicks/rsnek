@@ -9,8 +9,9 @@ pub trait HasName {
     fn get_name(&self) -> native::String;
 }
 
-// TODO: Allow arguments to new and init
-// TODO: Inheritance? Missing bases, mro, etc.
+
+// TODO: {T49} Investigate an actual type opbject. Things to pinder: Allow arguments to new and
+// init, inheritance? Missing bases, mro, etc.
 /// __builtins__.type: Defines how types are created
 pub trait Type: method::New + method::Init + HasName {}
 

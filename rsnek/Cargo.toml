@@ -1,10 +1,18 @@
 [package]
 name = "rsnek"
-version = "0.0.1"
+version = "0.5.0"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 build = "build.rs"
 
 [dependencies]
+slog = "2"
+slog-async = "2.0.1"
+slog-term = "~2.0.0-4"
+slog-scope = "^3.0.0"
+slog-stream = "^1.2.0"
+slog-bunyan = { git = "https://github.com/slog-rs/bunyan.git", branch = "master"}
+
+
 clap = "*"
 rsnek_runtime =  { version = "*", path = "../rsnek_runtime" }
 rsnek_compile = { version = "*", path = "../rsnek_compile" }
