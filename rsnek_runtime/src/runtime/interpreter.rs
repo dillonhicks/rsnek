@@ -200,12 +200,14 @@ impl InterpreterState {
             (OpCode::StoreName, Some(value)) => {
                 let name = match value {
                     Value::Str(string) => string,
-                    _ => panic!("Attempt to store a non string named value!")
+                    _ => return Some(Err(
+                        Error::runtime("Attempt to store a non string named value!")))
                 };
 
                 match self.stack.pop() {
                     Some(objref) => self.namespace.insert(name, objref),
-                    None => panic!("No values in value stack to store!")
+                    None => return Some(Err(
+                        Error::runtime("No values in value stack to store!")))
                 };
 
                 None
@@ -213,7 +215,8 @@ impl InterpreterState {
             (OpCode::LoadName, Some(value)) => {
                 let name = match value {
                     Value::Str(string) => string,
-                    _ => panic!("Attempt to load a non string named value!")
+                    _ => return Some(Err(
+                        Error::runtime("Attempt to load a non string named value!")))
                 };
 
                 match self.namespace.get(&name) {
@@ -242,12 +245,14 @@ impl InterpreterState {
 
                 let rhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                    None => return Some(Err(Error::runtime(
+                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
                 let lhs = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                    None => return Some(Err(Error::runtime(
+                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
                 // TODO: {T100} Give `Instr` getters
@@ -262,7 +267,7 @@ impl InterpreterState {
             (OpCode::CallFunction, None) => {
                 let func = match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for call!")
+                    None => return Some(Err(Error::runtime("No values in value stack for call!")))
                 };
 
                 // TODO: {T100} this is obviously wrong, need a convention to get min number
@@ -285,6 +290,7 @@ impl InterpreterState {
 
                         // Because overwriting the global namespace with function args is always a good decision....
                         for argname in code.value.0.co_names.iter() {
+                            // unwrap here should be safe because of the previous check
                             self.namespace.insert(argname.clone(), args.pop().unwrap());
                         }
                         // Put back the args we didnt consume
@@ -323,7 +329,8 @@ impl InterpreterState {
             (OpCode::MakeFunction, None) => {
                 match self.stack.pop() {
                     Some(objref) => objref,
-                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+                    None => return Some(Err(Error::runtime(
+                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
 //                let code = match self.stack.pop() {

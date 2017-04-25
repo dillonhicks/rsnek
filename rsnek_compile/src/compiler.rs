@@ -292,7 +292,10 @@ impl<'a> Compiler<'a> {
             Id::Caret       => Instr(OpCode::BinaryXor, None),
             Id::LeftShift   => Instr(OpCode::BinaryLshift, None),
             Id::RightShift  => Instr(OpCode::BinaryRshift, None),
-            _ => panic!("{:?} is not a binary op", op)
+            _ =>  {
+                error!("{:?} is not a binary op, defaulting to no-op", op);
+                Instr(OpCode::Nop, None)
+            }
         };
 
         instructions.push(code);
