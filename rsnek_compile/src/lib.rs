@@ -29,6 +29,7 @@ mod traits;
 mod lexer;
 mod parser;
 mod ast;
+mod preprocessor;
 
 pub mod compiler;
 pub mod util;
