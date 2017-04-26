@@ -16,7 +16,7 @@ pub struct StrFn;
 
 impl StrFn {
     pub fn create() -> (&'static str, native::Function) {
-        info!("create builtin"; "function" => "str");
+        trace!("create builtin"; "function" => "str");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_str);
         ("str", native::Function::Wrapper(func))
     }
@@ -24,7 +24,7 @@ impl StrFn {
 
 
 fn rs_builtin_str(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-    info!("call builtin"; "native" => "str");
+    trace!("call builtin"; "native" => "str");
 
     match check_args(1, &pos_args) {
         Err(err) => return Err(err),

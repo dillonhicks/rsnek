@@ -16,7 +16,7 @@ pub struct LenFn;
 
 impl LenFn {
     pub fn create() -> (&'static str, native::Function) {
-        info!("create builtin"; "function" => "len");
+        trace!("create builtin"; "function" => "len");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_len);
         ("len", native::Function::Wrapper(func))
     }
@@ -24,7 +24,7 @@ impl LenFn {
 
 
 fn rs_builtin_len(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-    info!("call builtin"; "native" => "len");
+    trace!("call builtin"; "native" => "len");
 
     match check_args(1, &pos_args) {
         Err(err) => return Err(err),

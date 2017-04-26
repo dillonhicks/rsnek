@@ -60,10 +60,18 @@ pub enum Stmt {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expr {
+    Lambda {arguments: Vec<Expr>, body: Box<Expr>},
+    Conditional {condition: Box<Expr>, consequent: Box<Expr>, alternative: Box<Expr>},
     BinOp { op: Op, left: BoxedExpr, right: BoxedExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
     NameConstant(OwnedTk),
-    Constant(OwnedTk)
+    Constant(OwnedTk),
+    None
+}
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::None
+    }
 }
 
 

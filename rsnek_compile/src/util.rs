@@ -16,4 +16,10 @@ impl Display for Micros {
 
 
 /// For intra statement and expression space filtering
-tk_named!(pub consume_space_and_tab_tokens, drop_tokens!(&[Id::Space, Id::Tab]));
+tk_named!(pub filter_non_critical_python_whitespace, drop_tokens!(&[
+    Id::Space,
+    Id::Tab,
+    // A LineContinuation is a newline after a backslash
+    Id::LineContinuation,
+    Id::Comment
+]));

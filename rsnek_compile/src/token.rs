@@ -1,3 +1,4 @@
+use std::fmt::{self, Display, Formatter};
 use nom::FindToken;
 
 use serde::ser::{SerializeStruct,Serialize, Serializer};
@@ -5,15 +6,17 @@ use serde_bytes;
 
 use ::slice::TkSlice;
 
+pub const TAB_BYTES:     &'static [u8] = &[9];
+pub const NEWLINE_BYTES: &'static [u8] = &[10];
+pub const SPACE_BYTES:   &'static [u8] = &[32];
 
-const NEWLINE_BYTES: &'static [u8] = &[10];
-pub const TK_NEWLINE: Tk = Tk {id: Id::Newline, bytes: NEWLINE_BYTES, tag: Tag::W(Ws::Newline)};
-pub const TK_BLOCK_START: Tk = Tk{ id: Id::BlockStart, bytes: NEWLINE_BYTES, tag: Tag::None};
-pub const TK_BLOCK_END: Tk = Tk{ id: Id::BlockEnd, bytes: NEWLINE_BYTES, tag: Tag::None};
+pub const TK_TAB: Tk        = Tk::const_(Id::Tab,     TAB_BYTES,     Tag::W(Ws::Tab));
+pub const TK_NEWLINE: Tk    = Tk::const_(Id::Newline, NEWLINE_BYTES, Tag::W(Ws::Newline));
+pub const TK_SPACE: Tk      = Tk::const_(Id::Space,   SPACE_BYTES,   Tag::W(Ws::Space));
 
-pub const NEWLINE: &'static [Tk] = &[TK_NEWLINE];
-pub const BLOCK_START: &'static [Tk] = &[TK_BLOCK_START];
-pub const BLOCK_END: &'static [Tk] = &[TK_BLOCK_END];
+pub const TAB:      &'static [Tk]       = &[TK_TAB];
+pub const NEWLINE:  &'static [Tk]       = &[TK_NEWLINE];
+pub const SPACE:    &'static [Tk]       = &[TK_SPACE];
 
 
 /// Attempt to make an owned token to get out of lifetime hell. I found myself
@@ -87,7 +90,21 @@ pub struct Tk<'a> {
     tag: Tag
 }
 
+
 impl<'a> Tk<'a> {
+
+    /// Alternative constructor for const Tk definitions so there is not a need
+    /// to make the struct fields public just to declare a const Tk in another
+    /// module.
+    #[inline(always)]
+    pub const fn const_(id: Id, bytes: &'static[u8], tag: Tag) -> Tk {
+        Tk {
+            id: id,
+            bytes: bytes,
+            tag: tag
+        }
+    }
+
     pub fn bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
@@ -125,7 +142,6 @@ pub trait New<'a> {
 }
 
 
-
 impl<'a> New<'a> for Tk<'a> {
     fn new(id: Id, bytes: &'a [u8], tag: Tag) -> Self {
         Tk {
@@ -150,7 +166,6 @@ pub enum Tag {
     None,
     Ident,
 
-    // Number
     N(Num),
     S(Str),
     O(Op),
@@ -159,24 +174,7 @@ pub enum Tag {
     M(Sym),
     E(Error),
 
-    // Symbols
-    //  Note: The (Left|Right) angle brackets are used as LESS and GREATER
-    //  operators as well.
-
-    // ( [ { <
-    Paren(Dir),
-    Bracket(Dir),
-    Brace(Dir),
-    Angle(Dir),
-    Arrow(Dir),
-
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
-#[repr(usize)]
-pub enum Dir {
-    L,
-    R
+    Note(&'static str)
 }
 
 
@@ -331,8 +329,13 @@ pub enum Id {
     Symbol,
     ErrorMarker,
     Keyword,
+
+    // Artificially created by the preprocessors
     BlockStart,
     BlockEnd,
+    ExprStart,
+    ExprEnd,
+    LineContinuation,
 
     // Strings
     Comment,
@@ -447,5 +450,9 @@ pub enum Id {
 
 }
 
-
+impl Display for Id {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Id::{:?}", self)
+    }
+}
 
