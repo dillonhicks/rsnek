@@ -357,6 +357,7 @@ impl method::PositiveValue for Builtin {}
 impl method::InvertValue for Builtin {}
 impl method::Add for Builtin {
     fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        trace!("Builtin"; "action" => "call", "method" => "op_add");
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
 

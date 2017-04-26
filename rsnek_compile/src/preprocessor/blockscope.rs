@@ -1,12 +1,37 @@
 use nom::Slice;
+use slog;
+use slog_scope;
 
-use ::token::{Id, Tk, BLOCK_START, BLOCK_END, NEWLINE};
+use ::token::{NEWLINE_BYTES, NEWLINE, SPACE, Tk, Id, Tag};
 use ::slice::{TkSlice};
 use ::preprocessor::Preprocessor;
 
 
 /// Limit taken from CPython. They use a fixed size array to cap the indent stack.
-const INDENT_STACK_SIZE: usize = 100;
+const INDENT_STACK_SIZE : usize         = 100;
+
+const TK_BLOCK_START: Tk = Tk::const_(
+    Id::BlockStart,
+    NEWLINE_BYTES,
+    Tag::Note(BlockScopePreprocessor::NAME)
+);
+
+const TK_BLOCK_END: Tk = Tk::const_(
+    Id::BlockEnd,
+    NEWLINE_BYTES,
+    Tag::Note(BlockScopePreprocessor::NAME)
+);
+
+pub const TK_LINE_CONT: Tk  = Tk::const_(
+    Id::LineContinuation,
+    NEWLINE_BYTES,
+    Tag::Note(BlockScopePreprocessor::NAME)
+);
+
+
+const BLOCK_START: &'static [Tk] = &[TK_BLOCK_START];
+const BLOCK_END  : &'static [Tk] = &[TK_BLOCK_END];
+const LINE_CONT  : &'static [Tk] = &[TK_LINE_CONT];
 
 
 // TODO: {T91} move to rsnek_runtime::macros
@@ -35,13 +60,27 @@ macro_rules! strings_error_indent_overflow {
 /// Preprocessor to splice BlockStart and BlockEnd tokens based on indent deltas
 /// into the slice of tokens so we do not have to keep the state in the main parser
 /// logic.
-#[derive(Debug, Clone, Copy, Serialize, Default)]
-pub struct BlockScopePreprocessor;
+#[derive(Debug, Clone, Serialize)]
+pub struct BlockScopePreprocessor {
+    #[serde(skip_serializing)]
+    log: slog::Logger
+}
 
 
 impl BlockScopePreprocessor {
+    pub const NAME: &'static str = "BlockScopePreprocessor";
+
+    // TODO: {114} This is a prototype of using a Logger for this struct which is in accordance
+    // with best practices for slog, even though we are grabbing the root logger which is not.
+    // Consider this an experimentation of the worth of using slog.
     pub fn new() -> Self {
-        BlockScopePreprocessor {}
+        BlockScopePreprocessor {
+            log: slog_scope::logger().new(slog_o!())
+        }
+    }
+
+    pub fn name(&self) -> & str {
+        BlockScopePreprocessor::NAME
     }
 
     /// Determine the length of the first indent as the longest consecutive span of
@@ -98,7 +137,8 @@ impl BlockScopePreprocessor {
 
                 stack_idx += 1;
                 indent_stack[stack_idx] = curr + indent;
-                info!("IndentStack";
+                slog_trace!(self.log,
+                "BlockScopePreprocessor";
                 "action" => "emit",
                 "token" => "BlockStart",
                 "stack_idx" => stack_idx);
@@ -110,7 +150,8 @@ impl BlockScopePreprocessor {
                 'emit_block_end: while stack_idx != 0 {
                     stack_idx -= 1;
 
-                    info!("IndentStack";
+                    slog_trace!(self.log,
+                    "BlockScopePreprocessor";
                     "action" => "emit",
                     "token" => "BlockEnd",
                     "stack_idx" => stack_idx);
@@ -123,7 +164,6 @@ impl BlockScopePreprocessor {
             },
             // Indent is the same as the current indent, so no changes
             curr if span_len == curr => {
-                info!("IndentStack"; "action" => "noop", "stack_idx" => stack_idx);
                 acc.push(TkSlice(&NEWLINE));
             }
             // Over indenting
@@ -146,6 +186,10 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
         let indent = self.determine_indent(&tokens);
 
         if indent == 0 {
+            slog_trace!(self.log,
+                "BlockScopePreprocessor";
+                "action" => "skip",
+                "reason" => "indent==0");
             return Ok(tokens.tokens().to_owned().into_boxed_slice());
         }
 
@@ -184,6 +228,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     let span = tokens.slice(s..idx);
 
                     seen_non_ws = true;
+                    is_continuation = false;
                     start = None;
                     end = Some(idx);
 
@@ -216,21 +261,67 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     };
 
                 },
-                // Continuation start case.
+                // Continuation start case. It does not matter how many backslashes happen
+                // before the newline as long as the last backslash is immediately followed by
+                // a newline.
                 (_, Id::Backslash, _, _, _) => {
                     // TODO: {T92} Formalize preprocessing to allow for injection of expression start
                     // and end
                     // TODO: {T93} Handle backslash continuations... rewrite the
                     //   newline masked as a Id::Space??
                     is_continuation = true;
+                    match (start, end) {
+                        (Some(s), None) => {
+                            acc.push(tokens.slice(s..idx - 1));
+                            start = Some(idx);
+                        },
+                        (None, Some(e)) => {
+                            acc.push(tokens.slice(e..idx - 1));
+                            end = Some(idx);
+                        },
+
+                        error => {
+                            slog_error!(self.log,
+                                "BlockScopePreprocessor";
+                                "error" => "LineContinuation"
+                            );
+                            return Err(format!(
+                                "{} encountered unhandled case {:?}", self.name(), error))
+                        }
+                    }
+
+                    slog_trace!(self.log,
+                        "BlockScopePreprocessor";
+                        "action" => "rewrite",
+                        "Id::Backslash" => format!("{}", Id::Space),
+                        "stack_idx" => stack_idx
+                    );
+
+                    acc.push(TkSlice(&SPACE));
+                    start = Some(idx);
                 },
-                // TODO: {T92} Formalize preprocessing to allow for injection of expression start
-                // and end
-                // Newline after a Backslash Continuation, toggle the continuation to
-                // false but keep seen_non_ws == true.
-                (_, Id::Newline, true, _, _) => {
-                    is_continuation = false;
+                // Continuation start case.
+                (Id::Backslash, Id::Newline, true, _, Some(s)) => {
+                    acc.push(tokens.slice(s..idx - 1));
+
+                    slog_trace!(
+                        self.log,
+                        "BlockScopePreprocessor";
+                        "action" => "emit",
+                        "token" => "LineContinuation",
+                        "stack_idx" => stack_idx
+                    );
+
+                    acc.push(TkSlice(&LINE_CONT));
+                    start = Some(idx + 1);
                 },
+//                // TODO: {T92} Formalize preprocessing to allow for injection of expression start
+//                // and end
+//                // Newline after a Backslash Continuation, toggle the continuation to
+//                // false but keep seen_non_ws == true.
+//                (_, Id::Newline, true, _, _) => {
+//                    is_continuation = false;
+//                },
                 // Normal newline
                 (_, Id::Newline, false, _, _) => {
                     seen_non_ws = false;

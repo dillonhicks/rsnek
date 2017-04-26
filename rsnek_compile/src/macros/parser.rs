@@ -48,8 +48,8 @@ macro_rules! drop_tokens (
 macro_rules! ignore_spaces (
   ($i:expr, $($args:tt)*) => (
     {
-      use $crate::util::consume_space_and_tab_tokens;
-      sep!($i, consume_space_and_tab_tokens, $($args)*)
+      use $crate::util::filter_non_critical_python_whitespace;
+      sep!($i, filter_non_critical_python_whitespace, $($args)*)
     }
   )
 );

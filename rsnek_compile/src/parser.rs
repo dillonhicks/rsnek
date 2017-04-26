@@ -25,6 +25,7 @@ pub struct ParsedAst{
     pub remaining_tokens: Vec<OwnedTk>,
 }
 
+
 impl ParsedAst {
     pub fn new<'a>(ast: Option<&Ast>,
                    remaining: Option<TkSlice<'a>>,
@@ -47,7 +48,6 @@ impl ParsedAst {
 }
 
 
-
 #[derive(Debug, Copy, Clone, Serialize, Default)]
 struct ParserState<'a> {
     line: usize,
@@ -55,7 +55,6 @@ struct ParserState<'a> {
     indent: usize,
     unused: Option<TkSlice<'a>>
 }
-
 
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -91,8 +90,10 @@ impl<'a> Parser<'a> {
             }
         };
 
-        // Dereference the box to remove the indirection and get the real
-        // address to the slice instead of the address to the box.
+        // The (&(*(val))) pattern is to dereference the box to remove the indirection and
+        // get the real address to the slice instead of the address to the box.
+        //  *(box -> value) => value
+        //  &(value) => ptr value
         let slice = TkSlice(&(*bspp_tokens));
         let result = self.tkslice_to_ast(slice).1;
 
@@ -388,7 +389,7 @@ mod internal {
     // Specific constant and ast defined type tokens
     tk_named!(pub name_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
     tk_named!(pub number_token      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
-    
+
     // Braces and Symbols
     tk_named!(pub lparen_token      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftParen])));
     tk_named!(pub rparen_token      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightParen])));
@@ -538,83 +539,6 @@ mod tests {
         }
     }
 
-
-    #[test]
-    fn ast_multiple_stmts() {
-        let input =
-            r#"
-f **= 14
-g = 0x00123
-fun = beer + jetski
-"#;
-        assert_parsable(input);
-    }
-
-    #[test]
-    fn ast_expr_binop_simple() {
-        assert_parsable("y + 1");
-        assert_parsable("1 + 1");
-        assert_parsable(r#" "string" * 0o472 "#);
-        // FIXME: Failing, lack of proper parse stacking or folding
-        // assert_parsable("y + 1 + 4");
-    }
-
-
-    #[test]
-    fn determine_indent() {
-        let input = r#"
-def things():
-    if thing:
-        thing2
-        thing3
-    pass
-
-
-def morethings():
-    pass
-
-print("hello world")
-"#;
-        let mut parser = Parser::new();
-        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
-        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-        match b {
-            &IResult::Done(_, ref tokens) => {
-                parser.parse_tokens(tokens);
-            },
-            _ => unreachable!()
-        }
-    }
-
-    #[test]
-    fn funcs_and_blocks() {
-        let input = r#"
-def hello():
-    x = 1
-    def potato():
-        y = 2
-        return "yup, a potato alright"
-    return potato
-
-"#;
-        let mut parser = Parser::new();
-        let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
-        let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-
-        match b {
-            &IResult::Done(_, ref tokens) => {
-                match parser.parse_tokens(tokens) {
-                    ParserResult::Ok(parsed) => {
-                        println!("{}", fmt::json(&parsed.ast));
-                    },
-                    result => println!("{}", fmt::json(&result))
-                }
-            },
-            _ => unreachable!()
-        }
-    }
-
     // Stmt::Assign(Expr::Constant)
     basic_test!(stmt_assign_int,         "x = 134567");
     basic_test!(stmt_assign_hex,         "x = 0xabdef");
@@ -673,4 +597,23 @@ def hello():
     basic_test!(expr_call_nargs,            r#"sum_all(1,2,3,3,4,5,6,7,8,'9')"#);
     basic_test!(expr_call_nested,           r#"int(str(sum(slice(list(range(1, 100)), 43))))"#);
 
+    basic_test!(ast_multiple_stmts, r#"
+f **= 14
+g = 0x00123
+fun = beer + jetski
+"#);
+
+    basic_test!(stmt_block_nested_func_defs, r#"
+def hello():
+    x = 1
+    def potato():
+        y = 2
+        return "yup, a potato alright"
+    return potato
+"#);
+
+    basic_test!(stmt_expr_line_cont, r#"
+x = 1 + \
+    2
+"#);
 }
