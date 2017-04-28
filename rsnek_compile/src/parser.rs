@@ -1,5 +1,6 @@
+
 use nom;
-use nom::{IResult};
+use nom::{IResult, InputLength, Slice, FindSubstring, ErrorKind};
 
 use ::token::{Id, Tk, OwnedTk};
 use ::slice::{TkSlice};
@@ -248,6 +249,7 @@ impl<'a> Parser<'a> {
     ));
 
 
+
     /// START(expr)
     tk_method!(start_expr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         expression: alt_complete!(
@@ -325,7 +327,6 @@ impl<'a> Parser<'a> {
     ///   1. Only supports positional arguments. (no *args, or **kwargs).
     ///   2.
     tk_method!(sub_expr_func_args, 'b, <Parser<'a>, Vec<Expr>>, mut self, do_parse!(
-
         opt_arg_names: opt!(pair!(
                             name_token,
                             many0!(preceded!(
@@ -376,6 +377,99 @@ impl<'a> Parser<'a> {
         })
     ));
 
+
+    /// START(expr) -alt
+    tk_method!(pub start_expr_alt, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        expression: alt_complete!(
+            call_m!(self.sub_expr_lambda)               |
+            call_m!(self.sub_expr_conditional)          |
+            call_m!(self.sub_expr_call)                 |
+            call_m!(self.sub_expr_nameconstant)         |
+            call_m!(self.sub_expr_constant)             ) >>
+        (expression)
+    ));
+
+    tk_method!(sub_expr_lambda, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+              lambda_keyword                       >>
+        args: call_m!(self.sub_expr_func_args)     >>
+              colon_token                          >>
+        body: call_m!(self.start_expr_alt)         >>
+        (Expr::Lambda {
+            arguments: args,
+            body: Box::new(body)
+        })
+    ));
+
+
+    tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr, Any>, mut self, do_parse!(
+        cons: many1!(not!(if_keyword))           >>
+              if_keyword                        >>
+        cond: many1!(not!(else_keyword))        >>
+              else_keyword                      >>
+         alt: call_m!(self.start_expr_alt)      >>
+        expr: call!(new_conditional, cons, cond, alt)  >>
+       ({
+           expr
+        })
+    ));
+
+
+//    tk_method!(collapse_vec, 'b, )
+//
+//    fn make_conditional<'b>(&self, cons: Vec<TkSlice<'b>>, cond: Vec<TkSlice<'b>>, alt: Expr) -> Option<Expr> {
+//        let cons: Vec<Tk<'b>> = cons.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
+//        let consequent = match self.start_expr_alt(TkSlice(&cons)) {
+//            (_, IResult::Done(ref remaining, ref expr)) => {
+//                expr.clone()
+//            },
+//            other => return None
+//        };
+//
+//        let cond: Vec<Tk<'b>> = cond.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
+//        let conditional = match self.start_expr_alt(TkSlice(&cond)) {
+//            (_, IResult::Done(ref remaining, ref expr)) => {
+//                expr.clone()
+//            },
+//            other => return None
+//        };
+//
+//        Expr::Conditional {
+//            consequent: Box::new(consequent),
+//            condition: Box::new(conditional),
+//            alternative: Box::new(alt)
+//        }
+//    }
+
+
+}
+
+fn new_conditional<'b>(i: TkSlice<'b>, cons: Vec<TkSlice<'b>>, cond: Vec<TkSlice<'b>>, alt: Expr) -> IResult<TkSlice<'b>, Expr, u32> {
+    let cons: Vec<Tk<'b>> = cons.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
+    let subparser = Parser::new();
+
+    let consequent = match subparser.start_expr_alt(TkSlice(&cons)) {
+        (_, IResult::Done(ref remaining, ref expr)) => {
+            expr.clone()
+        },
+        other => return other.1
+    };
+
+    let cond: Vec<Tk<'b>> = cond.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
+    let conditional = match subparser.start_expr_alt(TkSlice(&cond)) {
+        (_, IResult::Done(ref remaining, ref expr)) => {
+            expr.clone()
+        },
+        other => return other.1
+    };
+
+    let o: Expr = Expr::Conditional {
+        consequent: Box::new(consequent),
+        condition: Box::new(conditional),
+        alternative: Box::new(alt)
+    };
+
+    let f: IResult<TkSlice<'b>, Expr, u32> = IResult::Done(i, o);
+    f
 }
 
 ///
@@ -410,6 +504,7 @@ mod internal {
     tk_named!(pub if_keyword        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::If])));
     tk_named!(pub else_keyword      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Else])));
     tk_named!(pub elif_keyword      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Elif])));
+    tk_named!(pub lambda_keyword    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Lambda])));
     tk_named!(pub return_keyword    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Return])));
 
     // Special Whitespace
