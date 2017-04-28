@@ -114,7 +114,9 @@ named!(string <Tk>, do_parse!(
 
 
 named!(sublex_comment_string <Tk>, do_parse!(
-    bytes: recognize!(preceded!(tag!(b"#"), is_not!("\n"))) >>
+    bytes: alt_complete!(
+        recognize!(preceded!(tag!(b"#"), is_not!("\n"))) |
+        tag!(b"#")                                       )>>
     (Tk::new(Id::Comment, bytes, Tag::None))
 ));
 
