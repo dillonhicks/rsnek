@@ -1,6 +1,6 @@
-
+use std;
 use nom;
-use nom::{IResult, InputLength, Slice, FindSubstring, ErrorKind};
+use nom::{IResult, InputLength, Slice, FindSubstring, ErrorKind, Needed, Err};
 
 use ::token::{Id, Tk, OwnedTk};
 use ::slice::{TkSlice};
@@ -61,6 +61,17 @@ struct ParserState<'a> {
 #[derive(Debug, Copy, Clone, Serialize)]
 pub struct Parser<'a> {
     state: ParserState<'a>,
+}
+
+#[repr(u32)]
+enum ParserError {
+    ConditionalExpr = 1024
+}
+
+impl ParserError {
+    pub const fn code<'a>(self) -> Err<TkSlice<'a>, u32> {
+        Err::Code(ErrorKind::Custom(self as u32))
+    }
 }
 
 
@@ -250,8 +261,20 @@ impl<'a> Parser<'a> {
 
 
 
+    /// START(expr) -alt
+    tk_method!(pub start_expr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        expression: alt_complete!(
+            call_m!(self.sub_expr_lambda)               |
+            call_m!(self.sub_expr_conditional)          |
+            call_m!(self.sub_expr_binop)                |
+            call_m!(self.sub_expr_call)                 |
+            call_m!(self.sub_expr_nameconstant)         |
+            call_m!(self.sub_expr_constant)             ) >>
+        (expression)
+    ));
+
     /// START(expr)
-    tk_method!(start_expr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+    tk_method!(start_expr_old, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         expression: alt_complete!(
             call_m!(self.sub_expr_binop)                |
             call_m!(self.sub_expr_call)                 |
@@ -378,22 +401,11 @@ impl<'a> Parser<'a> {
     ));
 
 
-    /// START(expr) -alt
-    tk_method!(pub start_expr_alt, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        expression: alt_complete!(
-            call_m!(self.sub_expr_lambda)               |
-            call_m!(self.sub_expr_conditional)          |
-            call_m!(self.sub_expr_call)                 |
-            call_m!(self.sub_expr_nameconstant)         |
-            call_m!(self.sub_expr_constant)             ) >>
-        (expression)
-    ));
-
     tk_method!(sub_expr_lambda, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
               lambda_keyword                       >>
         args: call_m!(self.sub_expr_func_args)     >>
               colon_token                          >>
-        body: call_m!(self.start_expr_alt)         >>
+        body: call_m!(self.start_expr)             >>
         (Expr::Lambda {
             arguments: args,
             body: Box::new(body)
@@ -401,76 +413,68 @@ impl<'a> Parser<'a> {
     ));
 
 
-    tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr, Any>, mut self, do_parse!(
-        cons: many1!(not!(if_keyword))           >>
-              if_keyword                        >>
-        cond: many1!(not!(else_keyword))        >>
-              else_keyword                      >>
-         alt: call_m!(self.start_expr_alt)      >>
-        expr: call!(new_conditional, cons, cond, alt)  >>
-       ({
-           expr
-        })
+    tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        cons: many1!(not_if_keyword)                           >>
+              if_keyword                                       >>
+        cond: many1!(not_else_keyword)                         >>
+              else_keyword                                     >>
+         alt: call_m!(self.start_expr)                         >>
+        expr: call_m!(self.build_conditional, cons, cond, alt) >>
+       (expr)
     ));
 
 
-//    tk_method!(collapse_vec, 'b, )
-//
-//    fn make_conditional<'b>(&self, cons: Vec<TkSlice<'b>>, cond: Vec<TkSlice<'b>>, alt: Expr) -> Option<Expr> {
-//        let cons: Vec<Tk<'b>> = cons.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
-//        let consequent = match self.start_expr_alt(TkSlice(&cons)) {
-//            (_, IResult::Done(ref remaining, ref expr)) => {
-//                expr.clone()
-//            },
-//            other => return None
-//        };
-//
-//        let cond: Vec<Tk<'b>> = cond.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
-//        let conditional = match self.start_expr_alt(TkSlice(&cond)) {
-//            (_, IResult::Done(ref remaining, ref expr)) => {
-//                expr.clone()
-//            },
-//            other => return None
-//        };
-//
-//        Expr::Conditional {
-//            consequent: Box::new(consequent),
-//            condition: Box::new(conditional),
-//            alternative: Box::new(alt)
-//        }
-//    }
+    /// Offloads the work to parse the conditional subexpressions found in `sub_expr_conditional`.
+    /// This could probably be done in that function however, there were issues with
+    /// proper error type inference. In the future, a brave soul may wish to try to
+    /// add a map!(..., ...) onto the subexpression matchers for purity.
+    fn build_conditional<'b>(mut self, i: TkSlice<'b>,
+                             cons: Vec<TkSlice<'b>>,
+                             cond: Vec<TkSlice<'b>>,
+                             alt: Expr
+    ) -> (Parser<'a>, IResult<TkSlice<'b>, Expr>) {
 
+        // Join the tokens in all tokens slices into a single TkSlice
+        // and then try to parse that as an expression
+        let cons: Vec<Tk<'b>> = cons.iter()
+            .flat_map(TkSlice::iter)
+            .map(|tk| *tk)
+            .collect::<Vec<Tk<'b>>>();
+
+        let consequent = match self.start_expr(TkSlice(&cons)) {
+            (_, IResult::Done(ref remaining, ref expr)) => {
+                expr.clone()
+            },
+            other => return (self, IResult::Error(ParserError::ConditionalExpr.code()))
+        };
+
+        // Join the tokens in all tokens slices into a single TkSlice
+        // and then try to parse that as an expression
+        let cond: Vec<Tk<'b>> = cond.iter()
+            .flat_map(TkSlice::iter)
+            .map(|tk| *tk)
+            .collect::<Vec<Tk<'b>>>();
+
+        let conditional = match self.start_expr(TkSlice(&cond)) {
+            (_, IResult::Done(ref remaining, ref expr)) => {
+                expr.clone()
+            },
+            other => return (self, IResult::Error(ParserError::ConditionalExpr.code()))
+        };
+
+        let o = Expr::Conditional {
+            consequent: Box::new(consequent),
+            condition: Box::new(conditional),
+            alternative: Box::new(alt)
+        };
+
+
+        let f: IResult<TkSlice<'b>, Expr> = IResult::Done(i, o);
+        (self, f)
+    }
 
 }
 
-fn new_conditional<'b>(i: TkSlice<'b>, cons: Vec<TkSlice<'b>>, cond: Vec<TkSlice<'b>>, alt: Expr) -> IResult<TkSlice<'b>, Expr, u32> {
-    let cons: Vec<Tk<'b>> = cons.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
-    let subparser = Parser::new();
-
-    let consequent = match subparser.start_expr_alt(TkSlice(&cons)) {
-        (_, IResult::Done(ref remaining, ref expr)) => {
-            expr.clone()
-        },
-        other => return other.1
-    };
-
-    let cond: Vec<Tk<'b>> = cond.iter().flat_map(|ts| ts.iter()).map(Tk::clone).collect::<Vec<Tk<'b>>>();
-    let conditional = match subparser.start_expr_alt(TkSlice(&cond)) {
-        (_, IResult::Done(ref remaining, ref expr)) => {
-            expr.clone()
-        },
-        other => return other.1
-    };
-
-    let o: Expr = Expr::Conditional {
-        consequent: Box::new(consequent),
-        condition: Box::new(conditional),
-        alternative: Box::new(alt)
-    };
-
-    let f: IResult<TkSlice<'b>, Expr, u32> = IResult::Done(i, o);
-    f
-}
 
 ///
 #[allow(unused_mut, dead_code, unused_imports)]
@@ -513,6 +517,31 @@ mod internal {
     // Artificial Tokens
     tk_named!(pub block_start       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockStart])));
     tk_named!(pub block_end         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockEnd])));
+
+
+    // Flattened definitions to make the type inference happy to prevent this case:
+    //
+    // error[E0282]: type annotations needed
+    //     --> src/parser.rs:404:5
+    //     |
+    //     404 |  tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+    //     |   _____^
+    //     |  |_____|
+    //     | ||
+    // 405 | ||         cons: many1!(not!(if_keyword))      >>
+    // 406 | ||               if_keyword                    >>
+    // 407 | ||         cond: many1!(not!(else_keyword))    >>
+    // ...   ||
+    // 413 | ||        (expr)
+    // 414 | ||     ));
+    //     | ||       ^
+    //     | ||_______|
+    //     |  |_______in this macro invocation
+    //     |          cannot infer type for `E`
+    //     |
+    //     = note: this error originates in a macro outside of the current crate
+    tk_named!(pub not_if_keyword    <TkSlice<'a>>, tk_is_none_of!(&[Id::If]));
+    tk_named!(pub not_else_keyword  <TkSlice<'a>>, tk_is_none_of!(&[Id::Else]));
 
 
     /// Binary Operators: `a + b`, `a | b`, etc.
@@ -577,6 +606,48 @@ mod internal {
         )
     ));
 
+
+    #[cft(test)]
+    mod tests {
+        use std::borrow::Borrow;
+        use std::rc::Rc;
+
+        use nom::IResult;
+
+        use ::token::Tk;
+        use ::Parser;
+        use ::lexer::Lexer;
+        use ::fmt;
+        use super::*;
+
+        #[test]
+        fn assert_parsable() {
+            let input = "something 1 2 3 if ";
+            let mut parser = Parser::new();
+            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
+            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
+
+            let result = match b {
+                &IResult::Done(_, ref tokens) => {
+                    println!("input: {}", input);
+                    println!("{}", fmt::tokens(tokens, true));
+                    not_if_keyword(TkSlice(&tokens))
+                },
+                _ => unreachable!()
+            };
+
+
+            match result {
+                IResult::Done(ref out, ref tokens) => {
+                    println!("unparsed:\n{:?}", out);
+                    println!("parsed:\n{:?}", tokens);
+                },
+                _ => panic!()
+            };
+        }
+
+
+    }
 }
 
 
@@ -711,4 +782,12 @@ def hello():
 x = 1 + \
     2
 "#);
+
+
+    basic_test!(expr_lambda_01, r#"lambda: 1"#);
+    basic_test!(expr_lambda_02, r#"lambda x: 'hello'"#);
+    basic_test!(expr_lambda_03, r#"lambda: lambda: 1 if a else 2 if b else lambda: 3 if c else 4"#);
+
+    basic_test!(expr_conditional_01, r#"1 if x else 2"#);
+
 }

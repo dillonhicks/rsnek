@@ -77,3 +77,29 @@ macro_rules! tk_is_one_of (
         }
     );
 );
+
+
+/// Matches one of the provided tokens.
+/// Generalized form of nom's `none_of!` macro. which just takes the .as_char() off
+/// of the Some(true) case
+#[macro_export]
+macro_rules! tk_is_none_of (
+  ($i:expr, $inp: expr) => (
+    {
+      use nom::Slice;
+      use nom::AsChar;
+      use nom::FindToken;
+      use nom::InputIter;
+      use $crate::slice::TkSlice;
+
+      match ($i).iter_elements().next().map(|c| {
+        !c.find_token($inp)
+      }) {
+        None        => nom::IResult::Incomplete::<_, _>(nom::Needed::Size(1)),
+        Some(false) => nom::IResult::Error(error_position!(nom::ErrorKind::NoneOf, $i)),
+        //the unwrap should be safe here
+        Some(true)  => nom::IResult::Done($i.slice(1..), $i.slice(..1))
+      }
+    }
+  );
+);

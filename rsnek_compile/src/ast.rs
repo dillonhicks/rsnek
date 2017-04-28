@@ -65,7 +65,13 @@ pub enum Expr {
     BinOp { op: Op, left: BoxedExpr, right: BoxedExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
     NameConstant(OwnedTk),
-    Constant(OwnedTk)
+    Constant(OwnedTk),
+    None
+}
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::None
+    }
 }
 
 
