@@ -4,7 +4,7 @@ use std::ops::{Range, RangeTo, RangeFrom, RangeFull};
 use std::iter::{Enumerate, Iterator};
 use std::cmp::Ordering;
 
-use nom::{Compare, AsChar, CompareResult, InputLength, InputIter, Slice, FindToken};
+use nom::{Compare, AsChar, CompareResult, InputLength, InputIter, Slice, FindToken, FindSubstring};
 
 
 use ::token::{Tk, Id, OwnedTk};

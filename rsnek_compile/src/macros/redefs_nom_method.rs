@@ -118,4 +118,18 @@ macro_rules! tk_method (
         ($self_, result)
       }
   );
+ ($name:ident, 'b, <$a:ty,$o:ty,$e:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
+      #[allow(unused_variables, unused_imports)]
+      fn $name<'b>( mut $self_: $a, i: TkSlice<'b> ) -> ($a, nom::IResult<TkSlice<'b>, $o, $e>) {
+        let result = $submac!(i, $($args)*);
+        ($self_, result)
+      }
+  );
+  (pub $name:ident, 'b, <$a:ty,$o:ty>, mut $self_:ident, $submac:ident!( $($args:tt)* )) => (
+      #[allow(unused_variables, unused_imports)]
+      pub fn $name<'b>( mut $self_: $a, i: TkSlice<'b> ) -> ($a, nom::IResult<TkSlice<'b>, $o, u32>) {
+        let result = $submac!(i, $($args)*);
+        ($self_, result)
+      }
+  )
 );
