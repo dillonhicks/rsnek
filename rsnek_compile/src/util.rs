@@ -19,6 +19,7 @@ impl Display for Micros {
 tk_named!(pub filter_non_critical_python_whitespace, drop_tokens!(&[
     Id::Space,
     Id::Tab,
+    // A LineContinuation is a newline after a backslash
     Id::LineContinuation,
     Id::Comment
 ]));

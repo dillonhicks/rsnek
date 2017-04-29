@@ -21,10 +21,13 @@ pub enum ParserResult {
 #[derive(Debug, Clone, Serialize)]
 pub struct ParsedAst{
     pub ast: Ast,
+
     #[serde(skip_serializing)]
     pub p1_tokens: Vec<OwnedTk>,
+
     #[serde(skip_serializing)]
     pub p2_tokens: Vec<OwnedTk>,
+
     pub remaining_tokens: Vec<OwnedTk>,
 }
 
@@ -60,11 +63,6 @@ struct ParserState<'a> {
 }
 
 
-#[derive(Debug, Copy, Clone, Serialize)]
-pub struct Parser<'a> {
-    state: ParserState<'a>,
-}
-
 #[repr(u32)]
 enum ParserError {
     SubExpr = 1024,
@@ -75,6 +73,14 @@ impl ParserError {
     pub const fn code<'a>(self) -> Err<TkSlice<'a>, u32> {
         Err::Code(ErrorKind::Custom(self as u32))
     }
+}
+
+
+/// Create a Python AST from slice of Tokens created from the `lexer::Lexer`.
+///
+#[derive(Debug, Copy, Clone, Serialize)]
+pub struct Parser<'a> {
+    state: ParserState<'a>,
 }
 
 
@@ -90,15 +96,12 @@ impl<'a> Parser<'a> {
     /// tokens, turn those into a TkSlice, and parse that into an AST.
     pub fn parse_tokens<'b, 'c>(&mut self, tokens: &'b [Tk<'b>]) -> ParserResult {
 
-        // Get the iterator for each phase of tokens. Wait until calling ParsedAst::new
-        // to collapse them so we do not need .clone() everywhere.
-
         let bspp = BlockScopePreprocessor::new();
         let bspp_tokens: Box<[Tk<'b>]> = match bspp.transform(TkSlice(tokens)) {
             Ok(boxed_tks) => boxed_tks,
             Err(err) => {
-                warn!("Had to eat error due to return type";
-                "Error" => format!("{}", err));
+                warn!("Had to eat error due to unspecific return type";
+                    "Error" => format!("{}", err));
 
                 return ParserResult::Error(
                     ParsedAst::new(None, None, TkSlice(tokens), &[]));
@@ -120,6 +123,7 @@ impl<'a> Parser<'a> {
             IResult::Done(ref remaining, ref ast) if remaining.len() == 0 => {
                 ParserResult::Ok(ParsedAst::new(Some(ast), None, p1_tokens, p2_tokens))
             },
+
             // Still an error case since there are remaining tokens
             IResult::Done(ref remaining, ref ast) => {
                 ParserResult::Error(ParsedAst::new(
@@ -143,7 +147,7 @@ impl<'a> Parser<'a> {
         self.state.line += 1;
     }
 
-    // AST Parser-Builders - they map approximately 1:1 with Grammar.txt exceptions
+    // AST Parser-Builders - they map approximately with Grammar.txt exceptions
     // and extensions are noted.
     //
 
@@ -156,22 +160,24 @@ impl<'a> Parser<'a> {
         (ast)
     ));
 
+    /// START(mod)
     tk_method!(module_start, 'b, <Parser<'a>, Module>, mut self, do_parse!(
-        body: many0!(call_m!(self.stmt_start)) >>
+        body: many0!(call_m!(self.stmt_start))                  >>
 
         (Module::Body(body))
     ));
 
+
     /// START(stmt)
     tk_method!(stmt_start, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         statement: ignore_spaces!(alt!(
-            call_m!(self.sub_stmt_funcdef)              |
-            call_m!(self.sub_stmt_block)                |
-            call_m!(self.sub_stmt_return)               |
-            call_m!(self.sub_stmt_assign)               |
-            call_m!(self.sub_stmt_augassign)            |
-            call_m!(self.sub_stmt_expr)                 |
-            call_m!(self.sub_stmt_next_line)            )) >>
+            call_m!(self.sub_stmt_funcdef)                      |
+            call_m!(self.sub_stmt_block)                        |
+            call_m!(self.sub_stmt_return)                       |
+            call_m!(self.sub_stmt_assign)                       |
+            call_m!(self.sub_stmt_augassign)                    |
+            call_m!(self.sub_stmt_expr)                         |
+            call_m!(self.sub_stmt_next_line)                    )) >>
 
         (statement)
     ));
@@ -180,13 +186,13 @@ impl<'a> Parser<'a> {
     ///
     /// Functions are just some fancy window dressing on blocks
     tk_method!(sub_stmt_funcdef, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-                   def_keyword                          >>
-        func_name: name_token                           >>
-                   lparen_token                         >>
-            args:  call_m!(self.sub_expr_func_args)     >>
-                   rparen_token                         >>
-                   colon_token                          >>
-       body_block: call_m!(self.sub_stmt_block)         >>
+                   def_keyword                                  >>
+        func_name: name_token                                   >>
+                   lparen_token                                 >>
+            args:  call_m!(self.sub_expr_func_args)             >>
+                   rparen_token                                 >>
+                   colon_token                                  >>
+       body_block: call_m!(self.sub_stmt_block)                 >>
 
           (Stmt::FunctionDef {
                 fntype: FnType::Sync ,
@@ -204,17 +210,17 @@ impl<'a> Parser<'a> {
     /// to handle calling functions. CPython's frame type has its own block stack
     /// for managing blocks even.
     tk_method!(sub_stmt_block, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-               block_start                              >>
-        stmts: many0!(call_m!(self.stmt_start))         >>
-               block_end                                >>
+               block_start                                      >>
+        stmts: many0!(call_m!(self.stmt_start))                 >>
+               block_end                                        >>
 
         (Stmt::Block(stmts))
     ));
 
     /// 4.   | Return(expr? value)
     tk_method!(sub_stmt_return, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-        return_keyword                                  >>
-        value: opt!(call_m!(self.start_expr))           >>
+        return_keyword                                          >>
+        value: opt!(call_m!(self.start_expr))                   >>
 
         (Stmt::Return(value))
     ));
@@ -222,9 +228,9 @@ impl<'a> Parser<'a> {
     /// 5.   | Assign(expr* targets, expr value)
     tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
          // TODO: {T95} Enabled parser to handle nested expressions
-        target: name_token                              >>
-                assign_token                            >>
-         value: call_m!(self.start_expr)                >>
+        target: name_token                                      >>
+                assign_token                                    >>
+         value: call_m!(self.start_expr)                        >>
 
         (Stmt::Assign {
             target: Expr::Constant(target.as_owned_token()),
@@ -235,9 +241,9 @@ impl<'a> Parser<'a> {
     /// 6.   | AugAssign(expr target, operator op, expr value)
     tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         // TODO: {T95} Enabled parser to handle nested expressions
-        target: name_token                              >>
-            op: augassign_token                         >>
-        value: call_m!(self.start_expr)                 >>
+        target: name_token                                      >>
+            op: augassign_token                                 >>
+        value: call_m!(self.start_expr)                         >>
 
         (Stmt::AugAssign {
             op: Op(op.as_owned_token()),
@@ -248,7 +254,7 @@ impl<'a> Parser<'a> {
 
     /// 20.   | Expr(expr value)
     tk_method!(sub_stmt_expr, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-        expression: call_m!(self.start_expr)            >>
+        expression: call_m!(self.start_expr)                    >>
 
         (Stmt::Expr(expression))
     ));
@@ -257,56 +263,59 @@ impl<'a> Parser<'a> {
     /// 22.   └ attributes (int lineno, int col_offset)
     /// Inject a empty statement for the next line
     tk_method!(sub_stmt_next_line, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-        newline_token                                   >>
+        newline_token                                           >>
 
         ({self.inc_lineno(); Stmt::Newline})
     ));
 
 
 
-    /// START(expr) -alt
+    /// START(expr)
     tk_method!(pub start_expr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         expression: alt_complete!(
-            call_m!(self.sub_expr_lambda)               |
-            call_m!(self.sub_expr_conditional)          |
-            call_m!(self.sub_expr_binop)                |
-            call_m!(self.sub_expr_call)                 |
-            call_m!(self.sub_expr_nameconstant)         |
-            call_m!(self.sub_expr_constant)             ) >>
+            call_m!(self.sub_expr_lambda)                       |
+            call_m!(self.sub_expr_conditional)                  |
+            call_m!(self.sub_expr_operator)                     |
+            call_m!(self.sub_expr_call)                         |
+            call_m!(self.sub_expr_nameconstant)                 |
+            call_m!(self.sub_expr_constant)                     ) >>
         (expression)
     ));
 
-    /// START(expr)
-    tk_method!(start_expr_old, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        expression: alt_complete!(
-            call_m!(self.sub_expr_binop)                |
-            call_m!(self.sub_expr_call)                 |
-            call_m!(self.sub_expr_nameconstant)         |
-            call_m!(self.sub_expr_constant)             ) >>
+    /// 4.   | Lambda(arguments args, expr body)
+    tk_method!(sub_expr_lambda, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+              lambda_keyword                                    >>
+        args: call_m!(self.sub_expr_func_args)                  >>
+              colon_token                                       >>
+        body: call_m!(self.start_expr)                          >>
 
-        (expression)
+        (Expr::Lambda {
+            arguments: args,
+            body: Box::new(body)
+        })
     ));
 
-
-    /// 1.   =  BoolOp(boolop op, expr* values)
-    /// 2.   | BinOp(expr left, operator op, expr right)
-    tk_method!(sub_expr_binop_old, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        // TODO: {T95} Enabled parser to handle nested expressions
-        lhs: many1!(not_binop_token)                    >>
-         op: binop_token                                >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
+    /// 5.   | IfExp(expr test, expr body, expr orelse)
+    ///
+    ///  `true_case if test else false_case`
+    tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        cons: many1!(not_if_keyword)                            >>
+              if_keyword                                        >>
+        cond: many1!(not_else_keyword)                          >>
+              else_keyword                                      >>
+         alt: call_m!(self.start_expr)                          >>
+        expr: call_m!(self.build_conditional, cons, cond, alt)  >>
+       (expr)
     ));
+
 
     /// 16.  | Call(expr func, expr* args, keyword* keywords)
     tk_method!(sub_expr_call, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         // TODO: {T95} Enabled parser to handle nested expressions
-        func_name: name_token                           >>
-                   lparen_token                         >>
-             args: call_m!(self.sub_expr_call_args)     >>
-                   rparen_token                         >>
+        func_name: name_token                                   >>
+                   lparen_token                                 >>
+             args: call_m!(self.sub_expr_call_args)             >>
+                   rparen_token                                 >>
 
         (Expr::Call {
             func: func_name.as_owned_token(),
@@ -315,19 +324,212 @@ impl<'a> Parser<'a> {
          })
     ));
 
+    /// 1.   = BoolOp(boolop op, expr* values)
+    /// 2.   | BinOp(expr left, operator op, expr right)
+    /// 3.   | UnaryOp(unaryop op, expr operand)
+    ///
+    ///  Uses the order of the explicit rules to do a variation on
+    ///  using a greedily consuming recursive decent with backtracking.
+    ///  Note that this implementation considers boolop to be a binary op.
+    tk_method!(sub_expr_operator, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        expression: alt_complete!(
+          call_m!(self.sub_expr_boolop_logic_or)                |
+          call_m!(self.sub_expr_boolop_logic_and)               |
+          call_m!(self.sub_expr_binop_or)                       |
+          call_m!(self.sub_expr_binop_xor)                      |
+          call_m!(self.sub_expr_binop_and)                      |
+          call_m!(self.sub_expr_binop_lshift)                   |
+          call_m!(self.sub_expr_binop_rshift)                   |
+          call_m!(self.sub_expr_binop_add)                      |
+          call_m!(self.sub_expr_binop_sub)                      |
+          call_m!(self.sub_expr_binop_mul)                      |
+          call_m!(self.sub_expr_binop_matmul)                   |
+          call_m!(self.sub_expr_binop_truediv)                  |
+          call_m!(self.sub_expr_binop_floordiv)                 |
+          call_m!(self.sub_expr_binop_mod)                      |
+          // NOTE: The power operator ** binds less tightly than an arithmetic or
+          // bitwise unary operator on its right, that is, 2**-1 is 0.5.
+          call_m!(self.sub_expr_binop_pow)                      ) >>
+
+       (expression)
+    ));
+
+
+    /// 1.1.  `a or b`
+    tk_method!(sub_expr_boolop_logic_or, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_or_token)                               >>
+         op: or_token                                           >>
+        rhs: call_m!(self.start_expr)                           >>
+       expr: call_m!(self.build_binop, op, lhs, rhs)            >>
+
+        (expr)
+    ));
+
+
+    /// 1.2. `a and b`
+    tk_method!(sub_expr_boolop_logic_and, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_and_token)                              >>
+         op: and_token                                          >>
+        rhs: call_m!(self.start_expr)                           >>
+       expr: call_m!(self.build_binop, op, lhs, rhs)            >>
+
+        (expr)
+    ));
+
+
+    /// 2.1. `a | b`
+    tk_method!(sub_expr_binop_or, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_pipe_token)                             >>
+         op: pipe_token                                         >>
+        rhs: call_m!(self.start_expr)                           >>
+       expr: call_m!(self.build_binop, op, lhs, rhs)            >>
+
+        (expr)
+    ));
+
+
+    /// 2.2. `a ^ b`
+    tk_method!(sub_expr_binop_xor, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_caret_token)                            >>
+         op: caret_token                                        >>
+        rhs: call_m!(self.start_expr)                           >>
+       expr: call_m!(self.build_binop, op, lhs, rhs)            >>
+
+        (expr)
+    ));
+
+    /// 2.3. `a & b`
+    tk_method!(sub_expr_binop_and, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_amp_token)                              >>
+         op: amp_token                                          >>
+        rhs: call_m!(self.start_expr)                           >>
+       expr: call_m!(self.build_binop, op, lhs, rhs)            >>
+
+        (expr)
+    ));
+
+
+    /// 2.4. `a << b`
+    tk_method!(sub_expr_binop_lshift, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_leftshift_token)                        >>
+         op: leftshift_token                                    >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.5. `a >> b`
+    tk_method!(sub_expr_binop_rshift, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_rightshift_token)                       >>
+         op: rightshift_token                                   >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.6. `a + b`
+    tk_method!(sub_expr_binop_add, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_plus_token)                             >>
+         op: plus_token                                         >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.7. `a - b`
+    tk_method!(sub_expr_binop_sub, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_minus_token)                            >>
+         op: minus_token                                        >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// 2.8. `a * b`
+    tk_method!(sub_expr_binop_mul, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_star_token)                             >>
+         op: star_token                                         >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.9. `a @ b`
+    tk_method!(sub_expr_binop_matmul, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_at_token)                               >>
+         op: at_token                                           >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.10. `a / b`
+    tk_method!(sub_expr_binop_truediv, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_slash_token)                            >>
+         op: slash_token                                        >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.11. `a // b`
+    tk_method!(sub_expr_binop_floordiv, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_doubleslash_token)                      >>
+         op: doubleslash_token                                  >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
+    /// 2.12. `a % b`
+    tk_method!(sub_expr_binop_mod, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_percent_token)                          >>
+         op: percent_token                                      >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// 2.13. `a ** b`
+    tk_method!(sub_expr_binop_pow, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_doublestar_token)                       >>
+         op: doublestar_token                                   >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+
     /// 22.  | NameConstant(singleton value)
     tk_method!(sub_expr_nameconstant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         constant: alt_complete!(
-            tag!(&[Id::True])                           |
-            tag!(&[Id::False])                          |
-            tag!(&[Id::None])                           ) >>
+            tag!(&[Id::True])                                   |
+            tag!(&[Id::False])                                  |
+            tag!(&[Id::None])                                   ) >>
 
         (Expr::NameConstant(constant.as_owned_token()))
     ));
 
     /// 24.  | Constant(constant value)
     tk_method!(sub_expr_constant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        constant: constant_token                        >>
+        constant: constant_token                                >>
 
         (Expr::Constant(constant.as_owned_token()))
     ));
@@ -348,13 +550,13 @@ impl<'a> Parser<'a> {
     ///
     /// Notes:
     ///   1. Only supports positional arguments. (no *args, or **kwargs).
-    ///   2.
     tk_method!(sub_expr_func_args, 'b, <Parser<'a>, Vec<Expr>>, mut self, do_parse!(
         opt_arg_names: opt!(pair!(
-                            name_token,
-                            many0!(preceded!(
-                                    comma_token,
-                                    name_token))))  >>
+                                name_token,
+                                many0!(
+                                    preceded!(
+                                        comma_token,
+                                        name_token))))          >>
 
         ({
             match opt_arg_names {
@@ -374,16 +576,21 @@ impl<'a> Parser<'a> {
 
     /// Call Args Sub Expression Parser
     ///
-    /// Only supports positional arguments.
-    ///
     /// Create an optional pair tuple (TkSlice, Vec<TkSlice>) by matching
     /// against the special case of the single argument (e.g. `hello(name):`
     /// and then the rest as the general case of argument names preceded by a comma
     /// (e.g. `def add_all(a, b, c, d, e, f):`.
+    ///
+    /// Notes:
+    ///   1. Only supports positional arguments. (no *args, or **kwargs).
     tk_method!(sub_expr_call_args, 'b, <Parser<'a>, Vec<Expr>>, mut self, do_parse!(
-        opt_arg_names: opt!(pair!(call_m!(self.start_expr), many0!(
-                        preceded!(
-                            comma_token, call_m!(self.start_expr))))) >>
+        opt_arg_names: opt!(pair!(
+                            call_m!(self.start_expr),
+                            many0!(
+                                preceded!(
+                                    comma_token,
+                                    call_m!(self.start_expr))))
+                                                                ) >>
         ({
             match opt_arg_names {
                 Some(arg_names) => {
@@ -400,202 +607,11 @@ impl<'a> Parser<'a> {
         })
     ));
 
-
-    tk_method!(sub_expr_lambda, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-              lambda_keyword                       >>
-        args: call_m!(self.sub_expr_func_args)     >>
-              colon_token                          >>
-        body: call_m!(self.start_expr)             >>
-        (Expr::Lambda {
-            arguments: args,
-            body: Box::new(body)
-        })
-    ));
-
-
-    tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        cons: many1!(not_if_keyword)                           >>
-              if_keyword                                       >>
-        cond: many1!(not_else_keyword)                         >>
-              else_keyword                                     >>
-         alt: call_m!(self.start_expr)                         >>
-        expr: call_m!(self.build_conditional, cons, cond, alt) >>
-       (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        expression: alt_complete!(
-          call_m!(self.sub_expr_binop_logic_or)     |
-          call_m!(self.sub_expr_binop_logic_and)    |
-          call_m!(self.sub_expr_binop_or)           |
-          call_m!(self.sub_expr_binop_xor)          |
-          call_m!(self.sub_expr_binop_and)          |
-          call_m!(self.sub_expr_binop_lshift)       |
-          call_m!(self.sub_expr_binop_rshift)       |
-          call_m!(self.sub_expr_binop_add)          |
-          call_m!(self.sub_expr_binop_sub)          |
-          call_m!(self.sub_expr_binop_mul)          |
-          call_m!(self.sub_expr_binop_matmul)       |
-          call_m!(self.sub_expr_binop_truediv)      |
-          call_m!(self.sub_expr_binop_floordiv)     |
-          call_m!(self.sub_expr_binop_mod)          |
-          call_m!(self.sub_expr_binop_pow)) >>
-       (expression)
-    ));
-
-
-    tk_method!(sub_expr_binop_logic_or, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_or_token)                     >>
-         op: or_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-       expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_logic_and, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_and_token)                     >>
-         op: and_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-       expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-    tk_method!(sub_expr_binop_or, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_pipe_token)                     >>
-         op: pipe_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-       expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_xor, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_caret_token)                     >>
-         op: caret_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-       expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_and, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_amp_token)                     >>
-         op: amp_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-       expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_lshift, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_leftshift_token)                     >>
-         op: leftshift_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_rshift, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_rightshift_token)                     >>
-         op: rightshift_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_add, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_plus_token)                     >>
-         op: plus_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_sub, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_minus_token)                     >>
-         op: minus_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_mul, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_star_token)                     >>
-         op: star_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_matmul, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_at_token)                     >>
-         op: at_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_truediv, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_slash_token)                     >>
-         op: slash_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_floordiv, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_doubleslash_token)                     >>
-         op: doubleslash_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_mod, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_percent_token)                     >>
-         op: percent_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    tk_method!(sub_expr_binop_pow, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        lhs: many1!(not_doublestar_token)                     >>
-         op: doublestar_token                                 >>
-        rhs: call_m!(self.start_expr)                   >>
-        expr: call_m!(self.build_binop, op, lhs, rhs)   >>
-
-        (expr)
-    ));
-
-
-    fn try_parse_sub_expr<'b>(mut self,
-                        slices: &'b [TkSlice<'b>]
+    /// Helper for the recursive parsing of a subexpression as is common in
+    /// in cases where something has an infix-y semantic. For example:
+    /// ```x = 1 if y else 2``` or ```q = [i for i in entries if i >= 3]```
+    fn parse_sub_expr<'b>(mut self,
+                          slices: &'b [TkSlice<'b>]
     ) -> Result<Expr, ParserError> {
 
         // Flatten the tokens in all tokens slices into a single TkSlice
@@ -611,13 +627,15 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Offload the work to parse tokens in the LHS here instead of in the binop parsers
+    /// as a way to get around type inference hell. See `build_conditional`.
     fn build_binop<'b>(mut self,
                        i: TkSlice<'b>,
                        op: TkSlice<'b>,
                        lhs: Vec<TkSlice<'b>>,
                        rhs: Expr) -> (Parser<'a>, IResult<TkSlice<'b>, Expr>) {
 
-        let left = match self.try_parse_sub_expr(&lhs) {
+        let left = match self.parse_sub_expr(&lhs) {
             Ok(expr) => expr,
             Err(error) => return (self, IResult::Error(error.code()))
         };
@@ -642,12 +660,12 @@ impl<'a> Parser<'a> {
                              alt: Expr
     ) -> (Parser<'a>, IResult<TkSlice<'b>, Expr>) {
 
-        let consequent = match self.try_parse_sub_expr(&cons) {
+        let consequent = match self.parse_sub_expr(&cons) {
             Ok(expr) => expr,
             Err(error) => return (self, IResult::Error(error.code()))
         };
 
-        let conditional = match self.try_parse_sub_expr(&cond) {
+        let conditional = match self.parse_sub_expr(&cond) {
             Ok(expr) => expr,
             Err(error) => return (self, IResult::Error(error.code()))
         };
@@ -701,22 +719,22 @@ mod internal {
     tk_named!(pub return_keyword    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Return])));
 
     // Operators
-    tk_named!(pub or_token  <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Or])));
-    tk_named!(pub and_token  <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::And])));
+    tk_named!(pub or_token          <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Or])));
+    tk_named!(pub and_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::And])));
 
-    tk_named!(pub pipe_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Pipe])));
-    tk_named!(pub caret_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Caret])));
-    tk_named!(pub amp_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Amp])));
-    tk_named!(pub leftshift_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::LeftShift])));
-    tk_named!(pub rightshift_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::RightShift])));
-    tk_named!(pub plus_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Plus])));
-    tk_named!(pub minus_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Minus])));
-    tk_named!(pub star_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Star])));
-    tk_named!(pub at_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::At])));
-    tk_named!(pub slash_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Slash])));
-    tk_named!(pub doubleslash_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::DoubleSlash])));
-    tk_named!(pub percent_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::Percent])));
-    tk_named!(pub doublestar_token   <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::DoubleStar])));
+    tk_named!(pub pipe_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Pipe])));
+    tk_named!(pub caret_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Caret])));
+    tk_named!(pub amp_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Amp])));
+    tk_named!(pub leftshift_token   <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftShift])));
+    tk_named!(pub rightshift_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightShift])));
+    tk_named!(pub plus_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Plus])));
+    tk_named!(pub minus_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Minus])));
+    tk_named!(pub star_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Star])));
+    tk_named!(pub at_token          <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::At])));
+    tk_named!(pub slash_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Slash])));
+    tk_named!(pub doubleslash_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleSlash])));
+    tk_named!(pub percent_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Percent])));
+    tk_named!(pub doublestar_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleStar])));
 
     // Special Whitespace
     tk_named!(pub newline_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
@@ -726,7 +744,7 @@ mod internal {
     tk_named!(pub block_end         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::BlockEnd])));
 
 
-    // Flattened definitions to make the type inference happy to prevent this case:
+    // Flattened not definitions to make the type inference happy to prevent this case:
     //
     // error[E0282]: type annotations needed
     //     --> src/parser.rs:404:5
@@ -747,66 +765,24 @@ mod internal {
     //     |          cannot infer type for `E`
     //     |
     //     = note: this error originates in a macro outside of the current crate
-    tk_named!(pub not_if_keyword    <TkSlice<'a>>, tk_is_none_of!(&[Id::If]));
-    tk_named!(pub not_else_keyword  <TkSlice<'a>>, tk_is_none_of!(&[Id::Else]));
+    tk_named!(pub not_if_keyword        <TkSlice<'a>>,  tk_is_none_of!(&[Id::If, Id::Newline]));
+    tk_named!(pub not_else_keyword      <TkSlice<'a>>,  tk_is_none_of!(&[Id::Else, Id::Newline]));
 
-    tk_named!(pub not_or_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::Or, Id::Newline]));
-    tk_named!(pub not_and_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::And, Id::Newline]));
-    tk_named!(pub not_pipe_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Pipe, Id::Newline]));
-    tk_named!(pub not_caret_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Caret, Id::Newline]));
-    tk_named!(pub not_amp_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Amp, Id::Newline]));
+    tk_named!(pub not_or_token          <TkSlice<'a>>,  tk_is_none_of!(&[Id::Or, Id::Newline]));
+    tk_named!(pub not_and_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::And, Id::Newline]));
+    tk_named!(pub not_pipe_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::Pipe, Id::Newline]));
+    tk_named!(pub not_caret_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::Caret, Id::Newline]));
+    tk_named!(pub not_amp_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Amp, Id::Newline]));
     tk_named!(pub not_leftshift_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::LeftShift, Id::Newline]));
-    tk_named!(pub not_rightshift_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::RightShift, Id::Newline]));
-    tk_named!(pub not_plus_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Plus, Id::Newline]));
-    tk_named!(pub not_minus_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Minus, Id::Newline]));
-    tk_named!(pub not_star_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Star, Id::Newline]));
-    tk_named!(pub not_at_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::At, Id::Newline]));
-    tk_named!(pub not_slash_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Slash, Id::Newline]));
-    tk_named!(pub not_doubleslash_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleSlash, Id::Newline]));
-    tk_named!(pub not_percent_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::Percent, Id::Newline]));
-    tk_named!(pub not_doublestar_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleStar, Id::Newline]));
-
-
-    /// Binary Operators: `a + b`, `a | b`, etc.
-    tk_named!(pub binop_token <TkSlice<'a>>, ignore_spaces!(
-        alt_complete!(
-            tag!(&[Id::And])                |
-            tag!(&[Id::Or])                 |
-            tag!(&[Id::Plus])               |
-            tag!(&[Id::Minus])              |
-            tag!(&[Id::Star])               |
-            tag!(&[Id::DoubleStar])         |
-            tag!(&[Id::Slash])              |
-            tag!(&[Id::DoubleSlash])        |
-            tag!(&[Id::Pipe])               |
-            tag!(&[Id::Percent])            |
-            tag!(&[Id::Amp])                |
-            tag!(&[Id::At])                 |
-            tag!(&[Id::Caret])              |
-            tag!(&[Id::LeftShift])          |
-            tag!(&[Id::RightShift])
-        )
-    ));
-
-    tk_named!(pub not_binop_token <TkSlice<'a>>, tk_is_none_of!(
-        &[
-            Id::And,
-            Id::Or,
-            Id::Plus,
-            Id::Minus,
-            Id::Star,
-            Id::DoubleStar,
-            Id::Slash,
-            Id::DoubleSlash,
-            Id::Pipe,
-            Id::Percent,
-            Id::Amp,
-            Id::At,
-            Id::Caret,
-            Id::LeftShift,
-            Id::RightShift
-    ]));
-
+    tk_named!(pub not_rightshift_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::RightShift, Id::Newline]));
+    tk_named!(pub not_plus_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::Plus, Id::Newline]));
+    tk_named!(pub not_minus_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::Minus, Id::Newline]));
+    tk_named!(pub not_star_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::Star, Id::Newline]));
+    tk_named!(pub not_at_token          <TkSlice<'a>>,  tk_is_none_of!(&[Id::At, Id::Newline]));
+    tk_named!(pub not_slash_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::Slash, Id::Newline]));
+    tk_named!(pub not_doubleslash_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleSlash, Id::Newline]));
+    tk_named!(pub not_percent_token     <TkSlice<'a>>,  tk_is_none_of!(&[Id::Percent, Id::Newline]));
+    tk_named!(pub not_doublestar_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleStar, Id::Newline]));
 
     /// Unary Operatos: `+`, `-`,
     tk_named!(pub unaryop_token <TkSlice<'a>>, ignore_spaces!(
@@ -847,48 +823,6 @@ mod internal {
             tag!(&[Id::AtEqual])
         )
     ));
-
-    #[cft(test)]
-    mod tests {
-        use std::borrow::Borrow;
-        use std::rc::Rc;
-
-        use nom::IResult;
-
-        use ::token::Tk;
-        use ::Parser;
-        use ::lexer::Lexer;
-        use ::fmt;
-        use super::*;
-
-//        #[test]
-//        fn assert_parsable() {
-//            let input = "something 1 2 3 if + 234";
-//            let mut parser = Parser::new();
-//            let r: Rc<IResult<&[u8], Vec<Tk>>> = Lexer::new().tokenize(input.as_bytes());
-//            let b: &IResult<&[u8], Vec<Tk>> = r.borrow();
-//
-//            let result = match b {
-//                &IResult::Done(_, ref tokens) => {
-//                    println!("input: {}", input);
-//                    println!("{}", fmt::tokens(tokens, true));
-//                    (TkSlice(&tokens))
-//                },
-//                _ => unreachable!()
-//            };
-//
-//
-//            match result {
-//                IResult::Done(ref out, ref tokens) => {
-//                    println!("unparsed:\n{:?}", out);
-//                    println!("parsed:\n{:?}", tokens);
-//                },
-//                _ => panic!()
-//            };
-//        }
-
-
-    }
 }
 
 
@@ -908,7 +842,7 @@ mod tests {
     /// Use to create a named test case of a single line snippet of code.
     /// This `basic_test!(print_function, "print('hello world!')`
     /// will create a test function named `print_function` that will try to parse the
-    /// string.
+    /// string. It will panic if not all of the tokens are consumed.
     macro_rules! basic_test {
         ($name:ident, $code:expr) => {
             #[test]
@@ -930,7 +864,7 @@ mod tests {
                 let result = parser.parse_tokens(tokens);
                 assert_complete(&result);
             },
-            _ => unreachable!()
+            _ => panic!("Unable to tokenize input")
         }
     }
 
@@ -1037,5 +971,6 @@ x = 1 + \
     basic_test!(expr_lambda_03, r#"lambda: lambda: 1 if a else 2 if b else lambda: 3 if c else 4"#);
 
     basic_test!(expr_conditional_01, r#"1 if x else 2"#);
+    basic_test!(expr_conditional_02, r#"1 if x else f() if y else z ** 34"#);
 
 }
