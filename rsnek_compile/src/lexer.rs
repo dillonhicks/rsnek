@@ -114,7 +114,9 @@ named!(string <Tk>, do_parse!(
 
 
 named!(sublex_comment_string <Tk>, do_parse!(
-    bytes: preceded!(take!(1), is_not!("\n")) >>
+    bytes: alt_complete!(
+        recognize!(preceded!(tag!(b"#"), is_not!("\n"))) |
+        tag!(b"#")                                       )>>
     (Tk::new(Id::Comment, bytes, Tag::None))
 ));
 
@@ -367,7 +369,8 @@ mod tests {
 
 
     fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
-        fmt::tokens(&value.1, true);
+        println!("{}", fmt::tokens(&value.1, true));
+
         assert_eq!(value.1.len(), 1);
         let ref token = value.1[0];
         assert_eq!(token.id(), id);

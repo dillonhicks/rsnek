@@ -1,15 +1,18 @@
 #![feature(const_fn)]
 #![feature(associated_consts)]
 #![feature(custom_attribute)]
+#![feature(try_from)]
+#![feature(box_syntax)]
+#![feature(question_mark_carrier)]
 
-
-#[macro_use(slog_info, slog_log, slog_error, slog_record, slog_b, slog_warn, slog_kv, slog_record_static)]
+#[macro_use(slog_o, slog_trace, slog_info, slog_log, slog_error, slog_record, slog_b, slog_warn, slog_kv, slog_record_static)]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
 extern crate num;
 extern crate time;
+extern crate itertools;
 
 #[macro_use]
 extern crate serde_derive;
@@ -29,6 +32,7 @@ mod traits;
 mod lexer;
 mod parser;
 mod ast;
+mod preprocessor;
 
 pub mod compiler;
 pub mod util;

@@ -232,7 +232,14 @@ impl<'a> Compiler<'a> {
             },
             Expr::Call {ref func, ref args, keywords: _} => {
                 self.compile_expr_call(func, args)
-            }
+            },
+            Expr::Lambda {ref arguments, ref body } => {
+                unimplemented!();
+            },
+            Expr::Conditional {ref condition, ref consequent, ref alternative} => {
+                unimplemented!();
+            },
+            Expr::None => unreachable!()
         };
 
         instructions.append(&mut ins.to_vec());
