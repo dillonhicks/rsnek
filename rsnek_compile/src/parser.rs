@@ -227,7 +227,6 @@ impl<'a> Parser<'a> {
 
     /// 5.   | Assign(expr* targets, expr value)
     tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-         // TODO: {T95} Enabled parser to handle nested expressions
         target: name_token                                      >>
                 assign_token                                    >>
          value: call_m!(self.start_expr)                        >>
@@ -240,7 +239,6 @@ impl<'a> Parser<'a> {
 
     /// 6.   | AugAssign(expr target, operator op, expr value)
     tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
-        // TODO: {T95} Enabled parser to handle nested expressions
         target: name_token                                      >>
             op: augassign_token                                 >>
         value: call_m!(self.start_expr)                         >>
@@ -311,7 +309,6 @@ impl<'a> Parser<'a> {
 
     /// 16.  | Call(expr func, expr* args, keyword* keywords)
     tk_method!(sub_expr_call, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        // TODO: {T95} Enabled parser to handle nested expressions
         func_name: name_token                                   >>
                    lparen_token                                 >>
              args: call_m!(self.sub_expr_call_args)             >>
