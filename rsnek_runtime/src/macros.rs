@@ -43,6 +43,7 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Type(ref $inner) => $e,
             &Builtin::Module(ref $inner) => $e,
             &Builtin::Code(ref $inner) => $e,
+            &Builtin::Frame(ref $inner) => $e,
             _ => unreachable!()
         }
     );
@@ -66,6 +67,7 @@ macro_rules! unary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op($rt),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($rt),
             _ => unreachable!()
         }
     };
@@ -89,6 +91,7 @@ macro_rules! binary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $rhs),
             _ => unreachable!()
         }
     };
@@ -112,6 +115,7 @@ macro_rules! ternary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             _ => unreachable!()
         }
     };
@@ -135,6 +139,7 @@ macro_rules! _4ary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             _ => unreachable!()
         }
     };
@@ -174,6 +179,7 @@ macro_rules! native_unary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op(),
             &Builtin::Module(ref $lhs) => $lhs.$op(),
             &Builtin::Code(ref $lhs) => $lhs.$op(),
+            &Builtin::Frame(ref $lhs) => $lhs.$op(),
             _ => unreachable!()
         }
     };
@@ -197,6 +203,7 @@ macro_rules! native_binary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($rhs),
             _ => unreachable!()
         }
     };
@@ -220,6 +227,7 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::Type(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Module(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($mid, $rhs),
             _ => unreachable!()
         }
     };
@@ -243,6 +251,7 @@ macro_rules! native_4ary_op_foreach {
             &Builtin::Type(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Module(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Code(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Frame(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             _ => unreachable!()
         }
     };

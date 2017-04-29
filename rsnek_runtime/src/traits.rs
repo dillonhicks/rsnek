@@ -60,6 +60,10 @@ pub trait CodeProvider<T> {
     fn code(&self, value: T) -> ObjectRef;
 }
 
+pub trait FrameProvider<T> {
+    fn frame(&self, value: T) -> ObjectRef;
+}
+
 pub trait ModuleProvider<T> {
     fn module(&self, value: T) -> ObjectRef;
 }
@@ -71,3 +75,4 @@ pub trait ModuleFinder<T> {
 pub trait ModuleImporter<T> {
     fn import_module(&self, value: T) -> RuntimeResult;
 }
+

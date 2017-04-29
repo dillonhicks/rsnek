@@ -29,7 +29,8 @@ pub use traits::{
     TupleProvider,
     FunctionProvider,
     PyTypeProvider,
-    CodeProvider
+    CodeProvider,
+    FrameProvider
 };
 
 use result::{RuntimeResult};
@@ -53,6 +54,8 @@ use typedef::pytype::PyMeta;
 use typedef::method::PyFunctionType;
 use typedef::module::PyModuleType;
 use typedef::code::PyCodeType;
+use typedef::frame::PyFrameType;
+
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
@@ -76,6 +79,7 @@ pub struct BuiltinTypes {
     object: PyObjectType,
     module: PyModuleType,
     code: PyCodeType,
+    frame: PyFrameType,
     meta: PyMeta,
 }
 
@@ -133,6 +137,7 @@ impl Runtime {
             object: object,
             module: module,
             code: PyCodeType::init_type(),
+            frame: PyFrameType::init_type(),
             meta: meta,
         };
 
@@ -498,6 +503,13 @@ impl FunctionProvider<ObjectRef> for Runtime {
 impl CodeProvider<native::Code> for Runtime {
     fn code(&self, value: native::Code) -> ObjectRef {
         self.0.types.code.new(&self, value)
+    }
+}
+
+
+impl FrameProvider<native::Frame> for Runtime {
+    fn frame(&self, value: native::Frame) -> ObjectRef {
+        self.0.types.frame.new(&self, value)
     }
 }
 

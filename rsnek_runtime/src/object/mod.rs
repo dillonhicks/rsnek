@@ -234,6 +234,9 @@ macro_rules! object_api {
 }
 
 
+struct PyFrame;
+object_api!(PyFrame);
+
 //struct PyNewType;
 //object_api!(PyNewType);
 

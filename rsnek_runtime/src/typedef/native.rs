@@ -106,6 +106,8 @@ pub struct Type {
     pub subclasses: std::cell::RefCell<List>,
 }
 
+
+#[derive(Clone, Debug)]
 pub struct Code {
     pub co_name: String,
     pub co_names: Vec<String>,
@@ -124,6 +126,12 @@ pub struct Code {
 
     //pub co_nlocals: Int,
     //pub co_stacksize: Int,
+}
+
+
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct Frame {
+
 }
 
 //

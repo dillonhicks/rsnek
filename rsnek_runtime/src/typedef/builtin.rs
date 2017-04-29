@@ -25,6 +25,7 @@ use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
 use typedef::code::PyCode;
+use typedef::frame::PyFrame;
 
 
 #[allow(dead_code)]
@@ -44,6 +45,7 @@ pub enum Builtin {
     Function(PyFunction),
     Module(PyObject),
     Code(PyCode),
+    Frame(PyFrame),
 
     // Utility Types
     DictKey(native::DictKey),
@@ -73,6 +75,7 @@ impl Builtin {
             },
             Builtin::Module(_) => "module",
             Builtin::Code(_) => "code",
+            Builtin::Frame(_) => "frame",
             Builtin::DictKey(_) => "dictkey",
         } 
     }
