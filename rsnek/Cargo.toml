@@ -9,7 +9,7 @@ max_level_off = []
 
 
 [dependencies]
-slog = {version = "2", features=["max_level_trace"]}
+slog = {version = "2"} #, features=["max_level_trace"]}
 slog-async = "2.0.1"
 slog-term = "~2.0.0-4"
 slog-scope = "^3.0.0"

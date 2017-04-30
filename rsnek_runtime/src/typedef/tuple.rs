@@ -113,12 +113,12 @@ impl method::StringCast for PyTuple {
         let result = self.value.0.iter()
                 .map(|ref item| {
                      let boxed: &Box<Builtin> = item.0.borrow();
-                     return boxed.native_str()
+                     boxed.native_str()
                  })
-                .fold_results("".to_string(), |acc, s| [&acc[..], &s[..]].join(", "));
+                .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc});
 
         match result {
-            Ok(s) => Ok(format!("({})", s)),
+            Ok(s) => Ok(format!("({})", s.join(", "))),
             Err(err) => Err(err)
         }
 

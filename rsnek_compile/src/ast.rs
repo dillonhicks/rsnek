@@ -64,10 +64,13 @@ pub enum Expr {
     Conditional {condition: Box<Expr>, consequent: Box<Expr>, alternative: Box<Expr>},
     BinOp { op: Op, left: BoxedExpr, right: BoxedExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
+    Attribute { value: Box<Expr>, attr: OwnedTk },
+    List { elems: Vec<Expr> },
     NameConstant(OwnedTk),
     Constant(OwnedTk),
     None
 }
+
 impl Default for Expr {
     fn default() -> Self {
         Expr::None

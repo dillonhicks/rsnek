@@ -10,12 +10,11 @@ use std::collections::HashMap;
 use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
 use itertools::Itertools;
+use num::Zero;
 use rustyline;
 use rustyline::Config as RLConfig;
 use rustyline::CompletionType;
 use rustyline::error::ReadlineError;
-#[allow(unused_imports)]
-use serde::Serialize;
 
 use rsnek_compile::{Compiler, fmt};
 use rsnek_compile::compiler::{Instr, Value, OpCode};
@@ -33,7 +32,8 @@ use traits::{
     TupleProvider,
     DictProvider,
     BooleanProvider,
-    DefaultFrameProvider
+    DefaultFrameProvider,
+    FrameProvider
 };
 use object::method::{
     Add,
@@ -130,6 +130,7 @@ impl Interpreter {
 
 
 struct InterpreterState {
+    runtime: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
     namespace: HashMap<native::String, ObjectRef>,
     // (frame, stack)
@@ -137,15 +138,36 @@ struct InterpreterState {
 }
 
 impl InterpreterState {
-    pub fn new() -> Self {
+    pub fn new(rt: &Runtime) -> Self {
+
+        let __main__code = native::Code {
+            co_name: String::from("__main__"),
+            co_names: Vec::new(),
+            co_varnames: native::Tuple::new(),
+            co_code: Vec::new(),
+            co_consts: native::Tuple::new()
+        };
+
+        let __main__ = native::Frame {
+            f_back: rt.none(),
+            f_code: rt.code(__main__code),
+            f_builtins: rt.none(),
+            f_lasti: native::Integer::zero(),
+            blocks: VecDeque::new()
+        };
+
+        let mut frames = VecDeque::new();
+        frames.push_back((rt.frame(__main__), RefCell::new(native::List::new())));
+
         InterpreterState {
+            runtime: rt.clone(),
             namespace: HashMap::new(),
-            frames: VecDeque::new()
+            frames: frames
         }
     }
 
     fn init(&mut self, rt: &Runtime)  {
-        self.frames.push_back((rt.default_frame(), RefCell::new(native::List::new())));
+        ;
     }
 
     fn pop_frame(&mut self) {
@@ -161,23 +183,33 @@ impl InterpreterState {
 
     fn push_stack(&mut self, objref: &ObjectRef) {
         match self.frames.back() {
-            Some(&(ref frame, ref stack)) => stack.borrow_mut().push(objref.clone()),
+            Some(&(_, ref stack)) => stack.borrow_mut().push(objref.clone()),
             None => unreachable!() // There should always be at least one frame...
         }
     }
 
     fn pop_stack(&mut self) -> Option<ObjectRef> {
         match self.frames.back() {
-            Some(&(ref frame, ref stack)) => stack.borrow_mut().pop(),
+            Some(&(_, ref stack)) => stack.borrow_mut().pop(),
             None => unreachable!() // There should always be at least one frame...
         }
     }
 
     fn stack_view(&self) -> Ref<native::List> {
         match self.frames.back() {
-            Some(&(ref frame, ref stack)) => stack.borrow(),
+            Some(&(_, ref stack)) => stack.borrow(),
             None => unreachable!() // There should always be at least one frame...
         }
+    }
+
+    fn frame_view(&self) -> Box<[ObjectRef]> {
+        let mut frames: native::List = native::List::new();
+
+        for &(ref frame, _) in self.frames.iter() {
+            frames.push(frame.clone())
+        }
+
+        frames.into_boxed_slice()
     }
 
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
@@ -310,7 +342,6 @@ impl InterpreterState {
                 // TODO: {T100} this is obviously wrong, need a convention to get min number
                 // of args and restore stack context for function calls and shiz.
                 let mut args: VecDeque<ObjectRef> = VecDeque::new();
-                // Put back the args we didnt consume
                 for _ in 0..(arg_count + 1) {
                     if self.stack_view().is_empty() {
                         return Some(Err(Error::system(
@@ -396,6 +427,23 @@ impl InterpreterState {
 //
 //                self.namespace.insert(name.to_string(), code);
                 None
+            },
+            (OpCode::BuildList, Some(Value::Args(count))) => {
+                // TODO: Change to list when impl'd
+                let mut elems: native::Tuple = native::Tuple::new();
+                for _ in 0..count {
+                    if self.stack_view().is_empty() {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for function call!")));
+                    }
+
+                    elems.insert(0, self.pop_stack().unwrap());
+                }
+
+                let objref = rt.tuple(elems);
+                trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref));
+                self.push_stack(&objref);
+                Some(Ok(rt.none()))
             }
             (OpCode::PopTop, None) => {
                     match self.pop_stack() {
@@ -422,7 +470,46 @@ impl InterpreterState {
         match (result, back) {
             (Ok(_), Some(objref)) => Ok(objref.clone()),
             (Ok(_), None)         => Ok(rt.none()),
-            (Err(err), _)         => Err(err)
+            (Err(err), _)         => {
+                error!("Traceback"; "frames" => self.format_traceback());
+                Err(err)
+            }
+        }
+    }
+
+    // TODO: This might be a decent thing to be part of Frame since
+    // they should have all of the f_back pointers... maybe?
+    pub fn format_traceback(&self) -> String {
+        let frames: Box<[ObjectRef]> = self.frame_view();
+
+        let names_result = (*frames).iter()
+            .rev()
+            .map(|ref f| {
+                let boxed: &Box<Builtin> = f.0.borrow();
+
+                match boxed.deref() {
+                    &Builtin::Frame(ref pyframe) => Ok(pyframe.value.0.f_code.clone()),
+                    other => Err(Error::system(
+                        &format!("{} is not a Frame object", other.debug_name())))
+                }
+            }).map_results(|ref code| {
+                let boxed: &Box<Builtin> = code.0.borrow();
+
+                match boxed.deref() {
+                    &Builtin::Code(ref pycode) => Ok(format!(
+                        "<{} at {:?}>", pycode.value.0.co_name.clone(), (pycode as *const _))),
+                    other => Err(Error::system(
+                        &format!("{} is not a Code object", other.debug_name())))
+                }
+            })
+            .fold_results(
+                Vec::new(),
+                |mut acc, r| {acc.push(r.unwrap()); acc});
+
+        match names_result {
+            Ok(names) => format!("Traceback (most recent call first): \n>>> {}",
+                                 names.join("\n>>> ")),
+            Err(err) => format!("{:?}", err)
         }
     }
 
@@ -441,6 +528,7 @@ impl InterpreterState {
             let b: &Box<Builtin> = v.0.borrow();
 
             match b.native_str() {
+                Ok(ref s) if s.len() > 100  => format!("{}: {} = {}...", key, b.debug_name(), &s[..100]),
                 Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
                 Err(_) => format!("{}: {} = ??", key, b.debug_name()),
             }
@@ -612,8 +700,7 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         };
 
         let mut compiler = Compiler::new();
-        let mut interpreter = InterpreterState::new();
-        interpreter.init(&rt);
+        let mut interpreter = InterpreterState::new(&rt);
         // TODO: {T100} use scope resolution in the future
         // Manually load the builtin print function into the interpreter namespace
         // since rsnek does not have a concept of modules at this time.
@@ -676,8 +763,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         .build();
 
     let mut rl = rustyline::Editor::<()>::with_config(config);
-    let mut interpreter = InterpreterState::new();
-    interpreter.init(&rt);
+    let mut interpreter = InterpreterState::new(&rt);
 
     // TODO: {T100} use scope resolution in the future
     // Manually load the builtin print function into the interpreter namespace
@@ -731,7 +817,9 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {
                 Some(Err(err)) => {
+
                     error!("{:?}Error", err.0; "message" => err.1.clone());
+                    error!("{}", interpreter.format_traceback());
                     break 'process_ins
                 },
 
@@ -755,7 +843,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             _ => {},
         }
 
-        interpreter.log_state();
+        //interpreter.log_state();
     }
 
     ExitCode::Ok as i64
@@ -807,8 +895,7 @@ mod tests {
     fn print(b: &mut Bencher) {
         let rt = Runtime::new();
         let mut compiler = Compiler::new();
-        let mut interpreter = InterpreterState::new();
-        interpreter.init(&rt);
+        let mut interpreter = InterpreterState::new(&rt);
 
         // TODO: {T100} use scope resolution in the future
         // Manually load the builtin print function into the interpreter namespace

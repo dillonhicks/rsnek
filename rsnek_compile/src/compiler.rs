@@ -244,6 +244,12 @@ impl<'a> Compiler<'a> {
             Expr::Conditional {ref condition, ref consequent, ref alternative} => {
                 unimplemented!();
             },
+            Expr::Attribute {ref value, ref attr} => {
+                unimplemented!();
+            },
+            Expr::List {ref elems} => {
+                self.compile_expr_list(elems)
+            },
             Expr::None => unreachable!()
         };
 
@@ -331,6 +337,16 @@ impl<'a> Compiler<'a> {
         vec![instr].into_boxed_slice()
     }
 
+    fn compile_expr_list(&self, elem_exprs: &'a[Expr]) -> Box<[Instr]> {
+        let mut call_ins: Vec<Instr> = Vec::new();
+
+        for expr in elem_exprs.iter().as_ref() {
+            call_ins.append(&mut self.compile_expr(&expr, Context::Load).to_vec());
+        }
+
+        call_ins.push(Instr(OpCode::BuildList, Some(Value::Args(elem_exprs.len()))));
+        call_ins.into_boxed_slice()
+    }
 }
 
 #[derive(Debug, Hash, Clone, Copy, Eq, PartialEq, Serialize)]
