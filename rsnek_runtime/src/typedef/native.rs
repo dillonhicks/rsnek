@@ -60,16 +60,20 @@ pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> Runtime
 
 
 pub struct Func {
-    name: String,
-    signature: Signature,
-    callable: FuncType,
+    pub name: String,
+    pub signature: Signature,
+    pub module: String,
+    pub callable: FuncType,
 }
+
 
 pub enum FuncType {
     Native(Box<NativeFn>),
-    Wrapper(Box<WrapperFn>, Signature),
+    Wrapper(Box<WrapperFn>),
     ByteCode(),
 }
+
+
 
 #[derive(Debug)]
 pub enum Iterator {

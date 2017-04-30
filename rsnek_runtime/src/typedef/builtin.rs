@@ -53,7 +53,8 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    pub fn debug_name(&self) -> &str{
+    pub fn debug_name(&self) -> &str {
+
         match *self {
             Builtin::Object(_) => "object",
             Builtin::None(_) => "NoneType",
@@ -67,18 +68,12 @@ impl Builtin {
             Builtin::Dict(_) => "dict",
             Builtin::Tuple(_) => "tuple",
             Builtin::Type(_) => "type",
-            Builtin::Function(ref func) => {
-                match func.value.0 {
-                    native::FuncType::Native(_) => "native_function",
-                    native::FuncType::Wrapper(_, _) => "builtin_function_or_method",
-                    native::FuncType::ByteCode() => "function",
-                }
-            },
+            Builtin::Function(_) => "function",
             Builtin::Module(_) => "module",
             Builtin::Code(_) => "code",
             Builtin::Frame(_) => "frame",
             Builtin::DictKey(_) => "dictkey",
-        } 
+        }
     }
 }
 

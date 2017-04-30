@@ -475,3 +475,4 @@ macro_rules! string_error_bad_attr_type {
         &format!("attribute type must be '{}' not '{}'", $expect, $actual)
     }
 }
+

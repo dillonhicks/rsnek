@@ -30,6 +30,7 @@ use traits::{
 
     DefaultDictProvider,
     DefaultFrameProvider,
+    DefaultStringProvider,
 };
 
 use result::{RuntimeResult};
@@ -159,16 +160,16 @@ impl Runtime {
         }
 
 
-        let (name, func) = builtin::LenFn::create();
-        rt.register_builtin(name, func);
-        let (name, func) = builtin::PrintFn::create();
-        rt.register_builtin(name, func);
-        let (name, func) = builtin::TypeFn::create();
-        rt.register_builtin(name, func);
-        let (name, func) = builtin::StrFn::create();
-        rt.register_builtin(name, func);
-        let (name, func) = builtin::IntFn::create();
-        rt.register_builtin(name, func);
+        let func = builtin::LenFn::create();
+        rt.register_builtin(func);
+        let func = builtin::PrintFn::create();
+        rt.register_builtin(func);
+        let func = builtin::TypeFn::create();
+        rt.register_builtin(func);
+        let func = builtin::StrFn::create();
+        rt.register_builtin(func);
+        let func = builtin::IntFn::create();
+        rt.register_builtin(func);
         rt
     }
 
@@ -176,10 +177,10 @@ impl Runtime {
         WeakRuntime(Rc::downgrade(&self.0.clone()))
     }
 
-    pub fn register_builtin(&self, name: &'static str, func: native::FuncType) {
+    pub fn register_builtin(&self, func: native::Func) {
         let boxed: Ref<ObjectRef> = self.0.mod_builtins.borrow();
         let boxed: &Box<Builtin> = boxed.0.borrow();
-        let key = self.str(name);
+        let key = self.str(func.name.as_str());
         boxed.op_setattr(&self, &key, &self.function(func)).unwrap();
     }
 
@@ -336,10 +337,6 @@ impl StringProvider<native::None> for Runtime {
 }
 
 
-//
-// String
-//
-
 impl BytesProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn bytes(&self, value: native::None) -> ObjectRef {
@@ -362,13 +359,19 @@ impl StringProvider<native::String> for Runtime {
     }
 }
 
-impl StringProvider<&'static str> for Runtime {
+impl<'a>  StringProvider<&'a str> for Runtime {
     #[allow(unused_variables)]
-    fn str(&self, value: &'static str) -> ObjectRef {
+    fn str(&self, value: &'a str) -> ObjectRef {
         self.0
             .types
             .string
-            .new(&self, value.to_string())
+            .new(&self, String::from(value))
+    }
+}
+
+impl DefaultStringProvider for Runtime {
+    fn default_str(&self) -> ObjectRef {
+        self.0.types.string.empty.clone()
     }
 }
 
@@ -466,9 +469,9 @@ impl PyTypeProvider<native::None> for Runtime {
 //
 // method
 //
-impl FunctionProvider<native::FuncType> for Runtime {
+impl FunctionProvider<native::Func> for Runtime {
     /// Create a function object from the native::Function and return its `ObjectRef`
-    fn function(&self, value: native::FuncType) -> ObjectRef {
+    fn function(&self, value: native::Func) -> ObjectRef {
         self.0
             .types
             .function
@@ -488,8 +491,13 @@ impl FunctionProvider<ObjectRef> for Runtime {
     /// Create a function object that returns Ok(value)
     #[allow(unused_variables)]
     fn function(&self, value: ObjectRef) -> ObjectRef {
-        let func: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
-        self.function(native::FuncType::Wrapper(func, [].as_args()))
+        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
+        self.function(native::Func {
+            name: String::from("returns_const"),
+            module: String::from("runtime_provider"),
+            signature: [].as_args(),
+            callable: native::FuncType::Wrapper(callable)
+        })
     }
 }
 

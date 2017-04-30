@@ -7,7 +7,7 @@ use traits::IntegerProvider;
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::native::{self, SignatureBuilder};
+use typedef::native::{self, SignatureBuilder, Func, FuncType};
 
 use builtin::precondition::{check_args, check_kwargs};
 
@@ -15,10 +15,16 @@ pub struct LenFn;
 
 
 impl LenFn {
-    pub fn create() -> (&'static str, native::FuncType) {
+    pub fn create() -> native::Func {
         trace!("create builtin"; "function" => "len");
-        let func: Box<native::WrapperFn> = Box::new(rs_builtin_len);
-        ("len", native::FuncType::Wrapper(func, ["sequence"].as_args()))
+        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_len);
+
+        Func {
+            name: String::from("len"),
+            module: String::from("builtin"),
+            callable: FuncType::Wrapper(callable),
+            signature: ["sequence"].as_args()
+        }
     }
 }
 

@@ -7,7 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
-use traits::{NoneProvider, IntegerProvider};
+use traits::{StringProvider, NoneProvider, IntegerProvider};
 use builtin::precondition::check_fnargs_rt;
 use object::{self, RtValue, typing};
 use object::method::{self, Id};
@@ -17,7 +17,7 @@ use object::typing::BuiltinType;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
-use typedef::native::{self, FuncType, NativeFn, WrapperFn, Signature};
+use typedef::native::{self, Func, NativeFn, WrapperFn, Signature, FuncType};
 use typedef::object::PyObjectType;
 use typedef::objectref::ObjectRef;
 
@@ -42,7 +42,7 @@ impl PyFunctionType {
 
 impl typing::BuiltinType for PyFunctionType {
     type T = PyFunction;
-    type V = native::FuncType;
+    type V = native::Func;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -70,14 +70,14 @@ impl typing::BuiltinType for PyFunctionType {
 
     fn alloc(object: Self::V) -> Self::T {
         PyFunction {
-            value: FunctionValue(object),
+            value: FuncValue(object),
             rc: selfref::RefCount::default(),
         }
     }
 }
 
-pub struct FunctionValue(pub native::FuncType);
-pub type PyFunction = RtValue<FunctionValue>;
+pub struct FuncValue(pub native::Func);
+pub type PyFunction = RtValue<FuncValue>;
 
 
 impl PyFunction {
@@ -181,7 +181,23 @@ impl method::Hashed for PyFunction {
     }
 }
 impl method::StringCast for PyFunction {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_str() {
+            Ok(string) => Ok(rt.str(string)),
+            Err(err) => Err(err)
+        }
+    }
 
+    fn native_str(&self) -> NativeResult<native::String> {
+        let name = match self.value.0.callable {
+            native::FuncType::Native(_) => format!("<native_function {}>", self.value.0.name),
+            native::FuncType::Wrapper(_) => format!("<builtin-function {}>",
+                                                    self.value.0.name),
+            native::FuncType::ByteCode() =>format!("<function {}>", self.value.0.name),
+        };
+
+        Ok(name)
+    }
 }
 impl method::BytesCast for PyFunction {}
 impl method::StringFormat for PyFunction {}
@@ -253,9 +269,11 @@ impl method::Contains for PyFunction {}
 impl method::Iter for PyFunction {}
 impl method::Call for PyFunction {
     fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-        match self.value.0 {
-            FuncType::Native(ref func) => self.do_call_nativefn_rt(&rt, func, &pos_args, &star_args, &kwargs),
-            FuncType::Wrapper(ref func, ref sig) => self.do_call_wrapperfn(&rt, func, sig, &pos_args, &star_args, &kwargs),
+        match self.value.0.callable {
+            FuncType::Native(ref func) => self.do_call_nativefn_rt(
+                &rt, func, &pos_args, &star_args, &kwargs),
+            FuncType::Wrapper(ref func) => self.do_call_wrapperfn(
+                &rt, func, &self.value.0.signature, &pos_args, &star_args, &kwargs),
             _ => Err(Error::not_implemented()),
         }
     }

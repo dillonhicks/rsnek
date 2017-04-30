@@ -5,9 +5,11 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use std::str::FromStr;
 
+use num::ToPrimitive;
+
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider, StringProvider};
+use traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider};
 use error::Error;
 
 use object::{self, RtValue};
@@ -19,6 +21,7 @@ use typedef::native;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 
+use resource::strings;
 
 pub struct PyStringType {
     pub empty: ObjectRef,
@@ -186,7 +189,33 @@ impl method::DivMod for PyString {}
 impl method::FloorDivision for PyString {}
 impl method::LeftShift for PyString {}
 impl method::Modulus for PyString {}
-impl method::Multiply for PyString {}
+impl method::Multiply for PyString {
+    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref int) => {
+                match int.value.0.to_usize() {
+                    Some(int) if int <= 0   => Ok(rt.default_str()),
+                    Some(int) if int == 1   => self.rc.upgrade(),
+                    Some(int)               => {
+                        let value: String = (0..int)
+                            .map(|_| self.value.0.clone())
+                            .collect::<Vec<_>>()
+                            .concat();
+                        Ok(rt.str(value))
+                    },
+                    None                    => {
+                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
+                    },
+                }
+            }
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("*", "str", other.debug_name())))
+        }
+    }
+
+}
 impl method::MatrixMultiply for PyString {}
 impl method::BitwiseOr for PyString {}
 impl method::Pow for PyString {}
