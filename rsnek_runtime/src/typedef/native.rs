@@ -58,7 +58,14 @@ pub type FnArgs = (ObjectRef, ObjectRef, ObjectRef);
 pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
 pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult;
 
-pub enum Function {
+
+pub struct Func {
+    name: String,
+    signature: Signature,
+    callable: FuncType,
+}
+
+pub enum FuncType {
     Native(Box<NativeFn>),
     Wrapper(Box<WrapperFn>, Signature),
     ByteCode(),

@@ -15,10 +15,10 @@ pub struct IntFn;
 
 
 impl IntFn {
-    pub fn create() -> (&'static str, native::Function) {
+    pub fn create() -> (&'static str, native::FuncType) {
         trace!("create builtin"; "function" => "int");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_int);
-        ("int", native::Function::Wrapper(func, ["obj"].as_args()))
+        ("int", native::FuncType::Wrapper(func, ["obj"].as_args()))
     }
 }
 

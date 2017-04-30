@@ -14,10 +14,10 @@ pub struct PrintFn;
 
 
 impl PrintFn {
-    pub fn create() -> (&'static str, native::Function) {
+    pub fn create() -> (&'static str, native::FuncType) {
         trace!("create builtin"; "function" => "print");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_print);
-        ("print", native::Function::Wrapper(func, Signature::new(
+        ("print", native::FuncType::Wrapper(func, Signature::new(
             &["value"], &[], Some("*objs"), Some("**opts"))))
     }
 }

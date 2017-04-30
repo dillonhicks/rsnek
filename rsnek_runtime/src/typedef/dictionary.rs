@@ -331,7 +331,7 @@ impl method::DescriptorSetName for PyDict {}
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{StringProvider, DictProvider};
+    use traits::{StringProvider, DictProvider};
     use object::method::*;
     use super::*;
 

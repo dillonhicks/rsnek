@@ -28,6 +28,7 @@ pub enum Value {
     Code(Vec<String>, Box<[Instr]>),
     Bool(bool),
     Complex(f64),
+    Args(usize),
 }
 
 
@@ -196,7 +197,11 @@ impl<'a> Compiler<'a> {
                 return_ins.into_boxed_slice()
             }
             Stmt::Assign { ref target, ref value } => self.compile_stmt_assign(target, value),
-            Stmt::Expr(ref expr) => self.compile_expr(expr, Context::Load),
+            Stmt::Expr(ref expr) => {
+                let mut ins = self.compile_expr(expr, Context::Load).to_vec();
+                ins.push(Instr(OpCode::PopTop, None));
+                ins.into_boxed_slice()
+            },
             Stmt::Newline => return instructions.into_boxed_slice(),
             _ => unimplemented!()
         };
@@ -247,17 +252,17 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_expr_call(&self, func: &'a OwnedTk, arg_exprs: &'a[Expr]) -> Box<[Instr]> {
-        let mut call_ins: Vec<Instr> = vec![];
+        let mut call_ins: Vec<Instr> = vec![
+            Instr(OpCode::LoadName, Some(Value::from(func)))
+        ];
 
         for expr in arg_exprs.iter().as_ref() {
             call_ins.append(&mut self.compile_expr(&expr, Context::Load).to_vec());
         }
 
-        call_ins.append(&mut vec![
-            Instr(OpCode::LoadName, Some(Value::from(func))),
-            Instr(OpCode::CallFunction, None),
-            Instr(OpCode::PopTop, None)
-            ]);
+        call_ins.push(
+                Instr(OpCode::CallFunction, Some(Value::Args(arg_exprs.len())))
+        );
 
         call_ins.into_boxed_slice()
     }
@@ -446,7 +451,8 @@ pub enum OpCode {
     BuildSetUnpack           = 153,
     SetupAsyncWith           = 154,
 
-    // Defined for rsnek becuase the jump instructions are kinda wierd
+    // Defined for rsnek for now because the jump instructions are kinda weird without
+    // frames and pointers to lines and stuff.
     LogicalAnd               = 200,
     LogicalOr                = 201
 }

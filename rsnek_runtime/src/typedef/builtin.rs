@@ -69,9 +69,9 @@ impl Builtin {
             Builtin::Type(_) => "type",
             Builtin::Function(ref func) => {
                 match func.value.0 {
-                    native::Function::Native(_) => "native_function",
-                    native::Function::Wrapper(_, _) => "builtin_function_or_method",
-                    native::Function::ByteCode() => "function",
+                    native::FuncType::Native(_) => "native_function",
+                    native::FuncType::Wrapper(_, _) => "builtin_function_or_method",
+                    native::FuncType::ByteCode() => "function",
                 }
             },
             Builtin::Module(_) => "module",

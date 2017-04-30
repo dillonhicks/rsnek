@@ -17,7 +17,7 @@ use object::typing::BuiltinType;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
-use typedef::native::{self, Function, NativeFn, WrapperFn, Signature};
+use typedef::native::{self, FuncType, NativeFn, WrapperFn, Signature};
 use typedef::object::PyObjectType;
 use typedef::objectref::ObjectRef;
 
@@ -42,7 +42,7 @@ impl PyFunctionType {
 
 impl typing::BuiltinType for PyFunctionType {
     type T = PyFunction;
-    type V = native::Function;
+    type V = native::FuncType;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -76,7 +76,7 @@ impl typing::BuiltinType for PyFunctionType {
     }
 }
 
-pub struct FunctionValue(pub native::Function);
+pub struct FunctionValue(pub native::FuncType);
 pub type PyFunction = RtValue<FunctionValue>;
 
 
@@ -180,7 +180,9 @@ impl method::Hashed for PyFunction {
         Ok(s.finish())
     }
 }
-impl method::StringCast for PyFunction {}
+impl method::StringCast for PyFunction {
+
+}
 impl method::BytesCast for PyFunction {}
 impl method::StringFormat for PyFunction {}
 impl method::StringRepresentation for PyFunction {}
@@ -252,8 +254,8 @@ impl method::Iter for PyFunction {}
 impl method::Call for PyFunction {
     fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match self.value.0 {
-            Function::Native(ref func) => self.do_call_nativefn_rt(&rt, func, &pos_args, &star_args, &kwargs),
-            Function::Wrapper(ref func, ref sig) => self.do_call_wrapperfn(&rt, func, sig, &pos_args, &star_args, &kwargs),
+            FuncType::Native(ref func) => self.do_call_nativefn_rt(&rt, func, &pos_args, &star_args, &kwargs),
+            FuncType::Wrapper(ref func, ref sig) => self.do_call_wrapperfn(&rt, func, sig, &pos_args, &star_args, &kwargs),
             _ => Err(Error::not_implemented()),
         }
     }

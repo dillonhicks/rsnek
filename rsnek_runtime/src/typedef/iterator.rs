@@ -245,7 +245,7 @@ impl Iterator for PyIterator {
 #[cfg(test)]
 mod _api_method {
     #[allow(unused_imports)]
-    use runtime::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
+    use traits::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
     use object::method::*;
     use test::Bencher;
     use super::*;

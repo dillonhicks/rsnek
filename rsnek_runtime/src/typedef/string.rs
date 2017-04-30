@@ -3,6 +3,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::str::FromStr;
 
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
@@ -142,7 +143,23 @@ impl method::LessOrEqual for PyString {}
 impl method::GreaterOrEqual for PyString {}
 impl method::GreaterThan for PyString {}
 impl method::BooleanCast for PyString {}
-impl method::IntegerCast for PyString {}
+impl method::IntegerCast for PyString {
+    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_int() {
+            Ok(int) => Ok(rt.int(int)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_int(&self) -> NativeResult<native::Integer> {
+        match native::Integer::from_str(&self.value.0) {
+            Ok(int) => Ok(int),
+            Err(_) => Err(Error::value(
+                &format!("Invalid literal '{}' for int", self.value.0)))
+        }
+    }
+
+}
 impl method::FloatCast for PyString {}
 impl method::ComplexCast for PyString {}
 impl method::Rounding for PyString {}

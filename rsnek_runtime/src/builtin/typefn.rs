@@ -15,10 +15,10 @@ pub struct TypeFn;
 
 
 impl TypeFn {
-    pub fn create() -> (&'static str, native::Function) {
+    pub fn create() -> (&'static str, native::FuncType) {
         trace!("create builtin"; "function" => "type");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_typefn);
-        ("type", native::Function::Wrapper(func, Signature::new(
+        ("type", native::FuncType::Wrapper(func, Signature::new(
             &["obj"], &[], Some("*objects"), None)))
     }
 }

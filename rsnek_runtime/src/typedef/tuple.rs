@@ -274,7 +274,7 @@ impl fmt::Debug for PyTuple {
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{TupleProvider, BooleanProvider};
+    use traits::{TupleProvider, BooleanProvider};
     use object::method::*;
     use super::*;
 
@@ -299,7 +299,7 @@ mod _api_method {
     }
 
     mod __hash__ {
-        use runtime::{StringProvider, IntegerProvider, DictProvider};
+        use traits::{StringProvider, IntegerProvider, DictProvider};
         use super::*;
 
         #[test]

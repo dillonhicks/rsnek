@@ -209,7 +209,7 @@ impl InterpreterState {
 
     /// Execute exactly one instruction
     fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
-       // println!("exec: {:?}", instr);
+        trace!("Interpreter"; "action" => "exec_one", "instr" => format!("{:?}", instr));
 
         match instr.tuple() {
             (OpCode::LoadConst, Some(value)) => {
@@ -231,6 +231,8 @@ impl InterpreterState {
                         co_code: c.to_vec(),
                         co_consts: native::Tuple::new(),
                     }),
+                    Value::Args(_) => return Some(Err(Error::system(
+                        &format!("Malformed LoadConst instruction {:?}, this is a bug!", instr)))),
                 };
 
                 self.push_stack(&objref);
@@ -304,23 +306,32 @@ impl InterpreterState {
                 self.push_stack(&result);
                 None
             },
-            (OpCode::CallFunction, None) => {
-                let func = match self.pop_stack() {
-                    Some(objref) => objref,
-                    None => return Some(Err(Error::runtime("No values in value stack for call!")))
-                };
-
+            (OpCode::CallFunction, Some(Value::Args(arg_count))) => {
                 // TODO: {T100} this is obviously wrong, need a convention to get min number
                 // of args and restore stack context for function calls and shiz.
-                let mut args: Vec<ObjectRef> = Vec::new();
-
+                let mut args: VecDeque<ObjectRef> = VecDeque::new();
                 // Put back the args we didnt consume
-                args.iter().map(|a| self.push_stack(a)).collect::<Vec<()>>();
+                for _ in 0..(arg_count + 1) {
+                    if self.stack_view().is_empty() {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for function call!")));
+                    }
+
+                    args.push_front(self.pop_stack().unwrap());
+                }
+
+                let func = match args.pop_front() {
+                    Some(objref) => objref,
+                    None => return Some(Err(Error::system("No values in value stack for call!")))
+                };
+
 
                 let boxed: &Box<Builtin> = func.0.borrow();
                 let result = match boxed.deref(){
                     &Builtin::Function(_) => {
-                        boxed.op_call(&rt, &rt.tuple(args), &rt.tuple(vec![]), &rt.dict(native::None()))
+                        boxed.op_call(&rt, &rt.tuple(args.iter().cloned()
+                                    .collect::<Vec<ObjectRef>>()),
+                                      &rt.tuple(vec![]), &rt.dict(native::None()))
                     },
                     &Builtin::Code(ref code) => {
                         if args.len() < code.value.0.co_names.len() {
@@ -332,8 +343,9 @@ impl InterpreterState {
                         // Because overwriting the global namespace with function args is always a good decision....
                         for argname in code.value.0.co_names.iter() {
                             // unwrap here should be safe because of the previous check
-                            self.namespace.insert(argname.clone(), args.pop().unwrap());
+                            self.namespace.insert(argname.clone(), args.pop_back().unwrap());
                         }
+
                         // Put back the args we didnt consume
                         args.iter().map(|a| self.push_stack(a)).collect::<Vec<()>>();
 
@@ -355,6 +367,8 @@ impl InterpreterState {
                     },
                     _ => Err(Error::typerr(&format!("line {}",line!())))
                 };
+
+                trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", result));
 
                 match result {
                     Ok(objref) => self.push_stack(&objref),
@@ -384,7 +398,6 @@ impl InterpreterState {
                 None
             }
             (OpCode::PopTop, None) => {
-
                     match self.pop_stack() {
                         Some(objref) => Some(Ok(objref)),
                         None => None
@@ -750,6 +763,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
     use super::*;
 
     /// Use to create a test case of a single line snippet of code.
@@ -788,4 +802,35 @@ mod tests {
     assert_run!(int_matmul, "x = 18 @ 19",  ExitCode::GenericError);
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
+
+    #[bench]
+    fn print(b: &mut Bencher) {
+        let rt = Runtime::new();
+        let mut compiler = Compiler::new();
+        let mut interpreter = InterpreterState::new();
+        interpreter.init(&rt);
+
+        // TODO: {T100} use scope resolution in the future
+        // Manually load the builtin print function into the interpreter namespace
+        // since rsnek does not have a concept of modules at this time.
+        interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
+        interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
+        interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
+        interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
+        interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+
+
+        let code = "print(print(print(print(print(1)))))";
+        let ins = match compiler.compile_str(&code) {
+            Ok(ins) => ins,
+            Err(_) => {
+                panic!("SyntaxError: Unable to compile input");
+            },
+        };
+
+        b.iter(|| {
+            interpreter.exec(&rt, &(*ins));
+        });
+    }
+
 }

@@ -15,10 +15,10 @@ pub struct LenFn;
 
 
 impl LenFn {
-    pub fn create() -> (&'static str, native::Function) {
+    pub fn create() -> (&'static str, native::FuncType) {
         trace!("create builtin"; "function" => "len");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_len);
-        ("len", native::Function::Wrapper(func, ["sequence"].as_args()))
+        ("len", native::FuncType::Wrapper(func, ["sequence"].as_args()))
     }
 }
 

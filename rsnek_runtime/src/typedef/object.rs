@@ -336,7 +336,7 @@ impl fmt::Debug for PyObject {
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{BooleanProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
+    use traits::{BooleanProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
     use object::method::*;
     use super::*;
 
@@ -442,7 +442,7 @@ mod _api_method {
 
 #[cfg(test)]
 mod _integration {
-    use runtime::{DictProvider, TupleProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
+    use traits::{DictProvider, TupleProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
     use object::method::*;
     use super::*;
 

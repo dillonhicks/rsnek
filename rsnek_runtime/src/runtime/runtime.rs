@@ -176,7 +176,7 @@ impl Runtime {
         WeakRuntime(Rc::downgrade(&self.0.clone()))
     }
 
-    pub fn register_builtin(&self, name: &'static str, func: native::Function) {
+    pub fn register_builtin(&self, name: &'static str, func: native::FuncType) {
         let boxed: Ref<ObjectRef> = self.0.mod_builtins.borrow();
         let boxed: &Box<Builtin> = boxed.0.borrow();
         let key = self.str(name);
@@ -466,9 +466,9 @@ impl PyTypeProvider<native::None> for Runtime {
 //
 // method
 //
-impl FunctionProvider<native::Function> for Runtime {
+impl FunctionProvider<native::FuncType> for Runtime {
     /// Create a function object from the native::Function and return its `ObjectRef`
-    fn function(&self, value: native::Function) -> ObjectRef {
+    fn function(&self, value: native::FuncType) -> ObjectRef {
         self.0
             .types
             .function
@@ -489,7 +489,7 @@ impl FunctionProvider<ObjectRef> for Runtime {
     #[allow(unused_variables)]
     fn function(&self, value: ObjectRef) -> ObjectRef {
         let func: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
-        self.function(native::Function::Wrapper(func, [].as_args()))
+        self.function(native::FuncType::Wrapper(func, [].as_args()))
     }
 }
 
