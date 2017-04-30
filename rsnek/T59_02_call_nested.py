@@ -6,7 +6,9 @@ def add_two(f):
 
 
 print(add_two(4))
+# >>> 8
 
 # this totally works due to the lack of scopes as of v0.5.0
-# which is hilarious and disturbing.
+# which is hilarious...
 print(add_two_more(34))
+# >>> 36
