@@ -10,7 +10,7 @@ name = "rsnek_runtime"
 fn_traits = []
 
 [dependencies]
-slog = {version = "2", features=["max_level_trace"]}
+slog = {version = "2"}
 slog-scope = "^3.0.0"
 
 itertools = "^0.6.0"

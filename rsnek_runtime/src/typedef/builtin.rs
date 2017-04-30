@@ -2,7 +2,8 @@ use std;
 use std::fmt;
 use std::borrow::Borrow;
 
-use runtime::{Runtime, IntegerProvider, BooleanProvider};
+use runtime::Runtime;
+use traits::{IntegerProvider, BooleanProvider};
 use result::{NativeResult, RuntimeResult};
 
 use object;
@@ -25,6 +26,7 @@ use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
 use typedef::code::PyCode;
+use typedef::frame::PyFrame;
 
 
 #[allow(dead_code)]
@@ -44,13 +46,15 @@ pub enum Builtin {
     Function(PyFunction),
     Module(PyObject),
     Code(PyCode),
+    Frame(PyFrame),
 
     // Utility Types
     DictKey(native::DictKey),
 }
 
 impl Builtin {
-    pub fn debug_name(&self) -> &str{
+    pub fn debug_name(&self) -> &str {
+
         match *self {
             Builtin::Object(_) => "object",
             Builtin::None(_) => "NoneType",
@@ -64,17 +68,12 @@ impl Builtin {
             Builtin::Dict(_) => "dict",
             Builtin::Tuple(_) => "tuple",
             Builtin::Type(_) => "type",
-            Builtin::Function(ref func) => {
-                match func.value.0 {
-                    native::Function::Native(_) => "native_function",
-                    native::Function::Wrapper(_) => "builtin_function_or_method",
-                    native::Function::ByteCode() => "function",
-                }
-            },
+            Builtin::Function(_) => "function",
             Builtin::Module(_) => "module",
             Builtin::Code(_) => "code",
+            Builtin::Frame(_) => "frame",
             Builtin::DictKey(_) => "dictkey",
-        } 
+        }
     }
 }
 

@@ -5,7 +5,8 @@ use std::ops::Deref;
 use num::Zero;
 use num::ToPrimitive;
 
-use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use error::Error;
 use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};

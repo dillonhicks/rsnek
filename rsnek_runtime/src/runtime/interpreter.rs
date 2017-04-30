@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
+use std::cell::{Ref, RefCell};
 use std::marker::Sync;
 use std::io::{self, Read, Write};
 use std::collections::HashMap;
@@ -9,12 +10,11 @@ use std::collections::HashMap;
 use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
 use itertools::Itertools;
+use num::Zero;
 use rustyline;
 use rustyline::Config as RLConfig;
 use rustyline::CompletionType;
 use rustyline::error::ReadlineError;
-#[allow(unused_imports)]
-use serde::Serialize;
 
 use rsnek_compile::{Compiler, fmt};
 use rsnek_compile::compiler::{Instr, Value, OpCode};
@@ -32,6 +32,8 @@ use traits::{
     TupleProvider,
     DictProvider,
     BooleanProvider,
+    DefaultFrameProvider,
+    FrameProvider
 };
 use object::method::{
     Add,
@@ -54,6 +56,7 @@ use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
+const RECURSION_LIMIT: usize = 256;
 
 pub type Argv<'a> =  &'a [&'a str];
 pub type MainFn = Fn(&Runtime) -> i64;
@@ -128,22 +131,127 @@ impl Interpreter {
 
 
 struct InterpreterState {
+    rt: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
-    namespace: HashMap<native::String, ObjectRef>,
-    stack: Vec<ObjectRef>,
+    ns: HashMap<native::String, ObjectRef>,
+    // (frame, stack)
+    frames: VecDeque<(ObjectRef, RefCell<native::List>)>,
 }
 
 impl InterpreterState {
-    pub fn new() -> Self {
-        InterpreterState {
-            namespace: HashMap::new(),
-            stack: Vec::new(),
+    pub fn new(rt: &Runtime) -> Self {
+
+        let __main__code = native::Code {
+            co_name: String::from("__main__"),
+            co_names: Vec::new(),
+            co_varnames: native::Tuple::new(),
+            co_code: Vec::new(),
+            co_consts: native::Tuple::new()
+        };
+
+        let __main__ = native::Frame {
+            f_back: rt.none(),
+            f_code: rt.code(__main__code),
+            f_builtins: rt.none(),
+            f_lasti: native::Integer::zero(),
+            blocks: VecDeque::new()
+        };
+
+        let mut frames = VecDeque::new();
+        frames.push_back((rt.frame(__main__), RefCell::new(native::List::new())));
+
+        let mut istate = InterpreterState {
+            rt: rt.clone(),
+            ns: HashMap::new(),
+            frames: frames
+        };
+
+        // TODO: {T100} use scope resolution in the future
+        // Manually load the builtin print function into the interpreter namespace
+        // since rsnek does not have a concept of modules at this time.
+        istate.ns.insert(String::from("print"), rt.get_builtin("print"));
+        istate.ns.insert(String::from("len"), rt.get_builtin("len"));
+        istate.ns.insert(String::from("type"), rt.get_builtin("type"));
+        istate.ns.insert(String::from("str"), rt.get_builtin("str"));
+        istate.ns.insert(String::from("int"), rt.get_builtin("int"));
+
+        istate
+    }
+
+    fn pop_frame(&mut self) {
+        self.frames.pop_back();
+        assert!(self.frames.len() > 0,
+            "Critical runtime behavior assertion failed, there should always be at least 1 frame");
+    }
+
+    fn push_frame(&mut self, func: &ObjectRef) -> Result<usize, Error>{
+        if self.frames.len() + 1 == RECURSION_LIMIT {
+            return Err(Error::recursion())
+        }
+
+        let f_back = match self.frames.back() {
+            Some(&(ref f_back, _)) => f_back.clone(),
+            None => panic!("Critical runtime behavior assertion failed, there should always be at least 1 frame")
+        };
+
+        let new_frame = self.rt.frame(
+            native::Frame {
+                f_back: f_back,
+                f_code: func.clone(),
+                f_builtins: self.rt.none(),
+                f_lasti: native::Integer::zero(),
+                blocks: VecDeque::new()
+            }
+        );
+
+        self.frames.push_back((new_frame, RefCell::new(native::List::new())));
+
+        Ok(self.frames.len())
+    }
+
+    fn push_stack(&mut self, objref: &ObjectRef) {
+        match self.frames.back() {
+            Some(&(_, ref stack)) => stack.borrow_mut().push(objref.clone()),
+            None => unreachable!() // There should always be at least one frame...
         }
     }
 
+    fn pop_stack(&mut self) -> Option<ObjectRef> {
+        match self.frames.back() {
+            Some(&(_, ref stack)) => stack.borrow_mut().pop(),
+            None => unreachable!() // There should always be at least one frame...
+        }
+    }
+
+    fn stack_view(&self) -> Ref<native::List> {
+        match self.frames.back() {
+            Some(&(_, ref stack)) => stack.borrow(),
+            None => unreachable!() // There should always be at least one frame...
+        }
+    }
+
+    fn frame_view(&self) -> Box<[ObjectRef]> {
+        let mut frames: native::List = native::List::new();
+
+        for &(ref frame, _) in self.frames.iter() {
+            frames.push(frame.clone())
+        }
+
+        frames.into_boxed_slice()
+    }
+
+
+    /// Used in lieu of an actual exception handling mechanism,
+    /// clear all frames back to __main__ and clear that frame's
+    /// value stack.
+    fn clear_traceback(&mut self) {
+        self.frames.truncate(1);
+        self.frames[0].1.borrow_mut().clear();
+    }
+
+
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
-
         match opcode {
             OpCode::LogicalAnd              => Err(Error::not_implemented()),
             OpCode::LogicalOr               => Err(Error::not_implemented()),
@@ -160,17 +268,18 @@ impl InterpreterState {
             OpCode::BinaryXor               => boxed.op_xor(&rt, &rhs),
             OpCode::BinaryLshift            => boxed.op_lshift(&rt, &rhs),
             OpCode::BinaryRshift            => boxed.op_rshift(&rt, &rhs),
-            _                               => Err(Error::runtime("THIS IS BAD VERY VERY BAD")),
+            binop                           => Err(Error::system(
+                &format!("Unhandled binary operation {:?}, this is a bug!", binop))),
         }
     }
 
     fn force_pop(&mut self) -> Option<ObjectRef> {
-        self.stack.pop()
+        self.pop_stack()
     }
 
     /// Execute exactly one instruction
     fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
-       // println!("exec: {:?}", instr);
+        trace!("Interpreter"; "action" => "exec_one", "instr" => format!("{:?}", instr));
 
         match instr.tuple() {
             (OpCode::LoadConst, Some(value)) => {
@@ -184,17 +293,19 @@ impl InterpreterState {
                         return Some(Err(Error::runtime(&msg)));
                     },
                     // TODO: {T100} This should be created in compiler.rs
-                    Value::Code(args, c) =>
+                    Value::Code(name, args, c) =>
                         rt.code(native::Code {
-                        co_name: native::String::default(),
+                        co_name: name.clone(),
                         co_names: args.iter().map(String::clone).collect(),
                         co_varnames: native::Tuple::new(),
                         co_code: c.to_vec(),
                         co_consts: native::Tuple::new(),
                     }),
+                    Value::Args(_) => return Some(Err(Error::system(
+                        &format!("Malformed LoadConst instruction {:?}, this is a bug!", instr)))),
                 };
 
-                self.stack.push(objref);
+                self.push_stack(&objref);
                 None
             },
             (OpCode::StoreName, Some(value)) => {
@@ -204,8 +315,8 @@ impl InterpreterState {
                         Error::runtime("Attempt to store a non string named value!")))
                 };
 
-                match self.stack.pop() {
-                    Some(objref) => self.namespace.insert(name, objref),
+                match self.pop_stack() {
+                    Some(objref) => self.ns.insert(name, objref),
                     None => return Some(Err(
                         Error::runtime("No values in value stack to store!")))
                 };
@@ -219,12 +330,13 @@ impl InterpreterState {
                         Error::runtime("Attempt to load a non string named value!")))
                 };
 
-                match self.namespace.get(&name) {
-                    Some(objref) => {
-                        self.stack.push(objref.clone());
-                    },
+
+                let to_push = match self.ns.get(&name) {
+                    Some(objref) => objref.clone(),
                     None => return Some(Err(Error::name(&name)))
                 };
+
+                self.push_stack(&to_push);
 
                 None
             },
@@ -243,15 +355,15 @@ impl InterpreterState {
             (OpCode::BinaryLshift, None)            |
             (OpCode::BinaryRshift, None) => {
 
-                let rhs = match self.stack.pop() {
+                let rhs = match self.pop_stack() {
                     Some(objref) => objref,
-                    None => return Some(Err(Error::runtime(
+                    None => return Some(Err(Error::system(
                         &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
-                let lhs = match self.stack.pop() {
+                let lhs = match self.pop_stack() {
                     Some(objref) => objref,
-                    None => return Some(Err(Error::runtime(
+                    None => return Some(Err(Error::system(
                         &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
@@ -261,79 +373,98 @@ impl InterpreterState {
                     err => return Some(err)
                 };
 
-                self.stack.push(result.clone());
+                self.push_stack(&result);
                 None
             },
-            (OpCode::CallFunction, None) => {
-                let func = match self.stack.pop() {
-                    Some(objref) => objref,
-                    None => return Some(Err(Error::runtime("No values in value stack for call!")))
-                };
-
+            (OpCode::CallFunction, Some(Value::Args(arg_count))) => {
                 // TODO: {T100} this is obviously wrong, need a convention to get min number
                 // of args and restore stack context for function calls and shiz.
-                let mut args: Vec<ObjectRef> = Vec::new();
-                args.append(&mut self.stack); // forgive me,
+                let mut args: VecDeque<ObjectRef> = VecDeque::new();
+                for _ in 0..(arg_count + 1) {
+                    if self.stack_view().is_empty() {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for function call!")));
+                    }
+
+                    args.push_front(self.pop_stack().unwrap());
+                }
+
+                let func = match args.pop_front() {
+                    Some(objref) => objref,
+                    None => return Some(Err(Error::system("No values in value stack for call!")))
+                };
 
 
                 let boxed: &Box<Builtin> = func.0.borrow();
                 let result = match boxed.deref(){
                     &Builtin::Function(_) => {
-                        boxed.op_call(&rt, &rt.tuple(args), &rt.tuple(vec![]), &rt.dict(native::None()))
+                        let pos_args = args.into_iter().collect::<Vec<ObjectRef>>();
+                        match self.push_frame(&func) {
+                            Err(err) => Err(err),
+                            Ok(_) => {
+                                boxed.op_call(&rt,
+                                              &rt.tuple(pos_args),
+                                              &rt.tuple(vec![]),
+                                              &rt.dict(native::None()))
+                            }
+                        }
                     },
                     &Builtin::Code(ref code) => {
-                        if args.len() < code.value.0.co_names.len() {
-                            return Some(Err(Error::typerr(
-                                &format!("Expected {} args got {}", code.value.0.co_names.len(),
-                                         args.len()))));
-                        }
-
+                        // TODO: Fix this, this kind of stuff should be part of a frame/scope
                         // Because overwriting the global namespace with function args is always a good decision....
-                        for argname in code.value.0.co_names.iter() {
+                        for (name, value) in code.value.0.co_names.iter().zip(args.iter()) {
                             // unwrap here should be safe because of the previous check
-                            self.namespace.insert(argname.clone(), args.pop().unwrap());
+                            debug!("Namespace"; "action" => "insert", "key" => name, "value" => value.to_string());
+                            self.ns.insert(name.clone(), value.clone());
                         }
-                        // Put back the args we didnt consume
-                        self.stack.append(&mut args);
 
-                        let mut objects: VecDeque<ObjectRef> = VecDeque::new();
+                        let ins = code.value.0.co_code.clone().into_iter().collect::<Vec<_>>();
 
-                        let result = code.value.0.co_code.iter()
-                            .map(|ref instr| self.exec_one(&rt, instr))
-                            .filter(Option::is_some)
-                            .map(Option::unwrap)
-                            .fold_results((&mut objects).clone(), |mut acc, i| {acc.push_back(i); acc});
-
-                        let back = objects.back();
-
-                        match (result, back) {
-                            (Ok(_), Some(objref)) => Ok(objref.clone()),
-                            (Ok(_), None)         => Ok(rt.none()),
-                            (Err(err), _)         =>  Err(err)
+                        match self.push_frame(&func) {
+                            Err(err) => Err(err),
+                            Ok(_) => {
+                                match self.exec(&rt, &ins) {
+                                    Ok(_) => {
+                                        let next_tos = match self.pop_stack() {
+                                            Some(objref) => objref,
+                                            None => self.rt.none()
+                                        };
+                                        self.pop_frame();
+                                        Ok(next_tos)
+                                    },
+                                    Err(err) => Err(err),
+                                }
+                            }
                         }
-                    },
+                                            },
                     _ => Err(Error::typerr(&format!("line {}",line!())))
                 };
 
                 match result {
-                    Ok(objref) => self.stack.push(objref),
-                    other => return Some(other),
+                    Ok(objref) => {
+                        trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref.to_string()));
+                        self.push_stack(&objref)
+                     },
+                    Err(err) => {
+                        // TODO: When there is exception handling, this is a prime place to
+                        // do the jump to the excepthandler
+                        return Some(Err(err))
+                    },
                 };
 
                 None
             }
             (OpCode::ReturnValue, None) => {
-                // TODO: {T100} jump out of current frame
                 None
             },
             (OpCode::MakeFunction, None) => {
-                match self.stack.pop() {
+                match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::runtime(
                         &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
-//                let code = match self.stack.pop() {
+//                let code = match self.pop_stack() {
 //                    Some(objref) => objref,
 //                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
 //                };
@@ -341,10 +472,26 @@ impl InterpreterState {
 //
 //                self.namespace.insert(name.to_string(), code);
                 None
+            },
+            (OpCode::BuildList, Some(Value::Args(count))) => {
+                // TODO: Change to list when impl'd
+                let mut elems: native::Tuple = native::Tuple::new();
+                for _ in 0..count {
+                    if self.stack_view().is_empty() {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for function call!")));
+                    }
+
+                    elems.insert(0, self.pop_stack().unwrap());
+                }
+
+                let objref = rt.tuple(elems);
+                trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref));
+                self.push_stack(&objref);
+                Some(Ok(rt.none()))
             }
             (OpCode::PopTop, None) => {
-
-                    match self.stack.pop() {
+                    match self.pop_stack() {
                         Some(objref) => Some(Ok(objref)),
                         None => None
                     }
@@ -354,7 +501,6 @@ impl InterpreterState {
         }
     }
 
-    ///
     fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> RuntimeResult {
         let mut objects: VecDeque<ObjectRef> = VecDeque::new();
 
@@ -372,10 +518,48 @@ impl InterpreterState {
         }
     }
 
+    // TODO: This might be a decent thing to be part of Frame since
+    // they should have all of the f_back pointers... maybe?
+    pub fn format_traceback(&self) -> String {
+        let frames: Box<[ObjectRef]> = self.frame_view();
+
+        let names_result = (*frames).iter()
+            .rev()
+            .map(|ref f| {
+                let boxed: &Box<Builtin> = f.0.borrow();
+
+                match boxed.deref() {
+                    &Builtin::Frame(ref pyframe) => Ok(pyframe.value.0.f_code.clone()),
+                    other => Err(Error::system(
+                        &format!("{} is not a Frame object", other.debug_name())))
+                }
+            }).map_results(|ref code| {
+                let boxed: &Box<Builtin> = code.0.borrow();
+
+                match boxed.deref() {
+                    &Builtin::Code(ref pycode) => Ok(format!(
+                        "<{} at {:?}>", pycode.value.0.co_name.clone(), (pycode as *const _))),
+                    &Builtin::Function(ref pyfunc) => Ok(format!(
+                        "<{} at {:?}>", pyfunc.name(), (pyfunc as *const _))),
+                    other => Err(Error::system(
+                        &format!("{} is not a Code or Func object", other.debug_name())))
+                }
+            })
+            .fold_results(
+                Vec::new(),
+                |mut acc, r| {acc.push(r.unwrap()); acc});
+
+        match names_result {
+            Ok(names) => format!("Traceback (most recent call first): \n>>> {}",
+                                 names.join("\n>>> ")),
+            Err(err) => format!("{:?}", err)
+        }
+    }
+
     pub fn log_state (&self) {
         // FIXME: Remove when parser/compiler allows for an expression of a single name
         // or maybe just hardcode that in?
-        let stack: String = self.stack.iter().enumerate().map(|(idx, objref)| {
+        let stack: String = self.stack_view().iter().enumerate().map(|(idx, objref)| {
             let b: &Box<Builtin> = objref.0.borrow();
             match b.native_str() {
                 Ok(s) => format!("{}: {} = {}", idx, b.debug_name(), s),
@@ -383,10 +567,11 @@ impl InterpreterState {
             }
         }).collect::<Vec<String>>().join("\n");
 
-        let values: Vec<String> = self.namespace.iter().map(|(key, v): (&String, &ObjectRef)| {
+        let values: Vec<String> = self.ns.iter().map(|(key, v): (&String, &ObjectRef)| {
             let b: &Box<Builtin> = v.0.borrow();
 
             match b.native_str() {
+                Ok(ref s) if s.len() > 100  => format!("{}: {} = {}...", key, b.debug_name(), &s[..100]),
                 Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
                 Err(_) => format!("{}: {} = ??", key, b.debug_name()),
             }
@@ -558,15 +743,7 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         };
 
         let mut compiler = Compiler::new();
-        let mut interpreter = InterpreterState::new();
-        // TODO: {T100} use scope resolution in the future
-        // Manually load the builtin print function into the interpreter namespace
-        // since rsnek does not have a concept of modules at this time.
-        interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
-        interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
-        interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
-        interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
-        interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+        let mut interpreter = InterpreterState::new(&rt);
 
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
@@ -597,11 +774,12 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         let result = interpreter.exec(&rt, &(*ins));
 
         let code = match result {
-            Ok(_)    => {
+            Ok(_) => {
                 ExitCode::Ok as i64
             },
-            Err(err)      => {
-                debug!("{:?}", err);
+            Err(err) => {
+                error!("{}", interpreter.format_traceback());
+                error!("{:?}Error", err.0; "message" => err.1.clone());
                 ExitCode::GenericError as i64
             }
         };
@@ -621,18 +799,8 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         .build();
 
     let mut rl = rustyline::Editor::<()>::with_config(config);
-    let mut interpreter = InterpreterState::new();
-
-    // TODO: {T100} use scope resolution in the future
-    // Manually load the builtin print function into the interpreter namespace
-    // since rsnek does not have a concept of modules at this time.
-    interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
-    interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
-    interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
-    interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
-    interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
-
-    let mut lineno = 0;
+    let mut interpreter = InterpreterState::new(&rt);
+    let mut prompt_count = 0;
 
     print_banner();
 
@@ -643,8 +811,8 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         }
 
 
-        lineno += 1;
-        info!("In[{}] {} ", lineno, resource::strings::PROMPT);
+        prompt_count += 1;
+        info!("In[{}] {} ", prompt_count, resource::strings::PROMPT);
 
         let text = match rl.readline(&"") {
             Ok(line) => {
@@ -675,7 +843,10 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         'process_ins: for i in ins.iter() {
             match interpreter.exec_one(rt, &i) {
                 Some(Err(err)) => {
+
+                    error!("{}", interpreter.format_traceback());
                     error!("{:?}Error", err.0; "message" => err.1.clone());
+                    interpreter.clear_traceback();
                     break 'process_ins
                 },
 
@@ -693,7 +864,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
                         Ok(s) => s,
                         Err(err) => format!("{:?}Error: {}", err.0, err.1),
                     };
-                    info!("\nOut[{}]: {}\n\n", lineno, string);
+                    info!("\nOut[{}]: {}\n\n", prompt_count, string);
                 }
             }
             _ => {},
@@ -707,6 +878,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
     use super::*;
 
     /// Use to create a test case of a single line snippet of code.
@@ -745,4 +917,35 @@ mod tests {
     assert_run!(int_matmul, "x = 18 @ 19",  ExitCode::GenericError);
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
+
+
+    #[bench]
+    fn print(b: &mut Bencher) {
+        let rt = Runtime::new();
+        let mut compiler = Compiler::new();
+        let mut interpreter = InterpreterState::new(&rt);
+
+        // TODO: {T100} use scope resolution in the future
+        // Manually load the builtin print function into the interpreter namespace
+        // since rsnek does not have a concept of modules at this time.
+        interpreter.ns.insert(String::from("print"), rt.get_builtin("print"));
+        interpreter.ns.insert(String::from("len"), rt.get_builtin("len"));
+        interpreter.ns.insert(String::from("type"), rt.get_builtin("type"));
+        interpreter.ns.insert(String::from("str"), rt.get_builtin("str"));
+        interpreter.ns.insert(String::from("int"), rt.get_builtin("int"));
+
+
+        let code = "print(print(print(print(print(1)))))";
+        let ins = match compiler.compile_str(&code) {
+            Ok(ins) => ins,
+            Err(_) => {
+                panic!("SyntaxError: Unable to compile input");
+            },
+        };
+
+        b.iter(|| {
+            interpreter.exec(&rt, &(*ins));
+        });
+    }
+
 }

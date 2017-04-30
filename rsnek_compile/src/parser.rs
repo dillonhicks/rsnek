@@ -273,8 +273,10 @@ impl<'a> Parser<'a> {
         expression: alt_complete!(
             call_m!(self.sub_expr_lambda)                       |
             call_m!(self.sub_expr_conditional)                  |
-            call_m!(self.sub_expr_operator)                     |
             call_m!(self.sub_expr_call)                         |
+            call_m!(self.sub_expr_getattr)                      |
+            call_m!(self.sub_expr_list)                         |
+            call_m!(self.sub_expr_operator)                     |
             call_m!(self.sub_expr_nameconstant)                 |
             call_m!(self.sub_expr_constant)                     ) >>
         (expression)
@@ -304,21 +306,6 @@ impl<'a> Parser<'a> {
          alt: call_m!(self.start_expr)                          >>
         expr: call_m!(self.build_conditional, cons, cond, alt)  >>
        (expr)
-    ));
-
-
-    /// 16.  | Call(expr func, expr* args, keyword* keywords)
-    tk_method!(sub_expr_call, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-        func_name: name_token                                   >>
-                   lparen_token                                 >>
-             args: call_m!(self.sub_expr_call_args)             >>
-                   rparen_token                                 >>
-
-        (Expr::Call {
-            func: func_name.as_owned_token(),
-            args: args,
-            keywords: (),
-         })
     ));
 
     /// 1.   = BoolOp(boolop op, expr* values)
@@ -511,6 +498,56 @@ impl<'a> Parser<'a> {
         expr: call_m!(self.build_binop, op, lhs, rhs)           >>
 
         (expr)
+    ));
+
+
+    /// 16.  | Call(expr func, expr* args, keyword* keywords)
+    ///
+    /// `a(b)`
+    tk_method!(sub_expr_call, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        // TODO: func_name needs to be a scan and build like
+        // many1!(not_doublestar_token) because (1+2)() is valid in the
+        // grammar.
+        func_name: name_token                                   >>
+                   lparen_token                                 >>
+             args: call_m!(self.sub_expr_call_args)             >>
+                   rparen_token                                 >>
+
+        (Expr::Call {
+            func: func_name.as_owned_token(),
+            args: args,
+            keywords: (),
+         })
+    ));
+
+
+    /// 25.  | Attribute(expr value, identifier attr, expr_context ctx)
+    ///
+    /// `a.b`
+    tk_method!(sub_expr_getattr, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        name: name_token                                        >>
+        expr: fold_many1!(
+                preceded!(dot_token, name_token),
+                Expr::Constant(name.as_owned_token()),
+                |acc, attr: TkSlice<'b>| {
+                    Expr::Attribute {
+                        value: Box::new(acc),
+                        attr: attr.as_owned_token()
+                    }
+                  }                                             )>>
+
+        (expr)
+    ));
+
+
+    /// 29. | List(expr* elts, expr_context ctx)
+    ///
+    /// `[a, b, ...]`
+    tk_method!(sub_expr_list, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+               lbracket_token                                   >>
+        elems: call_m!(self.sub_expr_call_args)                 >>
+               rbracket_token                                   >>
+        (Expr::List { elems: elems })
     ));
 
 
@@ -732,6 +769,7 @@ mod internal {
     tk_named!(pub doubleslash_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleSlash])));
     tk_named!(pub percent_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Percent])));
     tk_named!(pub doublestar_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleStar])));
+    tk_named!(pub dot_token          <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Dot])));
 
     // Special Whitespace
     tk_named!(pub newline_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
@@ -780,6 +818,7 @@ mod internal {
     tk_named!(pub not_doubleslash_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleSlash, Id::Newline]));
     tk_named!(pub not_percent_token     <TkSlice<'a>>,  tk_is_none_of!(&[Id::Percent, Id::Newline]));
     tk_named!(pub not_doublestar_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleStar, Id::Newline]));
+    tk_named!(pub not_dot_token          <TkSlice<'a>>,  tk_is_none_of!(&[Id::Dot, Id::Newline]));
 
     /// Unary Operatos: `+`, `-`,
     tk_named!(pub unaryop_token <TkSlice<'a>>, ignore_spaces!(
@@ -942,6 +981,30 @@ mod tests {
     basic_test!(expr_call_nargs,            r#"sum_all(1,2,3,3,4,5,6,7,8,'9')"#);
     basic_test!(expr_call_nested,           r#"int(str(sum(slice(list(range(1, 100)), 43))))"#);
 
+    // Expr::Lambda
+    basic_test!(expr_lambda_01, r#"lambda: 1"#);
+    basic_test!(expr_lambda_02, r#"lambda x: 'hello'"#);
+    basic_test!(expr_lambda_03, r#"lambda: lambda: 1 if a else 2 if b else lambda: 3 if c else 4"#);
+
+    // Expr::Conditional
+    basic_test!(expr_conditional_01, r#"1 if x else 2"#);
+    basic_test!(expr_conditional_02, r#"1 if x else f() if y else z ** 34"#);
+
+    // Expr::Attribute
+    basic_test!(expr_attribute_01, r#"object.attribute"#);
+    basic_test!(expr_attribute_02, r#"a.b.c"#);
+    basic_test!(expr_attribute_03, r#"a.b.c.d"#);
+
+    // Expr::List
+    basic_test!(expr_list_01, r#"[]"#);
+    basic_test!(expr_list_02, r#"[a]"#);
+    basic_test!(expr_list_03, r#"[a, b, c]"#);
+    basic_test!(expr_list_04, r#"[int("234"), 5 << 3, [1]]"#);
+    // TODO: {T118} Binop Scanning Wrecks Args and Elems
+    basic_test!(expr_list_05, r#"[3, [a,b,c,len([1,2,3])], x + y]"#);
+
+
+    // Sanity Checks
     basic_test!(ast_multiple_stmts, r#"
 f **= 14
 g = 0x00123
@@ -961,13 +1024,4 @@ def hello():
 x = 1 + \
     2
 "#);
-
-
-    basic_test!(expr_lambda_01, r#"lambda: 1"#);
-    basic_test!(expr_lambda_02, r#"lambda x: 'hello'"#);
-    basic_test!(expr_lambda_03, r#"lambda: lambda: 1 if a else 2 if b else lambda: 3 if c else 4"#);
-
-    basic_test!(expr_conditional_01, r#"1 if x else 2"#);
-    basic_test!(expr_conditional_02, r#"1 if x else f() if y else z ** 34"#);
-
 }
