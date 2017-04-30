@@ -2,7 +2,8 @@ use std;
 use std::fmt;
 use std::borrow::Borrow;
 
-use runtime::{Runtime, IntegerProvider, BooleanProvider};
+use runtime::Runtime;
+use traits::{IntegerProvider, BooleanProvider};
 use result::{NativeResult, RuntimeResult};
 
 use object;
@@ -69,7 +70,7 @@ impl Builtin {
             Builtin::Function(ref func) => {
                 match func.value.0 {
                     native::Function::Native(_) => "native_function",
-                    native::Function::Wrapper(_) => "builtin_function_or_method",
+                    native::Function::Wrapper(_, _) => "builtin_function_or_method",
                     native::Function::ByteCode() => "function",
                 }
             },

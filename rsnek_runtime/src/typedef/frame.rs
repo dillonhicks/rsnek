@@ -5,12 +5,15 @@ use std::fmt;
 use object::{self, PyAPI, RtValue, typing, method};
 use object::selfref::{self, SelfRef};
 use error::Error;
-use runtime::{Runtime, BooleanProvider, IntegerProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, IntegerProvider, NoneProvider};
 
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::ObjectRef;
+
+pub const FRAME_MAX_BLOCKS: usize = 20;
 
 
 #[derive(Clone)]
@@ -58,7 +61,6 @@ impl typing::BuiltinType for PyFrameType {
 //  stdlib traits
 // ---------------
 
-
 impl fmt::Display for PyFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.value.0)
@@ -81,7 +83,25 @@ impl PyAPI for PyFrame { }
 impl method::New for PyFrame { }
 impl method::Init for PyFrame { }
 impl method::Delete for PyFrame { }
-impl method::GetAttr for PyFrame { }
+
+impl method::GetAttr for PyFrame {
+    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = name.0.borrow();
+
+        let attr: &str = match builtin.deref() {
+            &Builtin::Str(ref string) => &string.value.0,
+            other => return Err(Error::typerr(
+                &string_error_bad_attr_type!("str", other.debug_name()))),
+        };
+
+        match attr {
+            "f_back" => Ok(self.value.0.f_back.clone()),
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!("object", missing)))
+        }
+    }
+}
+
 impl method::GetAttribute for PyFrame { }
 impl method::SetAttr for PyFrame { }
 impl method::DelAttr for PyFrame { }

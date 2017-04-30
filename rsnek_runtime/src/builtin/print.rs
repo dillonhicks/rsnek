@@ -7,7 +7,7 @@ use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 use object::method::StringCast;
-use typedef::native;
+use typedef::native::{self, Signature};
 
 
 pub struct PrintFn;
@@ -17,7 +17,8 @@ impl PrintFn {
     pub fn create() -> (&'static str, native::Function) {
         trace!("create builtin"; "function" => "print");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_print);
-        ("print", native::Function::Wrapper(func))
+        ("print", native::Function::Wrapper(func, Signature::new(
+            &["value"], &[], Some("*objs"), Some("**opts"))))
     }
 }
 

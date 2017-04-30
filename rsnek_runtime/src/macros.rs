@@ -464,3 +464,14 @@ macro_rules! strings_error_bad_operand {
     }
 }
 
+macro_rules! strings_error_no_attribute {
+    ($obj:expr, $attr:expr) => {
+        format!("'{}' has no attribute '{:?}'", $obj, $attr);
+    }
+}
+
+macro_rules! string_error_bad_attr_type {
+    ($expect:expr, $actual:expr) => {
+        &format!("attribute type must be '{}' not '{}'", $expect, $actual)
+    }
+}

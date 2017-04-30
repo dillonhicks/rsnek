@@ -7,7 +7,7 @@ use traits::{IntegerProvider};
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::native;
+use typedef::native::{self, SignatureBuilder};
 
 use builtin::precondition::{check_args, check_kwargs};
 
@@ -18,7 +18,7 @@ impl StrFn {
     pub fn create() -> (&'static str, native::Function) {
         trace!("create builtin"; "function" => "str");
         let func: Box<native::WrapperFn> = Box::new(rs_builtin_str);
-        ("str", native::Function::Wrapper(func))
+        ("str", native::Function::Wrapper(func, ["obj"].as_args()))
     }
 }
 

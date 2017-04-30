@@ -6,7 +6,8 @@ use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::{Runtime, NoneProvider, IntegerProvider};
+use runtime::Runtime;
+use traits::{NoneProvider, IntegerProvider};
 use builtin::precondition::check_fnargs_rt;
 use object::{self, RtValue, typing};
 use object::method::{self, Id};
@@ -16,7 +17,7 @@ use object::typing::BuiltinType;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
-use typedef::native::{self, Function, NativeFn, WrapperFn};
+use typedef::native::{self, Function, NativeFn, WrapperFn, Signature};
 use typedef::object::PyObjectType;
 use typedef::objectref::ObjectRef;
 
@@ -104,6 +105,7 @@ impl PyFunction {
     fn do_call_wrapperfn(&self,
                          rt: &Runtime,
                          callable: &Box<WrapperFn>,
+                         signature: &Signature,
                          pos_args: &ObjectRef,
                          star_args: &ObjectRef,
                          kwargs: &ObjectRef)
@@ -251,7 +253,7 @@ impl method::Call for PyFunction {
     fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match self.value.0 {
             Function::Native(ref func) => self.do_call_nativefn_rt(&rt, func, &pos_args, &star_args, &kwargs),
-            Function::Wrapper(ref func) => self.do_call_wrapperfn(&rt, func, &pos_args, &star_args, &kwargs),
+            Function::Wrapper(ref func, ref sig) => self.do_call_wrapperfn(&rt, func, sig, &pos_args, &star_args, &kwargs),
             _ => Err(Error::not_implemented()),
         }
     }
@@ -320,7 +322,7 @@ impl fmt::Debug for PyFunction {
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{FunctionProvider, BooleanProvider, NoneProvider, DictProvider, TupleProvider};
+    use traits::{FunctionProvider, BooleanProvider, NoneProvider, DictProvider, TupleProvider};
     use object::method::*;
     use super::*;
 

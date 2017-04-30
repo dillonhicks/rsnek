@@ -6,7 +6,8 @@ use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::{Runtime, NoneProvider, IntegerProvider};
+use runtime::Runtime;
+use traits::{NoneProvider, IntegerProvider};
 use object::{self, RtValue, typing};
 use object::method::{self, Id, GetItem, Hashed, SetItem};
 use object::selfref::{self, SelfRef};
@@ -179,7 +180,7 @@ impl method::SetAttr for PyObject {
 
         match dict.native_setitem(&Builtin::DictKey(key), &value) {
             Ok(_) => Ok(native::None()),
-            Err(_) => Err(Error::attribute()),
+            Err(_) => Err(Error::attribute("Could not set attribute")),
         }
     }
 }

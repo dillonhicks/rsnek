@@ -4,7 +4,8 @@ use std::ops::{Deref};
 use std::borrow::Borrow;
 
 use error::{Error, ErrorType};
-use runtime::{Runtime, IntegerProvider};
+use runtime::Runtime;
+use traits::IntegerProvider;
 use result::{RuntimeResult, NativeResult};
 use object::{self, RtValue, typing};
 use object::selfref::{self, SelfRef};

@@ -2,7 +2,8 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
 
-use runtime::{BooleanProvider, Runtime, StringProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, StringProvider};
 use result::{RuntimeResult, NativeResult};
 use object::selfref::{self, SelfRef};
 use object::{RtValue, PyAPI, method, typing};

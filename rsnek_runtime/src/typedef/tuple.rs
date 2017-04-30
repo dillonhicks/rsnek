@@ -9,7 +9,8 @@ use num::{ToPrimitive, Zero};
 
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::{Runtime, IntegerProvider};
+use runtime::Runtime;
+use traits::IntegerProvider;
 use object::{self, RtValue, typing};
 use object::method::{self, Id, Length};
 use object::selfref::{self, SelfRef};

@@ -20,7 +20,8 @@ pub enum ErrorType {
     Key,
     ModuleNotFound,
     StopIteration,
-    Name
+    Name,
+    System
 }
 
 
@@ -41,8 +42,8 @@ impl Error {
         return Error(ErrorType::NotImplemented, "Not Implemented".to_string());
     }
 
-    pub fn attribute() -> Error {
-        return Error(ErrorType::Attribute, "Attribute is not defined for type".to_string());
+    pub fn attribute(message: &str) -> Error {
+        return Error(ErrorType::Attribute, message.to_string());
     }
 
     pub fn value(message: &str) -> Self {
@@ -64,6 +65,8 @@ impl Error {
     pub fn name(name: &str) -> Error {
          Error(ErrorType::Name, format!("name '{}' is not defined", name))
     }
+
+    pub fn system(message: &str) -> Error {Error(ErrorType::System, message.to_string())}
 }
 
 

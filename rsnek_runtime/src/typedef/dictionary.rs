@@ -3,8 +3,10 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 
+
 use result::{NativeResult, RuntimeResult};
-use runtime::{Runtime, IntegerProvider, NoneProvider, BooleanProvider};
+use runtime::Runtime;
+use traits::{IntegerProvider, NoneProvider, BooleanProvider};
 use error::Error;
 use typedef::objectref::ObjectRef;
 use typedef::native::{self, DictKey};
