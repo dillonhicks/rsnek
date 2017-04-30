@@ -264,178 +264,92 @@ macro_rules! native_4ary_op_foreach {
 ///
 /// Note that for arity of Functions may appear deceiving since the receiver (self)
 /// is always the first argument and is the first argument by convention.
-macro_rules! api_Function {
-    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
-            fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
-            }
-    };
-    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-    };
-    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
-            }
-    };
-    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-    };
-    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
-            }
-
-    };
-    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-
-    };
-    (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-
-    };
-    (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
-            fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
-                Err(Error::not_implemented())
-            }
-
-            fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
-            }
-    };
-}
-
-
-/// Macro to create Object and native typed level hooks for
-/// the rsnek runtime. Each Function is generated with a default implementation
-/// that will return a NotImplemented error.
-///
-/// Note that for arity of Functions may appear deceiving since the receiver (self)
-/// is always the first argument and is the first argument by convention.
 macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
 
             fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
-                Err(Error::not_implemented())
+                Err(Error::system_not_implemented())
             }
         }
     };

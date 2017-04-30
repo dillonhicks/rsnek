@@ -21,7 +21,8 @@ pub enum ErrorType {
     ModuleNotFound,
     StopIteration,
     Name,
-    System
+    System,
+    Recursion
 }
 
 
@@ -66,7 +67,17 @@ impl Error {
          Error(ErrorType::Name, format!("name '{}' is not defined", name))
     }
 
-    pub fn system(message: &str) -> Error {Error(ErrorType::System, message.to_string())}
+    pub fn system(message: &str) -> Error {
+        Error(ErrorType::System, message.to_string())
+    }
+
+    pub fn system_not_implemented() -> Error {
+        Error(ErrorType::System, "feature not implemented".to_string())
+    }
+
+    pub fn recursion() -> Error {
+        Error(ErrorType::Recursion, "Maximum recursion depth exceeded".to_string())
+    }
 }
 
 

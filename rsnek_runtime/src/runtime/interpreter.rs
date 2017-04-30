@@ -56,6 +56,7 @@ use typedef::native;
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;
 
+const RECURSION_LIMIT: usize = 256;
 
 pub type Argv<'a> =  &'a [&'a str];
 pub type MainFn = Fn(&Runtime) -> i64;
@@ -130,9 +131,9 @@ impl Interpreter {
 
 
 struct InterpreterState {
-    runtime: Runtime,
+    rt: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
-    namespace: HashMap<native::String, ObjectRef>,
+    ns: HashMap<native::String, ObjectRef>,
     // (frame, stack)
     frames: VecDeque<(ObjectRef, RefCell<native::List>)>,
 }
@@ -159,15 +160,22 @@ impl InterpreterState {
         let mut frames = VecDeque::new();
         frames.push_back((rt.frame(__main__), RefCell::new(native::List::new())));
 
-        InterpreterState {
-            runtime: rt.clone(),
-            namespace: HashMap::new(),
+        let mut istate = InterpreterState {
+            rt: rt.clone(),
+            ns: HashMap::new(),
             frames: frames
-        }
-    }
+        };
 
-    fn init(&mut self, rt: &Runtime)  {
-        ;
+        // TODO: {T100} use scope resolution in the future
+        // Manually load the builtin print function into the interpreter namespace
+        // since rsnek does not have a concept of modules at this time.
+        istate.ns.insert(String::from("print"), rt.get_builtin("print"));
+        istate.ns.insert(String::from("len"), rt.get_builtin("len"));
+        istate.ns.insert(String::from("type"), rt.get_builtin("type"));
+        istate.ns.insert(String::from("str"), rt.get_builtin("str"));
+        istate.ns.insert(String::from("int"), rt.get_builtin("int"));
+
+        istate
     }
 
     fn pop_frame(&mut self) {
@@ -176,9 +184,29 @@ impl InterpreterState {
             "Critical runtime behavior assertion failed, there should always be at least 1 frame");
     }
 
-    fn push_frame(&mut self, rt: &Runtime, func: &ObjectRef) {
-        // TODO: incorporate func into this
-        self.frames.push_back((rt.default_frame(), RefCell::new(native::List::new())))
+    fn push_frame(&mut self, func: &ObjectRef) -> Result<usize, Error>{
+        if self.frames.len() + 1 == RECURSION_LIMIT {
+            return Err(Error::recursion())
+        }
+
+        let f_back = match self.frames.back() {
+            Some(&(ref f_back, _)) => f_back.clone(),
+            None => panic!("Critical runtime behavior assertion failed, there should always be at least 1 frame")
+        };
+
+        let new_frame = self.rt.frame(
+            native::Frame {
+                f_back: f_back,
+                f_code: func.clone(),
+                f_builtins: self.rt.none(),
+                f_lasti: native::Integer::zero(),
+                blocks: VecDeque::new()
+            }
+        );
+
+        self.frames.push_back((new_frame, RefCell::new(native::List::new())));
+
+        Ok(self.frames.len())
     }
 
     fn push_stack(&mut self, objref: &ObjectRef) {
@@ -211,6 +239,16 @@ impl InterpreterState {
 
         frames.into_boxed_slice()
     }
+
+
+    /// Used in lieu of an actual exception handling mechanism,
+    /// clear all frames back to __main__ and clear that frame's
+    /// value stack.
+    fn clear_traceback(&mut self) {
+        self.frames.truncate(1);
+        self.frames[0].1.borrow_mut().clear();
+    }
+
 
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
@@ -255,9 +293,9 @@ impl InterpreterState {
                         return Some(Err(Error::runtime(&msg)));
                     },
                     // TODO: {T100} This should be created in compiler.rs
-                    Value::Code(args, c) =>
+                    Value::Code(name, args, c) =>
                         rt.code(native::Code {
-                        co_name: native::String::default(),
+                        co_name: name.clone(),
                         co_names: args.iter().map(String::clone).collect(),
                         co_varnames: native::Tuple::new(),
                         co_code: c.to_vec(),
@@ -278,7 +316,7 @@ impl InterpreterState {
                 };
 
                 match self.pop_stack() {
-                    Some(objref) => self.namespace.insert(name, objref),
+                    Some(objref) => self.ns.insert(name, objref),
                     None => return Some(Err(
                         Error::runtime("No values in value stack to store!")))
                 };
@@ -293,7 +331,7 @@ impl InterpreterState {
                 };
 
 
-                let to_push = match self.namespace.get(&name) {
+                let to_push = match self.ns.get(&name) {
                     Some(objref) => objref.clone(),
                     None => return Some(Err(Error::name(&name)))
                 };
@@ -319,13 +357,13 @@ impl InterpreterState {
 
                 let rhs = match self.pop_stack() {
                     Some(objref) => objref,
-                    None => return Some(Err(Error::runtime(
+                    None => return Some(Err(Error::system(
                         &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
                 let lhs = match self.pop_stack() {
                     Some(objref) => objref,
-                    None => return Some(Err(Error::runtime(
+                    None => return Some(Err(Error::system(
                         &format!("No values in value stack for {:?}!", instr.tuple().0))))
                 };
 
@@ -360,56 +398,63 @@ impl InterpreterState {
                 let boxed: &Box<Builtin> = func.0.borrow();
                 let result = match boxed.deref(){
                     &Builtin::Function(_) => {
-                        boxed.op_call(&rt, &rt.tuple(args.iter().cloned()
-                                    .collect::<Vec<ObjectRef>>()),
-                                      &rt.tuple(vec![]), &rt.dict(native::None()))
+                        let pos_args = args.into_iter().collect::<Vec<ObjectRef>>();
+                        match self.push_frame(&func) {
+                            Err(err) => Err(err),
+                            Ok(_) => {
+                                boxed.op_call(&rt,
+                                              &rt.tuple(pos_args),
+                                              &rt.tuple(vec![]),
+                                              &rt.dict(native::None()))
+                            }
+                        }
                     },
                     &Builtin::Code(ref code) => {
-                        if args.len() < code.value.0.co_names.len() {
-                            return Some(Err(Error::typerr(
-                                &format!("Expected {} args got {}", code.value.0.co_names.len(),
-                                         args.len()))));
-                        }
-
+                        // TODO: Fix this, this kind of stuff should be part of a frame/scope
                         // Because overwriting the global namespace with function args is always a good decision....
-                        for argname in code.value.0.co_names.iter() {
+                        for (name, value) in code.value.0.co_names.iter().zip(args.iter()) {
                             // unwrap here should be safe because of the previous check
-                            self.namespace.insert(argname.clone(), args.pop_back().unwrap());
+                            debug!("Namespace"; "action" => "insert", "key" => name, "value" => value.to_string());
+                            self.ns.insert(name.clone(), value.clone());
                         }
 
-                        // Put back the args we didnt consume
-                        args.iter().map(|a| self.push_stack(a)).collect::<Vec<()>>();
+                        let ins = code.value.0.co_code.clone().into_iter().collect::<Vec<_>>();
 
-                        let mut objects: VecDeque<ObjectRef> = VecDeque::new();
-
-                        let result = code.value.0.co_code.iter()
-                            .map(|ref instr| self.exec_one(&rt, instr))
-                            .filter(Option::is_some)
-                            .map(Option::unwrap)
-                            .fold_results((&mut objects).clone(), |mut acc, i| {acc.push_back(i); acc});
-
-                        let back = objects.back();
-
-                        match (result, back) {
-                            (Ok(_), Some(objref)) => Ok(objref.clone()),
-                            (Ok(_), None)         => Ok(rt.none()),
-                            (Err(err), _)         =>  Err(err)
+                        match self.push_frame(&func) {
+                            Err(err) => Err(err),
+                            Ok(_) => {
+                                match self.exec(&rt, &ins) {
+                                    Ok(_) => {
+                                        let next_tos = match self.pop_stack() {
+                                            Some(objref) => objref,
+                                            None => self.rt.none()
+                                        };
+                                        self.pop_frame();
+                                        Ok(next_tos)
+                                    },
+                                    Err(err) => Err(err),
+                                }
+                            }
                         }
-                    },
+                                            },
                     _ => Err(Error::typerr(&format!("line {}",line!())))
                 };
 
-                trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", result));
-
                 match result {
-                    Ok(objref) => self.push_stack(&objref),
-                    Err(err) => return Some(Err(err)),
+                    Ok(objref) => {
+                        trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref.to_string()));
+                        self.push_stack(&objref)
+                     },
+                    Err(err) => {
+                        // TODO: When there is exception handling, this is a prime place to
+                        // do the jump to the excepthandler
+                        return Some(Err(err))
+                    },
                 };
 
                 None
             }
             (OpCode::ReturnValue, None) => {
-                // TODO: {T100} jump out of current frame
                 None
             },
             (OpCode::MakeFunction, None) => {
@@ -456,7 +501,6 @@ impl InterpreterState {
         }
     }
 
-    ///
     fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> RuntimeResult {
         let mut objects: VecDeque<ObjectRef> = VecDeque::new();
 
@@ -470,10 +514,7 @@ impl InterpreterState {
         match (result, back) {
             (Ok(_), Some(objref)) => Ok(objref.clone()),
             (Ok(_), None)         => Ok(rt.none()),
-            (Err(err), _)         => {
-                error!("Traceback"; "frames" => self.format_traceback());
-                Err(err)
-            }
+            (Err(err), _)         => Err(err)
         }
     }
 
@@ -498,8 +539,10 @@ impl InterpreterState {
                 match boxed.deref() {
                     &Builtin::Code(ref pycode) => Ok(format!(
                         "<{} at {:?}>", pycode.value.0.co_name.clone(), (pycode as *const _))),
+                    &Builtin::Function(ref pyfunc) => Ok(format!(
+                        "<{} at {:?}>", pyfunc.name(), (pyfunc as *const _))),
                     other => Err(Error::system(
-                        &format!("{} is not a Code object", other.debug_name())))
+                        &format!("{} is not a Code or Func object", other.debug_name())))
                 }
             })
             .fold_results(
@@ -524,7 +567,7 @@ impl InterpreterState {
             }
         }).collect::<Vec<String>>().join("\n");
 
-        let values: Vec<String> = self.namespace.iter().map(|(key, v): (&String, &ObjectRef)| {
+        let values: Vec<String> = self.ns.iter().map(|(key, v): (&String, &ObjectRef)| {
             let b: &Box<Builtin> = v.0.borrow();
 
             match b.native_str() {
@@ -701,14 +744,6 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 
         let mut compiler = Compiler::new();
         let mut interpreter = InterpreterState::new(&rt);
-        // TODO: {T100} use scope resolution in the future
-        // Manually load the builtin print function into the interpreter namespace
-        // since rsnek does not have a concept of modules at this time.
-        interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
-        interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
-        interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
-        interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
-        interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
 
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
@@ -739,11 +774,12 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         let result = interpreter.exec(&rt, &(*ins));
 
         let code = match result {
-            Ok(_)    => {
+            Ok(_) => {
                 ExitCode::Ok as i64
             },
-            Err(err)      => {
-                debug!("{:?}", err);
+            Err(err) => {
+                error!("{}", interpreter.format_traceback());
+                error!("{:?}Error", err.0; "message" => err.1.clone());
                 ExitCode::GenericError as i64
             }
         };
@@ -764,17 +800,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
     let mut rl = rustyline::Editor::<()>::with_config(config);
     let mut interpreter = InterpreterState::new(&rt);
-
-    // TODO: {T100} use scope resolution in the future
-    // Manually load the builtin print function into the interpreter namespace
-    // since rsnek does not have a concept of modules at this time.
-    interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
-    interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
-    interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
-    interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
-    interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
-
-    let mut lineno = 0;
+    let mut prompt_count = 0;
 
     print_banner();
 
@@ -785,8 +811,8 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         }
 
 
-        lineno += 1;
-        info!("In[{}] {} ", lineno, resource::strings::PROMPT);
+        prompt_count += 1;
+        info!("In[{}] {} ", prompt_count, resource::strings::PROMPT);
 
         let text = match rl.readline(&"") {
             Ok(line) => {
@@ -818,8 +844,9 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
             match interpreter.exec_one(rt, &i) {
                 Some(Err(err)) => {
 
-                    error!("{:?}Error", err.0; "message" => err.1.clone());
                     error!("{}", interpreter.format_traceback());
+                    error!("{:?}Error", err.0; "message" => err.1.clone());
+                    interpreter.clear_traceback();
                     break 'process_ins
                 },
 
@@ -837,13 +864,13 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
                         Ok(s) => s,
                         Err(err) => format!("{:?}Error: {}", err.0, err.1),
                     };
-                    info!("\nOut[{}]: {}\n\n", lineno, string);
+                    info!("\nOut[{}]: {}\n\n", prompt_count, string);
                 }
             }
             _ => {},
         }
 
-        //interpreter.log_state();
+        interpreter.log_state();
     }
 
     ExitCode::Ok as i64
@@ -891,6 +918,7 @@ mod tests {
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 
+
     #[bench]
     fn print(b: &mut Bencher) {
         let rt = Runtime::new();
@@ -900,11 +928,11 @@ mod tests {
         // TODO: {T100} use scope resolution in the future
         // Manually load the builtin print function into the interpreter namespace
         // since rsnek does not have a concept of modules at this time.
-        interpreter.namespace.insert(String::from("print"), rt.get_builtin("print"));
-        interpreter.namespace.insert(String::from("len"), rt.get_builtin("len"));
-        interpreter.namespace.insert(String::from("type"), rt.get_builtin("type"));
-        interpreter.namespace.insert(String::from("str"), rt.get_builtin("str"));
-        interpreter.namespace.insert(String::from("int"), rt.get_builtin("int"));
+        interpreter.ns.insert(String::from("print"), rt.get_builtin("print"));
+        interpreter.ns.insert(String::from("len"), rt.get_builtin("len"));
+        interpreter.ns.insert(String::from("type"), rt.get_builtin("type"));
+        interpreter.ns.insert(String::from("str"), rt.get_builtin("str"));
+        interpreter.ns.insert(String::from("int"), rt.get_builtin("int"));
 
 
         let code = "print(print(print(print(print(1)))))";

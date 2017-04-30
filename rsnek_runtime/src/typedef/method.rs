@@ -81,6 +81,10 @@ pub type PyFunction = RtValue<FuncValue>;
 
 
 impl PyFunction {
+    pub fn name(&self) -> &str {
+        &self.value.0.name
+    }
+
     fn do_call_nativefn_rt(&self,
                            rt: &Runtime,
                            callable: &Box<NativeFn>,

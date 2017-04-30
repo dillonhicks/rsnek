@@ -25,7 +25,7 @@ pub enum Value {
     Str(String),
     Int(i64),
     Float(f64),
-    Code(Vec<String>, Box<[Instr]>),
+    Code(String, Vec<String>, Box<[Instr]>),
     Bool(bool),
     Complex(f64),
     Args(usize),
@@ -166,7 +166,7 @@ impl<'a> Compiler<'a> {
                 };
 
                 let func_ins: Vec<Instr> = vec![
-                    Instr(OpCode::LoadConst, Some(Value::Code(argnames, self.compile_stmt(body)))),
+                    Instr(OpCode::LoadConst, Some(Value::Code(name.as_string(), argnames, self.compile_stmt(body)))),
                     Instr(OpCode::LoadConst, Some(Value::from(name))),
                     Instr(OpCode::MakeFunction, None),
                     Instr(OpCode::StoreName, Some(Value::from(name)))

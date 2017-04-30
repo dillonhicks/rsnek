@@ -1,3 +1,4 @@
+#![recursion_limit="4000"]
 #![feature(associated_consts)]
 #![feature(type_ascription)]
 #![feature(const_fn)]

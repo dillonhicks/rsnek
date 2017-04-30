@@ -273,10 +273,10 @@ impl<'a> Parser<'a> {
         expression: alt_complete!(
             call_m!(self.sub_expr_lambda)                       |
             call_m!(self.sub_expr_conditional)                  |
-            call_m!(self.sub_expr_operator)                     |
             call_m!(self.sub_expr_call)                         |
             call_m!(self.sub_expr_getattr)                      |
             call_m!(self.sub_expr_list)                         |
+            call_m!(self.sub_expr_operator)                     |
             call_m!(self.sub_expr_nameconstant)                 |
             call_m!(self.sub_expr_constant)                     ) >>
         (expression)
