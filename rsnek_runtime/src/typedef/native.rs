@@ -1,16 +1,27 @@
 use std;
+use std::fmt;
+use std::ops::Deref;
 use std::rc::Rc;
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
+use std::str::FromStr;
 
 use num;
-use rsnek_compile::Instr;
+use num::ToPrimitive;
+use num_bigint::{Sign, BigUint};
+use num_bigint::Sign::Minus;
 
-use runtime::Runtime;
-use typedef;
-use typedef::objectref::ObjectRef;
-use typedef::builtin::Builtin;
-use result::{RuntimeResult, NativeResult};
+use num::Num as NumTrait;
+use serde::ser::{Serialize, Serializer};
+
+use rsnek_compile::{Id, Tag, Num, OwnedTk};
+
+use ::opcode::OpCode;
+use ::result::{RuntimeResult, NativeResult};
+use ::runtime::Runtime;
+use ::typedef;
+use ::typedef::objectref::ObjectRef;
+use ::typedef::builtin::Builtin;
 
 
 
@@ -29,13 +40,17 @@ pub type HashId = u64;
 // along with not using the reference counting wrappers, will
 // always return these types directly.
 pub type Integer = num::BigInt;
+pub type Count = usize;
 pub type Float = f64;
 pub type Boolean = bool;
-pub type Complex = num::Complex<f64>;
+pub type Complex = num::complex::Complex<Float>;
+
+pub type Byte = u8;
 
 pub type String = std::string::String;
-pub type Bytes = Vec<u8>;
+pub type Bytes = Vec<Byte>;
 pub struct None();
+
 
 //
 // Collection Primitive Types
@@ -58,7 +73,7 @@ pub type FnArgs = (ObjectRef, ObjectRef, ObjectRef);
 pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
 pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult;
 
-
+#[derive(Debug, Clone, Serialize)]
 pub struct Func {
     pub name: String,
     pub signature: Signature,
@@ -67,12 +82,41 @@ pub struct Func {
 }
 
 
+// TODO: {127} Figure out how to the box<fn> types to clone/copy properly without
+// the need for the none type.
+#[derive(Serialize)]
 pub enum FuncType {
+    #[serde(skip_serializing)]
     Native(Box<NativeFn>),
+    #[serde(skip_serializing)]
     Wrapper(Box<WrapperFn>),
-    ByteCode(),
+    Code(Code),
+    None,
 }
 
+impl Clone for FuncType {
+    fn clone(&self) -> Self {
+        match self {
+            &FuncType::Code(ref code) => FuncType::Code(code.clone()),
+            &FuncType::Native(_) => FuncType::None,
+            &FuncType::Wrapper(_) => FuncType::None,
+            &FuncType::None => FuncType::None
+        }
+    }
+}
+
+impl fmt::Debug for FuncType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let func_type = match self {
+            &FuncType::Native(ref func) => format!("Native(<function at {:?}>)", (func as *const _)),
+            &FuncType::Wrapper(ref func) => format!("Wrapper(<function at {:?}>)", (func as *const _)),
+            &FuncType::Code(_)  |
+            &FuncType::None     => format!("{:?}", self)
+        };
+
+        write!(f, "{}", func_type)
+    }
+}
 
 
 #[derive(Debug)]
@@ -121,14 +165,13 @@ pub struct Type {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Code {
     pub co_name: String,
     pub co_names: Vec<String>,
-    pub co_varnames: Tuple,
+    pub co_varnames: Vec<String>,
     pub co_code: Vec<Instr>,
-    pub co_consts: Tuple,
-
+    //pub co_consts: Tuple,
     //pub co_argcount: Int,
     //pub co_cellvars: Tuple,
     //pub co_filename: Str,
@@ -148,17 +191,18 @@ pub struct Block {
 }
 
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize)]
 pub struct Frame {
     pub f_back: ObjectRef,
     pub f_code: ObjectRef,
     pub f_builtins: ObjectRef,
+    #[serde(serialize_with = "serialize::integer")]
     pub f_lasti: Integer,
     pub blocks: VecDeque<Block>,
 }
 
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Signature {
     args: Box<[String]>,
     required_kwargs: Box<[String]>,
@@ -183,11 +227,11 @@ impl Signature {
         Signature {
             args: args.iter()
                 .map(|s| s.to_string())
-                .collect::<Vec<String>>()
+                .collect::<Vec<_>>()
                 .into_boxed_slice(),
             required_kwargs: required_kwargs.iter()
                 .map(|s| s.to_string())
-                .collect::<Vec<String>>()
+                .collect::<Vec<_>>()
                 .into_boxed_slice(),
             vargs: vargs.map(|s| s.to_string()),
             default_kwargs: HashMap::new(),
@@ -258,19 +302,148 @@ macro_rules! signature_impls {
 
 signature_impls!(&'a str, 0 1 2 3 4 5 6);
 
-//
-//pub enum Collection {
-//    Dict(Dict),
-//    Tuple(Tuple),
-//    List(List),
-//    Str(String),
-//    Bytes(Bytes),
-//}
+impl<'a> SignatureBuilder for &'a [String] {
+    fn as_args(&self) -> Signature {
+        let arr = self.iter().map(String::as_str).collect::<Vec<&str>>();
+        Signature::new(&arr[..], &[], Option::None, Option::None)
+    }
+}
 
-//#[derive(Debug)]
-//pub enum Sequence {
-//    Tuple(Tuple),
-//    List(List),
-//    Str(String),
-//    Bytes(Bytes),
-//}
+
+impl SignatureBuilder for Vec<String> {
+    fn as_args(&self) -> Signature {
+        let arr: Vec<&str> = self.iter().map(String::as_str).collect::<Vec<&str>>();
+        Signature::new(&arr[..], &[], Option::None, Option::None)
+    }
+}
+
+// Compiler Types
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Instr(pub OpCode, pub Option<Native>);
+
+impl Instr {
+    pub fn tuple(&self) -> (OpCode, Option<Native>) {
+        (self.0.clone(), self.1.clone())
+    }
+
+    pub fn code(&self) -> OpCode {
+        return self.0.clone()
+    }
+
+    pub fn value(&self) -> Option<Native> {
+        return self.1.clone()
+    }
+}
+
+
+#[derive(Debug, Clone, Serialize)]
+pub enum Native {
+    Str(String),
+    Int(
+        #[serde(serialize_with = "serialize::integer")]
+        Integer
+    ),
+    Float(Float),
+    Bool(Boolean),
+    Complex(
+        #[serde(with = "ComplexSerdeDef")]
+        Complex
+    ),
+    Count(Count),
+    Code(Code),
+    Func(Func),
+    None,
+}
+
+
+
+impl<'a> From<&'a OwnedTk> for Native {
+    // TODO: {T96} Refactor to use stdlib traits From / TryFrom if possible
+    // TODO: {T96} unwrap() can cause panics, make this able to return a result
+
+    fn from(tk: &'a OwnedTk) -> Self {
+        let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
+        let content = parsed.as_str();
+
+        match (tk.id(), tk.tag()) {
+            (Id::Name, _)     => Native::Str(parsed.clone()),
+            (Id::String, _)         |
+            (Id::RawString, _)      |
+            (Id::FormatString, _)   |
+            (Id::ByteString, _)     => {
+                // TODO: {T96} This is a hack to get the " or ' off of quoted strings
+                Native::Str(parsed[1..parsed.len()-1].to_string())
+            },
+            (Id::Number, Tag::N(Num::Int))   => Native::Int(Integer::from_str(&parsed).unwrap()),
+            (Id::Number, Tag::N(Num::Binary))=> Native::Int(Integer::from_str_radix(&parsed[2..], 2).unwrap()),
+            (Id::Number, Tag::N(Num::Octal)) => Native::Int(Integer::from_str_radix(&parsed[2..], 8).unwrap()),
+            (Id::Number, Tag::N(Num::Hex))   => Native::Int(Integer::from_str_radix(&parsed[2..], 16).unwrap()),
+            (Id::Number, Tag::N(Num::Float)) => Native::Float(content.parse::<f64>().unwrap()),
+            (Id::Number, Tag::N(Num::Complex)) => {
+                let real: Float = 0.0;
+                let img: Float =  content[..content.len()-1].parse::<f64>().unwrap();
+                Native::Complex(Complex::new(real, img))
+            },
+            (Id::True, _) => Native::Bool(true),
+            (Id::False, _) => Native::Bool(false),
+            (Id::None, _) => Native::None,
+            _ => unimplemented!()
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Native {
+    fn from(s: &'a str) -> Self {
+        Native::Str(s.to_string())
+    }
+}
+
+
+// Serialization for native Rust and external types
+
+// Serde calls this the definition of the remote type. It is just a copy of the
+// remote type. The `remote` attribute gives the path to the actual type.
+#[derive(Serialize)]
+#[serde(remote = "Complex")]
+struct ComplexSerdeDef {
+    /// Real portion of the complex number
+    pub re: Float,
+    /// Imaginary portion of the complex number
+    pub im: Float
+}
+
+pub mod serialize {
+    use super::*;
+
+    const JSON_MAX_INT_BITS_LOSSLESS: usize = 54;
+
+
+    /// Serialize a native::Integer type as a string if it will fit in a JSON double
+    /// otherwise a string.
+    pub fn integer<S>(int: &Integer, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        if int.bits() > JSON_MAX_INT_BITS_LOSSLESS {
+            serializer.serialize_str(&format!("{}", int))
+        } else {
+            serializer.serialize_i64(int.to_i64().unwrap())
+        }
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnek_compile::fmt::json;
+
+    #[test]
+    fn value_serialization() {
+        println!("{}", json(&Native::Int(
+            Integer::from_str("12341234124312423143214132432145932958392853094543214324").unwrap())));
+        println!("{}", json(&Native::Complex(Complex::new(234.345, 622.9900000000001))));
+    }
+
+
+}

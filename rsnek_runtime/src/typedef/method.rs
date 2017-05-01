@@ -194,10 +194,11 @@ impl method::StringCast for PyFunction {
 
     fn native_str(&self) -> NativeResult<native::String> {
         let name = match self.value.0.callable {
-            native::FuncType::Native(_) => format!("<native_function {}>", self.value.0.name),
-            native::FuncType::Wrapper(_) => format!("<builtin-function {}>",
+            FuncType::Native(_) => format!("<native_function {}>", self.value.0.name),
+            FuncType::Wrapper(_) => format!("<builtin-function {}>",
                                                     self.value.0.name),
-            native::FuncType::ByteCode() =>format!("<function {}>", self.value.0.name),
+            FuncType::Code(_) =>format!("<function {}>", self.value.0.name),
+            FuncType::None => panic!()
         };
 
         Ok(name)

@@ -990,7 +990,7 @@ mod tests {
     basic_test!(stmt_augassign_mod, "r %= 34.4");
 
     // Stmt::Assert
-    basic_test!(stmt_assert_01, "assert 1 == 1, 'ok!'");
+    basic_test!(stmt_assert_01, "assert True, 'ok!'");
 
     // Expr::BinOp
     basic_test!(expr_binop_add, "1 + 3");
@@ -1059,4 +1059,6 @@ def hello():
 x = 1 + \
     2
 "#);
+
+    basic_test!(empty_str, r#"f = ''"#);
 }

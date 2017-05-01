@@ -34,10 +34,10 @@ mod parser;
 mod ast;
 mod preprocessor;
 
-pub mod compiler;
 pub mod util;
 pub mod fmt;
 
+pub use ast::{Ast, Module, Stmt, Expr, Op};
+pub use token::{Tk, OwnedTk, Id, Tag, Num};
 pub use lexer::{Lexer, LexResult};
 pub use parser::{Parser, ParserResult, ParsedAst};
-pub use compiler::{Instr, Compiler};

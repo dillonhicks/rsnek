@@ -1,15 +1,16 @@
 use std;
+use resource::strings;
 
 pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display {
     fn error_type(&self) -> ErrorType;
     fn message(&self) -> String;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Error(pub ErrorType, pub String);
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ErrorType {
     Runtime,
     Type,
@@ -23,7 +24,8 @@ pub enum ErrorType {
     Name,
     System,
     Recursion,
-    Assertion
+    Assertion,
+    Syntax
 }
 
 
@@ -69,7 +71,7 @@ impl Error {
     }
 
     pub fn system(message: &str) -> Error {
-        Error(ErrorType::System, message.to_string())
+        Error(ErrorType::System, format!("{}, version: {}", message, strings::VERSION))
     }
 
     pub fn system_not_implemented() -> Error {
@@ -83,12 +85,20 @@ impl Error {
     pub fn assertion(message: &str) -> Error {
         Error(ErrorType::Assertion, message.to_string())
     }
+
+    pub fn syntax(message: &str) -> Error {
+        Error(ErrorType::Syntax, message.to_string())
+    }
+
+    pub fn log(&self) {
+        error!("{:?}Error", self.error_type(); "message" => self.message());
+    }
 }
 
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{:?}Error: {}", self.error_type(), self.message())
     }
 }
 
@@ -101,4 +111,5 @@ impl Exception for Error {
     fn message(&self) -> String {
         self.1.to_string()
     }
+
 }
