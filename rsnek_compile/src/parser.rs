@@ -176,6 +176,7 @@ impl<'a> Parser<'a> {
             call_m!(self.sub_stmt_return)                       |
             call_m!(self.sub_stmt_assign)                       |
             call_m!(self.sub_stmt_augassign)                    |
+            call_m!(self.sub_stmt_assert)                       |
             call_m!(self.sub_stmt_expr)                         |
             call_m!(self.sub_stmt_next_line)                    )) >>
 
@@ -249,6 +250,36 @@ impl<'a> Parser<'a> {
             value: value
          })
     ));
+
+    /// 16.   | Assert(expr test, expr? msg)
+    tk_method!(sub_stmt_assert, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
+                 assert_keyword                                 >>
+            stmt: alt_complete!(
+                    call_m!(self.sub_stmt_assert_2arg)          |
+                    map!(
+                        call_m!(self.start_expr),
+                        |expr: Expr| {
+                            Stmt::Assert {
+                                test:expr,
+                                message: None
+                                }
+                        })                                      )>>
+
+            (stmt)
+    ));
+
+    tk_method!(sub_stmt_assert_2arg, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
+           test: terminated!(
+                    call_m!(self.start_expr),
+                    comma_token)                            >>
+        message: call_m!(self.start_expr)                   >>
+
+        (Stmt::Assert {
+            test: test,
+            message: Some(message)
+        })
+    ));
+
 
     /// 20.   | Expr(expr value)
     tk_method!(sub_stmt_expr, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
@@ -742,6 +773,7 @@ mod internal {
     tk_named!(pub comma_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Comma])));
 
     // Keyword Tokens
+    tk_named!(pub assert_keyword     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Assert])));
     tk_named!(pub async_keyword     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Async])));
     tk_named!(pub await_keyword     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Await])));
     tk_named!(pub def_keyword       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Def])));
@@ -956,6 +988,9 @@ mod tests {
     basic_test!(stmt_augassign_div, "r /= 75");
     basic_test!(stmt_augassign_fdv, "r //= 98");
     basic_test!(stmt_augassign_mod, "r %= 34.4");
+
+    // Stmt::Assert
+    basic_test!(stmt_assert_01, "assert 1 == 1, 'ok!'");
 
     // Expr::BinOp
     basic_test!(expr_binop_add, "1 + 3");

@@ -31,6 +31,7 @@ use traits::{
     DefaultDictProvider,
     DefaultFrameProvider,
     DefaultStringProvider,
+    DefaultTupleProvider,
 };
 
 use result::{RuntimeResult};
@@ -160,16 +161,14 @@ impl Runtime {
         }
 
 
-        let func = builtin::LenFn::create();
-        rt.register_builtin(func);
-        let func = builtin::PrintFn::create();
-        rt.register_builtin(func);
-        let func = builtin::TypeFn::create();
-        rt.register_builtin(func);
-        let func = builtin::StrFn::create();
-        rt.register_builtin(func);
-        let func = builtin::IntFn::create();
-        rt.register_builtin(func);
+        rt.register_builtin(builtin::LenFn::create());
+        rt.register_builtin(builtin::PrintFn::create());
+        rt.register_builtin(builtin::TypeFn::create());
+        rt.register_builtin(builtin::StrFn::create());
+        rt.register_builtin(builtin::IntFn::create());
+        rt.register_builtin(builtin::AllFn::create());
+        rt.register_builtin(builtin::AnyFn::create());
+
         rt
     }
 
@@ -404,7 +403,7 @@ impl DefaultDictProvider for Runtime {
 impl TupleProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn tuple(&self, value: native::None) -> ObjectRef {
-        self.0.types.tuple.empty.clone()
+        self.default_tuple()
     }
 }
 
@@ -418,6 +417,11 @@ impl TupleProvider<native::Tuple> for Runtime {
     }
 }
 
+impl DefaultTupleProvider for Runtime {
+    fn default_tuple(&self) -> ObjectRef {
+        self.0.types.tuple.empty.clone()
+    }
+}
 //
 // Object
 //

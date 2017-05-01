@@ -50,6 +50,7 @@ pub enum Stmt {
     ImportFrom, // (identifier? module, alias* names, int? level))
     Global(Vec<OwnedTk>),
     Nonlocal(Vec<OwnedTk>),
+    Assert { test: Expr, message: Option<Expr> },
     Expr(Expr),
     Pass,
     Break,

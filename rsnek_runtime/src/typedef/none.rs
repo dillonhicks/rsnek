@@ -109,7 +109,15 @@ impl method::LessThan for PyNone {}
 impl method::LessOrEqual for PyNone {}
 impl method::GreaterOrEqual for PyNone {}
 impl method::GreaterThan for PyNone {}
-impl method::BooleanCast for PyNone {}
+impl method::BooleanCast for PyNone {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(rt.bool(false))
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(false)
+    }
+}
 impl method::IntegerCast for PyNone {}
 impl method::FloatCast for PyNone {}
 impl method::ComplexCast for PyNone {}

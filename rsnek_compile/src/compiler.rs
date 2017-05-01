@@ -29,6 +29,12 @@ pub enum Value {
     Bool(bool),
     Complex(f64),
     Args(usize),
+    None,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum Global {
+    AssertionError,
 }
 
 
@@ -61,6 +67,7 @@ impl<'a> From<&'a OwnedTk> for Value {
             (Id::Number, Tag::N(Num::Complex)) => Value::Complex(content[..content.len()-1].parse::<f64>().unwrap()),
             (Id::True, _) => Value::Bool(true),
             (Id::False, _) => Value::Bool(false),
+            (Id::None, _) => Value::None,
             _ => unimplemented!()
         }
     }
@@ -202,8 +209,31 @@ impl<'a> Compiler<'a> {
                 ins.push(Instr(OpCode::PopTop, None));
                 ins.into_boxed_slice()
             },
-            Stmt::Newline => return instructions.into_boxed_slice(),
-            _ => unimplemented!()
+            Stmt::Assert { ref test, ref message } => {
+                let mut ins: Vec<Instr> = Vec::new();
+                ins.append(&mut self.compile_expr(test, Context::Load).to_vec());
+                let args = match *message {
+                    Some(ref expr) => {
+                        ins.append(&mut self.compile_expr(expr, Context::Load).to_vec());
+                        Value::Args(2)
+                    },
+                    None => Value::Args(1)
+                };
+
+                ins.push(Instr(OpCode::AssertCondition, Some(args)));
+                ins.into_boxed_slice()
+            },
+            Stmt::Delete(_)                     => {Box::new([])},
+            Stmt::AugAssign {ref target, ref op, ref value} => {Box::new([])},
+            Stmt::ClassDef {ref name, ref bases, ref body}  => {Box::new([])},
+            Stmt::Newline                       => {Box::new([])},
+            Stmt::Import                        => {Box::new([])},
+            Stmt::ImportFrom                    => {Box::new([])},
+            Stmt::Global(_)                     => {Box::new([])},
+            Stmt::Nonlocal(_)                   => {Box::new([])},
+            Stmt::Pass                          => {Box::new([])},
+            Stmt::Break                         => {Box::new([])},
+            Stmt::Continue                      => {Box::new([])},
         };
 
         instructions.append(&mut ins.to_vec());
@@ -276,23 +306,8 @@ impl<'a> Compiler<'a> {
     fn compile_expr_binop(&self, op: &'a Op, left: &'a Expr, right: &'a Expr) -> Box<[Instr]> {
         let mut instructions: Vec<Instr> = vec![];
 
-        match left.deref() {
-            &Expr::NameConstant(ref tk) |
-            &Expr::Constant(ref tk)     => {
-                let ins = self.compile_expr_constant(Context::Load, tk);
-                instructions.append(&mut ins.to_vec());
-            },
-            _ => unimplemented!()
-        };
-
-        match right.deref() {
-            &Expr::NameConstant(ref tk) |
-            &Expr::Constant(ref tk)     => {
-                let ins = self.compile_expr_constant(Context::Load, tk);
-                instructions.append(&mut ins.to_vec());
-            },
-            _ => unimplemented!()
-        };
+        instructions.append(&mut self.compile_expr(left, Context::Load).to_vec());
+        instructions.append(&mut self.compile_expr(right, Context::Load).to_vec());
 
         let code = match op.0.id() {
             Id::And         => Instr(OpCode::LogicalAnd, None),
@@ -470,7 +485,8 @@ pub enum OpCode {
     // Defined for rsnek for now because the jump instructions are kinda weird without
     // frames and pointers to lines and stuff.
     LogicalAnd               = 200,
-    LogicalOr                = 201
+    LogicalOr                = 201,
+    AssertCondition          = 202,
 }
 
 #[cfg(test)]

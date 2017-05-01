@@ -9,7 +9,7 @@ use num::ToPrimitive;
 
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider};
+use traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider, IteratorProvider};
 use error::Error;
 
 use object::{self, RtValue};
@@ -145,7 +145,18 @@ impl method::LessThan for PyString {}
 impl method::LessOrEqual for PyString {}
 impl method::GreaterOrEqual for PyString {}
 impl method::GreaterThan for PyString {}
-impl method::BooleanCast for PyString {}
+impl method::BooleanCast for PyString {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_bool() {
+            Ok(bool) => Ok(rt.bool(bool)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(!self.value.0.is_empty())
+    }
+}
 impl method::IntegerCast for PyString {
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_int() {
@@ -252,7 +263,15 @@ impl method::InPlaceSubtract for PyString {}
 impl method::InPlaceTrueDivision for PyString {}
 impl method::InPlaceXOr for PyString {}
 impl method::Contains for PyString {}
-impl method::Iter for PyString {}
+impl method::Iter for PyString {
+    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        match self.rc.upgrade() {
+            Ok(selfref) => Ok(rt.iter(native::Iterator::new(&selfref).unwrap())),
+            Err(err) => Err(err)
+        }
+    }
+}
+
 impl method::Call for PyString {}
 impl method::Length for PyString {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {

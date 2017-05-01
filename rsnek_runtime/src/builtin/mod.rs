@@ -3,11 +3,19 @@ mod print;
 mod typefn;
 mod str;
 mod int;
+mod any;
+mod all;
+mod and;
+mod or;
 
 pub mod precondition;
 
+pub use self::and::logical_and;
+pub use self::or::logical_or;
 pub use self::typefn::TypeFn;
 pub use self::len::LenFn;
 pub use self::print::PrintFn;
 pub use self::str::StrFn;
 pub use self::int::IntFn;
+pub use self::any::{AnyFn, iterator_any, slice_any};
+pub use self::all::{AllFn, iterator_all, slice_all};

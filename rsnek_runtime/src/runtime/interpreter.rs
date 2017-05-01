@@ -19,6 +19,7 @@ use rustyline::error::ReadlineError;
 use rsnek_compile::{Compiler, fmt};
 use rsnek_compile::compiler::{Instr, Value, OpCode};
 
+use ::builtin::{logical_and, logical_or};
 use resource;
 use error::Error;
 use result::RuntimeResult;
@@ -50,7 +51,8 @@ use object::method::{
     XOr,
     Modulus,
     StringCast,
-    Call
+    Call,
+    BooleanCast,
 };
 use typedef::native;
 use typedef::builtin::Builtin;
@@ -174,11 +176,15 @@ impl InterpreterState {
         istate.ns.insert(String::from("type"), rt.get_builtin("type"));
         istate.ns.insert(String::from("str"), rt.get_builtin("str"));
         istate.ns.insert(String::from("int"), rt.get_builtin("int"));
+        istate.ns.insert(String::from("any"), rt.get_builtin("any"));
+        istate.ns.insert(String::from("all"), rt.get_builtin("all"));
 
         istate
     }
 
     fn pop_frame(&mut self) {
+        trace!("Interpreter"; "action" => "pop_frame", "idx" => self.frames.len() - 1);
+
         self.frames.pop_back();
         assert!(self.frames.len() > 0,
             "Critical runtime behavior assertion failed, there should always be at least 1 frame");
@@ -204,6 +210,7 @@ impl InterpreterState {
             }
         );
 
+        trace!("Interpreter"; "action" => "push_frame", "idx" => self.frames.len());
         self.frames.push_back((new_frame, RefCell::new(native::List::new())));
 
         Ok(self.frames.len())
@@ -253,8 +260,8 @@ impl InterpreterState {
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         match opcode {
-            OpCode::LogicalAnd              => Err(Error::not_implemented()),
-            OpCode::LogicalOr               => Err(Error::not_implemented()),
+            OpCode::LogicalAnd              => logical_and(rt, lhs, rhs),
+            OpCode::LogicalOr               => logical_or(rt, lhs, rhs),
             OpCode::BinaryAdd               => boxed.op_add(&rt, &rhs),
             OpCode::BinarySubtract          => boxed.op_sub(&rt, &rhs),
             OpCode::BinaryMultiply          => boxed.op_mul(&rt, &rhs),
@@ -268,8 +275,8 @@ impl InterpreterState {
             OpCode::BinaryXor               => boxed.op_xor(&rt, &rhs),
             OpCode::BinaryLshift            => boxed.op_lshift(&rt, &rhs),
             OpCode::BinaryRshift            => boxed.op_rshift(&rt, &rhs),
-            binop                           => Err(Error::system(
-                &format!("Unhandled binary operation {:?}, this is a bug!", binop))),
+            opcode                           => Err(Error::system(
+                &format!("Unhandled binary operation {:?}, this is a bug!", opcode))),
         }
     }
 
@@ -303,6 +310,7 @@ impl InterpreterState {
                     }),
                     Value::Args(_) => return Some(Err(Error::system(
                         &format!("Malformed LoadConst instruction {:?}, this is a bug!", instr)))),
+                    Value::None => rt.none()
                 };
 
                 self.push_stack(&objref);
@@ -377,8 +385,6 @@ impl InterpreterState {
                 None
             },
             (OpCode::CallFunction, Some(Value::Args(arg_count))) => {
-                // TODO: {T100} this is obviously wrong, need a convention to get min number
-                // of args and restore stack context for function calls and shiz.
                 let mut args: VecDeque<ObjectRef> = VecDeque::new();
                 for _ in 0..(arg_count + 1) {
                     if self.stack_view().is_empty() {
@@ -394,7 +400,6 @@ impl InterpreterState {
                     None => return Some(Err(Error::system("No values in value stack for call!")))
                 };
 
-
                 let boxed: &Box<Builtin> = func.0.borrow();
                 let result = match boxed.deref(){
                     &Builtin::Function(_) => {
@@ -402,10 +407,17 @@ impl InterpreterState {
                         match self.push_frame(&func) {
                             Err(err) => Err(err),
                             Ok(_) => {
-                                boxed.op_call(&rt,
-                                              &rt.tuple(pos_args),
-                                              &rt.tuple(vec![]),
-                                              &rt.dict(native::None()))
+                                match boxed.op_call(&rt,
+                                                &rt.tuple(pos_args),
+                                                &rt.tuple(vec![]),
+                                                &rt.dict(native::None())) {
+
+                                    Ok(next_tos) => {
+                                        self.pop_frame();
+                                        Ok(next_tos)
+                                    },
+                                    Err(err) => Err(err)
+                                }
                             }
                         }
                     },
@@ -496,6 +508,45 @@ impl InterpreterState {
                         None => None
                     }
 
+            },
+            (OpCode::AssertCondition, Some(Value::Args(arg_count))) => {
+                let mut args: Vec<ObjectRef> = Vec::new();
+                for _ in 0..arg_count {
+                    if self.stack_view().is_empty() {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for Assertion!")));
+                    }
+
+                    args.push(self.pop_stack().unwrap());
+                }
+
+                let test: ObjectRef;
+                let mut message = "".to_string();
+
+                match args.len() {
+                    2 => {
+                        test = args.pop().unwrap();
+                        message = args.pop().unwrap().to_string();
+                    },
+                    1 => {
+                        test = args.pop().unwrap();
+                    },
+                    _ => return Some(Err(Error::system(
+                        "Value stack did not contain an expected number of values!")))
+                }
+
+                let boxed: &Box<Builtin> = test.0.borrow();
+                let result = match boxed.op_bool(rt){
+                    Ok(objref) => objref,
+                    Err(err) => return Some(Err(err))
+                };
+
+                trace!("Interpreter"; "action" => "assert", "test_expr" => result.to_string());
+
+                match result == rt.bool(true) {
+                    true => None,
+                    false => Some(Err(Error::assertion(&message)))
+                }
             }
             _ => Some(Err(Error::not_implemented()))
         }
@@ -904,6 +955,27 @@ mod tests {
         Interpreter::run(&config)
     }
 
+    // Sanity checks about and & or
+    assert_run!(logical_and_01, r#"
+f = 1 and 2
+assert f, '1 and 2 failed unexpectedly'
+"#, ExitCode::Ok);
+
+    assert_run!(logic_and_02, r#"
+f = 'true' and None
+assert f, 'this should fail'
+    "#, ExitCode::GenericError);
+
+    assert_run!(logic_or_01, r#"
+f = None or [1,2,3]
+assert f, 'None or [1,2,3] failed unexpectedly'
+    "#, ExitCode::Ok);
+
+    assert_run!(logic_or_02, r#"
+f = None or False
+assert f, 'None or False failed as expected'
+    "#, ExitCode::GenericError);
+
     // int + int simple binop test cases
     assert_run!(int_add, "x = 1 + 2", ExitCode::Ok);
     assert_run!(int_sub, "x = 3 - 4", ExitCode::Ok);
@@ -918,6 +990,31 @@ mod tests {
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 
+    // create and call a function
+    assert_run!(func_01, r#"
+def can_i_haz():
+    return 'tests?'
+
+can_i_haz()
+"#, ExitCode::Ok);
+
+    assert_run!(func_02, r#"
+def now_with_100_percent_more_args(a):
+    return a * a
+
+now_with_100_percent_more_args(13)
+"#, ExitCode::Ok);
+
+    assert_run!(func_03, r#"
+BIG_FACTOR = 314159
+
+def biglyify_string(a):
+    return a * BIG_FACTOR
+
+tiny_string = 'abc'
+big_string = biglyify_string(tiny_string)
+print(len(big_string))
+"#, ExitCode::Ok);
 
     #[bench]
     fn print(b: &mut Bencher) {

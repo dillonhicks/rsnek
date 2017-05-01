@@ -22,7 +22,8 @@ pub enum ErrorType {
     StopIteration,
     Name,
     System,
-    Recursion
+    Recursion,
+    Assertion
 }
 
 
@@ -77,6 +78,10 @@ impl Error {
 
     pub fn recursion() -> Error {
         Error(ErrorType::Recursion, "Maximum recursion depth exceeded".to_string())
+    }
+
+    pub fn assertion(message: &str) -> Error {
+        Error(ErrorType::Assertion, message.to_string())
     }
 }
 

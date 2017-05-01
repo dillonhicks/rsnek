@@ -630,7 +630,15 @@ impl method::Contains for Builtin {
         native_foreach_builtin!(self, native_contains, lhs, rhs)
     }
 }
-impl method::Iter for Builtin {}
+impl method::Iter for Builtin {
+    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_iter, lhs)
+    }
+
+    fn native_iter(&self) -> NativeResult<Builtin> {
+        native_foreach_builtin!(self, native_iter, lhs)
+    }
+}
 impl method::Call for Builtin {
     fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_call, method, pos_args, starargs, kwargs)

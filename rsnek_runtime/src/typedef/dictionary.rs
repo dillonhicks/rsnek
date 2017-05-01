@@ -130,13 +130,13 @@ impl method::LessThan for PyDict {}
 impl method::LessOrEqual for PyDict {}
 impl method::GreaterOrEqual for PyDict {}
 impl method::GreaterThan for PyDict {}
+
 impl method::BooleanCast for PyDict {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        Ok(if self.native_bool().unwrap() {
-               rt.bool(true)
-           } else {
-               rt.bool(false)
-           })
+        match self.native_bool() {
+            Ok(value) => Ok(rt.bool(value)),
+            Err(err) => Err(err)
+        }
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
