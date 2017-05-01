@@ -50,6 +50,7 @@ pub enum Stmt {
     ImportFrom, // (identifier? module, alias* names, int? level))
     Global(Vec<OwnedTk>),
     Nonlocal(Vec<OwnedTk>),
+    Assert { test: Expr, message: Option<Expr> },
     Expr(Expr),
     Pass,
     Break,
@@ -60,10 +61,21 @@ pub enum Stmt {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Expr {
+    Lambda {arguments: Vec<Expr>, body: Box<Expr>},
+    Conditional {condition: Box<Expr>, consequent: Box<Expr>, alternative: Box<Expr>},
     BinOp { op: Op, left: BoxedExpr, right: BoxedExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
+    Attribute { value: Box<Expr>, attr: OwnedTk },
+    List { elems: Vec<Expr> },
     NameConstant(OwnedTk),
-    Constant(OwnedTk)
+    Constant(OwnedTk),
+    None
+}
+
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::None
+    }
 }
 
 

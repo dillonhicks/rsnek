@@ -1,15 +1,16 @@
 use std;
+use resource::strings;
 
 pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display {
     fn error_type(&self) -> ErrorType;
     fn message(&self) -> String;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Error(pub ErrorType, pub String);
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ErrorType {
     Runtime,
     Type,
@@ -20,7 +21,11 @@ pub enum ErrorType {
     Key,
     ModuleNotFound,
     StopIteration,
-    Name
+    Name,
+    System,
+    Recursion,
+    Assertion,
+    Syntax
 }
 
 
@@ -41,8 +46,8 @@ impl Error {
         return Error(ErrorType::NotImplemented, "Not Implemented".to_string());
     }
 
-    pub fn attribute() -> Error {
-        return Error(ErrorType::Attribute, "Attribute is not defined for type".to_string());
+    pub fn attribute(message: &str) -> Error {
+        return Error(ErrorType::Attribute, message.to_string());
     }
 
     pub fn value(message: &str) -> Self {
@@ -64,12 +69,36 @@ impl Error {
     pub fn name(name: &str) -> Error {
          Error(ErrorType::Name, format!("name '{}' is not defined", name))
     }
+
+    pub fn system(message: &str) -> Error {
+        Error(ErrorType::System, format!("{}, version: {}", message, strings::VERSION))
+    }
+
+    pub fn system_not_implemented() -> Error {
+        Error(ErrorType::System, "feature not implemented".to_string())
+    }
+
+    pub fn recursion() -> Error {
+        Error(ErrorType::Recursion, "Maximum recursion depth exceeded".to_string())
+    }
+
+    pub fn assertion(message: &str) -> Error {
+        Error(ErrorType::Assertion, message.to_string())
+    }
+
+    pub fn syntax(message: &str) -> Error {
+        Error(ErrorType::Syntax, message.to_string())
+    }
+
+    pub fn log(&self) {
+        error!("{:?}Error", self.error_type(); "message" => self.message());
+    }
 }
 
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{:?}Error: {}", self.error_type(), self.message())
     }
 }
 
@@ -82,4 +111,5 @@ impl Exception for Error {
     fn message(&self) -> String {
         self.1.to_string()
     }
+
 }

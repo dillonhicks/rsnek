@@ -4,7 +4,8 @@ use std::ops::{Deref};
 use std::borrow::Borrow;
 
 use error::{Error, ErrorType};
-use runtime::{Runtime, IntegerProvider};
+use runtime::Runtime;
+use traits::IntegerProvider;
 use result::{RuntimeResult, NativeResult};
 use object::{self, RtValue, typing};
 use object::selfref::{self, SelfRef};
@@ -244,7 +245,7 @@ impl Iterator for PyIterator {
 #[cfg(test)]
 mod _api_method {
     #[allow(unused_imports)]
-    use runtime::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
+    use traits::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
     use object::method::*;
     use test::Bencher;
     use super::*;

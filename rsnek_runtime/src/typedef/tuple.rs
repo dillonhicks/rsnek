@@ -7,9 +7,11 @@ use std::collections::hash_map::DefaultHasher;
 use itertools::Itertools;
 use num::{ToPrimitive, Zero};
 
+use ::resource::strings;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
-use runtime::{Runtime, IntegerProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, IntegerProvider, IteratorProvider, DefaultTupleProvider, TupleProvider};
 use object::{self, RtValue, typing};
 use object::method::{self, Id, Length};
 use object::selfref::{self, SelfRef};
@@ -112,12 +114,12 @@ impl method::StringCast for PyTuple {
         let result = self.value.0.iter()
                 .map(|ref item| {
                      let boxed: &Box<Builtin> = item.0.borrow();
-                     return boxed.native_str()
+                     boxed.native_str()
                  })
-                .fold_results("".to_string(), |acc, s| [&acc[..], &s[..]].join(", "));
+                .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc});
 
         match result {
-            Ok(s) => Ok(format!("({})", s)),
+            Ok(s) => Ok(format!("({})", s.join(", "))),
             Err(err) => Err(err)
         }
 
@@ -132,7 +134,18 @@ impl method::LessThan for PyTuple {}
 impl method::LessOrEqual for PyTuple {}
 impl method::GreaterOrEqual for PyTuple {}
 impl method::GreaterThan for PyTuple {}
-impl method::BooleanCast for PyTuple {}
+impl method::BooleanCast for PyTuple {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_bool() {
+            Ok(bool) => Ok(rt.bool(bool)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(!self.value.0.is_empty())
+    }
+}
 impl method::IntegerCast for PyTuple {}
 impl method::FloatCast for PyTuple {}
 impl method::ComplexCast for PyTuple {}
@@ -148,7 +161,31 @@ impl method::DivMod for PyTuple {}
 impl method::FloorDivision for PyTuple {}
 impl method::LeftShift for PyTuple {}
 impl method::Modulus for PyTuple {}
-impl method::Multiply for PyTuple {}
+impl method::Multiply for PyTuple {
+    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref int) => {
+                match int.value.0.to_usize() {
+                    Some(int) if int <= 0   => Ok(rt.default_tuple()),
+                    Some(int) if int == 1   => self.rc.upgrade(),
+                    Some(int)               => {
+                        let value: Vec<ObjectRef> = (0..int)
+                            .flat_map(|_| self.value.0.iter().cloned())
+                            .collect::<Vec<_>>();
+                        Ok(rt.tuple(value))
+                    },
+                    None                    => {
+                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
+                    },
+                }
+            }
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("*", "tuple", other.debug_name())))
+        }
+    }
+}
 impl method::MatrixMultiply for PyTuple {}
 impl method::BitwiseOr for PyTuple {}
 impl method::Pow for PyTuple {}
@@ -185,7 +222,15 @@ impl method::InPlaceSubtract for PyTuple {}
 impl method::InPlaceTrueDivision for PyTuple {}
 impl method::InPlaceXOr for PyTuple {}
 impl method::Contains for PyTuple {}
-impl method::Iter for PyTuple {}
+impl method::Iter for PyTuple {
+    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        match self.rc.upgrade() {
+            Ok(selfref) => Ok(rt.iter(native::Iterator::new(&selfref).unwrap())),
+            Err(err) => Err(err)
+        }
+    }
+}
+
 impl method::Call for PyTuple {}
 impl method::Length for PyTuple {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
@@ -273,7 +318,7 @@ impl fmt::Debug for PyTuple {
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{TupleProvider, BooleanProvider};
+    use traits::{TupleProvider, BooleanProvider};
     use object::method::*;
     use super::*;
 
@@ -298,7 +343,7 @@ mod _api_method {
     }
 
     mod __hash__ {
-        use runtime::{StringProvider, IntegerProvider, DictProvider};
+        use traits::{StringProvider, IntegerProvider, DictProvider};
         use super::*;
 
         #[test]

@@ -3,8 +3,10 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 
+
 use result::{NativeResult, RuntimeResult};
-use runtime::{Runtime, IntegerProvider, NoneProvider, BooleanProvider};
+use runtime::Runtime;
+use traits::{IntegerProvider, NoneProvider, BooleanProvider};
 use error::Error;
 use typedef::objectref::ObjectRef;
 use typedef::native::{self, DictKey};
@@ -128,13 +130,13 @@ impl method::LessThan for PyDict {}
 impl method::LessOrEqual for PyDict {}
 impl method::GreaterOrEqual for PyDict {}
 impl method::GreaterThan for PyDict {}
+
 impl method::BooleanCast for PyDict {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        Ok(if self.native_bool().unwrap() {
-               rt.bool(true)
-           } else {
-               rt.bool(false)
-           })
+        match self.native_bool() {
+            Ok(value) => Ok(rt.bool(value)),
+            Err(err) => Err(err)
+        }
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
@@ -329,7 +331,7 @@ impl method::DescriptorSetName for PyDict {}
 
 #[cfg(test)]
 mod _api_method {
-    use runtime::{StringProvider, DictProvider};
+    use traits::{StringProvider, DictProvider};
     use object::method::*;
     use super::*;
 

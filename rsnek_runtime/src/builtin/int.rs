@@ -7,7 +7,7 @@ use traits::{IntegerProvider};
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::native;
+use typedef::native::{self, Func, FuncType, SignatureBuilder};
 
 use builtin::precondition::{check_args, check_kwargs};
 
@@ -15,16 +15,22 @@ pub struct IntFn;
 
 
 impl IntFn {
-    pub fn create() -> (&'static str, native::Function) {
-        info!("create builtin"; "function" => "int");
-        let func: Box<native::WrapperFn> = Box::new(rs_builtin_int);
-        ("int", native::Function::Wrapper(func))
+    pub fn create() -> native::Func {
+        trace!("create builtin"; "function" => "int");
+        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_int);
+
+        Func {
+            name: String::from("int"),
+            module: String::from("builtin"),
+            callable: FuncType::Wrapper(callable),
+            signature: ["obj"].as_args()
+        }
     }
 }
 
 
 fn rs_builtin_int(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-    info!("call"; "native_builtin" => "int");
+    trace!("call"; "native_builtin" => "int");
 
     match check_args(1, &pos_args) {
         Err(err) => return Err(err),

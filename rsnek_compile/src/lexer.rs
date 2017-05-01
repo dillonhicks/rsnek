@@ -6,8 +6,7 @@ use nom::{AsChar, InputLength, InputIter, Slice, ErrorKind};
 
 use ::token::{Id, Tk, New, Tag, Num, Ws};
 
-
-pub type LexResult<'a> = IResult<&'a [u8], Vec<Tk<'a>>>;
+pub use nom::IResult as LexResult;
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Lexer;
@@ -19,13 +18,13 @@ impl Lexer {
     }
 
     /// Convert a slice of bytes into a Rc<Vec<Tk>>
-    pub fn tokenize<'a>(&self, bytes: &'a [u8]) -> Rc<LexResult<'a>> {
+    pub fn tokenize<'a>(&self, bytes: &'a [u8]) -> Rc<LexResult<&'a [u8], Vec<Tk<'a>>>> {
         let result = tokenize_bytes(bytes);
         Rc::new(result)
     }
 
     /// Convert a slice of bytes into Vec<Tk<'a>>
-    pub fn tokenize2<'a>(&self, bytes: &'a [u8]) -> LexResult<'a>{
+    pub fn tokenize2<'a>(&self, bytes: &'a [u8]) -> LexResult<&'a [u8], Vec<Tk<'a>>>{
         tokenize_bytes(bytes)
     }
 }
@@ -114,7 +113,9 @@ named!(string <Tk>, do_parse!(
 
 
 named!(sublex_comment_string <Tk>, do_parse!(
-    bytes: preceded!(take!(1), is_not!("\n")) >>
+    bytes: alt_complete!(
+        recognize!(preceded!(tag!(b"#"), is_not!("\n"))) |
+        tag!(b"#")                                       )>>
     (Tk::new(Id::Comment, bytes, Tag::None))
 ));
 
@@ -146,19 +147,43 @@ named!(sublex_prefixed_string_u8 <&[u8]>,  do_parse!(
 
 
 named!(sublex_squote_string_u8 <&[u8]>, do_parse!(
-    bytes: switch!(peek!(take!(3)),
-        b"'''" => recognize!(delimited!(take!(3), take_until!("'''"), take!(3))) |
-        _ => recognize!(delimited!(tag!("'"), take_until!("'"), tag!("'")))
-    ) >>
+    bytes: alt_complete!(
+        switch!(peek!(take!(3)),
+            b"'''" => recognize!(
+                        delimited!(
+                            take!(3),
+                            take_until!("'''"),
+                            take!(3)))                      |
+            _ => recognize!(
+                    delimited!(
+                        tag!("'"),
+                        take_until!("'"),
+                        tag!("'")))
+        )                                                           |
+        tag!("''''''")                                              |
+        tag!("''")                                                  )>>
+
     (bytes)
 ));
 
 
 named!(sublex_dquote_string_u8 <&[u8]>, do_parse!(
-    bytes: switch!(peek!(take!(3)),
-        b"\"\"\"" => recognize!(delimited!(take!(3), take_until!("\"\"\""), take!(3))) |
-        _ => recognize!(delimited!(tag!("\""), take_until!("\""), tag!("\"")))
-    ) >>
+    bytes: alt_complete!(
+        switch!(peek!(take!(3)),
+            b"\"\"\"" => recognize!(
+                            delimited!(
+                                take!(3),
+                                take_until!("\"\"\""),
+                                take!(3)))                  |
+            _ => recognize!(
+                    delimited!(
+                        tag!("\""),
+                        take_until!("\""),
+                        tag!("\"")))
+        )                                                           |
+        tag!("\"\"\"\"\"\"")                                        |
+        tag!("\"\"")                                                ) >>
+
     (bytes)
 ));
 
@@ -367,7 +392,8 @@ mod tests {
 
 
     fn assert_token(value: &(&[u8], Vec<Tk>), id: Id, tag: Tag) {
-        fmt::tokens(&value.1, true);
+        println!("{}", fmt::tokens(&value.1, true));
+
         assert_eq!(value.1.len(), 1);
         let ref token = value.1[0];
         assert_eq!(token.id(), id);

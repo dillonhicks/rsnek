@@ -7,7 +7,7 @@ use traits::{IntegerProvider, StringProvider};
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::native;
+use typedef::native::{self, Signature, Func, FuncType};
 
 use builtin::precondition::{check_args, check_kwargs};
 
@@ -15,16 +15,23 @@ pub struct TypeFn;
 
 
 impl TypeFn {
-    pub fn create() -> (&'static str, native::Function) {
-        info!("create builtin"; "function" => "type");
-        let func: Box<native::WrapperFn> = Box::new(rs_builtin_typefn);
-        ("type", native::Function::Wrapper(func))
+    pub fn create() -> native::Func {
+        trace!("create builtin"; "function" => "type");
+        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_typefn);
+
+        Func {
+            name: String::from("type"),
+            module: String::from("builtin"),
+            callable: FuncType::Wrapper(callable),
+            signature: Signature::new(
+                &["obj"], &[], Some("*objects"), None)
+        }
     }
 }
 
 
 fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
-    info!("call"; "native_builtin" => "type");
+    trace!("call"; "native_builtin" => "type");
     match check_args(1, &pos_args) {
         Err(err) => return Err(err),
         _ => {}

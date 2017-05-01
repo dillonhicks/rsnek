@@ -10,6 +10,7 @@ use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 
 use num::Zero;
+use serde::ser::{Serialize, Serializer};
 
 use error::{Error, ErrorType};
 use result::RuntimeResult;
@@ -55,6 +56,14 @@ impl ObjectRef {
             Ok(string) => string,
             Err(_) => format!("{}", self)
         }
+    }
+}
+
+impl Serialize for ObjectRef {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
+        S: Serializer {
+
+        serializer.serialize_str(&self.to_string())
     }
 }
 

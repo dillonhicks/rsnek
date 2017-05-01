@@ -1,6 +1,6 @@
 [package]
 name = "rsnek_runtime"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
 [lib]
@@ -10,13 +10,14 @@ name = "rsnek_runtime"
 fn_traits = []
 
 [dependencies]
-slog = "2"
+slog = {version = "2"}
 slog-scope = "^3.0.0"
 
 itertools = "^0.6.0"
 
 # BigInt, BigComplex, and Num Traits
 num = "^0.1.37"
+num-bigint = "^0.1.37"
 
 # Userland ctx swtiches for nix platforms
 fringe = "^1.2.1"

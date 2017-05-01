@@ -199,7 +199,7 @@ impl fmt::Debug for PyType {
 #[cfg(test)]
 mod _api_methods {
     use super::*;
-    use runtime::PyTypeProvider;
+    use traits::PyTypeProvider;
 
     fn setup_test() -> (Runtime) {
         Runtime::new()

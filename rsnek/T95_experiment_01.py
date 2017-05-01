@@ -1,3 +1,4 @@
+# milestone_v040.py with some extra flavor to test logging changes
 def add(a, b):
     return a + b
 

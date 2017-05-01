@@ -1,11 +1,15 @@
 [package]
 name = "rsnek"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 build = "build.rs"
 
+[features]
+max_level_off = []
+
+
 [dependencies]
-slog = "2"
+slog = {version = "2", features=["max_level_trace"]}
 slog-async = "2.0.1"
 slog-term = "~2.0.0-4"
 slog-scope = "^3.0.0"

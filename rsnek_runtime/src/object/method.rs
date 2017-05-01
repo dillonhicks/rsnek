@@ -1,7 +1,8 @@
 use std::borrow::Borrow;
 
 use error::Error;
-use runtime::{Runtime, BooleanProvider, IntegerProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, IntegerProvider};
 
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;

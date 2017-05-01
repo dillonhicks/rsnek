@@ -7,8 +7,8 @@ use object::{self, RtValue, typing, method};
 use object::method::{BooleanCast, IntegerCast, StringRepresentation};
 use object::selfref::{self, SelfRef};
 
-use runtime::{Runtime, BooleanProvider};
-use runtime::{StringProvider, IntegerProvider, FloatProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::objectref::ObjectRef;

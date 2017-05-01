@@ -7,7 +7,8 @@ use std::collections::hash_map::DefaultHasher;
 
 use num::{self, Zero, ToPrimitive};
 
-use runtime::{Runtime, BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
+use runtime::Runtime;
+use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use resource::strings;
 use error::Error;
 use result::{NativeResult, RuntimeResult};
@@ -49,7 +50,8 @@ impl typing::BuiltinType for PyIntegerType {
 
 
     fn init_type() -> Self {
-        let range: Vec<ObjectRef> = STATIC_INT_RANGE.map(native::Integer::from)
+        let range: Vec<ObjectRef> = STATIC_INT_RANGE
+            .map(native::Integer::from)
             .map(PyIntegerType::alloc)
             .map(PyIntegerType::inject_selfref)
             .collect();

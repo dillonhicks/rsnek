@@ -23,7 +23,6 @@ use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Mode};
 fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    //let drain = slog_bunyan::new(decorator).build();
     let drain = slog_async::Async::new(drain).build();
     let drain = drain.filter_level(slog::Level::Trace).fuse();
 

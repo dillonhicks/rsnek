@@ -5,7 +5,8 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use result::{NativeResult, RuntimeResult};
-use runtime::{Runtime, IntegerProvider, BooleanProvider};
+use runtime::Runtime;
+use traits::{IntegerProvider, BooleanProvider};
 
 use object::{self, RtValue};
 use object::selfref::{self, SelfRef};
