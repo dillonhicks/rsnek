@@ -6,15 +6,15 @@ use serde_bytes;
 
 use ::slice::TkSlice;
 
-pub const TAB_BYTES:     &'static [u8] = &[9];
+//pub const TAB_BYTES:     &'static [u8] = &[9];
 pub const NEWLINE_BYTES: &'static [u8] = &[10];
 pub const SPACE_BYTES:   &'static [u8] = &[32];
 
-pub const TK_TAB: Tk        = Tk::const_(Id::Tab,     TAB_BYTES,     Tag::W(Ws::Tab));
+//pub const TK_TAB: Tk        = Tk::const_(Id::Tab,     TAB_BYTES,     Tag::W(Ws::Tab));
 pub const TK_NEWLINE: Tk    = Tk::const_(Id::Newline, NEWLINE_BYTES, Tag::W(Ws::Newline));
 pub const TK_SPACE: Tk      = Tk::const_(Id::Space,   SPACE_BYTES,   Tag::W(Ws::Space));
 
-pub const TAB:      &'static [Tk]       = &[TK_TAB];
+//pub const TAB:      &'static [Tk]       = &[TK_TAB];
 pub const NEWLINE:  &'static [Tk]       = &[TK_NEWLINE];
 pub const SPACE:    &'static [Tk]       = &[TK_SPACE];
 

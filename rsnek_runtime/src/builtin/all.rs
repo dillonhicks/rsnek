@@ -1,13 +1,13 @@
 use std::borrow::Borrow;
 
-use object::method::{self, GetItem, Next, Iter, BooleanCast};
+use object::method::{GetItem, Iter, BooleanCast};
 use runtime::Runtime;
-use traits::{IntegerProvider, IteratorProvider, BooleanProvider};
+use traits::{IntegerProvider, BooleanProvider};
 
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::native::{self, Func, FuncType, Signature, SignatureBuilder};
+use typedef::native::{self, Func, FuncType, SignatureBuilder};
 
 use builtin::precondition::{check_args, check_kwargs};
 
@@ -69,11 +69,6 @@ pub fn iterator_all<I>(rt: &Runtime, iterator: I) -> native::Boolean
         builtin.op_bool(&rt).unwrap_or(rt.bool(true))
         })
         .all(|objref| objref == rt.bool(true))
-}
-
-
-pub fn slice_all<'a>(rt: &Runtime, slice: &'a [ObjectRef]) -> native::Boolean {
-    iterator_all(rt, slice.iter().cloned())
 }
 
 
@@ -161,7 +156,7 @@ mod tests {
     fn arrays() {
         let rt = setup();
         assert_eq!(iterator_all(&rt, [rt.none()].iter().cloned()), false);
-        assert_eq!(slice_all(&rt, &[rt.none()]), false);
+        assert_eq!(iterator_all(&rt, [rt.none()].iter().cloned()), false);
 
         //assert_eq!(native_all(&rt, iterator), true);
     }

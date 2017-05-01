@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref};
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
@@ -52,11 +52,11 @@ use ::traits::{
     TupleProvider,
     DictProvider,
     BooleanProvider,
-    DefaultFrameProvider,
     FrameProvider,
     FunctionProvider
 };
 use ::typedef::native::{self, Native, Instr, FuncType};
+use ::typedef::native::SignatureBuilder;
 use ::typedef::builtin::Builtin;
 use ::typedef::objectref::ObjectRef;
 
@@ -134,7 +134,6 @@ impl Interpreter {
 
 }
 
-
 struct InterpreterState {
     rt: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
@@ -186,18 +185,17 @@ impl InterpreterState {
         istate
     }
 
-    fn pop_frame(&mut self) -> Result<(), Error> {
+    fn pop_frame(&mut self)  {
         trace!("Interpreter"; "action" => "pop_frame", "idx" => self.frames.len() - 1);
 
         self.frames.pop_back();
 
         if self.frames.len() == 0 {
-            return Err(Error::system(&format!(
+            Error::system(&format!(
                 "Interpreter has no call frames, this is a bug; file: {}, line: {}",
-                file!(), line!())))
+                file!(), line!())).log()
         }
 
-        Ok(())
     }
 
     fn push_frame(&mut self, func: &ObjectRef) -> Result<usize, Error>{
@@ -228,12 +226,12 @@ impl InterpreterState {
         Ok(self.frames.len())
     }
 
-    fn push_stack(&mut self, objref: &ObjectRef) -> Result<(), Error> {
+    fn push_stack(&mut self, objref: &ObjectRef)  {
         match self.frames.back() {
-            Some(&(_, ref stack)) => Ok(stack.borrow_mut().push(objref.clone())),
-            None => return Err(Error::system(&format!(
+            Some(&(_, ref stack)) => stack.borrow_mut().push(objref.clone()),
+            None => Error::system(&format!(
                 "Interpreter has no call frames, this is a bug; file: {}, line: {}",
-                file!(), line!())))
+                file!(), line!())).log()
         }
     }
 
@@ -326,11 +324,21 @@ impl InterpreterState {
                             "Interpreter does not implement Complex values; file: {}, line: {}",
                             file!(), line!()))))
                     },
-                    Native::Code(code) => rt.code(code),
+                    Native::Code(code) => {
+
+                        let func = native::Func {
+                            name: code.co_name.clone(),
+                            module: String::from("<compiled-module>"),
+                            signature: code.co_varnames.as_slice().as_args(),
+                            callable: native::FuncType::Code(code),
+                        };
+
+                        rt.function(func)
+                    },
                     Native::Count(_) => return Some(Err(Error::system(
                         &format!("Malformed LoadConst instruction {:?}, this is a bug!", instr)))),
                     Native::None => rt.none(),
-                    Native::Func(func) => rt.function(func)
+//                    Native::Func(func) => rt.function(func)
                 };
 
                 self.push_stack(&objref);
@@ -1066,7 +1074,7 @@ print(len(big_string))
         };
 
         b.iter(|| {
-            interpreter.exec(&rt, &(*ins));
+            interpreter.exec(&rt, &(*ins)).unwrap()
         });
     }
 

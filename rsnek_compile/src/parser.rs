@@ -1,6 +1,5 @@
-use std;
 use nom;
-use nom::{IResult, InputLength, Slice, FindSubstring, ErrorKind, Needed, Err};
+use nom::{IResult, ErrorKind, Err};
 
 use ::token::{Id, Tk, OwnedTk};
 use ::slice::{TkSlice};
@@ -66,7 +65,6 @@ struct ParserState<'a> {
 #[repr(u32)]
 enum ParserError {
     SubExpr = 1024,
-    ConditionalExpr = 1025
 }
 
 impl ParserError {
@@ -687,7 +685,7 @@ impl<'a> Parser<'a> {
             .collect::<Vec<Tk<'b>>>();
 
         match self.start_expr(TkSlice(&flattened)) {
-            (_, IResult::Done(remaining, expr)) => Ok(expr),
+            (_, IResult::Done(_, expr)) => Ok(expr),
             _ => Err(ParserError::SubExpr)
         }
     }

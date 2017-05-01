@@ -273,7 +273,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     match (start, end) {
                         (Some(s), None) => {
                             acc.push(tokens.slice(s..idx - 1));
-                            start = Some(idx);
+                            //start = Some(idx);
                         },
                         (None, Some(e)) => {
                             acc.push(tokens.slice(e..idx - 1));

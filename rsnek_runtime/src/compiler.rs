@@ -1,15 +1,13 @@
-use std::ops::Deref;
 use std::borrow::Borrow;
-use std::i64;
 
 use rsnek_compile::{
     Ast, Module, Stmt, Expr, Op, Lexer,
     LexResult, Parser, ParserResult,
-    OwnedTk, Id, Tag, Num};
+    OwnedTk, Id};
 
 use ::error::Error;
 use ::opcode::OpCode;
-use ::typedef::native::{self, Instr, Native, SignatureBuilder};
+use ::typedef::native::{self, Instr, Native};
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 
@@ -50,7 +48,7 @@ impl<'a> Compiler<'a> {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
                 self.compile_ast(&result.ast.borrow())
             },
-            result => Err(Error::syntax("Could not parse input"))
+            _ => Err(Error::syntax("Could not parse input"))
         }
     }
 
@@ -89,6 +87,7 @@ impl<'a> Compiler<'a> {
         Ok(instructions.into_boxed_slice())
     }
 
+    #[allow(unused_variables)]
     fn compile_stmt(&self, stmt: &'a Stmt) -> CompilerResult {
         let mut instructions: Vec<Instr> = vec![];
 
@@ -112,15 +111,8 @@ impl<'a> Compiler<'a> {
                     co_code: stmt.to_vec(),
                 };
 
-                let func = native::Func {
-                    name: name.as_string(),
-                    module: String::from("<compiled-module>"),
-                    signature: argnames.as_args(),
-                    callable: native::FuncType::Code(code),
-                };
-
                 let func_ins: Vec<Instr> = vec![
-                    Instr(OpCode::LoadConst, Some(Native::Func(func))),
+                    Instr(OpCode::LoadConst, Some(Native::Code(code))),
                     Instr(OpCode::LoadConst, Some(Native::from(name))),
                     Instr(OpCode::MakeFunction, None),
                     Instr(OpCode::StoreName, Some(Native::from(name)))
@@ -201,6 +193,7 @@ impl<'a> Compiler<'a> {
     }
 
 
+    #[allow(unused_variables)]
     fn compile_expr(&self, expr: &'a Expr, ctx: Context) -> CompilerResult {
         let mut instructions: Vec<Instr> = vec![];
 

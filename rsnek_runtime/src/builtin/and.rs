@@ -5,7 +5,6 @@ use ::runtime::Runtime;
 use ::result::RuntimeResult;
 use ::typedef::builtin::Builtin;
 use ::typedef::objectref::ObjectRef;
-use ::typedef::native;
 use ::traits::BooleanProvider;
 
 
@@ -20,9 +19,5 @@ pub fn logical_and<'a>(rt: &Runtime, lhs: &ObjectRef, rhs: &ObjectRef) -> Runtim
         Err(err) => return Err(err)
     };
 
-    let builtin: &Box<Builtin> = rhs.0.borrow();
-    match builtin.op_bool(rt) {
-        Ok(objref) => Ok(rhs.clone()),
-        Err(err) => Err(err)
-    }
+    Ok(rhs.clone())
 }

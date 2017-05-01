@@ -1,18 +1,14 @@
 use std;
 use std::fmt;
-use std::ops::Deref;
-use std::rc::Rc;
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 
 use num;
+#[allow(unused_imports)]
 use num::ToPrimitive;
-use num_bigint::{Sign, BigUint};
-use num_bigint::Sign::Minus;
-
 use num::Num as NumTrait;
-use serde::ser::{Serialize, Serializer};
+use serde::ser::{Serializer};
 
 use rsnek_compile::{Id, Tag, Num, OwnedTk};
 
@@ -73,7 +69,7 @@ pub type FnArgs = (ObjectRef, ObjectRef, ObjectRef);
 pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
 pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Func {
     pub name: String,
     pub signature: Signature,
@@ -352,7 +348,6 @@ pub enum Native {
     ),
     Count(Count),
     Code(Code),
-    Func(Func),
     None,
 }
 

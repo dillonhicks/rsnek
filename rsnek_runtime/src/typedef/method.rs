@@ -17,7 +17,7 @@ use object::typing::BuiltinType;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
-use typedef::native::{self, Func, NativeFn, WrapperFn, Signature, FuncType};
+use typedef::native::{self, NativeFn, WrapperFn, Signature, FuncType};
 use typedef::object::PyObjectType;
 use typedef::objectref::ObjectRef;
 
@@ -106,10 +106,11 @@ impl PyFunction {
         }
     }
 
+    #[allow(unused_variables)]
     fn do_call_wrapperfn(&self,
                          rt: &Runtime,
                          callable: &Box<WrapperFn>,
-                         signature: &Signature,
+                        signature: &Signature,
                          pos_args: &ObjectRef,
                          star_args: &ObjectRef,
                          kwargs: &ObjectRef)

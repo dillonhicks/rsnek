@@ -17,5 +17,5 @@ pub use self::len::LenFn;
 pub use self::print::PrintFn;
 pub use self::str::StrFn;
 pub use self::int::IntFn;
-pub use self::any::{AnyFn, iterator_any, slice_any};
-pub use self::all::{AllFn, iterator_all, slice_all};
+pub use self::any::{AnyFn, iterator_any};
+pub use self::all::{AllFn, iterator_all};

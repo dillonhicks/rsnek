@@ -2,18 +2,18 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::fmt;
 
-use object::{self, PyAPI, RtValue, typing, method};
+use object::{PyAPI, RtValue, typing, method};
 use object::selfref::{self, SelfRef};
 use error::Error;
 use runtime::Runtime;
-use traits::{BooleanProvider, IntegerProvider, NoneProvider};
+//use traits::{BooleanProvider, IntegerProvider, NoneProvider};
 
-use result::{RuntimeResult, NativeResult};
+use result::{RuntimeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::objectref::ObjectRef;
 
-pub const FRAME_MAX_BLOCKS: usize = 20;
+//pub const FRAME_MAX_BLOCKS: usize = 20;
 
 
 #[derive(Clone)]
@@ -85,6 +85,7 @@ impl method::Init for PyFrame { }
 impl method::Delete for PyFrame { }
 
 impl method::GetAttr for PyFrame {
+    #[allow(unused_variables)]
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = name.0.borrow();
 
