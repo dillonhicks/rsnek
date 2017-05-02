@@ -39,7 +39,6 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Bytes(ref $inner) => $e,
             &Builtin::Tuple(ref $inner) =>$e,
             &Builtin::List(ref $inner) =>$e,
-            &Builtin::List(ref $inner) =>$e,
             &Builtin::Function(ref $inner) => $e,
             &Builtin::Object(ref $inner) => $e,
             &Builtin::Type(ref $inner) => $e,
