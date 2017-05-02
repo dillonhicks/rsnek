@@ -13,7 +13,7 @@ use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultListProvider, ListProvider};
 use object::{self, RtValue, typing, PyAPI};
-use object::method::{self, Id, Length, Iter, StringCast};
+use object::method::{self, Id, Length, Iter, StringCast, Equal};
 use object::selfref::{self, SelfRef};
 use ::object::typing::BuiltinType;
 
@@ -101,8 +101,46 @@ impl method::StringCast for PyList {
 impl method::BytesCast for PyList {}
 impl method::StringFormat for PyList {}
 impl method::StringRepresentation for PyList {}
-impl method::Equal for PyList {}
-impl method::NotEqual for PyList {}
+impl method::Equal for PyList {
+
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_eq(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::List(ref other) => {
+                if self.value.0.len() != other.value.0.len() {
+                    return Ok(false)
+                }
+
+               let truth = self.value.0.iter()
+                    .zip(other.value.0.iter())
+                    .all(|(l, r)| l == r);
+
+                Ok(truth)
+            }
+            _ => Ok(false)
+        }
+    }
+}
+impl method::NotEqual for PyList {
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_ne(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        let truth = self.native_eq(&rhs)?;
+        Ok(!truth)
+    } 
+    
+}
 impl method::LessThan for PyList {}
 impl method::LessOrEqual for PyList {}
 impl method::GreaterOrEqual for PyList {}
@@ -191,6 +229,7 @@ impl method::Multiply for PyList {
         }
     }
 }
+
 impl method::MatrixMultiply for PyList {}
 impl method::BitwiseOr for PyList {}
 impl method::Pow for PyList {}
@@ -266,6 +305,7 @@ impl method::GetItem for PyList {
 
     fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
         let len = self.value.0.len() as isize;
+        let index_err = Err(Error::index("Index out of range"));
 
         match index {
             &Builtin::Int(ref obj) => {
@@ -273,16 +313,16 @@ impl method::GetItem for PyList {
                     Some(idx) if (0 <= idx) && (idx < len) => {
                         match self.value.0.get(idx as usize) {
                             Some(objref) => Ok(objref.clone()),
-                            None => Err(Error::index("Index out of range")),
+                            None => index_err,
                         }
                     },
                     Some(idx) if (-len <= idx) && (idx < 0) => {
                         match self.value.0.get((idx + len) as usize) {
                             Some(objref) => Ok(objref.clone()),
-                            None => Err(Error::index("Index out of range")),
+                            None => index_err,
                         }
                     },
-                    _ => Err(Error::index("Index out of range")),
+                    _ => index_err,
                 }
             }
             _ => Err(Error::typerr("list index was not int")),
@@ -336,13 +376,14 @@ impl fmt::Debug for PyList {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
+    use std::cmp::PartialEq;
     use ::traits::{
         DefaultListProvider,
         NoneProvider,
         TupleProvider,
         FloatProvider
     };
-    use ::object::method::{BooleanCast, GetItem, Multiply};
+    use ::object::method::{BooleanCast, GetItem, Multiply, NotEqual};
     use super::*;
 
     fn setup() -> (Runtime,) {
@@ -376,6 +417,50 @@ mod tests {
         assert_eq!(truth, rt.bool(true));
         let truth = boxed.native_bool().unwrap();
         assert_eq!(truth, true);
+    }
+
+    #[test]
+    fn __eq__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        assert_eq!(list, list.clone());
+        assert_eq!(list, rt.default_list());
+        assert!(list != rt.list(vec![rt.int(1)]));
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.none(), rt.none()]);
+        assert_eq!(list, list.clone());
+        assert_eq!(list, rt.list(vec![rt.none(), rt.none(), rt.none()]));
+        assert!(list != rt.list(vec![rt.int(1)]));
+    }
+
+    #[test]
+    fn __ne__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_ne(&rt, &list.clone()).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.default_list()).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.list(vec![rt.int(1)])).unwrap();
+        assert_eq!(truth, rt.bool(true));
+
+        // N Elements
+        let list = rt.list(vec![rt.int(1), rt.none(), rt.str("last")]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_ne(&rt, &list.clone()).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.list(vec![rt.int(1), rt.none(), rt.str("last")])).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.list(vec![rt.str("first")])).unwrap();
+        assert_eq!(truth, rt.bool(true));
     }
 
     #[test]

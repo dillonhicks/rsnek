@@ -797,7 +797,7 @@ impl method::DescriptorSetName for Builtin {}
 
 impl std::cmp::PartialEq for Builtin {
     fn eq(&self, rhs: &Builtin) -> bool {
-        self.native_eq(rhs).unwrap()
+        self.native_eq(rhs).unwrap_or(false)
     }
 }
 
