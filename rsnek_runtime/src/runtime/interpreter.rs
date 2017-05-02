@@ -1062,6 +1062,25 @@ print(len(big_string))
 
     assert_run!(list_01, r#"l = [4, 'hello', 34.22, None, True, False]"#, ExitCode::Ok);
 
+    assert_run!(list__bool__01, r#"l = [1234]
+assert l, "None empty list failed unexpectedly"
+"#, ExitCode::Ok);
+
+    assert_run!(list__bool__02, r#"l = []
+assert l, "None empty list failed unexpectedly"
+"#, ExitCode::GenericError);
+
+    assert_run!(list__len__01, r#"
+l = []
+assert len(l), 'Should fail'
+"#, ExitCode::GenericError);
+
+    assert_run!(list__len__02, r#"
+l = ['string of destiny']
+assert len(l), 'Should not fail'
+"#, ExitCode::Ok);
+
+
     #[bench]
     fn print(b: &mut Bencher) {
         let rt = Runtime::new();

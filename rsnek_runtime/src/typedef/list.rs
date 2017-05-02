@@ -13,7 +13,7 @@ use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultListProvider, ListProvider};
 use object::{self, RtValue, typing, PyAPI};
-use object::method::{self, Id, Length};
+use object::method::{self, Id, Length, StringCast};
 use object::selfref::{self, SelfRef};
 
 use typedef::builtin::Builtin;
@@ -75,7 +75,28 @@ impl method::GetAttribute for PyList {}
 impl method::SetAttr for PyList {}
 impl method::DelAttr for PyList {}
 impl method::Hashed for PyList {}
-impl method::StringCast for PyList {}
+impl method::StringCast for PyList {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        let s = self.native_str()?;
+        Ok(rt.str(s))
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+
+        let result = self.value.0.iter()
+            .map(|ref item| {
+                let boxed: &Box<Builtin> = item.0.borrow();
+                boxed.native_str()
+            })
+            .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc});
+
+        match result {
+            Ok(s) => Ok(format!("[{}]", s.join(", "))),
+            Err(err) => Err(err)
+        }
+    }
+}
+
 impl method::BytesCast for PyList {}
 impl method::StringFormat for PyList {}
 impl method::StringRepresentation for PyList {}
@@ -278,6 +299,28 @@ mod tests {
         assert_eq!(len, native::Integer::from(3));
     }
 
+    #[test]
+    fn __str__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let s = boxed.op_str(&rt).unwrap();
+        assert_eq!(s, rt.str("[]"));
+        let s = boxed.native_str().unwrap();
+        assert_eq!(&s, "[]");
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.bool(true), rt.bool(false), rt.int(1)]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let s = boxed.op_str(&rt).unwrap();
+        assert_eq!(s, rt.str("[None, True, False, 1]"));
+        let s = boxed.native_str().unwrap();
+        assert_eq!(&s, "[None, True, False, 1]");
+    }
 }
 
 #[cfg(all(feature="old", test))]
