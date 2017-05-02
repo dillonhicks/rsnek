@@ -22,6 +22,7 @@ use typedef::bytes::PyBytes;
 use typedef::complex::PyComplex;
 use typedef::none::PyNone;
 use typedef::tuple::PyTuple;
+use typedef::list::PyList;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
@@ -42,6 +43,7 @@ pub enum Builtin {
     Bytes(PyBytes),
     Dict(PyDict),
     Tuple(PyTuple),
+    List(PyList),
     Type(PyType),
     Function(PyFunction),
     Module(PyObject),
@@ -67,6 +69,7 @@ impl Builtin {
             Builtin::Bytes(_) => "bytes",
             Builtin::Dict(_) => "dict",
             Builtin::Tuple(_) => "tuple",
+            Builtin::List(_) => "list",
             Builtin::Type(_) => "type",
             Builtin::Function(_) => "function",
             Builtin::Module(_) => "module",

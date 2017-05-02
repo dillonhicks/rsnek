@@ -23,6 +23,7 @@ use traits::{
     ObjectProvider,
     DictProvider,
     TupleProvider,
+    ListProvider,
     FunctionProvider,
     PyTypeProvider,
     CodeProvider,
@@ -32,6 +33,7 @@ use traits::{
     DefaultFrameProvider,
     DefaultStringProvider,
     DefaultTupleProvider,
+    DefaultListProvider,
 };
 
 use result::{RuntimeResult};
@@ -51,6 +53,7 @@ use typedef::bytes::PyBytesType;
 use typedef::dictionary::PyDictType;
 use typedef::object::PyObjectType;
 use typedef::tuple::PyTupleType;
+use typedef::list::PyListType;
 use typedef::pytype::PyMeta;
 use typedef::method::PyFunctionType;
 use typedef::module::PyModuleType;
@@ -76,6 +79,7 @@ pub struct BuiltinTypes {
     string: PyStringType,
     bytes: PyBytesType,
     tuple: PyTupleType,
+    list: PyListType,
     function: PyFunctionType,
     object: PyObjectType,
     module: PyModuleType,
@@ -134,6 +138,7 @@ impl Runtime {
             string: PyStringType::init_type(),
             bytes: PyBytesType::init_type(),
             tuple: PyTupleType::init_type(),
+            list: PyListType::init_type(),
             function: PyFunctionType::init_type(&object.pytype, &object.object),
             object: object,
             module: module,
@@ -422,6 +427,34 @@ impl DefaultTupleProvider for Runtime {
         self.0.types.tuple.empty.clone()
     }
 }
+
+//
+// List
+//
+
+impl ListProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn list(&self, value: native::None) -> ObjectRef {
+        self.default_list()
+    }
+}
+
+
+impl ListProvider<native::List> for Runtime {
+    fn list(&self, value: native::List) -> ObjectRef {
+        self.0
+            .types
+            .list
+            .new(&self, value)
+    }
+}
+
+impl DefaultListProvider for Runtime {
+    fn default_list(&self) -> ObjectRef {
+        self.0.types.list.empty.clone()
+    }
+}
+
 //
 // Object
 //

@@ -1,5 +1,210 @@
+use std::fmt;
+use std::ops::{Add, Deref};
+use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+use itertools::Itertools;
+use num::{ToPrimitive, Zero};
+
+use ::resource::strings;
+use error::Error;
+use result::{RuntimeResult, NativeResult};
+use runtime::Runtime;
+use traits::{BooleanProvider, IntegerProvider, IteratorProvider, DefaultListProvider, ListProvider};
+use object::{self, RtValue, typing, PyAPI};
+use object::method::{self, Id, Length};
+use object::selfref::{self, SelfRef};
+
+use typedef::builtin::Builtin;
+use typedef::native;
+use typedef::objectref::ObjectRef;
 
 
+pub struct PyListType {
+    pub empty: ObjectRef,
+}
+
+
+impl typing::BuiltinType for PyListType {
+    type T = PyList;
+    type V = native::List;
+
+    #[inline(always)]
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyListType::inject_selfref(PyListType::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyListType { empty: PyListType::inject_selfref(PyListType::alloc(native::List::new())) }
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::List(value));
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::List(ref list) => {
+                list.rc.set(&objref.clone());
+            }
+            _ => unreachable!(),
+        }
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyList {
+            value: ListValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+}
+
+pub struct ListValue(pub native::List);
+pub type PyList = RtValue<ListValue>;
+
+
+impl PyAPI for PyList {}
+impl method::New for PyList {}
+impl method::Init for PyList {}
+impl method::Delete for PyList {}
+impl method::GetAttr for PyList {}
+impl method::GetAttribute for PyList {}
+impl method::SetAttr for PyList {}
+impl method::DelAttr for PyList {}
+impl method::Hashed for PyList {}
+impl method::StringCast for PyList {}
+impl method::BytesCast for PyList {}
+impl method::StringFormat for PyList {}
+impl method::StringRepresentation for PyList {}
+impl method::Equal for PyList {}
+impl method::NotEqual for PyList {}
+impl method::LessThan for PyList {}
+impl method::LessOrEqual for PyList {}
+impl method::GreaterOrEqual for PyList {}
+impl method::GreaterThan for PyList {}
+impl method::BooleanCast for PyList {}
+impl method::IntegerCast for PyList {}
+impl method::FloatCast for PyList {}
+impl method::ComplexCast for PyList {}
+impl method::Rounding for PyList {}
+impl method::Index for PyList {}
+impl method::NegateValue for PyList {}
+impl method::AbsValue for PyList {}
+impl method::PositiveValue for PyList {}
+impl method::InvertValue for PyList {}
+impl method::Add for PyList {}
+impl method::BitwiseAnd for PyList {}
+impl method::DivMod for PyList {}
+impl method::FloorDivision for PyList {}
+impl method::LeftShift for PyList {}
+impl method::Modulus for PyList {}
+impl method::Multiply for PyList {}
+impl method::MatrixMultiply for PyList {}
+impl method::BitwiseOr for PyList {}
+impl method::Pow for PyList {}
+impl method::RightShift for PyList {}
+impl method::Subtract for PyList {}
+impl method::TrueDivision for PyList {}
+impl method::XOr for PyList {}
+impl method::ReflectedAdd for PyList {}
+impl method::ReflectedBitwiseAnd for PyList {}
+impl method::ReflectedDivMod for PyList {}
+impl method::ReflectedFloorDivision for PyList {}
+impl method::ReflectedLeftShift for PyList {}
+impl method::ReflectedModulus for PyList {}
+impl method::ReflectedMultiply for PyList {}
+impl method::ReflectedMatrixMultiply for PyList {}
+impl method::ReflectedBitwiseOr for PyList {}
+impl method::ReflectedPow for PyList {}
+impl method::ReflectedRightShift for PyList {}
+impl method::ReflectedSubtract for PyList {}
+impl method::ReflectedTrueDivision for PyList {}
+impl method::ReflectedXOr for PyList {}
+impl method::InPlaceAdd for PyList {}
+impl method::InPlaceBitwiseAnd for PyList {}
+impl method::InPlaceDivMod for PyList {}
+impl method::InPlaceFloorDivision for PyList {}
+impl method::InPlaceLeftShift for PyList {}
+impl method::InPlaceModulus for PyList {}
+impl method::InPlaceMultiply for PyList {}
+impl method::InPlaceMatrixMultiply for PyList {}
+impl method::InPlaceBitwiseOr for PyList {}
+impl method::InPlacePow for PyList {}
+impl method::InPlaceRightShift for PyList {}
+impl method::InPlaceSubtract for PyList {}
+impl method::InPlaceTrueDivision for PyList {}
+impl method::InPlaceXOr for PyList {}
+impl method::Contains for PyList {}
+impl method::Iter for PyList {}
+impl method::Call for PyList {}
+impl method::Length for PyList {}
+impl method::LengthHint for PyList {}
+impl method::Next for PyList {}
+impl method::Reversed for PyList {}
+impl method::GetItem for PyList {}
+impl method::SetItem for PyList {}
+impl method::DeleteItem for PyList {}
+impl method::Count for PyList {}
+impl method::Append for PyList {}
+impl method::Extend for PyList {}
+impl method::Pop for PyList {}
+impl method::Remove for PyList {}
+impl method::IsDisjoint for PyList {}
+impl method::AddItem for PyList {}
+impl method::Discard for PyList {}
+impl method::Clear for PyList {}
+impl method::Get for PyList {}
+impl method::Keys for PyList {}
+impl method::Values for PyList {}
+impl method::Items for PyList {}
+impl method::PopItem for PyList {}
+impl method::Update for PyList {}
+impl method::SetDefault for PyList {}
+impl method::Await for PyList {}
+impl method::Send for PyList {}
+impl method::Throw for PyList {}
+impl method::Close for PyList {}
+impl method::Exit for PyList {}
+impl method::Enter for PyList {}
+impl method::DescriptorGet for PyList {}
+impl method::DescriptorSet for PyList {}
+impl method::DescriptorSetName for PyList {}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      stdlib traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl fmt::Display for PyList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "List({:?})", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "List({:?})", self.value.0)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use ::traits::DefaultListProvider;
+    use super::*;
+
+    fn setup() -> (Runtime,) {
+        (Runtime::new(),)
+    }
+
+    #[test]
+    fn new_default() {
+        let (rt,) = setup();
+        rt.default_list();
+    }
+
+}
 
 #[cfg(all(feature="old", test))]
 mod old {
@@ -25,9 +230,9 @@ mod old {
 
     impl ListObject {
         pub fn new(value: &Vec<ObjectRef>) -> ListObject {
-            let tuple = ListObject { value: List::new(value.clone()) };
+            let list = ListObject { value: List::new(value.clone()) };
 
-            return tuple;
+            return list;
         }
     }
 
