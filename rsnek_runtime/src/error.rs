@@ -25,7 +25,8 @@ pub enum ErrorType {
     System,
     Recursion,
     Assertion,
-    Syntax
+    Syntax,
+    Index
 }
 
 
@@ -89,6 +90,11 @@ impl Error {
     pub fn syntax(message: &str) -> Error {
         Error(ErrorType::Syntax, message.to_string())
     }
+
+    pub fn index(message: &str) -> Error {
+        Error(ErrorType::Index, message.to_string())
+    }
+
 
     pub fn log(&self) {
         error!("{:?}Error", self.error_type(); "message" => self.message());

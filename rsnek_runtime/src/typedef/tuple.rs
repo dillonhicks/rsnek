@@ -224,11 +224,17 @@ impl method::InPlaceXOr for PyTuple {}
 impl method::Contains for PyTuple {}
 impl method::Iter for PyTuple {
     fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        let iter = self.native_iter()?;
+        Ok(rt.iter(iter))
+    }
+
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
         match self.rc.upgrade() {
-            Ok(selfref) => Ok(rt.iter(native::Iterator::new(&selfref).unwrap())),
+            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
             Err(err) => Err(err)
         }
     }
+
 }
 
 impl method::Call for PyTuple {}

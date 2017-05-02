@@ -268,7 +268,7 @@ api_trait!(binary, self, __ixor__, InPlaceXOr, op_ixor, native_ixor);
 //  Collections
 // -----------------------------------
 api_trait!(binary, self, __contains__, Contains, op_contains, native_contains, native::Boolean);
-api_trait!(unary, self, __iter__, Iter, op_iter, native_iter);
+api_trait!(unary, self, __iter__, Iter, op_iter, native_iter, native::Iterator);
 api_trait!(4ary, self, __call__, Call, op_call, native_call);
 api_trait!(unary, self, __len__, Length, op_len, native_len, native::Integer);
 api_trait!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);

@@ -13,7 +13,7 @@ use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultListProvider, ListProvider};
 use object::{self, RtValue, typing, PyAPI};
-use object::method::{self, Id, Length, StringCast};
+use object::method::{self, Id, Length, Iter, StringCast};
 use object::selfref::{self, SelfRef};
 
 use typedef::builtin::Builtin;
@@ -170,7 +170,20 @@ impl method::InPlaceSubtract for PyList {}
 impl method::InPlaceTrueDivision for PyList {}
 impl method::InPlaceXOr for PyList {}
 impl method::Contains for PyList {}
-impl method::Iter for PyList {}
+impl method::Iter for PyList {
+    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        let iter = self.native_iter()?;
+        Ok(rt.iter(iter))
+    }
+
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
+        match self.rc.upgrade() {
+            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
+            Err(err) => Err(err)
+        }
+    }
+
+}
 impl method::Call for PyList {}
 impl method::Length for PyList {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
@@ -187,7 +200,38 @@ impl method::Length for PyList {
 impl method::LengthHint for PyList {}
 impl method::Next for PyList {}
 impl method::Reversed for PyList {}
-impl method::GetItem for PyList {}
+impl method::GetItem for PyList {
+    #[allow(unused_variables)]
+    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = index.0.borrow();
+        self.native_getitem(boxed)
+    }
+
+    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+        let len = self.value.0.len() as isize;
+
+        match index {
+            &Builtin::Int(ref obj) => {
+                match obj.value.0.to_isize() {
+                    Some(idx) if (0 <= idx) && (idx < len) => {
+                        match self.value.0.get(idx as usize) {
+                            Some(objref) => Ok(objref.clone()),
+                            None => Err(Error::index("Index out of range")),
+                        }
+                    },
+                    Some(idx) if (-len <= idx) && (idx < 0) => {
+                        match self.value.0.get((idx + len) as usize) {
+                            Some(objref) => Ok(objref.clone()),
+                            None => Err(Error::index("Index out of range")),
+                        }
+                    },
+                    _ => Err(Error::index("Index out of range")),
+                }
+            }
+            _ => Err(Error::typerr("list index was not int")),
+        }
+    }
+}
 impl method::SetItem for PyList {}
 impl method::DeleteItem for PyList {}
 impl method::Count for PyList {}
@@ -238,9 +282,10 @@ mod tests {
     use ::traits::{
         DefaultListProvider,
         NoneProvider,
+        TupleProvider,
         FloatProvider
     };
-    use ::object::method::{BooleanCast};
+    use ::object::method::{BooleanCast, GetItem};
     use super::*;
 
     fn setup() -> (Runtime,) {
@@ -289,7 +334,7 @@ mod tests {
         let len = boxed.native_len().unwrap();
         assert_eq!(len, native::Integer::zero());
 
-        // Three Elements
+        // N Elements
         let list = rt.list(vec![rt.none(), rt.none(), rt.none()]);
         let boxed: &Box<Builtin> = list.0.borrow();
 
@@ -320,6 +365,65 @@ mod tests {
         assert_eq!(s, rt.str("[None, True, False, 1]"));
         let s = boxed.native_str().unwrap();
         assert_eq!(&s, "[None, True, False, 1]");
+    }
+
+    #[test]
+    fn __getitem__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let is_err = boxed.op_getitem(&rt, &rt.int(0)).is_err();
+        assert_eq!(is_err, true);
+
+        // N Elements
+        let list = rt.list(vec![rt.int(1), rt.int(2), rt.str("three")]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let item = boxed.op_getitem(&rt, &rt.int(0)).unwrap();
+        assert_eq!(item, rt.int(1));
+        let item = boxed.op_getitem(&rt, &rt.int(1)).unwrap();
+        assert_eq!(item, rt.int(2));
+        let item = boxed.op_getitem(&rt, &rt.int(2)).unwrap();
+        assert_eq!(item, rt.str("three"));
+
+        // Out of bounds
+        let is_err = boxed.op_getitem(&rt, &rt.int(3)).is_err();
+        assert_eq!(is_err, true);
+
+        // Negative indexing
+        let item = boxed.op_getitem(&rt, &rt.int(-1)).unwrap();
+        assert_eq!(item, rt.str("three"));
+
+        // Out of bounds
+        let is_err = boxed.op_getitem(&rt, &rt.int(-4)).is_err();
+        assert_eq!(is_err, true);
+    }
+    
+    #[test]
+    fn __iter__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let iter = boxed.op_iter(&rt).unwrap();
+        assert_eq!(iter.count(), 0);
+
+        // N Elements
+        let list = rt.list(vec![
+            rt.none(),
+            rt.float(99433.000001),
+            rt.str("asdf"),
+            rt.tuple(vec![rt.default_list()])
+        ]);
+
+        let boxed: &Box<Builtin> = list.0.borrow();
+        let iter = boxed.op_iter(&rt).unwrap();
+        assert_eq!(iter.count(), 4);
     }
 }
 

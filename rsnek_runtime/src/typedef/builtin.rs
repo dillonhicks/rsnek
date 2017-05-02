@@ -638,7 +638,7 @@ impl method::Iter for Builtin {
         foreach_builtin!(self, rt, op_iter, lhs)
     }
 
-    fn native_iter(&self) -> NativeResult<Builtin> {
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
         native_foreach_builtin!(self, native_iter, lhs)
     }
 }
