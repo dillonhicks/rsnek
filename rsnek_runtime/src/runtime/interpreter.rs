@@ -336,10 +336,11 @@ impl InterpreterState {
 
                         rt.function(func)
                     },
-                    Native::Count(_) => return Some(Err(Error::system(
-                        &format!("Malformed LoadConst instruction {:?}, this is a bug!", instr)))),
                     Native::None => rt.none(),
-//                    Native::Func(func) => rt.function(func)
+                    Native::Count(_) |
+                    Native::List(_) => return Some(Err(Error::system(
+                        &format!("Malformed LoadConst instruction {:?}, this is a bug!; file: {}; line: {}",
+                                 instr, file!(), line!())))),
                 };
 
                 self.push_stack(&objref);
@@ -1080,6 +1081,10 @@ l = ['string of destiny']
 assert len(l), 'Should not fail'
 "#, ExitCode::Ok);
 
+    assert_run!(list__mul__01, r#"
+l = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] * len('I declare this list to be bigger!')
+assert len(l), 'Should not fail'
+"#, ExitCode::Ok);
 
     #[bench]
     fn print(b: &mut Bencher) {

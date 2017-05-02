@@ -221,7 +221,7 @@ api_trait!(binary, self, __divmod__, DivMod, op_divmod, native_divmod);
 api_trait!(binary, self, __floordiv__, FloorDivision, op_floordiv, native_floordiv);
 api_trait!(binary, self, __lshift__, LeftShift, op_lshift, native_lshift);
 api_trait!(binary, self, __mod__, Modulus, op_mod, native_mod);
-api_trait!(binary, self, __mul__, Multiply, op_mul, native_mul);
+api_trait!(binary, self, __mul__, Multiply, op_mul, native_mul, native::Native);
 api_trait!(binary, self, __matmul__, MatrixMultiply, op_matmul, native_matmul);
 api_trait!(binary, self, __or__, BitwiseOr, op_or, native_or);
 api_trait!(ternary, self, __pow__, Pow, op_pow, native_pow);

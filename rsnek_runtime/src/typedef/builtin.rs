@@ -417,7 +417,7 @@ impl method::Multiply for Builtin {
         foreach_builtin!(self, rt, op_mul, lhs, rhs)
     }
 
-    fn native_mul(&self, rhs: &Builtin) -> NativeResult<Builtin> {
+    fn native_mul(&self, rhs: &Builtin) -> NativeResult<native::Native> {
         native_foreach_builtin!(self, native_mul, lhs, rhs)
     }
 }

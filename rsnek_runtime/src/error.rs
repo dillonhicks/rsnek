@@ -31,40 +31,41 @@ pub enum ErrorType {
 
 
 impl Error {
+
     pub fn runtime(message: &str) -> Error {
-        return Error(ErrorType::Runtime, message.to_string());
+        Error(ErrorType::Runtime, message.to_string())
     }
 
     pub fn typerr(message: &str) -> Error {
-        return Error(ErrorType::Type, message.to_string());
+        Error(ErrorType::Type, message.to_string())
     }
 
     pub fn overflow(message: &str) -> Error {
-        return Error(ErrorType::Overflow, message.to_string());
+        Error(ErrorType::Overflow, message.to_string())
     }
 
     pub fn not_implemented() -> Error {
-        return Error(ErrorType::NotImplemented, "Not Implemented".to_string());
+        Error(ErrorType::NotImplemented, "Not Implemented".to_string())
     }
 
     pub fn attribute(message: &str) -> Error {
-        return Error(ErrorType::Attribute, message.to_string());
+        Error(ErrorType::Attribute, message.to_string())
     }
 
     pub fn value(message: &str) -> Self {
-        return Error(ErrorType::Value, message.to_string());
+        Error(ErrorType::Value, message.to_string())
     }
 
     pub fn key(message: &str) -> Error {
-        return Error(ErrorType::Key, message.to_string());
+        Error(ErrorType::Key, message.to_string())
     }
 
     pub fn module_not_found(name: &'static str) -> Error {
-        return Error(ErrorType::ModuleNotFound, format!("could not find {:?}", name));
+        Error(ErrorType::ModuleNotFound, format!("could not find {:?}", name))
     }
 
     pub fn stop_iteration() -> Error {
-        return Error(ErrorType::StopIteration, "".to_string());
+        return Error(ErrorType::StopIteration, "".to_string())
     }
 
     pub fn name(name: &str) -> Error {

@@ -15,9 +15,10 @@ use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider,
 use object::{self, RtValue, typing, PyAPI};
 use object::method::{self, Id, Length, Iter, StringCast};
 use object::selfref::{self, SelfRef};
+use ::object::typing::BuiltinType;
 
 use typedef::builtin::Builtin;
-use typedef::native;
+use typedef::native::{self, Native};
 use typedef::objectref::ObjectRef;
 
 
@@ -133,7 +134,63 @@ impl method::DivMod for PyList {}
 impl method::FloorDivision for PyList {}
 impl method::LeftShift for PyList {}
 impl method::Modulus for PyList {}
-impl method::Multiply for PyList {}
+impl method::Multiply for PyList {
+    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref int) => {
+                match int.value.0.to_usize() {
+                    Some(int) if int <= 0   => Ok(rt.default_list()),
+                    Some(int) if int == 1   => self.rc.upgrade(),
+                    Some(int)               => {
+                        // TODO: {3089} This is gross, think of a better way. I would
+                        // not like to throw in the towel so easily for supporting the
+                        // on the native api.
+                        match self.native_mul(&builtin)? {
+                            Native::List(list) => Ok(rt.list(list)),
+                            other => Err(Error::system(
+                                &format!(
+                                    "native list method {} returned '{:?}' expected '{}'; file: {}, line: {}",
+                                    "native_mul", other, "List", file!(), line!())))
+                        }
+                    },
+                    None => {
+                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
+                    },
+                }
+            }
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("*", "list", other.debug_name())))
+        }
+    }
+
+    fn native_mul(&self, rhs: &Builtin) -> NativeResult<Native> {
+        match rhs {
+            &Builtin::Int(ref int) => {
+                match int.value.0.to_usize() {
+                    Some(int) if int <= 1   => {
+                        Err(Error::system(
+                            &format!("{} {}", "native_mul of type list requires ",
+                                    "an integer greater than 1")))
+                    },
+                    Some(int) => {
+                        let elems: Vec<ObjectRef> = (0..int)
+                            .flat_map(|_| self.value.0.iter().cloned())
+                            .collect::<native::List>();
+
+                        Ok(Native::List(elems))
+                    },
+                    None => {
+                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
+                    },
+                }
+            }
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("*", "list", other.debug_name())))
+        }
+    }
+}
 impl method::MatrixMultiply for PyList {}
 impl method::BitwiseOr for PyList {}
 impl method::Pow for PyList {}
@@ -285,7 +342,7 @@ mod tests {
         TupleProvider,
         FloatProvider
     };
-    use ::object::method::{BooleanCast, GetItem};
+    use ::object::method::{BooleanCast, GetItem, Multiply};
     use super::*;
 
     fn setup() -> (Runtime,) {
@@ -425,6 +482,35 @@ mod tests {
         let iter = boxed.op_iter(&rt).unwrap();
         assert_eq!(iter.count(), 4);
     }
+
+    #[test]
+    fn __mul__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let new_list = boxed.op_mul(&rt, &rt.int(10)).unwrap();
+        let new_boxed: &Box<Builtin> = new_list.0.borrow();
+        let len = new_boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(0));
+
+        // N Elements
+        let list = rt.list(vec![
+            rt.none(),
+            rt.float(99433.000001),
+            rt.str("asdf"),
+            rt.tuple(vec![rt.default_list()])
+        ]);
+
+        let boxed: &Box<Builtin> = list.0.borrow();
+        let new_list = boxed.op_mul(&rt, &rt.int(145)).unwrap();
+        let new_boxed: &Box<Builtin> = new_list.0.borrow();
+        let len = new_boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(4 * 145));
+    }
+
 }
 
 #[cfg(all(feature="old", test))]
