@@ -42,6 +42,10 @@ pub trait TupleProvider<T> {
     fn tuple(&self, value: T) -> ObjectRef;
 }
 
+pub trait ListProvider<T> {
+    fn list(&self, value: T) -> ObjectRef;
+}
+
 pub trait PyTypeProvider<T> {
     fn pytype(&self, value: T) -> ObjectRef;
 }
@@ -97,6 +101,10 @@ pub trait DefaultBytesProvider {
 
 pub trait DefaultTupleProvider {
     fn default_tuple(&self) -> ObjectRef;
+}
+
+pub trait DefaultListProvider {
+    fn default_list(&self) -> ObjectRef;
 }
 
 pub trait DefaultPyTypeProvider {

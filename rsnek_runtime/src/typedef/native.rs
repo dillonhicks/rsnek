@@ -26,6 +26,8 @@ use ::typedef::builtin::Builtin;
 // The strong reference counting type used by the runtime
 // to keep track of heap allocated object. The simple gc will
 // look for exactly 1 strong ref (to the heap object itself).
+// TODO: {T3088} The added Box<> here seems like a level of indirection that is not needed
+//  and was probably because I was a rust noob at that point.
 pub type RuntimeRef = std::rc::Rc<Box<typedef::builtin::Builtin>>;
 pub type RuntimeWeakRef = std::rc::Weak<Box<typedef::builtin::Builtin>>;
 pub type ObjectId = u64;
