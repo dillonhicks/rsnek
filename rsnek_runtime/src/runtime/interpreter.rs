@@ -50,6 +50,7 @@ use ::traits::{
     IntegerProvider,
     FloatProvider,
     TupleProvider,
+    ListProvider,
     DictProvider,
     BooleanProvider,
     FrameProvider,
@@ -538,7 +539,7 @@ impl InterpreterState {
                     elems.insert(0, self.pop_stack().unwrap());
                 }
 
-                let objref = rt.tuple(elems);
+                let objref = rt.list(elems);
                 trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref));
                 self.push_stack(&objref);
                 Some(Ok(rt.none()))
@@ -1008,8 +1009,8 @@ assert f, 'this should fail'
     "#, ExitCode::GenericError);
 
     assert_run!(logic_or_01, r#"
-f = None or [1,2,3]
-assert f, 'None or [1,2,3] failed unexpectedly'
+f = None or True
+assert f, 'None or True failed unexpectedly'
     "#, ExitCode::Ok);
 
     assert_run!(logic_or_02, r#"

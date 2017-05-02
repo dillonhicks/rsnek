@@ -140,7 +140,18 @@ impl method::InPlaceXOr for PyList {}
 impl method::Contains for PyList {}
 impl method::Iter for PyList {}
 impl method::Call for PyList {}
-impl method::Length for PyList {}
+impl method::Length for PyList {
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_len() {
+            Ok(length) => Ok(rt.int(length)),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        Ok(native::Integer::from(self.value.0.len()))
+    }
+}
 impl method::LengthHint for PyList {}
 impl method::Next for PyList {}
 impl method::Reversed for PyList {}
@@ -190,8 +201,9 @@ impl fmt::Debug for PyList {
 
 
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod tests {
-    use ::traits::DefaultListProvider;
+    use ::traits::{NoneProvider, DefaultListProvider};
     use super::*;
 
     fn setup() -> (Runtime,) {
@@ -202,6 +214,29 @@ mod tests {
     fn new_default() {
         let (rt,) = setup();
         rt.default_list();
+    }
+
+    #[test]
+    fn __len__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let len = boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(0));
+        let len = boxed.native_len().unwrap();
+        assert_eq!(len, native::Integer::zero());
+
+        // Three Elements
+        let list = rt.list(vec![rt.none(), rt.none(), rt.none()]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let len = boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(3));
+        let len = boxed.native_len().unwrap();
+        assert_eq!(len, native::Integer::from(3));
     }
 
 }
