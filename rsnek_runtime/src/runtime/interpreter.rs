@@ -1009,8 +1009,8 @@ assert f, 'this should fail'
     "#, ExitCode::GenericError);
 
     assert_run!(logic_or_01, r#"
-f = None or True
-assert f, 'None or True failed unexpectedly'
+f = None or [1,2,3]
+assert f, 'None or [1,2,3] failed unexpectedly'
     "#, ExitCode::Ok);
 
     assert_run!(logic_or_02, r#"
@@ -1059,6 +1059,8 @@ tiny_string = 'abc'
 big_string = biglyify_string(tiny_string)
 print(len(big_string))
 "#, ExitCode::Ok);
+
+    assert_run!(list_01, r#"l = [4, 'hello', 34.22, None, True, False]"#, ExitCode::Ok);
 
     #[bench]
     fn print(b: &mut Bencher) {

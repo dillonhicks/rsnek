@@ -11,7 +11,7 @@ use ::resource::strings;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
-use traits::{BooleanProvider, IntegerProvider, IteratorProvider, DefaultListProvider, ListProvider};
+use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultListProvider, ListProvider};
 use object::{self, RtValue, typing, PyAPI};
 use object::method::{self, Id, Length};
 use object::selfref::{self, SelfRef};
@@ -85,7 +85,18 @@ impl method::LessThan for PyList {}
 impl method::LessOrEqual for PyList {}
 impl method::GreaterOrEqual for PyList {}
 impl method::GreaterThan for PyList {}
-impl method::BooleanCast for PyList {}
+impl method::BooleanCast for PyList {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_bool() {
+            Ok(bool) => Ok(rt.bool(bool)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(!self.value.0.is_empty())
+    }
+}
 impl method::IntegerCast for PyList {}
 impl method::FloatCast for PyList {}
 impl method::ComplexCast for PyList {}
@@ -203,7 +214,12 @@ impl fmt::Debug for PyList {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
-    use ::traits::{NoneProvider, DefaultListProvider};
+    use ::traits::{
+        DefaultListProvider,
+        NoneProvider,
+        FloatProvider
+    };
+    use ::object::method::{BooleanCast};
     use super::*;
 
     fn setup() -> (Runtime,) {
@@ -214,6 +230,29 @@ mod tests {
     fn new_default() {
         let (rt,) = setup();
         rt.default_list();
+    }
+    
+    #[test]
+    fn __bool__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_bool(&rt).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.native_bool().unwrap();
+        assert_eq!(truth, false);
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.str("yup"), rt.float(1.324)]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_bool(&rt).unwrap();
+        assert_eq!(truth, rt.bool(true));
+        let truth = boxed.native_bool().unwrap();
+        assert_eq!(truth, true);
     }
 
     #[test]
