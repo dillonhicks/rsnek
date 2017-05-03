@@ -6,6 +6,7 @@ use traits::{IntegerProvider, BooleanProvider};
 
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
+use ::resource::strings;
 use typedef::builtin::Builtin;
 use typedef::native::{self, Func, FuncType, SignatureBuilder};
 
@@ -21,7 +22,7 @@ impl AllFn {
 
         Func {
             name: String::from("all"),
-            module: String::from("builtin"),
+            module: String::from(strings::BUILTINS_MODULE),
             callable: FuncType::Wrapper(callable),
             signature: ["iterable"].as_args()
         }

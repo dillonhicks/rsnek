@@ -60,8 +60,8 @@ impl Error {
         Error(ErrorType::Key, message.to_string())
     }
 
-    pub fn module_not_found(name: &'static str) -> Error {
-        Error(ErrorType::ModuleNotFound, format!("could not find {:?}", name))
+    pub fn module_not_found(name: &str) -> Error {
+        Error(ErrorType::ModuleNotFound, format!("No module named '{}'", name))
     }
 
     pub fn stop_iteration() -> Error {

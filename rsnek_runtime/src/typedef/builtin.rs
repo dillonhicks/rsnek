@@ -775,7 +775,15 @@ impl method::AddItem for Builtin {
 impl method::Discard for Builtin {}
 impl method::Clear for Builtin {}
 impl method::Get for Builtin {}
-impl method::Keys for Builtin {}
+impl method::Keys for Builtin {
+    fn meth_keys(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, meth_keys, object)
+    }
+
+    fn native_meth_keys(&self) -> NativeResult<native::Tuple> {
+        native_foreach_builtin!(self, native_meth_keys, object)
+    }    
+}
 impl method::Values for Builtin {}
 impl method::Items for Builtin {}
 impl method::PopItem for Builtin {}

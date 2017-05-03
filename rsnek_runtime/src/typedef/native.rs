@@ -58,6 +58,16 @@ pub type Tuple = Vec<ObjectRef>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct DictKey(pub HashId, pub ObjectRef);
+impl DictKey {
+    pub fn hash(&self) -> HashId {
+        self.0
+    }
+
+    pub fn value(&self) -> ObjectRef {
+        self.1.clone()
+    }
+}
+
 pub type Dict = std::collections::HashMap<DictKey, ObjectRef>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]

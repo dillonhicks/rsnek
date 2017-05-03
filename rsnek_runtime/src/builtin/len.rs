@@ -6,6 +6,7 @@ use traits::IntegerProvider;
 
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
+use ::resource::strings;
 use typedef::builtin::Builtin;
 use typedef::native::{self, SignatureBuilder, Func, FuncType};
 
@@ -21,7 +22,7 @@ impl LenFn {
 
         Func {
             name: String::from("len"),
-            module: String::from("builtin"),
+            module: String::from(strings::BUILTINS_MODULE),
             callable: FuncType::Wrapper(callable),
             signature: ["sequence"].as_args()
         }

@@ -184,7 +184,7 @@ impl InterpreterState {
         istate.ns.insert(String::from("any"), rt.get_builtin("any"));
         istate.ns.insert(String::from("all"), rt.get_builtin("all"));
         istate.ns.insert(String::from("list"), rt.get_builtin("list"));
-
+        istate.ns.insert(String::from("globals"), rt.get_builtin("globals"));
         istate
     }
 

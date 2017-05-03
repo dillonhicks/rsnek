@@ -60,6 +60,7 @@ use typedef::module::PyModuleType;
 use typedef::code::PyCodeType;
 use typedef::frame::PyFrameType;
 
+use ::resource::strings;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
@@ -174,7 +175,7 @@ impl Runtime {
         rt.register_builtin(builtin::AllFn::create());
         rt.register_builtin(builtin::AnyFn::create());
         rt.register_builtin(builtin::ListFn::create());
-
+        rt.register_builtin(builtin::GlobalsFn::create());
         rt
     }
 
@@ -196,6 +197,18 @@ impl Runtime {
         boxed.op_getattr(&self, &key).unwrap()
     }
 
+}
+
+impl<'a> ModuleImporter<&'a str> for Runtime {
+    fn import_module(&self, name: &'a str) -> RuntimeResult {
+        match name {
+            strings::BUILTINS_MODULE => {
+                let ref_: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+                Ok(ref_.clone())
+            },
+            _ => Err(Error::module_not_found(name))
+        }
+    }
 }
 
 //

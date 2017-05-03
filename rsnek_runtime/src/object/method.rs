@@ -295,7 +295,7 @@ api_trait!(unary, self, clear, Clear, meth_clear, native_meth_clear);
 
 // Mapping
 api_trait!(binary, self, get, Get, meth_get, native_meth_get);
-api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys);
+api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys, native::Tuple);
 api_trait!(unary, self, values, Values, meth_values, native_meth_values);
 api_trait!(unary, self, items, Items, meth_items, native_meth_items);
 api_trait!(binary, self, popitem, PopItem, meth_popitem, native_meth_popitem);

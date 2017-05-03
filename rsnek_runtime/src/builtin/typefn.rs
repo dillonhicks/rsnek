@@ -6,6 +6,7 @@ use traits::{IntegerProvider, StringProvider};
 
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
+use ::resource::strings;
 use typedef::builtin::Builtin;
 use typedef::native::{self, Signature, Func, FuncType};
 
@@ -21,7 +22,7 @@ impl TypeFn {
 
         Func {
             name: String::from("type"),
-            module: String::from("builtin"),
+            module: String::from(strings::BUILTINS_MODULE),
             callable: FuncType::Wrapper(callable),
             signature: Signature::new(
                 &["obj"], &[], Some("*objects"), None)
