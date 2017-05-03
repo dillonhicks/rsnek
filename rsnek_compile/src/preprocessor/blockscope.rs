@@ -79,7 +79,7 @@ impl BlockScopePreprocessor {
         }
     }
 
-    pub fn name(&self) -> & str {
+    pub const fn name(&self) -> &str {
         BlockScopePreprocessor::NAME
     }
 
@@ -138,7 +138,7 @@ impl BlockScopePreprocessor {
                 stack_idx += 1;
                 indent_stack[stack_idx] = curr + indent;
                 slog_trace!(self.log,
-                "BlockScopePreprocessor";
+                "{}", self.name();
                 "action" => "emit",
                 "token" => "BlockStart",
                 "stack_idx" => stack_idx);
@@ -151,7 +151,7 @@ impl BlockScopePreprocessor {
                     stack_idx -= 1;
 
                     slog_trace!(self.log,
-                    "BlockScopePreprocessor";
+                    "{}", self.name();
                     "action" => "emit",
                     "token" => "BlockEnd",
                     "stack_idx" => stack_idx);
@@ -187,7 +187,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
 
         if indent == 0 {
             slog_trace!(self.log,
-                "BlockScopePreprocessor";
+                "{}", self.name();
                 "action" => "skip",
                 "reason" => "indent==0");
             return Ok(tokens.tokens().to_owned().into_boxed_slice());
@@ -282,7 +282,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
 
                         error => {
                             slog_error!(self.log,
-                                "BlockScopePreprocessor";
+                                "{}", self.name();
                                 "error" => "LineContinuation"
                             );
                             return Err(format!(
@@ -291,7 +291,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     }
 
                     slog_trace!(self.log,
-                        "BlockScopePreprocessor";
+                        "{}", self.name();
                         "action" => "rewrite",
                         "Id::Backslash" => format!("{}", Id::Space),
                         "stack_idx" => stack_idx
@@ -306,7 +306,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
 
                     slog_trace!(
                         self.log,
-                        "BlockScopePreprocessor";
+                        "{}", self.name();
                         "action" => "emit",
                         "token" => "LineContinuation",
                         "stack_idx" => stack_idx

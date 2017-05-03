@@ -43,6 +43,20 @@ class Op(NamedTuple):
 
 MAX = 1000
 
+"""
+OpCode::CompareIs |
+OpCode::CompareIsNot |
+OpCode::CompareEqual |
+OpCode::CompareIn |
+OpCode::CompareNotIn |
+OpCode::CompareNotEqual |
+OpCode::CompareLess |
+OpCode::CompareLessOrEqual |
+OpCode::CompareGreater |
+OpCode::CompareGreaterOrEqual |
+
+"""
+
 @_render.context_for('(.+)binop_macros[.]rs', regex=True)
 def ctx():
     return {
@@ -50,7 +64,16 @@ def ctx():
             Op('logicor',   'Or',           MAX - 3),
             Op('logicand',  'And',          MAX - 4),
             Op('logicnot',  'Not',          MAX - 5),
-            Op('equality',  'DoubleEqual',  MAX - 6),
+            Op('equality',  'DoubleEqual',  MAX - 6.01),
+            Op('inequality', 'NotEqual',    MAX - 6.02),
+            Op('is',        'Is',           MAX - 6.03),
+            Op('not_is',    'IsNot',        MAX - 6.04),
+            Op('in',        'In',           MAX - 6.05),
+            Op('not_in',    'NotIn',        MAX - 6.06),
+            Op('lt',        'Less',         MAX - 6.07),
+            Op('lte',       'LessOrEqual',  MAX - 6.08),
+            Op('gt',        'Greater',      MAX - 6.09),
+            Op('gte',     'GreaterOrEqual', MAX - 6.10),
             Op('or',        'Pipe',         MAX - 7),
             Op('xor',       'Caret',        MAX - 8),
             Op('and',       'Amp',          MAX - 9),

@@ -5,7 +5,7 @@ use ::token::{Id, Tk, OwnedTk};
 use ::slice::{TkSlice};
 use ::ast::{Ast, Module, Stmt, Expr, Op, FnType};
 use ::traits::redefs_nom::InputLengthRedef;
-use ::preprocessor::{Preprocessor, BlockScopePreprocessor};
+use ::preprocessor::{Preprocessor, BlockScopePreprocessor, ChainedKeywordPreprocessor};
 
 use self::internal::*;
 
@@ -27,6 +27,9 @@ pub struct ParsedAst{
     #[serde(skip_serializing)]
     pub p2_tokens: Vec<OwnedTk>,
 
+    #[serde(skip_serializing)]
+    pub p3_tokens: Vec<OwnedTk>,
+
     pub remaining_tokens: Vec<OwnedTk>,
 }
 
@@ -35,7 +38,8 @@ impl ParsedAst {
     pub fn new<'a>(ast: Option<&Ast>,
                    remaining: Option<TkSlice<'a>>,
                    p1_tokens: TkSlice<'a>,
-                   p2_tokens: &'a [Tk<'a>]) -> Self {
+                   p2_tokens: &'a [Tk<'a>],
+                   p3_tokens: &'a [Tk<'a>]) -> Self {
 
         ParsedAst {
             ast: match ast {
@@ -48,6 +52,7 @@ impl ParsedAst {
                 .collect::<Vec<OwnedTk>>(),
             p1_tokens: p1_tokens.iter().map(OwnedTk::from).collect::<Vec<OwnedTk>>(),
             p2_tokens: p2_tokens.iter().map(OwnedTk::from).collect::<Vec<OwnedTk>>(),
+            p3_tokens: p3_tokens.iter().map(OwnedTk::from).collect::<Vec<OwnedTk>>(),
         }
     }
 }
@@ -94,46 +99,62 @@ impl<'a> Parser<'a> {
     /// tokens, turn those into a TkSlice, and parse that into an AST.
     pub fn parse_tokens<'b, 'c>(&mut self, tokens: &'b [Tk<'b>]) -> ParserResult {
 
+        let p1_tokens = TkSlice(tokens);
+
         let bspp = BlockScopePreprocessor::new();
-        let bspp_tokens: Box<[Tk<'b>]> = match bspp.transform(TkSlice(tokens)) {
+        let bspp_tokens: Box<[Tk<'b>]> = match bspp.transform(p1_tokens) {
             Ok(boxed_tks) => boxed_tks,
             Err(err) => {
                 warn!("Had to eat error due to unspecific return type";
                     "Error" => format!("{}", err));
 
                 return ParserResult::Error(
-                    ParsedAst::new(None, None, TkSlice(tokens), &[]));
+                    ParsedAst::new(None, None, TkSlice(tokens), &[], &[]));
             }
         };
+        let p2_tokens = (&(*bspp_tokens));
+//        let p2_tokens = TkSlice(&p2_tokens);
+//
+//        let ckwpp = ChainedKeywordPreprocessor::new();
+//        let ckwpp_tokens: Box<[Tk<'b>]> = match ckwpp.transform(p2_tokens) {
+//            Ok(boxed_tks) => boxed_tks,
+//            Err(err) => {
+//                warn!("Had to eat error due to unspecific return type";
+//                    "Error" => format!("{}", err));
+//
+//                return ParserResult::Error(
+//                    ParsedAst::new(None, None, TkSlice(tokens), &[], &[]));
+//            }
+//        };
+
+        let p3_tokens = p2_tokens;
 
         // The (&(*(val))) pattern is to dereference the box to remove the indirection and
         // get the real address to the slice instead of the address to the box.
         //  *(box -> value) => value
         //  &(value) => ptr value
-        let slice = TkSlice(&(*bspp_tokens));
+        let slice = TkSlice(p3_tokens);
         let result = self.tkslice_to_ast(slice).1;
 
-        let p1_tokens = TkSlice(tokens);
-        let p2_tokens = &(*bspp_tokens);
 
         // TODO: {T94} Try to incorporate parser error messages here
         match result {
             IResult::Done(ref remaining, ref ast) if remaining.len() == 0 => {
-                ParserResult::Ok(ParsedAst::new(Some(ast), None, p1_tokens, p2_tokens))
+                ParserResult::Ok(ParsedAst::new(Some(ast), None, p1_tokens, p2_tokens, p3_tokens))
             },
 
             // Still an error case since there are remaining tokens
             IResult::Done(ref remaining, ref ast) => {
                 ParserResult::Error(ParsedAst::new(
-                    Some(ast), Some(*remaining), p1_tokens, p2_tokens))
+                    Some(ast), Some(*remaining), p1_tokens, p2_tokens, p3_tokens))
             },
             IResult::Error(_) => {
                 // TODO: {T94} Consume error in parse result in some useful message
-                ParserResult::Error(ParsedAst::new(None, None, p1_tokens, p2_tokens))
+                ParserResult::Error(ParsedAst::new(None, None, p1_tokens, p2_tokens, p3_tokens))
             }
             IResult::Incomplete(_) => {
                 // TODO: {T94} nom::Needed enum has some extra info about parsing
-                ParserResult::Error(ParsedAst::new(None, None, p1_tokens, p2_tokens))
+                ParserResult::Error(ParsedAst::new(None, None, p1_tokens, p2_tokens, p3_tokens))
             }
         }
     }
@@ -350,6 +371,15 @@ impl<'a> Parser<'a> {
           call_m!(self.sub_expr_boolop_logic_and)               |
           call_m!(self.sub_expr_unaryop_logicnot)               |
           call_m!(self.sub_expr_binop_equality)                 |
+          call_m!(self.sub_expr_binop_inequality)               |
+          call_m!(self.sub_expr_binop_is)                       |
+          call_m!(self.sub_expr_binop_not_is)                   |
+          call_m!(self.sub_expr_binop_in)                       |
+          call_m!(self.sub_expr_binop_not_in)                   |
+          call_m!(self.sub_expr_binop_lt)                       |
+          call_m!(self.sub_expr_binop_lte)                      |
+          call_m!(self.sub_expr_binop_gt)                       |
+          call_m!(self.sub_expr_binop_gte)                      |
           call_m!(self.sub_expr_binop_or)                       |
           call_m!(self.sub_expr_binop_xor)                      |
           call_m!(self.sub_expr_binop_and)                      |
@@ -437,6 +467,96 @@ impl<'a> Parser<'a> {
     tk_method!(sub_expr_binop_equality, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         lhs: many1!(not_doubleequal_token)                      >>
         op: doubleequal_token                                   >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a != b`
+    tk_method!(sub_expr_binop_inequality, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_notequal_token)                         >>
+         op: notequal_token                                     >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a is b`
+    tk_method!(sub_expr_binop_is, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_is_token)                               >>
+         op: is_token                                           >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a is not b`
+    tk_method!(sub_expr_binop_not_is, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_isnot_token)                            >>
+         op: isnot_token                                        >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a in b`
+    tk_method!(sub_expr_binop_in, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_in_token)                               >>
+         op: in_token                                           >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a not in b`
+    tk_method!(sub_expr_binop_not_in, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_notin_token)                            >>
+         op: notin_token                                        >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a < b`
+    tk_method!(sub_expr_binop_lt, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_less_token)                             >>
+         op: less_token                                         >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a <= b`
+    tk_method!(sub_expr_binop_lte, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_lessorequal_token)                      >>
+         op: lessorequal_token                                  >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a > b`
+    tk_method!(sub_expr_binop_gt, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_greater_token)                          >>
+         op: greater_token                                      >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
+
+    /// `a >= b`
+    tk_method!(sub_expr_binop_gte, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_greaterorequal_token)                   >>
+         op: greaterorequal_token                               >>
         rhs: call_m!(self.start_expr)                           >>
         expr: call_m!(self.build_binop, op, lhs, rhs)           >>
 
@@ -812,6 +932,15 @@ mod internal {
     tk_named!(pub amp_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Amp])));
     tk_named!(pub not_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Not])));
     tk_named!(pub doubleequal_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleEqual])));
+    tk_named!(pub notequal_token    <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::NotEqual])));
+    tk_named!(pub is_token          <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Is])));
+    tk_named!(pub isnot_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::IsNot])));
+    tk_named!(pub in_token          <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::In])));
+    tk_named!(pub notin_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::NotIn])));
+    tk_named!(pub less_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftAngle])));
+    tk_named!(pub lessorequal_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LessOrEqual])));
+    tk_named!(pub greater_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightAngle])));
+    tk_named!(pub greaterorequal_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::GreaterOrEqual])));
     tk_named!(pub leftshift_token   <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftShift])));
     tk_named!(pub rightshift_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightShift])));
     tk_named!(pub plus_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Plus])));
@@ -822,7 +951,7 @@ mod internal {
     tk_named!(pub doubleslash_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleSlash])));
     tk_named!(pub percent_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Percent])));
     tk_named!(pub doublestar_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleStar])));
-    tk_named!(pub dot_token          <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Dot])));
+    tk_named!(pub dot_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Dot])));
 
     // Special Whitespace
     tk_named!(pub newline_token     <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Newline])));
@@ -863,6 +992,15 @@ mod internal {
     tk_named!(pub not_amp_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Amp, Id::Newline]));
     tk_named!(pub not_not_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Not, Id::Newline]));
     tk_named!(pub not_doubleequal_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleEqual, Id::Newline]));
+    tk_named!(pub not_notequal_token    <TkSlice<'a>>,  tk_is_none_of!(&[Id::NotEqual, Id::Newline]));
+    tk_named!(pub not_is_token          <TkSlice<'a>>,  tk_is_none_of!(&[Id::Is, Id::Newline]));
+    tk_named!(pub not_isnot_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::IsNot, Id::Newline]));
+    tk_named!(pub not_in_token          <TkSlice<'a>>,  tk_is_none_of!(&[Id::In, Id::Newline]));
+    tk_named!(pub not_notin_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::NotIn, Id::Newline]));
+    tk_named!(pub not_less_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::LeftAngle, Id::Newline]));
+    tk_named!(pub not_lessorequal_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::LessOrEqual, Id::Newline]));
+    tk_named!(pub not_greater_token     <TkSlice<'a>>,  tk_is_none_of!(&[Id::RightAngle, Id::Newline]));
+    tk_named!(pub not_greaterorequal_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::GreaterOrEqual, Id::Newline]));
     tk_named!(pub not_leftshift_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::LeftShift, Id::Newline]));
     tk_named!(pub not_rightshift_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::RightShift, Id::Newline]));
     tk_named!(pub not_plus_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::Plus, Id::Newline]));
@@ -873,7 +1011,7 @@ mod internal {
     tk_named!(pub not_doubleslash_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleSlash, Id::Newline]));
     tk_named!(pub not_percent_token     <TkSlice<'a>>,  tk_is_none_of!(&[Id::Percent, Id::Newline]));
     tk_named!(pub not_doublestar_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleStar, Id::Newline]));
-    tk_named!(pub not_dot_token          <TkSlice<'a>>,  tk_is_none_of!(&[Id::Dot, Id::Newline]));
+    tk_named!(pub not_dot_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Dot, Id::Newline]));
 
     /// Unary Operatos: `+`, `-`,
     tk_named!(pub unaryop_token <TkSlice<'a>>, ignore_spaces!(

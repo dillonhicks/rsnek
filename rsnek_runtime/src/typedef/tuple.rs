@@ -245,7 +245,26 @@ impl method::InPlaceRightShift for PyTuple {}
 impl method::InPlaceSubtract for PyTuple {}
 impl method::InPlaceTrueDivision for PyTuple {}
 impl method::InPlaceXOr for PyTuple {}
-impl method::Contains for PyTuple {}
+
+impl method::Contains for PyTuple {
+    fn op_contains(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_contains(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_contains(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        let truth = self.value.0.iter()
+            .map(|objref| objref.0.borrow())
+            .any(|value: &Box<Builtin>| {
+                *(value.deref()) == *rhs
+            });
+
+        Ok(truth)
+    }
+}
+
 impl method::Iter for PyTuple {
     fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
         let iter = self.native_iter()?;
