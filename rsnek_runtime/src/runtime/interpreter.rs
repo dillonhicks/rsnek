@@ -39,6 +39,14 @@ use ::object::method::{
     Call,
     BooleanCast,
     Equal,
+    NotEqual,
+    Is,
+    IsNot,
+    LessThan,
+    GreaterThan,
+    GreaterOrEqual,
+    LessOrEqual,
+    Contains,
 };
 use ::opcode::OpCode;
 use ::resource;
@@ -288,7 +296,18 @@ impl InterpreterState {
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         match opcode {
+            OpCode::CompareIs               => boxed.op_is(&rt, &rhs),
+            OpCode::CompareIsNot            => boxed.op_is_not(&rt, &rhs),
             OpCode::CompareEqual            => boxed.op_eq(&rt, &rhs),
+            OpCode::CompareIn               => {
+                let rhs_boxed: &Box<Builtin> = rhs.0.borrow();
+                rhs_boxed.op_contains(&rt, &lhs)
+            },
+            OpCode::CompareNotEqual         => boxed.op_ne(&rt, &rhs),
+            OpCode::CompareLess             => boxed.op_lt(&rt, &rhs),
+            OpCode::CompareLessOrEqual      => boxed.op_le(&rt, &rhs),
+            OpCode::CompareGreater          => boxed.op_gt(&rt, &rhs),
+            OpCode::CompareGreaterOrEqual   => boxed.op_ge(&rt, &rhs),
             OpCode::LogicalAnd              => logical_and(rt, lhs, rhs),
             OpCode::LogicalOr               => logical_or(rt, lhs, rhs),
             OpCode::BinaryAdd               => boxed.op_add(&rt, &rhs),
@@ -382,7 +401,16 @@ impl InterpreterState {
 
                 None
             },
+            (OpCode::CompareIs, None)               |
+            (OpCode::CompareIsNot, None)            |
             (OpCode::CompareEqual, None)            |
+            (OpCode::CompareIn, None)               |
+            (OpCode::CompareNotIn, None)            |
+            (OpCode::CompareNotEqual, None)         |
+            (OpCode::CompareLess, None)             |
+            (OpCode::CompareLessOrEqual, None)      |
+            (OpCode::CompareGreater, None)          |
+            (OpCode::CompareGreaterOrEqual, None)   |
             (OpCode::LogicalAnd, None)              |
             (OpCode::LogicalOr, None)               |
             (OpCode::BinaryAdd, None)               |
@@ -1071,6 +1099,9 @@ def biglyify_string(a):
 tiny_string = 'abc'
 big_string = biglyify_string(tiny_string)
 print(len(big_string))
+
+expected = len(big_string) * BIG_FACTORY
+assert len(big_string) == expected
 "#, ExitCode::Ok);
 
     assert_run!(list_01, r#"l = [4, 'hello', 34.22, None, True, False]"#, ExitCode::Ok);
@@ -1103,10 +1134,14 @@ l = list()
 assert l == []
 "#, ExitCode::Ok);
 
-    assert_run!(list_tuple, r#"
+    assert_run!(tuple_builtin, r#"
 t = tuple()
 assert len(t) == 0
 "#, ExitCode::Ok);
+
+    assert_run!(contains_01, r#"
+assert "Good" in "Good Day!"
+    "#, ExitCode::Ok);
 
     #[bench]
     fn print(b: &mut Bencher) {

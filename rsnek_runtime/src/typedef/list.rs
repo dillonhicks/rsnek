@@ -17,9 +17,10 @@ use object::method::{self, Id, Length, Iter, StringCast, Equal};
 use object::selfref::{self, SelfRef};
 use ::object::typing::BuiltinType;
 
-use typedef::builtin::Builtin;
-use typedef::native::{self, Native};
-use typedef::objectref::ObjectRef;
+use ::typedef::collection::sequence;
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Native, List};
+use ::typedef::objectref::ObjectRef;
 
 
 pub struct PyListType {
@@ -105,7 +106,6 @@ impl method::Equal for PyList {
 
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
-
         let truth = self.native_eq(boxed)?;
         Ok(rt.bool(truth))
     }
@@ -113,15 +113,9 @@ impl method::Equal for PyList {
     fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         match rhs {
             &Builtin::List(ref other) => {
-                if self.value.0.len() != other.value.0.len() {
-                    return Ok(false)
-                }
-
-               let truth = self.value.0.iter()
-                    .zip(other.value.0.iter())
-                    .all(|(l, r)| l == r);
-
-                Ok(truth)
+                let left = &self.value.0;
+                let right = &other.value.0;
+                Ok(sequence::equals(left, right))
             }
             _ => Ok(false)
         }
@@ -173,6 +167,7 @@ impl method::FloorDivision for PyList {}
 impl method::LeftShift for PyList {}
 impl method::Modulus for PyList {}
 impl method::Multiply for PyList {
+
     fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
@@ -182,53 +177,20 @@ impl method::Multiply for PyList {
                     Some(int) if int <= 0   => Ok(rt.default_list()),
                     Some(int) if int == 1   => self.rc.upgrade(),
                     Some(int)               => {
-                        // TODO: {3089} This is gross, think of a better way. I would
-                        // not like to throw in the towel so easily for supporting the
-                        // on the native api.
-                        match self.native_mul(&builtin)? {
-                            Native::List(list) => Ok(rt.list(list)),
-                            other => Err(Error::system(
-                                &format!(
-                                    "native list method {} returned '{:?}' expected '{}'; file: {}, line: {}",
-                                    "native_mul", other, "List", file!(), line!())))
-                        }
+                        let list = sequence::multiply::<List>(&self.value.0, int);
+                        Ok(rt.list(list))
                     },
-                    None => {
+                    None                    => {
                         Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
                     },
                 }
             }
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("*", "list", other.debug_name())))
-        }
-    }
-
-    fn native_mul(&self, rhs: &Builtin) -> NativeResult<Native> {
-        match rhs {
-            &Builtin::Int(ref int) => {
-                match int.value.0.to_usize() {
-                    Some(int) if int <= 1   => {
-                        Err(Error::system(
-                            &format!("{} {}", "native_mul of type list requires ",
-                                    "an integer greater than 1")))
-                    },
-                    Some(int) => {
-                        let elems: Vec<ObjectRef> = (0..int)
-                            .flat_map(|_| self.value.0.iter().cloned())
-                            .collect::<native::List>();
-
-                        Ok(Native::List(elems))
-                    },
-                    None => {
-                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
-                    },
-                }
-            }
-            other => Err(Error::typerr(
-                &strings_error_bad_operand!("*", "list", other.debug_name())))
+                &strings_error_bad_operand!("*", "tuple", other.debug_name())))
         }
     }
 }
+
 
 impl method::MatrixMultiply for PyList {}
 impl method::BitwiseOr for PyList {}
@@ -265,7 +227,17 @@ impl method::InPlaceRightShift for PyList {}
 impl method::InPlaceSubtract for PyList {}
 impl method::InPlaceTrueDivision for PyList {}
 impl method::InPlaceXOr for PyList {}
-impl method::Contains for PyList {}
+impl method::Contains for PyList {
+    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = item.0.borrow();
+        let truth = self.native_contains(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(sequence::contains(&self.value.0, item))
+    }
+}
 impl method::Iter for PyList {
     fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
         let iter = self.native_iter()?;
@@ -304,26 +276,9 @@ impl method::GetItem for PyList {
     }
 
     fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
-        let len = self.value.0.len() as isize;
-        let index_err = Err(Error::index("Index out of range"));
-
         match index {
-            &Builtin::Int(ref obj) => {
-                match obj.value.0.to_isize() {
-                    Some(idx) if (0 <= idx) && (idx < len) => {
-                        match self.value.0.get(idx as usize) {
-                            Some(objref) => Ok(objref.clone()),
-                            None => index_err,
-                        }
-                    },
-                    Some(idx) if (-len <= idx) && (idx < 0) => {
-                        match self.value.0.get((idx + len) as usize) {
-                            Some(objref) => Ok(objref.clone()),
-                            None => index_err,
-                        }
-                    },
-                    _ => index_err,
-                }
+            &Builtin::Int(ref int) => {
+                sequence::get_index(&self.value.0, &int.value.0)
             }
             _ => Err(Error::typerr("list index was not int")),
         }

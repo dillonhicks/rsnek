@@ -5,6 +5,7 @@ use rsnek_compile::{
     LexResult, Parser, ParserResult,
     OwnedTk, Id};
 
+use rsnek_compile::fmt;
 use ::error::Error;
 use ::opcode::OpCode;
 use ::typedef::native::{self, Instr, Native};
@@ -48,7 +49,10 @@ impl<'a> Compiler<'a> {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
                 self.compile_ast(&result.ast.borrow())
             },
-            _ => Err(Error::syntax("Could not parse input"))
+            other => {
+                trace!("Parser"; "Result" => fmt::json(&other));
+                Err(Error::syntax("Could not parse input"))
+            }
         }
     }
 
@@ -262,22 +266,31 @@ impl<'a> Compiler<'a> {
         instructions.append(&mut self.compile_expr(right, Context::Load)?.to_vec());
 
         let code = match op.0.id() {
-            Id::DoubleEqual => Instr(OpCode::CompareEqual, None),
-            Id::And         => Instr(OpCode::LogicalAnd, None),
-            Id::Or          => Instr(OpCode::LogicalOr, None),
-            Id::Plus        => Instr(OpCode::BinaryAdd, None),
-            Id::Minus       => Instr(OpCode::BinarySubtract, None),
-            Id::Star        => Instr(OpCode::BinaryMultiply, None),
-            Id::DoubleStar  => Instr(OpCode::BinaryPower, None),
-            Id::Slash       => Instr(OpCode::BinaryTrueDivide, None),
-            Id::DoubleSlash => Instr(OpCode::BinaryTrueDivide, None),
-            Id::Pipe        => Instr(OpCode::BinaryOr, None),
-            Id::Percent     => Instr(OpCode::BinaryModulo, None),
-            Id::Amp         => Instr(OpCode::BinaryAnd, None),
-            Id::At          => Instr(OpCode::BinaryMatrixMultiply, None),
-            Id::Caret       => Instr(OpCode::BinaryXor, None),
-            Id::LeftShift   => Instr(OpCode::BinaryLshift, None),
-            Id::RightShift  => Instr(OpCode::BinaryRshift, None),
+            Id::Is              => Instr(OpCode::CompareIs, None),
+            Id::IsNot           => Instr(OpCode::CompareIsNot, None),
+            Id::DoubleEqual     => Instr(OpCode::CompareEqual, None),
+            Id::In              => Instr(OpCode::CompareIn, None),
+            Id::NotIn           => Instr(OpCode::CompareNotIn, None),
+            Id::NotEqual        => Instr(OpCode::CompareNotEqual, None),
+            Id::LeftAngle       => Instr(OpCode::CompareLess, None),
+            Id::LessOrEqual     => Instr(OpCode::CompareLessOrEqual, None),
+            Id::RightAngle      => Instr(OpCode::CompareGreater, None),
+            Id::GreaterOrEqual  => Instr(OpCode::CompareGreaterOrEqual, None),
+            Id::And             => Instr(OpCode::LogicalAnd, None),
+            Id::Or              => Instr(OpCode::LogicalOr, None),
+            Id::Plus            => Instr(OpCode::BinaryAdd, None),
+            Id::Minus           => Instr(OpCode::BinarySubtract, None),
+            Id::Star            => Instr(OpCode::BinaryMultiply, None),
+            Id::DoubleStar      => Instr(OpCode::BinaryPower, None),
+            Id::Slash           => Instr(OpCode::BinaryTrueDivide, None),
+            Id::DoubleSlash     => Instr(OpCode::BinaryTrueDivide, None),
+            Id::Pipe            => Instr(OpCode::BinaryOr, None),
+            Id::Percent         => Instr(OpCode::BinaryModulo, None),
+            Id::Amp             => Instr(OpCode::BinaryAnd, None),
+            Id::At              => Instr(OpCode::BinaryMatrixMultiply, None),
+            Id::Caret           => Instr(OpCode::BinaryXor, None),
+            Id::LeftShift       => Instr(OpCode::BinaryLshift, None),
+            Id::RightShift      => Instr(OpCode::BinaryRshift, None),
             _ =>  {
                 return Err(Error::system(&format!(
                     "Compiler encountered unhandled binary operator {:?}; file: {}, line: {}",

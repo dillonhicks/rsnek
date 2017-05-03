@@ -2,8 +2,7 @@ use std;
 use std::fmt;
 use std::borrow::Borrow;
 use std::ops::Deref;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
+
 
 use num::{self, Zero, ToPrimitive};
 
@@ -14,19 +13,15 @@ use error::Error;
 use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
+use object::method::Equal;
 
-use typedef::native;
+use typedef::native::{self, HashId};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
+use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
 
 
 const STATIC_INT_RANGE: std::ops::Range<isize> = -5..1024;
-
-
-#[inline(always)]
-pub fn format_int(int: &native::Integer) -> native::String {
-    format!("{}", *int)
-}
 
 
 #[derive(Clone)]
@@ -105,25 +100,19 @@ impl method::Is for PyInteger {}
 impl method::IsNot for PyInteger {}
 impl method::Hashed for PyInteger {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(value) => Ok(rt.int(native::Integer::from(value))),
-            Err(err) => Err(err),
-        }
+        let hash = self.native_hash()?;
+        Ok(rt.int(hash))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = DefaultHasher::new();
-        self.value.0.hash(&mut s);
-        Ok(s.finish())
+    fn native_hash(&self) -> NativeResult<HashId> {
+        Ok(number::hash_int(&self.value.0))
     }
 }
 
 impl method::StringCast for PyInteger {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_str() {
-            Ok(string) => Ok(rt.str(string)),
-            Err(_) => unreachable!(),
-        }
+        let string = self.native_str()?;
+        Ok(rt.str(string))
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
@@ -135,10 +124,8 @@ impl method::BytesCast for PyInteger {}
 impl method::StringFormat for PyInteger {}
 impl method::StringRepresentation for PyInteger {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_repr() {
-            Ok(string) => Ok(rt.str(string)),
-            Err(_) => unreachable!(),
-        }
+        let string = self.native_repr()?;
+        Ok(rt.str(string))
     }
 
     fn native_repr(&self) -> NativeResult<native::String> {
@@ -150,21 +137,38 @@ impl method::Equal for PyInteger {
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
-        match self.native_eq(builtin.deref()) {
-            Ok(value) => Ok(rt.bool(value)),
-            Err(err) => Err(err),
-        }
+        let value = self.native_eq(builtin.deref())?;
+        Ok(rt.bool(value))
     }
 
     fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+        let lhs = IntAdapter(&self.value.0);
+
         match *other {
+            Builtin::Bool(ref obj) => Ok(self.value.0 == obj.value.0),
             Builtin::Int(ref obj) => Ok(self.value.0 == obj.value.0),
+            Builtin::Float(ref obj) => Ok(lhs == FloatAdapter(&obj.value.0)),
             _ => Ok(false),
         }
     }
 }
-impl method::NotEqual for PyInteger {}
-impl method::LessThan for PyInteger {}
+impl method::NotEqual for PyInteger {
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_ne(builtin.deref())?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        let truth = !self.native_eq(rhs)?;
+        Ok(truth)
+    }
+}
+
+impl method::LessThan for PyInteger {
+
+}
 impl method::LessOrEqual for PyInteger {}
 impl method::GreaterOrEqual for PyInteger {}
 impl method::GreaterThan for PyInteger {}
@@ -281,7 +285,7 @@ impl method::Pow for PyInteger {
                 let base = self.value.0.clone();
 
                 match power.value.0.to_usize() {
-                    Some(int)  => Ok(rt.int(num::pow::pow(base, int).clone())),
+                    Some(int)  => Ok(rt.int(num::pow::pow(base, int))),
                     None  => {
                         Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
                     },
@@ -330,11 +334,11 @@ impl method::Subtract for PyInteger {
                         "{:?} + {} overflows", self.value.0, rhs.value.0))),
                 }
             }
-
             other => Err(Error::typerr(
                 &strings_error_bad_operand!("-", "int", other.debug_name())))
         }
     }
+
 }
 
 impl method::TrueDivision for PyInteger {

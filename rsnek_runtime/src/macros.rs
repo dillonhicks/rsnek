@@ -277,88 +277,88 @@ macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };

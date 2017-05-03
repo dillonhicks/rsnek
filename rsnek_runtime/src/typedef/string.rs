@@ -14,13 +14,13 @@ use error::Error;
 
 use object::{self, RtValue};
 use object::selfref::{self, SelfRef};
-use object::typing;
+use object::typing::{self, BuiltinType};
 use object::method;
 
 use typedef::native;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-
+use typedef::collection;
 use resource::strings;
 
 pub struct PyStringType {
@@ -262,11 +262,33 @@ impl method::InPlaceRightShift for PyString {}
 impl method::InPlaceSubtract for PyString {}
 impl method::InPlaceTrueDivision for PyString {}
 impl method::InPlaceXOr for PyString {}
-impl method::Contains for PyString {}
+impl method::Contains for PyString {
+    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = item.0.borrow();
+        let truth = self.native_contains(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+        match item {
+            &Builtin::Str(ref string) => {
+                Ok(self.value.0.contains(&string.value.0))
+            },
+            other => Err(Error::typerr(&format!(
+                "in <string>' requires string as left operand, not {}",
+                other.debug_name())))
+        }
+    }
+}
 impl method::Iter for PyString {
     fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        let iter = self.native_iter()?;
+        Ok(rt.iter(iter))
+    }
+
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
         match self.rc.upgrade() {
-            Ok(selfref) => Ok(rt.iter(native::Iterator::new(&selfref).unwrap())),
+            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
             Err(err) => Err(err)
         }
     }
@@ -285,7 +307,32 @@ impl method::Length for PyString {
 impl method::LengthHint for PyString {}
 impl method::Next for PyString {}
 impl method::Reversed for PyString {}
-impl method::GetItem for PyString {}
+impl method::GetItem for PyString {
+    #[allow(unused_variables)]
+    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = index.0.borrow();
+        self.native_getitem(boxed)
+    }
+
+    fn native_getitem(&self, item: &Builtin) -> RuntimeResult {
+        let len = self.value.0.len();
+
+        let idx = match item {
+            &Builtin::Int(ref obj) => {
+                match obj.value.0.to_usize() {
+                    Some(idx) if (0 <= idx) && (idx < len) => idx,
+                    Some(_) |
+                    None    => return Err(Error::runtime("string index out of range")),
+                }
+            }
+            _ => return Err(Error::typerr("string indices must be integers")),
+        };
+
+        let substring = self.value.0[idx..idx+1].to_string();
+        Ok(PyStringType::inject_selfref(PyStringType::alloc(substring)))
+    }
+}
+
 impl method::SetItem for PyString {}
 impl method::DeleteItem for PyString {}
 impl method::Count for PyString {}
