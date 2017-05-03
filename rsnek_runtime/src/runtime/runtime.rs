@@ -173,6 +173,7 @@ impl Runtime {
         rt.register_builtin(builtin::IntFn::create());
         rt.register_builtin(builtin::AllFn::create());
         rt.register_builtin(builtin::AnyFn::create());
+        rt.register_builtin(builtin::ListFn::create());
 
         rt
     }
@@ -439,7 +440,6 @@ impl ListProvider<native::None> for Runtime {
     }
 }
 
-
 impl ListProvider<native::List> for Runtime {
     fn list(&self, value: native::List) -> ObjectRef {
         self.0
@@ -448,6 +448,8 @@ impl ListProvider<native::List> for Runtime {
             .new(&self, value)
     }
 }
+
+
 
 impl DefaultListProvider for Runtime {
     fn default_list(&self) -> ObjectRef {
