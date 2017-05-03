@@ -64,6 +64,7 @@ pub enum Expr {
     Lambda {arguments: Vec<Expr>, body: Box<Expr>},
     Conditional {condition: Box<Expr>, consequent: Box<Expr>, alternative: Box<Expr>},
     BinOp { op: Op, left: BoxedExpr, right: BoxedExpr },
+    UnaryOp { op: Op, operand: BoxedExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
     Attribute { value: Box<Expr>, attr: OwnedTk },
     List { elems: Vec<Expr> },

@@ -85,6 +85,10 @@ impl PyFunction {
         &self.value.0.name
     }
 
+    pub fn module(&self) -> &str {
+        &self.value.0.module
+    }
+
     fn do_call_nativefn_rt(&self,
                            rt: &Runtime,
                            callable: &Box<NativeFn>,

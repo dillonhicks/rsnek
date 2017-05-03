@@ -38,6 +38,7 @@ use ::object::method::{
     StringCast,
     Call,
     BooleanCast,
+    Equal,
 };
 use ::opcode::OpCode;
 use ::resource;
@@ -286,6 +287,7 @@ impl InterpreterState {
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         match opcode {
+            OpCode::CompareEqual            => boxed.op_eq(&rt, &rhs),
             OpCode::LogicalAnd              => logical_and(rt, lhs, rhs),
             OpCode::LogicalOr               => logical_or(rt, lhs, rhs),
             OpCode::BinaryAdd               => boxed.op_add(&rt, &rhs),
@@ -379,6 +381,7 @@ impl InterpreterState {
 
                 None
             },
+            (OpCode::CompareEqual, None)            |
             (OpCode::LogicalAnd, None)              |
             (OpCode::LogicalOr, None)               |
             (OpCode::BinaryAdd, None)               |
@@ -635,7 +638,7 @@ impl InterpreterState {
                     &Builtin::Code(ref pycode) => Ok(format!(
                         "<{} at {:?}>", pycode.value.0.co_name.clone(), (pycode as *const _))),
                     &Builtin::Function(ref pyfunc) => Ok(format!(
-                        "<{} at {:?}>", pyfunc.name(), (pyfunc as *const _))),
+                        "<{} at {:?} - {}>", pyfunc.name(), (pyfunc as *const _), pyfunc.module())),
                     other => Err(Error::system(
                         &format!("{} is not a Code or Func object", other.debug_name())))
                 }
@@ -999,6 +1002,11 @@ mod tests {
         Interpreter::run(&config)
     }
 
+    // Simple equality
+    assert_run!(one_equals_one,
+        "assert 1 == 1, 'something is totally fucked'",
+        ExitCode::Ok);
+
     // Sanity checks about and & or
     assert_run!(logical_and_01, r#"
 f = 1 and 2
@@ -1034,21 +1042,23 @@ assert f, 'None or False failed as expected'
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 
+
     // create and call a function
     assert_run!(func_01, r#"
 def can_i_haz():
     return 'tests?'
 
-can_i_haz()
-
+result = can_i_haz()
+assert result == 'tests?'
 "#, ExitCode::Ok);
 
     assert_run!(func_02, r#"
 def now_with_100_percent_more_args(a):
     return a * a
 
-now_with_100_percent_more_args(13)
-
+result = now_with_100_percent_more_args(13)
+expected = 13 * 13
+assert result == expected
 "#, ExitCode::Ok);
 
     assert_run!(func_03, r#"
@@ -1086,6 +1096,8 @@ assert len(l), 'Should not fail'
 l = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] * len('I declare this list to be bigger!')
 assert len(l), 'Should not fail'
 "#, ExitCode::Ok);
+
+
 
     #[bench]
     fn print(b: &mut Bencher) {

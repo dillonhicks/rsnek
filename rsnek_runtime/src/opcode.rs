@@ -122,4 +122,14 @@ pub enum OpCode {
     LogicalAnd               = 1024,
     LogicalOr                = 1025,
     AssertCondition          = 1026,
+    CompareEqual             = 1027,
+    CompareNotEqual          = 1028,
+    CompareLess              = 1029,
+    CompareLessOrEqual       = 1030,
+    CompareGreater           = 1031,
+    CompareGreaterOrEqual    = 1032,
+    CompareIn                = 1033,
+    CompareNotIn             = 1034,
+    CompareIs                = 1035,
+    CompareIsNot             = 1036
 }

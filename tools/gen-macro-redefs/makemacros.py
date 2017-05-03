@@ -49,6 +49,8 @@ def ctx():
         'binops': list(reversed(sorted([
             Op('logicor',   'Or',           MAX - 3),
             Op('logicand',  'And',          MAX - 4),
+            Op('logicnot',  'Not',          MAX - 5),
+            Op('equality',  'DoubleEqual',  MAX - 6),
             Op('or',        'Pipe',         MAX - 7),
             Op('xor',       'Caret',        MAX - 8),
             Op('and',       'Amp',          MAX - 9),

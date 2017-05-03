@@ -246,6 +246,7 @@ impl method::StringRepresentation for Builtin {
         native_foreach_builtin!(self, native_repr, obj)
     }
 }
+
 impl method::Equal for Builtin {
     /// Default implementation of equals fallsbacks to op_is.
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {

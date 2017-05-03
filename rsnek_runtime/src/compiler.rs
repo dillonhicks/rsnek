@@ -208,6 +208,11 @@ impl<'a> Compiler<'a> {
             Expr::Call {ref func, ref args, keywords: _} => {
                 self.compile_expr_call(func, args)?
             },
+            Expr::UnaryOp {ref op, ref operand} => {
+                return Err(Error::system(&format!(
+                    "Compiler does not implement Unary operator expressions; file: {}, line: {}",
+                    file!(), line!())))
+            },
             Expr::Lambda {ref arguments, ref body } => {
                 return Err(Error::system(&format!(
                     "Compiler does not implement Lambda expressions; file: {}, line: {}",
@@ -257,6 +262,7 @@ impl<'a> Compiler<'a> {
         instructions.append(&mut self.compile_expr(right, Context::Load)?.to_vec());
 
         let code = match op.0.id() {
+            Id::DoubleEqual => Instr(OpCode::CompareEqual, None),
             Id::And         => Instr(OpCode::LogicalAnd, None),
             Id::Or          => Instr(OpCode::LogicalOr, None),
             Id::Plus        => Instr(OpCode::BinaryAdd, None),
@@ -274,8 +280,8 @@ impl<'a> Compiler<'a> {
             Id::RightShift  => Instr(OpCode::BinaryRshift, None),
             _ =>  {
                 return Err(Error::system(&format!(
-                    "Compiler encountered unhandled binary operator {:?}, line: {}",
-                    op, line!())))
+                    "Compiler encountered unhandled binary operator {:?}; file: {}, line: {}",
+                    op, file!(), line!())))
             }
         };
 

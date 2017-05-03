@@ -348,6 +348,8 @@ impl<'a> Parser<'a> {
         expression: alt_complete!(
           call_m!(self.sub_expr_boolop_logic_or)                |
           call_m!(self.sub_expr_boolop_logic_and)               |
+          call_m!(self.sub_expr_unaryop_logicnot)               |
+          call_m!(self.sub_expr_binop_equality)                 |
           call_m!(self.sub_expr_binop_or)                       |
           call_m!(self.sub_expr_binop_xor)                      |
           call_m!(self.sub_expr_binop_and)                      |
@@ -421,6 +423,25 @@ impl<'a> Parser<'a> {
         (expr)
     ));
 
+    ///  `not a`
+    tk_method!(sub_expr_unaryop_logicnot, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+             op: not_token                                          >>
+        operand: call_m!(self.start_expr)                           >>
+        (Expr::UnaryOp {
+            op: Op(op.as_owned_token()),
+            operand: Box::new(operand)
+        })
+    ));
+
+    ///  `a == b`
+    tk_method!(sub_expr_binop_equality, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        lhs: many1!(not_doubleequal_token)                      >>
+        op: doubleequal_token                                   >>
+        rhs: call_m!(self.start_expr)                           >>
+        expr: call_m!(self.build_binop, op, lhs, rhs)           >>
+
+        (expr)
+    ));
 
     /// 2.4. `a << b`
     tk_method!(sub_expr_binop_lshift, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
@@ -789,6 +810,8 @@ mod internal {
     tk_named!(pub pipe_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Pipe])));
     tk_named!(pub caret_token       <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Caret])));
     tk_named!(pub amp_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Amp])));
+    tk_named!(pub not_token         <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Not])));
+    tk_named!(pub doubleequal_token <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::DoubleEqual])));
     tk_named!(pub leftshift_token   <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftShift])));
     tk_named!(pub rightshift_token  <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::RightShift])));
     tk_named!(pub plus_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Plus])));
@@ -838,6 +861,8 @@ mod internal {
     tk_named!(pub not_pipe_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::Pipe, Id::Newline]));
     tk_named!(pub not_caret_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::Caret, Id::Newline]));
     tk_named!(pub not_amp_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Amp, Id::Newline]));
+    tk_named!(pub not_not_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Not, Id::Newline]));
+    tk_named!(pub not_doubleequal_token <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleEqual, Id::Newline]));
     tk_named!(pub not_leftshift_token   <TkSlice<'a>>,  tk_is_none_of!(&[Id::LeftShift, Id::Newline]));
     tk_named!(pub not_rightshift_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::RightShift, Id::Newline]));
     tk_named!(pub not_plus_token        <TkSlice<'a>>,  tk_is_none_of!(&[Id::Plus, Id::Newline]));
@@ -990,7 +1015,16 @@ mod tests {
     // Stmt::Assert
     basic_test!(stmt_assert_01, "assert True, 'ok!'");
 
+    // Expr::UnaryOp
+    basic_test!(expr_binop_logicnot,    "not a");
+
     // Expr::BinOp
+    basic_test!(expr_binop_logicor,     "a or b");
+    basic_test!(expr_binop_logicand,    "a and b");
+    basic_test!(expr_binop_equality,    "f == 13");
+    basic_test!(expr_binop_and, "1 & 2");
+    basic_test!(expr_binop_or,  "y | w");
+    basic_test!(expr_binop_xor, "a ^ b");
     basic_test!(expr_binop_add, "1 + 3");
     basic_test!(expr_binop_sub, "2 - 3");
     basic_test!(expr_binop_mul, "4 * 3");
