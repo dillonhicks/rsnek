@@ -185,6 +185,7 @@ impl InterpreterState {
         istate.ns.insert(String::from("all"), rt.get_builtin("all"));
         istate.ns.insert(String::from("list"), rt.get_builtin("list"));
         istate.ns.insert(String::from("globals"), rt.get_builtin("globals"));
+        istate.ns.insert(String::from("tuple"), rt.get_builtin("tuple"));
         istate
     }
 
@@ -1097,7 +1098,15 @@ l = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] * len('I declare this list to be bi
 assert len(l), 'Should not fail'
 "#, ExitCode::Ok);
 
+    assert_run!(list_builtin, r#"
+l = list()
+assert l == []
+"#, ExitCode::Ok);
 
+    assert_run!(list_tuple, r#"
+t = tuple()
+assert len(t) == 0
+"#, ExitCode::Ok);
 
     #[bench]
     fn print(b: &mut Bencher) {

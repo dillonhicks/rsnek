@@ -9,6 +9,7 @@ mod and;
 mod or;
 mod list;
 mod globals;
+mod tuple;
 
 pub mod precondition;
 
@@ -23,3 +24,4 @@ pub use self::any::{AnyFn, iterator_any};
 pub use self::all::{AllFn, iterator_all};
 pub use self::list::ListFn;
 pub use self::globals::GlobalsFn;
+pub use self::tuple::TupleFn;

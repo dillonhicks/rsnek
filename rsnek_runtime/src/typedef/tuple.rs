@@ -128,7 +128,31 @@ impl method::StringCast for PyTuple {
 impl method::BytesCast for PyTuple {}
 impl method::StringFormat for PyTuple {}
 impl method::StringRepresentation for PyTuple {}
-impl method::Equal for PyTuple {}
+impl method::Equal for PyTuple {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_eq(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::Tuple(ref other) => {
+                if self.value.0.len() != other.value.0.len() {
+                    return Ok(false)
+                }
+
+                let truth = self.value.0.iter()
+                    .zip(other.value.0.iter())
+                    .all(|(l, r)| l == r);
+
+                Ok(truth)
+            }
+            _ => Ok(false)
+        }
+    }
+}
 impl method::NotEqual for PyTuple {}
 impl method::LessThan for PyTuple {}
 impl method::LessOrEqual for PyTuple {}

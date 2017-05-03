@@ -176,6 +176,7 @@ impl Runtime {
         rt.register_builtin(builtin::AnyFn::create());
         rt.register_builtin(builtin::ListFn::create());
         rt.register_builtin(builtin::GlobalsFn::create());
+        rt.register_builtin(builtin::TupleFn::create());
         rt
     }
 
