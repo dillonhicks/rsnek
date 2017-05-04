@@ -1,6 +1,6 @@
 [package]
 name = "rsnek_compile"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
 include = [
