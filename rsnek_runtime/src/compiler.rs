@@ -213,9 +213,7 @@ impl<'a> Compiler<'a> {
                 self.compile_expr_call(func, args)?
             },
             Expr::UnaryOp {ref op, ref operand} => {
-                return Err(Error::system(&format!(
-                    "Compiler does not implement Unary operator expressions; file: {}, line: {}",
-                    file!(), line!())))
+                self.compile_expr_unaryop(op, operand)?
             },
             Expr::Lambda {ref arguments, ref body } => {
                 return Err(Error::system(&format!(
@@ -294,6 +292,27 @@ impl<'a> Compiler<'a> {
             _ =>  {
                 return Err(Error::system(&format!(
                     "Compiler encountered unhandled binary operator {:?}; file: {}, line: {}",
+                    op, file!(), line!())))
+            }
+        };
+
+        instructions.push(code);
+        Ok(instructions.into_boxed_slice())
+    }
+
+    fn compile_expr_unaryop(&self, op: &'a Op, operand: &'a Expr) -> CompilerResult {
+        let mut instructions: Vec<Instr> = vec![];
+
+        instructions.append(&mut self.compile_expr(operand, Context::Load)?.to_vec());
+
+        let code = match op.0.id() {
+            Id::Not     => Instr(OpCode::UnaryNot,      None),
+            Id::Minus   => Instr(OpCode::UnaryNegative, None),
+            Id::Plus    => Instr(OpCode::UnaryPositive, None),
+            Id::Tilde   => Instr(OpCode::UnaryInvert, None),
+            _ =>  {
+                return Err(Error::system(&format!(
+                    "Compiler encountered unhandled unary operator {:?}; file: {}, line: {}",
                     op, file!(), line!())))
             }
         };

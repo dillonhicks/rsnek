@@ -357,6 +357,7 @@ impl<'a> Parser<'a> {
           call_m!(self.sub_expr_binop_in)                       |
           call_m!(self.sub_expr_binop_not_in)                   |
           call_m!(self.sub_expr_unaryop_logicnot)               |
+          call_m!(self.sub_expr_unaryop_neg)                    |
           call_m!(self.sub_expr_binop_lt)                       |
           call_m!(self.sub_expr_binop_lte)                      |
           call_m!(self.sub_expr_binop_gt)                       |
@@ -437,6 +438,16 @@ impl<'a> Parser<'a> {
     ///  `not a`
     tk_method!(sub_expr_unaryop_logicnot, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
              op: not_token                                          >>
+        operand: call_m!(self.start_expr)                           >>
+        (Expr::UnaryOp {
+            op: Op(op.as_owned_token()),
+            operand: Box::new(operand)
+        })
+    ));
+
+    ///  `-a`
+    tk_method!(sub_expr_unaryop_neg, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+             op: minus_token                                        >>
         operand: call_m!(self.start_expr)                           >>
         (Expr::UnaryOp {
             op: Op(op.as_owned_token()),
@@ -1132,7 +1143,9 @@ mod tests {
     basic_test!(stmt_assert_01, "assert True, 'ok!'");
 
     // Expr::UnaryOp
-    basic_test!(expr_binop_logicnot,    "not a");
+    basic_test!(expr_unaryop_logicnot,    "not a");
+    basic_test!(expr_unaryop_neg,         "-a");
+
 
     // Expr::BinOp
     basic_test!(expr_binop_logicor,     "a or b");

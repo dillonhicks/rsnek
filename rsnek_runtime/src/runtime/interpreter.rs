@@ -47,6 +47,9 @@ use ::object::method::{
     GreaterOrEqual,
     LessOrEqual,
     Contains,
+    InvertValue,
+    PositiveValue,
+    NegateValue,
 };
 use ::opcode::OpCode;
 use ::resource;
@@ -292,7 +295,6 @@ impl InterpreterState {
         self.frames[0].1.borrow_mut().clear();
     }
 
-
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         match opcode {
@@ -325,6 +327,21 @@ impl InterpreterState {
             OpCode::BinaryRshift            => boxed.op_rshift(&rt, &rhs),
             opcode                           => Err(Error::system(
                 &format!("Unhandled binary operation {:?}, this is a bug!", opcode))),
+        }
+    }
+
+    fn exec_unaryop(&mut self, rt: &Runtime, opcode: OpCode, operand: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = operand.0.borrow();
+        match opcode {
+            OpCode::UnaryNot        => {
+                let value = boxed.op_bool(&rt)?;
+                Ok(rt.bool(!(value == rt.bool(true))))
+            },
+            OpCode::UnaryNegative   => boxed.op_neg(&rt),
+            OpCode::UnaryPositive   => boxed.op_pos(&rt),
+            OpCode::UnaryInvert     => boxed.op_invert(&rt),
+            opcode                  => Err(Error::system(
+                &format!("Unhandled unary operation {:?}, this is a bug!", opcode))),
         }
     }
 
@@ -429,17 +446,16 @@ impl InterpreterState {
                 let rhs = match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::system(
-                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
+                        &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
                 let lhs = match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::system(
-                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
+                        &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
-                // TODO: {T100} Give `Instr` getters
-                let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
+                let result = match self.exec_binop(rt, instr.code(), &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
                 };
@@ -447,6 +463,24 @@ impl InterpreterState {
                 self.push_stack(&result);
                 None
             },
+            (OpCode::UnaryNot, None)        |
+            (OpCode::UnaryNegative, None)   |
+            (OpCode::UnaryPositive, None)   |
+            (OpCode::UnaryInvert, None)     => {
+                let operand = match self.pop_stack() {
+                    Some(objref) => objref,
+                    None => return Some(Err(Error::system(
+                        &format!("No values in value stack for {:?}!", instr.code()))))
+                };
+                
+                let result = match self.exec_unaryop(rt, instr.code(), &operand) {
+                    Ok(objref) => objref,
+                    err => return Some(err)
+                };
+
+                self.push_stack(&result);
+                None
+            }
             (OpCode::CallFunction, Some(Native::Count(arg_count))) => {
                 let mut args: VecDeque<ObjectRef> = VecDeque::new();
                 for _ in 0..(arg_count + 1) {
@@ -549,12 +583,12 @@ impl InterpreterState {
                 match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::runtime(
-                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
+                        &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
 //                let code = match self.pop_stack() {
 //                    Some(objref) => objref,
-//                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+//                    None => panic!("No values in value stack for {:?}!", instr.code())
 //                };
 //
 //
@@ -1071,6 +1105,7 @@ assert f, 'None or False failed as expected'
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 
+    assert_run!(int_neg,    "x = -1");
 
     // create and call a function
     assert_run!(func_01, r#"
@@ -1100,7 +1135,7 @@ tiny_string = 'abc'
 big_string = biglyify_string(tiny_string)
 print(len(big_string))
 
-expected = len(big_string) * BIG_FACTORY
+expected = len(tiny_string) * BIG_FACTOR
 assert len(big_string) == expected
 "#, ExitCode::Ok);
 

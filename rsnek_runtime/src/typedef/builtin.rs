@@ -354,10 +354,42 @@ impl method::Index for Builtin {
         native_foreach_builtin!(self, native_index, obj)
     }
 }
-impl method::NegateValue for Builtin {}
-impl method::AbsValue for Builtin {}
-impl method::PositiveValue for Builtin {}
-impl method::InvertValue for Builtin {}
+impl method::NegateValue for Builtin {
+    fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_neg, obj)
+    }
+
+    fn native_neg(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_neg, obj)
+    }
+}
+impl method::AbsValue for Builtin {
+    fn op_abs(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_abs, obj)
+    }
+
+    fn native_abs(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_abs, obj)
+    }
+}
+impl method::PositiveValue for Builtin {
+    fn op_pos(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_pos, obj)
+    }
+
+    fn native_pos(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_pos, obj)
+    }
+}
+impl method::InvertValue for Builtin {
+    fn op_invert(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_invert, obj)
+    }
+
+    fn native_invert(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_invert, obj)
+    }
+}
 impl method::Add for Builtin {
     fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         trace!("Builtin"; "action" => "call", "method" => "op_add");

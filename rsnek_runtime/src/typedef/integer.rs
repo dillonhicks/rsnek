@@ -199,7 +199,15 @@ impl method::FloatCast for PyInteger {}
 impl method::ComplexCast for PyInteger {}
 impl method::Rounding for PyInteger {}
 impl method::Index for PyInteger {}
-impl method::NegateValue for PyInteger {}
+impl method::NegateValue for PyInteger {
+    fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
+        Ok(rt.int(- self.value.0.clone()))
+    }
+
+    fn native_neg(&self) -> NativeResult<native::Number> {
+        Ok(native::Number::Int(- self.value.0.clone()))
+    }
+}
 impl method::AbsValue for PyInteger {}
 impl method::PositiveValue for PyInteger {}
 impl method::InvertValue for PyInteger {}
