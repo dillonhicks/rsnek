@@ -7,19 +7,19 @@ use object::{self, RtValue, typing, method};
 use object::method::{BooleanCast, IntegerCast, StringRepresentation};
 use object::selfref::{self, SelfRef};
 
-use runtime::Runtime;
-use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
-use result::{RuntimeResult, NativeResult};
-use typedef::builtin::Builtin;
-use typedef::objectref::ObjectRef;
-use typedef::native::{self, Number};
+use ::runtime::Runtime;
+use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
+use ::result::{RuntimeResult, NativeResult};
+use ::typedef::builtin::Builtin;
+use ::typedef::objectref::ObjectRef;
+use ::typedef::number;
+use ::typedef::native::{self, Number, HashId};
 
 
 pub const TRUE_STR: &'static str = "True";
 pub const FALSE_STR: &'static str = "False";
 pub const TRUE_BYTES: &'static [u8] = &[1];
 pub const FALSE_BYTES: &'static [u8] = &[0];
-
 
 
 #[derive(Clone)]
@@ -102,7 +102,18 @@ impl method::GetAttr for PyBoolean {}
 impl method::GetAttribute for PyBoolean {}
 impl method::SetAttr for PyBoolean {}
 impl method::DelAttr for PyBoolean {}
-impl method::Hashed for PyBoolean {}
+
+impl method::Hashed for PyBoolean {
+    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+        let hash = self.native_hash()?;
+        Ok(rt.int(hash))
+    }
+
+    fn native_hash(&self) -> NativeResult<HashId> {
+        Ok(number::hash_int(&self.value.0))
+    }
+}
+
 impl method::StringCast for PyBoolean {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
         self.op_repr(rt)
@@ -112,6 +123,7 @@ impl method::StringCast for PyBoolean {
         self.native_repr()
     }
 }
+
 impl method::BytesCast for PyBoolean {
 
     fn native_bytes(&self) -> NativeResult<native::Bytes> {
@@ -123,6 +135,7 @@ impl method::BytesCast for PyBoolean {
         Ok(result)
     }
 }
+
 impl method::StringFormat for PyBoolean {}
 impl method::StringRepresentation for PyBoolean {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {

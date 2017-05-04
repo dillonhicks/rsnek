@@ -22,6 +22,7 @@ use typedef::bytes::PyBytes;
 use typedef::complex::PyComplex;
 use typedef::none::PyNone;
 use typedef::tuple::PyTuple;
+use typedef::list::PyList;
 use typedef::objectref::{ObjectRef, WeakObjectRef};
 use typedef::pytype::PyType;
 use typedef::method::PyFunction;
@@ -42,6 +43,7 @@ pub enum Builtin {
     Bytes(PyBytes),
     Dict(PyDict),
     Tuple(PyTuple),
+    List(PyList),
     Type(PyType),
     Function(PyFunction),
     Module(PyObject),
@@ -67,6 +69,7 @@ impl Builtin {
             Builtin::Bytes(_) => "bytes",
             Builtin::Dict(_) => "dict",
             Builtin::Tuple(_) => "tuple",
+            Builtin::List(_) => "list",
             Builtin::Type(_) => "type",
             Builtin::Function(_) => "function",
             Builtin::Module(_) => "module",
@@ -243,6 +246,7 @@ impl method::StringRepresentation for Builtin {
         native_foreach_builtin!(self, native_repr, obj)
     }
 }
+
 impl method::Equal for Builtin {
     /// Default implementation of equals fallsbacks to op_is.
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
@@ -350,10 +354,42 @@ impl method::Index for Builtin {
         native_foreach_builtin!(self, native_index, obj)
     }
 }
-impl method::NegateValue for Builtin {}
-impl method::AbsValue for Builtin {}
-impl method::PositiveValue for Builtin {}
-impl method::InvertValue for Builtin {}
+impl method::NegateValue for Builtin {
+    fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_neg, obj)
+    }
+
+    fn native_neg(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_neg, obj)
+    }
+}
+impl method::AbsValue for Builtin {
+    fn op_abs(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_abs, obj)
+    }
+
+    fn native_abs(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_abs, obj)
+    }
+}
+impl method::PositiveValue for Builtin {
+    fn op_pos(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_pos, obj)
+    }
+
+    fn native_pos(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_pos, obj)
+    }
+}
+impl method::InvertValue for Builtin {
+    fn op_invert(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, op_invert, obj)
+    }
+
+    fn native_invert(&self) -> NativeResult<native::Number> {
+        native_foreach_builtin!(self, native_invert, obj)
+    }
+}
 impl method::Add for Builtin {
     fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         trace!("Builtin"; "action" => "call", "method" => "op_add");
@@ -414,7 +450,7 @@ impl method::Multiply for Builtin {
         foreach_builtin!(self, rt, op_mul, lhs, rhs)
     }
 
-    fn native_mul(&self, rhs: &Builtin) -> NativeResult<Builtin> {
+    fn native_mul(&self, rhs: &Builtin) -> NativeResult<native::Native> {
         native_foreach_builtin!(self, native_mul, lhs, rhs)
     }
 }
@@ -635,7 +671,7 @@ impl method::Iter for Builtin {
         foreach_builtin!(self, rt, op_iter, lhs)
     }
 
-    fn native_iter(&self) -> NativeResult<Builtin> {
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
         native_foreach_builtin!(self, native_iter, lhs)
     }
 }
@@ -771,7 +807,15 @@ impl method::AddItem for Builtin {
 impl method::Discard for Builtin {}
 impl method::Clear for Builtin {}
 impl method::Get for Builtin {}
-impl method::Keys for Builtin {}
+impl method::Keys for Builtin {
+    fn meth_keys(&self, rt: &Runtime) -> RuntimeResult {
+        foreach_builtin!(self, rt, meth_keys, object)
+    }
+
+    fn native_meth_keys(&self) -> NativeResult<native::Tuple> {
+        native_foreach_builtin!(self, native_meth_keys, object)
+    }    
+}
 impl method::Values for Builtin {}
 impl method::Items for Builtin {}
 impl method::PopItem for Builtin {}
@@ -794,7 +838,7 @@ impl method::DescriptorSetName for Builtin {}
 
 impl std::cmp::PartialEq for Builtin {
     fn eq(&self, rhs: &Builtin) -> bool {
-        self.native_eq(rhs).unwrap()
+        self.native_eq(rhs).unwrap_or(false)
     }
 }
 

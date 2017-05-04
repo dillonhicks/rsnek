@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
-use traits::{IntegerProvider, NoneProvider, BooleanProvider};
+use traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use error::Error;
 use typedef::objectref::ObjectRef;
 use typedef::native::{self, DictKey};
@@ -306,7 +306,21 @@ impl method::AddItem for PyDict {}
 impl method::Discard for PyDict {}
 impl method::Clear for PyDict {}
 impl method::Get for PyDict {}
-impl method::Keys for PyDict {}
+impl method::Keys for PyDict {
+
+    fn meth_keys(&self, rt: &Runtime) -> RuntimeResult {
+        let keys = self.native_meth_keys()?;
+        Ok(rt.tuple(keys))
+    }
+
+    fn native_meth_keys(&self) -> NativeResult<native::Tuple> {
+        let keys = self.value.0.borrow().keys()
+            .map(|key| key.value())
+            .collect::<native::Tuple>();
+
+        Ok(keys)
+    }
+}
 impl method::Values for PyDict {}
 impl method::Items for PyDict {}
 impl method::PopItem for PyDict {}

@@ -25,45 +25,47 @@ pub enum ErrorType {
     System,
     Recursion,
     Assertion,
-    Syntax
+    Syntax,
+    Index
 }
 
 
 impl Error {
+
     pub fn runtime(message: &str) -> Error {
-        return Error(ErrorType::Runtime, message.to_string());
+        Error(ErrorType::Runtime, message.to_string())
     }
 
     pub fn typerr(message: &str) -> Error {
-        return Error(ErrorType::Type, message.to_string());
+        Error(ErrorType::Type, message.to_string())
     }
 
     pub fn overflow(message: &str) -> Error {
-        return Error(ErrorType::Overflow, message.to_string());
+        Error(ErrorType::Overflow, message.to_string())
     }
 
     pub fn not_implemented() -> Error {
-        return Error(ErrorType::NotImplemented, "Not Implemented".to_string());
+        Error(ErrorType::NotImplemented, "Not Implemented".to_string())
     }
 
     pub fn attribute(message: &str) -> Error {
-        return Error(ErrorType::Attribute, message.to_string());
+        Error(ErrorType::Attribute, message.to_string())
     }
 
     pub fn value(message: &str) -> Self {
-        return Error(ErrorType::Value, message.to_string());
+        Error(ErrorType::Value, message.to_string())
     }
 
     pub fn key(message: &str) -> Error {
-        return Error(ErrorType::Key, message.to_string());
+        Error(ErrorType::Key, message.to_string())
     }
 
-    pub fn module_not_found(name: &'static str) -> Error {
-        return Error(ErrorType::ModuleNotFound, format!("could not find {:?}", name));
+    pub fn module_not_found(name: &str) -> Error {
+        Error(ErrorType::ModuleNotFound, format!("No module named '{}'", name))
     }
 
     pub fn stop_iteration() -> Error {
-        return Error(ErrorType::StopIteration, "".to_string());
+        return Error(ErrorType::StopIteration, "".to_string())
     }
 
     pub fn name(name: &str) -> Error {
@@ -74,8 +76,10 @@ impl Error {
         Error(ErrorType::System, format!("{}, version: {}", message, strings::VERSION))
     }
 
-    pub fn system_not_implemented() -> Error {
-        Error(ErrorType::System, "feature not implemented".to_string())
+    pub fn system_not_implemented(name: &str) -> Error {
+        Error(ErrorType::System, format!(
+            "feature '{}' not implemented for type; version: {}",
+            name, strings::VERSION))
     }
 
     pub fn recursion() -> Error {
@@ -89,6 +93,11 @@ impl Error {
     pub fn syntax(message: &str) -> Error {
         Error(ErrorType::Syntax, message.to_string())
     }
+
+    pub fn index(message: &str) -> Error {
+        Error(ErrorType::Index, message.to_string())
+    }
+
 
     pub fn log(&self) {
         error!("{:?}Error", self.error_type(); "message" => self.message());

@@ -5,6 +5,7 @@ use traits::{IteratorProvider, NoneProvider};
 
 use result::{RuntimeResult};
 use typedef::objectref::ObjectRef;
+use ::resource::strings;
 use typedef::builtin::Builtin;
 use object::method::StringCast;
 use typedef::native::{self, Signature, Func, FuncType};
@@ -20,7 +21,7 @@ impl PrintFn {
 
         Func {
             name: String::from("print"),
-            module: String::from("builtin"),
+            module: String::from(strings::BUILTINS_MODULE),
             callable: FuncType::Wrapper(callable),
             signature: Signature::new(
                 &["value"], &[], Some("*objs"), Some("**opts"))

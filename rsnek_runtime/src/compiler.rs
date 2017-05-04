@@ -5,6 +5,7 @@ use rsnek_compile::{
     LexResult, Parser, ParserResult,
     OwnedTk, Id};
 
+use rsnek_compile::fmt;
 use ::error::Error;
 use ::opcode::OpCode;
 use ::typedef::native::{self, Instr, Native};
@@ -12,7 +13,7 @@ use ::typedef::native::{self, Instr, Native};
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 
 
-#[derive(Debug, Copy, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
 pub enum Context {
     Load,
     Store
@@ -48,7 +49,10 @@ impl<'a> Compiler<'a> {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
                 self.compile_ast(&result.ast.borrow())
             },
-            _ => Err(Error::syntax("Could not parse input"))
+            other => {
+                trace!("Parser"; "Result" => fmt::json(&other));
+                Err(Error::syntax("Could not parse input"))
+            }
         }
     }
 
@@ -208,6 +212,9 @@ impl<'a> Compiler<'a> {
             Expr::Call {ref func, ref args, keywords: _} => {
                 self.compile_expr_call(func, args)?
             },
+            Expr::UnaryOp {ref op, ref operand} => {
+                self.compile_expr_unaryop(op, operand)?
+            },
             Expr::Lambda {ref arguments, ref body } => {
                 return Err(Error::system(&format!(
                     "Compiler does not implement Lambda expressions; file: {}, line: {}",
@@ -219,13 +226,14 @@ impl<'a> Compiler<'a> {
                     file!(), line!())))
             },
             Expr::Attribute {ref value, ref attr} => {
-                return Err(Error::system(&format!(
-                    "Compiler does not implement Attribute expressions; file: {}, line: {}",
-                    file!(), line!())))
+                self.compile_expr_attr(value, attr, ctx)?
             },
             Expr::List {ref elems} => {
                 self.compile_expr_list(elems)?
             },
+            Expr::Dict {ref items} => {
+                self.compile_expr_dict(items)?
+            }
             Expr::None => return Err(Error::system(&format!(
                 "Unreachable code executed at line: {}", line!())))
         };
@@ -257,25 +265,56 @@ impl<'a> Compiler<'a> {
         instructions.append(&mut self.compile_expr(right, Context::Load)?.to_vec());
 
         let code = match op.0.id() {
-            Id::And         => Instr(OpCode::LogicalAnd, None),
-            Id::Or          => Instr(OpCode::LogicalOr, None),
-            Id::Plus        => Instr(OpCode::BinaryAdd, None),
-            Id::Minus       => Instr(OpCode::BinarySubtract, None),
-            Id::Star        => Instr(OpCode::BinaryMultiply, None),
-            Id::DoubleStar  => Instr(OpCode::BinaryPower, None),
-            Id::Slash       => Instr(OpCode::BinaryTrueDivide, None),
-            Id::DoubleSlash => Instr(OpCode::BinaryTrueDivide, None),
-            Id::Pipe        => Instr(OpCode::BinaryOr, None),
-            Id::Percent     => Instr(OpCode::BinaryModulo, None),
-            Id::Amp         => Instr(OpCode::BinaryAnd, None),
-            Id::At          => Instr(OpCode::BinaryMatrixMultiply, None),
-            Id::Caret       => Instr(OpCode::BinaryXor, None),
-            Id::LeftShift   => Instr(OpCode::BinaryLshift, None),
-            Id::RightShift  => Instr(OpCode::BinaryRshift, None),
+            Id::Is              => Instr(OpCode::CompareIs, None),
+            Id::IsNot           => Instr(OpCode::CompareIsNot, None),
+            Id::DoubleEqual     => Instr(OpCode::CompareEqual, None),
+            Id::In              => Instr(OpCode::CompareIn, None),
+            Id::NotIn           => Instr(OpCode::CompareNotIn, None),
+            Id::NotEqual        => Instr(OpCode::CompareNotEqual, None),
+            Id::LeftAngle       => Instr(OpCode::CompareLess, None),
+            Id::LessOrEqual     => Instr(OpCode::CompareLessOrEqual, None),
+            Id::RightAngle      => Instr(OpCode::CompareGreater, None),
+            Id::GreaterOrEqual  => Instr(OpCode::CompareGreaterOrEqual, None),
+            Id::And             => Instr(OpCode::LogicalAnd, None),
+            Id::Or              => Instr(OpCode::LogicalOr, None),
+            Id::Plus            => Instr(OpCode::BinaryAdd, None),
+            Id::Minus           => Instr(OpCode::BinarySubtract, None),
+            Id::Star            => Instr(OpCode::BinaryMultiply, None),
+            Id::DoubleStar      => Instr(OpCode::BinaryPower, None),
+            Id::Slash           => Instr(OpCode::BinaryTrueDivide, None),
+            Id::DoubleSlash     => Instr(OpCode::BinaryTrueDivide, None),
+            Id::Pipe            => Instr(OpCode::BinaryOr, None),
+            Id::Percent         => Instr(OpCode::BinaryModulo, None),
+            Id::Amp             => Instr(OpCode::BinaryAnd, None),
+            Id::At              => Instr(OpCode::BinaryMatrixMultiply, None),
+            Id::Caret           => Instr(OpCode::BinaryXor, None),
+            Id::LeftShift       => Instr(OpCode::BinaryLshift, None),
+            Id::RightShift      => Instr(OpCode::BinaryRshift, None),
             _ =>  {
                 return Err(Error::system(&format!(
-                    "Compiler encountered unhandled binary operator {:?}, line: {}",
-                    op, line!())))
+                    "Compiler encountered unhandled binary operator {:?}; file: {}, line: {}",
+                    op, file!(), line!())))
+            }
+        };
+
+        instructions.push(code);
+        Ok(instructions.into_boxed_slice())
+    }
+
+    fn compile_expr_unaryop(&self, op: &'a Op, operand: &'a Expr) -> CompilerResult {
+        let mut instructions: Vec<Instr> = vec![];
+
+        instructions.append(&mut self.compile_expr(operand, Context::Load)?.to_vec());
+
+        let code = match op.0.id() {
+            Id::Not     => Instr(OpCode::UnaryNot,      None),
+            Id::Minus   => Instr(OpCode::UnaryNegative, None),
+            Id::Plus    => Instr(OpCode::UnaryPositive, None),
+            Id::Tilde   => Instr(OpCode::UnaryInvert, None),
+            _ =>  {
+                return Err(Error::system(&format!(
+                    "Compiler encountered unhandled unary operator {:?}; file: {}, line: {}",
+                    op, file!(), line!())))
             }
         };
 
@@ -300,6 +339,19 @@ impl<'a> Compiler<'a> {
         Ok(vec![instr].into_boxed_slice())
     }
 
+    fn compile_expr_attr(&self, value: &'a Expr, attr: &'a OwnedTk, ctx: Context) -> CompilerResult {
+        if ctx != Context::Load {
+            return Err(Error::system(&format!(
+                "Compiler does not implement attribute set expressions; file: {}, line: {}",
+                file!(), line!())))
+        }
+
+        let mut instructions: Vec<Instr> = Vec::new();
+        instructions.append(&mut self.compile_expr(value, ctx)?.to_vec());
+        instructions.push(Instr(OpCode::LoadAttr, Some(Native::from(attr))));
+        Ok(instructions.into_boxed_slice())
+    }
+
     fn compile_expr_list(&self, elem_exprs: &'a[Expr]) -> CompilerResult {
         let mut instructions: Vec<Instr> = Vec::new();
 
@@ -308,6 +360,18 @@ impl<'a> Compiler<'a> {
         }
 
         instructions.push(Instr(OpCode::BuildList, Some(Native::Count(elem_exprs.len()))));
+        Ok(instructions.into_boxed_slice())
+    }
+
+    fn compile_expr_dict(&self, items: &'a[(Expr, Expr)]) -> CompilerResult {
+        let mut instructions: Vec<Instr> = Vec::new();
+
+        for &(ref key, ref value) in items.iter().as_ref() {
+            instructions.append(&mut self.compile_expr(&key, Context::Load)?.to_vec());
+            instructions.append(&mut self.compile_expr(&value, Context::Load)?.to_vec());
+        }
+
+        instructions.push(Instr(OpCode::BuildMap, Some(Native::Count(items.len()))));
         Ok(instructions.into_boxed_slice())
     }
 }
@@ -403,6 +467,14 @@ z = x + y
     basic_test!(expr_binop_lshif,      "a << b");
     basic_test!(expr_binop_rshift,     "a >> b");
 
+    // Expr::Attribute
+    basic_test!(expr_attribute,        "thing.attribute.otherthing");
+
+    // Expr::List
+    basic_test!(expr_list, "[1,2,3,4]");
+
+    // Expr::Dict
+    basic_test!(expr_dict, "{a: b, 'c': 'd', True: False}");
 
     basic_test!(multiline, r#"
 x = 1

@@ -169,7 +169,6 @@ pub enum Tag {
     N(Num),
     S(Str),
     O(Op),
-    K(Kw),
     W(Ws),
     M(Sym),
     E(Error),
@@ -217,43 +216,6 @@ pub enum Ws {
     Tab,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
-#[repr(usize)]
-pub enum Kw {
-    False,
-    None,
-    True,
-    And,
-    As,
-    Assert,
-    Break,
-    Class,
-    Continue,
-    Def,
-    Del,
-    Elif,
-    Else,
-    Except,
-    Finally,
-    For,
-    From,
-    Global,
-    If,
-    Import,
-    In,
-    Is,
-    Lambda,
-    Nonlocal,
-    Not,
-    Or,
-    Pass,
-    Raise,
-    Return,
-    Try,
-    While,
-    With,
-    Yield
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 #[repr(usize)]
@@ -377,6 +339,8 @@ pub enum Id {
     If,
     Import,
     In,
+    NotIn,
+    IsNot,
     Is,
     Lambda,
     Nonlocal,

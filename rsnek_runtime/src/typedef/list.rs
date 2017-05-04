@@ -1,5 +1,557 @@
+use std::fmt;
+use std::ops::{Add, Deref};
+use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+
+use itertools::Itertools;
+use num::{ToPrimitive, Zero};
+
+use ::resource::strings;
+use error::Error;
+use result::{RuntimeResult, NativeResult};
+use runtime::Runtime;
+use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultListProvider, ListProvider};
+use object::{self, RtValue, typing, PyAPI};
+use object::method::{self, Id, Length, Iter, StringCast, Equal};
+use object::selfref::{self, SelfRef};
+use ::object::typing::BuiltinType;
+
+use ::typedef::collection::sequence;
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Native, List};
+use ::typedef::objectref::ObjectRef;
 
 
+pub struct PyListType {
+    pub empty: ObjectRef,
+}
+
+
+impl typing::BuiltinType for PyListType {
+    type T = PyList;
+    type V = native::List;
+
+    #[inline(always)]
+    #[allow(unused_variables)]
+    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+        PyListType::inject_selfref(PyListType::alloc(value))
+    }
+
+    fn init_type() -> Self {
+        PyListType { empty: PyListType::inject_selfref(PyListType::alloc(native::List::new())) }
+    }
+
+    fn inject_selfref(value: Self::T) -> ObjectRef {
+        let objref = ObjectRef::new(Builtin::List(value));
+        let new = objref.clone();
+
+        let boxed: &Box<Builtin> = objref.0.borrow();
+        match boxed.deref() {
+            &Builtin::List(ref list) => {
+                list.rc.set(&objref.clone());
+            }
+            _ => unreachable!(),
+        }
+        new
+    }
+
+    fn alloc(value: Self::V) -> Self::T {
+        PyList {
+            value: ListValue(value),
+            rc: selfref::RefCount::default(),
+        }
+    }
+}
+
+pub struct ListValue(pub native::List);
+pub type PyList = RtValue<ListValue>;
+
+
+impl PyAPI for PyList {}
+impl method::New for PyList {}
+impl method::Init for PyList {}
+impl method::Delete for PyList {}
+impl method::GetAttr for PyList {}
+impl method::GetAttribute for PyList {}
+impl method::SetAttr for PyList {}
+impl method::DelAttr for PyList {}
+impl method::Hashed for PyList {}
+impl method::StringCast for PyList {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        let s = self.native_str()?;
+        Ok(rt.str(s))
+    }
+
+    fn native_str(&self) -> NativeResult<native::String> {
+
+        let result = self.value.0.iter()
+            .map(|ref item| {
+                let boxed: &Box<Builtin> = item.0.borrow();
+                boxed.native_str()
+            })
+            .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc});
+
+        match result {
+            Ok(s) => Ok(format!("[{}]", s.join(", "))),
+            Err(err) => Err(err)
+        }
+    }
+}
+
+impl method::BytesCast for PyList {}
+impl method::StringFormat for PyList {}
+impl method::StringRepresentation for PyList {}
+impl method::Equal for PyList {
+
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+        let truth = self.native_eq(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::List(ref other) => {
+                let left = &self.value.0;
+                let right = &other.value.0;
+                Ok(sequence::equals(left, right))
+            }
+            _ => Ok(false)
+        }
+    }
+}
+impl method::NotEqual for PyList {
+    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_ne(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        let truth = self.native_eq(&rhs)?;
+        Ok(!truth)
+    } 
+    
+}
+impl method::LessThan for PyList {}
+impl method::LessOrEqual for PyList {}
+impl method::GreaterOrEqual for PyList {}
+impl method::GreaterThan for PyList {}
+impl method::BooleanCast for PyList {
+    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_bool() {
+            Ok(bool) => Ok(rt.bool(bool)),
+            Err(err) => Err(err)
+        }
+    }
+
+    fn native_bool(&self) -> NativeResult<native::Boolean> {
+        Ok(!self.value.0.is_empty())
+    }
+}
+impl method::IntegerCast for PyList {}
+impl method::FloatCast for PyList {}
+impl method::ComplexCast for PyList {}
+impl method::Rounding for PyList {}
+impl method::Index for PyList {}
+impl method::NegateValue for PyList {}
+impl method::AbsValue for PyList {}
+impl method::PositiveValue for PyList {}
+impl method::InvertValue for PyList {}
+impl method::Add for PyList {}
+impl method::BitwiseAnd for PyList {}
+impl method::DivMod for PyList {}
+impl method::FloorDivision for PyList {}
+impl method::LeftShift for PyList {}
+impl method::Modulus for PyList {}
+impl method::Multiply for PyList {
+
+    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let builtin: &Box<Builtin> = rhs.0.borrow();
+
+        match builtin.deref() {
+            &Builtin::Int(ref int) => {
+                match int.value.0.to_usize() {
+                    Some(int) if int <= 0   => Ok(rt.default_list()),
+                    Some(int) if int == 1   => self.rc.upgrade(),
+                    Some(int)               => {
+                        let list = sequence::multiply::<List>(&self.value.0, int);
+                        Ok(rt.list(list))
+                    },
+                    None                    => {
+                        Err(Error::overflow(strings::ERROR_NATIVE_INT_OVERFLOW))
+                    },
+                }
+            }
+            other => Err(Error::typerr(
+                &strings_error_bad_operand!("*", "tuple", other.debug_name())))
+        }
+    }
+}
+
+
+impl method::MatrixMultiply for PyList {}
+impl method::BitwiseOr for PyList {}
+impl method::Pow for PyList {}
+impl method::RightShift for PyList {}
+impl method::Subtract for PyList {}
+impl method::TrueDivision for PyList {}
+impl method::XOr for PyList {}
+impl method::ReflectedAdd for PyList {}
+impl method::ReflectedBitwiseAnd for PyList {}
+impl method::ReflectedDivMod for PyList {}
+impl method::ReflectedFloorDivision for PyList {}
+impl method::ReflectedLeftShift for PyList {}
+impl method::ReflectedModulus for PyList {}
+impl method::ReflectedMultiply for PyList {}
+impl method::ReflectedMatrixMultiply for PyList {}
+impl method::ReflectedBitwiseOr for PyList {}
+impl method::ReflectedPow for PyList {}
+impl method::ReflectedRightShift for PyList {}
+impl method::ReflectedSubtract for PyList {}
+impl method::ReflectedTrueDivision for PyList {}
+impl method::ReflectedXOr for PyList {}
+impl method::InPlaceAdd for PyList {}
+impl method::InPlaceBitwiseAnd for PyList {}
+impl method::InPlaceDivMod for PyList {}
+impl method::InPlaceFloorDivision for PyList {}
+impl method::InPlaceLeftShift for PyList {}
+impl method::InPlaceModulus for PyList {}
+impl method::InPlaceMultiply for PyList {}
+impl method::InPlaceMatrixMultiply for PyList {}
+impl method::InPlaceBitwiseOr for PyList {}
+impl method::InPlacePow for PyList {}
+impl method::InPlaceRightShift for PyList {}
+impl method::InPlaceSubtract for PyList {}
+impl method::InPlaceTrueDivision for PyList {}
+impl method::InPlaceXOr for PyList {}
+impl method::Contains for PyList {
+    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = item.0.borrow();
+        let truth = self.native_contains(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(sequence::contains(&self.value.0, item))
+    }
+}
+impl method::Iter for PyList {
+    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        let iter = self.native_iter()?;
+        Ok(rt.iter(iter))
+    }
+
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
+        match self.rc.upgrade() {
+            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
+            Err(err) => Err(err)
+        }
+    }
+
+}
+impl method::Call for PyList {}
+impl method::Length for PyList {
+    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+        match self.native_len() {
+            Ok(length) => Ok(rt.int(length)),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn native_len(&self) -> NativeResult<native::Integer> {
+        Ok(native::Integer::from(self.value.0.len()))
+    }
+}
+impl method::LengthHint for PyList {}
+impl method::Next for PyList {}
+impl method::Reversed for PyList {}
+impl method::GetItem for PyList {
+    #[allow(unused_variables)]
+    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = index.0.borrow();
+        self.native_getitem(boxed)
+    }
+
+    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+        match index {
+            &Builtin::Int(ref int) => {
+                sequence::get_index(&self.value.0, &int.value.0)
+            }
+            _ => Err(Error::typerr("list index was not int")),
+        }
+    }
+}
+impl method::SetItem for PyList {}
+impl method::DeleteItem for PyList {}
+impl method::Count for PyList {}
+impl method::Append for PyList {}
+impl method::Extend for PyList {}
+impl method::Pop for PyList {}
+impl method::Remove for PyList {}
+impl method::IsDisjoint for PyList {}
+impl method::AddItem for PyList {}
+impl method::Discard for PyList {}
+impl method::Clear for PyList {}
+impl method::Get for PyList {}
+impl method::Keys for PyList {}
+impl method::Values for PyList {}
+impl method::Items for PyList {}
+impl method::PopItem for PyList {}
+impl method::Update for PyList {}
+impl method::SetDefault for PyList {}
+impl method::Await for PyList {}
+impl method::Send for PyList {}
+impl method::Throw for PyList {}
+impl method::Close for PyList {}
+impl method::Exit for PyList {}
+impl method::Enter for PyList {}
+impl method::DescriptorGet for PyList {}
+impl method::DescriptorSet for PyList {}
+impl method::DescriptorSetName for PyList {}
+
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+//      stdlib traits
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl fmt::Display for PyList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "List({:?})", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "List({:?})", self.value.0)
+    }
+}
+
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+    use std::cmp::PartialEq;
+    use ::traits::{
+        DefaultListProvider,
+        NoneProvider,
+        TupleProvider,
+        FloatProvider
+    };
+    use ::object::method::{BooleanCast, GetItem, Multiply, NotEqual};
+    use super::*;
+
+    fn setup() -> (Runtime,) {
+        (Runtime::new(),)
+    }
+
+    #[test]
+    fn new_default() {
+        let (rt,) = setup();
+        rt.default_list();
+    }
+    
+    #[test]
+    fn __bool__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_bool(&rt).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.native_bool().unwrap();
+        assert_eq!(truth, false);
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.str("yup"), rt.float(1.324)]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_bool(&rt).unwrap();
+        assert_eq!(truth, rt.bool(true));
+        let truth = boxed.native_bool().unwrap();
+        assert_eq!(truth, true);
+    }
+
+    #[test]
+    fn __eq__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        assert_eq!(list, list.clone());
+        assert_eq!(list, rt.default_list());
+        assert!(list != rt.list(vec![rt.int(1)]));
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.none(), rt.none()]);
+        assert_eq!(list, list.clone());
+        assert_eq!(list, rt.list(vec![rt.none(), rt.none(), rt.none()]));
+        assert!(list != rt.list(vec![rt.int(1)]));
+    }
+
+    #[test]
+    fn __ne__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_ne(&rt, &list.clone()).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.default_list()).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.list(vec![rt.int(1)])).unwrap();
+        assert_eq!(truth, rt.bool(true));
+
+        // N Elements
+        let list = rt.list(vec![rt.int(1), rt.none(), rt.str("last")]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let truth = boxed.op_ne(&rt, &list.clone()).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.list(vec![rt.int(1), rt.none(), rt.str("last")])).unwrap();
+        assert_eq!(truth, rt.bool(false));
+        let truth = boxed.op_ne(&rt, &rt.list(vec![rt.str("first")])).unwrap();
+        assert_eq!(truth, rt.bool(true));
+    }
+
+    #[test]
+    fn __len__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let len = boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(0));
+        let len = boxed.native_len().unwrap();
+        assert_eq!(len, native::Integer::zero());
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.none(), rt.none()]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let len = boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(3));
+        let len = boxed.native_len().unwrap();
+        assert_eq!(len, native::Integer::from(3));
+    }
+
+    #[test]
+    fn __str__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let s = boxed.op_str(&rt).unwrap();
+        assert_eq!(s, rt.str("[]"));
+        let s = boxed.native_str().unwrap();
+        assert_eq!(&s, "[]");
+
+        // N Elements
+        let list = rt.list(vec![rt.none(), rt.bool(true), rt.bool(false), rt.int(1)]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let s = boxed.op_str(&rt).unwrap();
+        assert_eq!(s, rt.str("[None, True, False, 1]"));
+        let s = boxed.native_str().unwrap();
+        assert_eq!(&s, "[None, True, False, 1]");
+    }
+
+    #[test]
+    fn __getitem__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let is_err = boxed.op_getitem(&rt, &rt.int(0)).is_err();
+        assert_eq!(is_err, true);
+
+        // N Elements
+        let list = rt.list(vec![rt.int(1), rt.int(2), rt.str("three")]);
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let item = boxed.op_getitem(&rt, &rt.int(0)).unwrap();
+        assert_eq!(item, rt.int(1));
+        let item = boxed.op_getitem(&rt, &rt.int(1)).unwrap();
+        assert_eq!(item, rt.int(2));
+        let item = boxed.op_getitem(&rt, &rt.int(2)).unwrap();
+        assert_eq!(item, rt.str("three"));
+
+        // Out of bounds
+        let is_err = boxed.op_getitem(&rt, &rt.int(3)).is_err();
+        assert_eq!(is_err, true);
+
+        // Negative indexing
+        let item = boxed.op_getitem(&rt, &rt.int(-1)).unwrap();
+        assert_eq!(item, rt.str("three"));
+
+        // Out of bounds
+        let is_err = boxed.op_getitem(&rt, &rt.int(-4)).is_err();
+        assert_eq!(is_err, true);
+    }
+    
+    #[test]
+    fn __iter__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let iter = boxed.op_iter(&rt).unwrap();
+        assert_eq!(iter.count(), 0);
+
+        // N Elements
+        let list = rt.list(vec![
+            rt.none(),
+            rt.float(99433.000001),
+            rt.str("asdf"),
+            rt.tuple(vec![rt.default_list()])
+        ]);
+
+        let boxed: &Box<Builtin> = list.0.borrow();
+        let iter = boxed.op_iter(&rt).unwrap();
+        assert_eq!(iter.count(), 4);
+    }
+
+    #[test]
+    fn __mul__() {
+        let (rt,) = setup();
+
+        // Empty
+        let list = rt.default_list();
+        let boxed: &Box<Builtin> = list.0.borrow();
+
+        let new_list = boxed.op_mul(&rt, &rt.int(10)).unwrap();
+        let new_boxed: &Box<Builtin> = new_list.0.borrow();
+        let len = new_boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(0));
+
+        // N Elements
+        let list = rt.list(vec![
+            rt.none(),
+            rt.float(99433.000001),
+            rt.str("asdf"),
+            rt.tuple(vec![rt.default_list()])
+        ]);
+
+        let boxed: &Box<Builtin> = list.0.borrow();
+        let new_list = boxed.op_mul(&rt, &rt.int(145)).unwrap();
+        let new_boxed: &Box<Builtin> = new_list.0.borrow();
+        let len = new_boxed.op_len(&rt).unwrap();
+        assert_eq!(len, rt.int(4 * 145));
+    }
+
+}
 
 #[cfg(all(feature="old", test))]
 mod old {
@@ -25,9 +577,9 @@ mod old {
 
     impl ListObject {
         pub fn new(value: &Vec<ObjectRef>) -> ListObject {
-            let tuple = ListObject { value: List::new(value.clone()) };
+            let list = ListObject { value: List::new(value.clone()) };
 
-            return tuple;
+            return list;
         }
     }
 

@@ -26,6 +26,8 @@ use ::typedef::builtin::Builtin;
 // The strong reference counting type used by the runtime
 // to keep track of heap allocated object. The simple gc will
 // look for exactly 1 strong ref (to the heap object itself).
+// TODO: {T3088} The added Box<> here seems like a level of indirection that is not needed
+//  and was probably because I was a rust noob at that point.
 pub type RuntimeRef = std::rc::Rc<Box<typedef::builtin::Builtin>>;
 pub type RuntimeWeakRef = std::rc::Weak<Box<typedef::builtin::Builtin>>;
 pub type ObjectId = u64;
@@ -56,6 +58,16 @@ pub type Tuple = Vec<ObjectRef>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct DictKey(pub HashId, pub ObjectRef);
+impl DictKey {
+    pub fn hash(&self) -> HashId {
+        self.0
+    }
+
+    pub fn value(&self) -> ObjectRef {
+        self.1.clone()
+    }
+}
+
 pub type Dict = std::collections::HashMap<DictKey, ObjectRef>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
@@ -348,6 +360,7 @@ pub enum Native {
     ),
     Count(Count),
     Code(Code),
+    List(List),
     None,
 }
 

@@ -9,6 +9,8 @@ pub const BUILD:   &'static str = include_str!("build.cfg.in");
 pub const PROMPT:  &'static str = include_str!("prompt.in");
 
 
+pub const BUILTINS_MODULE: &'static str = "builtins";
+
 // Error Strings and format strings
 // if a constant ends in a _F{N} then it is a format string with N positional arguments
 pub const ERROR_NATIVE_INT_OVERFLOW: &'static str = "Python int too large to convert to rust usize";

@@ -7,17 +7,18 @@ use std::collections::hash_map::DefaultHasher;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
-use traits::{StringProvider, NoneProvider, IntegerProvider};
+use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
 use builtin::precondition::check_fnargs_rt;
 use object::{self, RtValue, typing};
-use object::method::{self, Id};
+use object::method::{self, Id, Hashed};
 use object::selfref::{self, SelfRef};
 use object::typing::BuiltinType;
 
+use ::resource::strings;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
-use typedef::native::{self, NativeFn, WrapperFn, Signature, FuncType};
+use typedef::native::{self, NativeFn, WrapperFn, Signature, FuncType, SignatureBuilder};
 use typedef::object::PyObjectType;
 use typedef::objectref::ObjectRef;
 
@@ -85,6 +86,10 @@ impl PyFunction {
         &self.value.0.name
     }
 
+    pub fn module(&self) -> &str {
+        &self.value.0.module
+    }
+
     fn do_call_nativefn_rt(&self,
                            rt: &Runtime,
                            callable: &Box<NativeFn>,
@@ -149,7 +154,36 @@ impl method::New for PyFunction {}
 impl method::Init for PyFunction {}
 impl method::Delete for PyFunction {}
 
-impl method::GetAttr for PyFunction {}
+impl method::GetAttr for PyFunction {
+    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = name.0.borrow();
+        match boxed.deref() {
+            &Builtin::Str(ref pystring) => {
+                let selfref = self.rc.upgrade()?;
+                let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+                    let b: &Box<Builtin> = selfref.0.borrow();
+                    Ok(rt.int(b.native_hash()?))
+                });
+
+                match pystring.value.0.as_str() {
+                    "__hash__" => {
+                        Ok(rt.function(native::Func {
+                            name: "method __hash__".to_string(),
+                            signature: [].as_args(),
+                            module: strings::BUILTINS_MODULE.to_string(),
+                            callable: native::FuncType::Wrapper(callable)
+                        }))
+                    }
+                    other => Err(Error::name(other))
+                }
+
+            }
+            other => Err(Error::typerr(&format!(
+                "getattr <int>' requires string for attribute names, not {}",
+                other.debug_name())))
+        }
+    }
+}
 
 impl method::GetAttribute for PyFunction {}
 

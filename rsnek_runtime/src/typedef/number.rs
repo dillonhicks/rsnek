@@ -1,15 +1,27 @@
 //! Native number coercions and comparisons
 use std;
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 use num::{ToPrimitive};
 
-use typedef::native;
+use typedef::native::{self, HashId};
 
 
-#[inline(always)]
 pub fn format_float(float: &native::Float) -> native::String {
     format!("{:?}", *float)
 
+}
+
+pub fn format_int(int: &native::Integer) -> native::String {
+    format!("{}", *int)
+}
+
+
+pub fn hash_int(int: &native::Integer) -> HashId {
+    let mut s = DefaultHasher::new();
+    int.hash(&mut s);
+    s.finish()
 }
 
 // To make int == float not such a pain in the ass

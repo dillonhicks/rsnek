@@ -23,6 +23,7 @@ use traits::{
     ObjectProvider,
     DictProvider,
     TupleProvider,
+    ListProvider,
     FunctionProvider,
     PyTypeProvider,
     CodeProvider,
@@ -32,6 +33,7 @@ use traits::{
     DefaultFrameProvider,
     DefaultStringProvider,
     DefaultTupleProvider,
+    DefaultListProvider,
 };
 
 use result::{RuntimeResult};
@@ -51,12 +53,14 @@ use typedef::bytes::PyBytesType;
 use typedef::dictionary::PyDictType;
 use typedef::object::PyObjectType;
 use typedef::tuple::PyTupleType;
+use typedef::list::PyListType;
 use typedef::pytype::PyMeta;
 use typedef::method::PyFunctionType;
 use typedef::module::PyModuleType;
 use typedef::code::PyCodeType;
 use typedef::frame::PyFrameType;
 
+use ::resource::strings;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
@@ -76,6 +80,7 @@ pub struct BuiltinTypes {
     string: PyStringType,
     bytes: PyBytesType,
     tuple: PyTupleType,
+    list: PyListType,
     function: PyFunctionType,
     object: PyObjectType,
     module: PyModuleType,
@@ -134,6 +139,7 @@ impl Runtime {
             string: PyStringType::init_type(),
             bytes: PyBytesType::init_type(),
             tuple: PyTupleType::init_type(),
+            list: PyListType::init_type(),
             function: PyFunctionType::init_type(&object.pytype, &object.object),
             object: object,
             module: module,
@@ -168,7 +174,9 @@ impl Runtime {
         rt.register_builtin(builtin::IntFn::create());
         rt.register_builtin(builtin::AllFn::create());
         rt.register_builtin(builtin::AnyFn::create());
-
+        rt.register_builtin(builtin::ListFn::create());
+        rt.register_builtin(builtin::GlobalsFn::create());
+        rt.register_builtin(builtin::TupleFn::create());
         rt
     }
 
@@ -190,6 +198,18 @@ impl Runtime {
         boxed.op_getattr(&self, &key).unwrap()
     }
 
+}
+
+impl<'a> ModuleImporter<&'a str> for Runtime {
+    fn import_module(&self, name: &'a str) -> RuntimeResult {
+        match name {
+            strings::BUILTINS_MODULE => {
+                let ref_: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+                Ok(ref_.clone())
+            },
+            _ => Err(Error::module_not_found(name))
+        }
+    }
 }
 
 //
@@ -422,6 +442,35 @@ impl DefaultTupleProvider for Runtime {
         self.0.types.tuple.empty.clone()
     }
 }
+
+//
+// List
+//
+
+impl ListProvider<native::None> for Runtime {
+    #[allow(unused_variables)]
+    fn list(&self, value: native::None) -> ObjectRef {
+        self.default_list()
+    }
+}
+
+impl ListProvider<native::List> for Runtime {
+    fn list(&self, value: native::List) -> ObjectRef {
+        self.0
+            .types
+            .list
+            .new(&self, value)
+    }
+}
+
+
+
+impl DefaultListProvider for Runtime {
+    fn default_list(&self) -> ObjectRef {
+        self.0.types.list.empty.clone()
+    }
+}
+
 //
 // Object
 //

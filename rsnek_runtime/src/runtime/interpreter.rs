@@ -38,6 +38,20 @@ use ::object::method::{
     StringCast,
     Call,
     BooleanCast,
+    Equal,
+    NotEqual,
+    Is,
+    IsNot,
+    LessThan,
+    GreaterThan,
+    GreaterOrEqual,
+    LessOrEqual,
+    Contains,
+    InvertValue,
+    PositiveValue,
+    NegateValue,
+    GetAttr,
+    SetItem,
 };
 use ::opcode::OpCode;
 use ::resource;
@@ -50,10 +64,12 @@ use ::traits::{
     IntegerProvider,
     FloatProvider,
     TupleProvider,
+    ListProvider,
     DictProvider,
     BooleanProvider,
     FrameProvider,
-    FunctionProvider
+    FunctionProvider,
+    DefaultDictProvider
 };
 use ::typedef::native::{self, Native, Instr, FuncType};
 use ::typedef::native::SignatureBuilder;
@@ -181,7 +197,9 @@ impl InterpreterState {
         istate.ns.insert(String::from("int"), rt.get_builtin("int"));
         istate.ns.insert(String::from("any"), rt.get_builtin("any"));
         istate.ns.insert(String::from("all"), rt.get_builtin("all"));
-
+        istate.ns.insert(String::from("list"), rt.get_builtin("list"));
+        istate.ns.insert(String::from("globals"), rt.get_builtin("globals"));
+        istate.ns.insert(String::from("tuple"), rt.get_builtin("tuple"));
         istate
     }
 
@@ -280,10 +298,21 @@ impl InterpreterState {
         self.frames[0].1.borrow_mut().clear();
     }
 
-
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         match opcode {
+            OpCode::CompareIs               => boxed.op_is(&rt, &rhs),
+            OpCode::CompareIsNot            => boxed.op_is_not(&rt, &rhs),
+            OpCode::CompareEqual            => boxed.op_eq(&rt, &rhs),
+            OpCode::CompareIn               => {
+                let rhs_boxed: &Box<Builtin> = rhs.0.borrow();
+                rhs_boxed.op_contains(&rt, &lhs)
+            },
+            OpCode::CompareNotEqual         => boxed.op_ne(&rt, &rhs),
+            OpCode::CompareLess             => boxed.op_lt(&rt, &rhs),
+            OpCode::CompareLessOrEqual      => boxed.op_le(&rt, &rhs),
+            OpCode::CompareGreater          => boxed.op_gt(&rt, &rhs),
+            OpCode::CompareGreaterOrEqual   => boxed.op_ge(&rt, &rhs),
             OpCode::LogicalAnd              => logical_and(rt, lhs, rhs),
             OpCode::LogicalOr               => logical_or(rt, lhs, rhs),
             OpCode::BinaryAdd               => boxed.op_add(&rt, &rhs),
@@ -301,6 +330,21 @@ impl InterpreterState {
             OpCode::BinaryRshift            => boxed.op_rshift(&rt, &rhs),
             opcode                           => Err(Error::system(
                 &format!("Unhandled binary operation {:?}, this is a bug!", opcode))),
+        }
+    }
+
+    fn exec_unaryop(&mut self, rt: &Runtime, opcode: OpCode, operand: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = operand.0.borrow();
+        match opcode {
+            OpCode::UnaryNot        => {
+                let value = boxed.op_bool(&rt)?;
+                Ok(rt.bool(!(value == rt.bool(true))))
+            },
+            OpCode::UnaryNegative   => boxed.op_neg(&rt),
+            OpCode::UnaryPositive   => boxed.op_pos(&rt),
+            OpCode::UnaryInvert     => boxed.op_invert(&rt),
+            opcode                  => Err(Error::system(
+                &format!("Unhandled unary operation {:?}, this is a bug!", opcode))),
         }
     }
 
@@ -335,10 +379,11 @@ impl InterpreterState {
 
                         rt.function(func)
                     },
-                    Native::Count(_) => return Some(Err(Error::system(
-                        &format!("Malformed LoadConst instruction {:?}, this is a bug!", instr)))),
                     Native::None => rt.none(),
-//                    Native::Func(func) => rt.function(func)
+                    Native::Count(_) |
+                    Native::List(_) => return Some(Err(Error::system(
+                        &format!("Malformed LoadConst instruction {:?}, this is a bug!; file: {}; line: {}",
+                                 instr, file!(), line!())))),
                 };
 
                 self.push_stack(&objref);
@@ -376,6 +421,16 @@ impl InterpreterState {
 
                 None
             },
+            (OpCode::CompareIs, None)               |
+            (OpCode::CompareIsNot, None)            |
+            (OpCode::CompareEqual, None)            |
+            (OpCode::CompareIn, None)               |
+            (OpCode::CompareNotIn, None)            |
+            (OpCode::CompareNotEqual, None)         |
+            (OpCode::CompareLess, None)             |
+            (OpCode::CompareLessOrEqual, None)      |
+            (OpCode::CompareGreater, None)          |
+            (OpCode::CompareGreaterOrEqual, None)   |
             (OpCode::LogicalAnd, None)              |
             (OpCode::LogicalOr, None)               |
             (OpCode::BinaryAdd, None)               |
@@ -394,17 +449,16 @@ impl InterpreterState {
                 let rhs = match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::system(
-                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
+                        &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
                 let lhs = match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::system(
-                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
+                        &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
-                // TODO: {T100} Give `Instr` getters
-                let result = match self.exec_binop(rt, instr.tuple().0, &lhs, &rhs) {
+                let result = match self.exec_binop(rt, instr.code(), &lhs, &rhs) {
                     Ok(objref) => objref,
                     err => return Some(err)
                 };
@@ -412,6 +466,40 @@ impl InterpreterState {
                 self.push_stack(&result);
                 None
             },
+            (OpCode::UnaryNot, None)        |
+            (OpCode::UnaryNegative, None)   |
+            (OpCode::UnaryPositive, None)   |
+            (OpCode::UnaryInvert, None)     => {
+                let operand = match self.pop_stack() {
+                    Some(objref) => objref,
+                    None => return Some(Err(Error::system(
+                        &format!("No values in value stack for {:?}!", instr.code()))))
+                };
+                
+                let result = match self.exec_unaryop(rt, instr.code(), &operand) {
+                    Ok(objref) => objref,
+                    err => return Some(err)
+                };
+
+                self.push_stack(&result);
+                None
+            },
+            (OpCode::LoadAttr, Some(Native::Str(name))) => {
+                let value = match self.pop_stack() {
+                    Some(objref) => objref,
+                    None => return Some(Err(Error::system(
+                        &format!("No values in value stack for {:?}!", instr.code()))))
+                };
+
+                let boxed: &Box<Builtin> = value.0.borrow();
+                let result = match boxed.op_getattr(&rt, &rt.str(name)) {
+                    Ok(objref) => objref,
+                    err => return Some(err)
+                };
+
+                self.push_stack(&result);
+                None
+            }
             (OpCode::CallFunction, Some(Native::Count(arg_count))) => {
                 let mut args: VecDeque<ObjectRef> = VecDeque::new();
                 for _ in 0..(arg_count + 1) {
@@ -514,12 +602,12 @@ impl InterpreterState {
                 match self.pop_stack() {
                     Some(objref) => objref,
                     None => return Some(Err(Error::runtime(
-                        &format!("No values in value stack for {:?}!", instr.tuple().0))))
+                        &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
 //                let code = match self.pop_stack() {
 //                    Some(objref) => objref,
-//                    None => panic!("No values in value stack for {:?}!", instr.tuple().0)
+//                    None => panic!("No values in value stack for {:?}!", instr.code())
 //                };
 //
 //
@@ -527,8 +615,7 @@ impl InterpreterState {
                 None
             },
             (OpCode::BuildList, Some(Native::Count(count))) => {
-                // TODO: Change to list when impl'd
-                let mut elems: native::Tuple = native::Tuple::new();
+                let mut elems = native::List::new();
                 for _ in 0..count {
                     if self.stack_view().is_empty() {
                         return Some(Err(Error::system(
@@ -538,11 +625,33 @@ impl InterpreterState {
                     elems.insert(0, self.pop_stack().unwrap());
                 }
 
-                let objref = rt.tuple(elems);
+                let objref = rt.list(elems);
                 trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref));
                 self.push_stack(&objref);
                 Some(Ok(rt.none()))
-            }
+            },
+            (OpCode::BuildMap, Some(Native::Count(count))) => {
+                let dict = rt.default_dict();
+                let boxed: &Box<Builtin> = dict.0.borrow();
+
+                for _ in 0..count  {
+                    if self.stack_view().is_empty() || self.stack_view().len() == 1 {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for function call!")));
+                    }
+
+                    let value = self.pop_stack().unwrap();
+                    let key = self.pop_stack().unwrap();
+                    match boxed.op_setitem(&rt, &key, &value) {
+                        Ok(_) => continue,
+                        Err(err) => return Some(Err(err))
+                    };
+                }
+
+                trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", dict));
+                self.push_stack(&dict);
+                Some(Ok(rt.none()))
+            },
             (OpCode::PopTop, None) => {
                     match self.pop_stack() {
                         Some(objref) => Some(Ok(objref)),
@@ -632,7 +741,7 @@ impl InterpreterState {
                     &Builtin::Code(ref pycode) => Ok(format!(
                         "<{} at {:?}>", pycode.value.0.co_name.clone(), (pycode as *const _))),
                     &Builtin::Function(ref pyfunc) => Ok(format!(
-                        "<{} at {:?}>", pyfunc.name(), (pyfunc as *const _))),
+                        "<{} at {:?} - {}>", pyfunc.name(), (pyfunc as *const _), pyfunc.module())),
                     other => Err(Error::system(
                         &format!("{} is not a Code or Func object", other.debug_name())))
                 }
@@ -996,6 +1105,11 @@ mod tests {
         Interpreter::run(&config)
     }
 
+    // Simple equality
+    assert_run!(one_equals_one,
+        "assert 1 == 1, 'something is totally fucked'",
+        ExitCode::Ok);
+
     // Sanity checks about and & or
     assert_run!(logical_and_01, r#"
 f = 1 and 2
@@ -1031,21 +1145,24 @@ assert f, 'None or False failed as expected'
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 
+    assert_run!(int_neg,    "x = -1", ExitCode::Ok);
+
     // create and call a function
     assert_run!(func_01, r#"
 def can_i_haz():
     return 'tests?'
 
-can_i_haz()
-
+result = can_i_haz()
+assert result == 'tests?'
 "#, ExitCode::Ok);
 
     assert_run!(func_02, r#"
 def now_with_100_percent_more_args(a):
     return a * a
 
-now_with_100_percent_more_args(13)
-
+result = now_with_100_percent_more_args(13)
+expected = 13 * 13
+assert result == expected
 "#, ExitCode::Ok);
 
     assert_run!(func_03, r#"
@@ -1057,7 +1174,77 @@ def biglyify_string(a):
 tiny_string = 'abc'
 big_string = biglyify_string(tiny_string)
 print(len(big_string))
+
+expected = len(tiny_string) * BIG_FACTOR
+assert len(big_string) == expected
 "#, ExitCode::Ok);
+
+    assert_run!(list_01, r#"l = [4, 'hello', 34.22, None, True, False]"#, ExitCode::Ok);
+
+    assert_run!(list__bool__01, r#"l = [1234]
+assert l, "None empty list failed unexpectedly"
+"#, ExitCode::Ok);
+
+    assert_run!(list__bool__02, r#"l = []
+assert l, "None empty list failed unexpectedly"
+"#, ExitCode::GenericError);
+
+    assert_run!(list__len__01, r#"
+l = []
+assert len(l), 'Should fail'
+"#, ExitCode::GenericError);
+
+    assert_run!(list__len__02, r#"
+l = ['string of destiny']
+assert len(l), 'Should not fail'
+"#, ExitCode::Ok);
+
+    assert_run!(list__mul__01, r#"
+l = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] * len('I declare this list to be bigger!')
+assert len(l), 'Should not fail'
+"#, ExitCode::Ok);
+
+    assert_run!(list_builtin, r#"
+l = list()
+assert l == []
+"#, ExitCode::Ok);
+
+    assert_run!(tuple_builtin, r#"
+t = tuple()
+assert len(t) == 0
+"#, ExitCode::Ok);
+
+    assert_run!(contains_01, r#"
+assert "Good" in "Good Day!"
+    "#, ExitCode::Ok);
+
+    assert_run!(attribute_01, r#"
+number = 1245
+func = number.__hash__
+func2 = func.__hash__
+hash1 = func()
+hash2 = func()
+assert hash1 == hash2
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_01, r#"
+x = {}
+assert len(x) == 0
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_02, r#"
+x = {True: 1}
+assert len(x) == 1
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_03, r#"
+crazytown = {2**8: 1, True: True, False: True, "f": {"dict": "bad"}, tuple([1,2,3,4]): 34.2}
+assert len(crazytown) == 5
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_04, r#"
+test = {[1,2,3,4]: "bad key value"}
+    "#, ExitCode::GenericError);
 
     #[bench]
     fn print(b: &mut Bencher) {
