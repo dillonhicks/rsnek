@@ -67,6 +67,7 @@ pub enum Expr {
     UnaryOp { op: Op, operand: BoxedExpr },
     Call { func: OwnedTk, args: Vec<Expr>,  keywords: ()},
     Attribute { value: Box<Expr>, attr: OwnedTk },
+    Dict { items: Vec<(Expr, Expr)> },
     List { elems: Vec<Expr> },
     NameConstant(OwnedTk),
     Constant(OwnedTk),

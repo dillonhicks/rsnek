@@ -308,6 +308,7 @@ impl<'a> Parser<'a> {
             call_m!(self.sub_expr_call)                         |
             call_m!(self.sub_expr_getattr)                      |
             call_m!(self.sub_expr_list)                         |
+            call_m!(self.sub_expr_dict)                         |
             call_m!(self.sub_expr_operator)                     |
             call_m!(self.sub_expr_nameconstant)                 |
             call_m!(self.sub_expr_constant)                     ) >>
@@ -710,6 +711,20 @@ impl<'a> Parser<'a> {
         (Expr::List { elems: elems })
     ));
 
+    tk_method!(sub_expr_dict, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
+        expr: alt_complete!(
+            do_parse!(
+                       lbrace_token                         >>
+                items: call_m!(self.sub_expr_dict_items)    >>
+                       rbrace_token                         >>
+                (Expr::Dict { items: items}))                   |
+            do_parse!(
+                 lbrace_token                               >>
+                 rbrace_token                               >>
+                 (Expr::Dict {items: Vec::new()})
+            )) >>
+        (expr)
+    ));
 
     /// 22.  | NameConstant(singleton value)
     tk_method!(sub_expr_nameconstant, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
@@ -801,6 +816,21 @@ impl<'a> Parser<'a> {
         })
     ));
 
+    /// Call Args Sub Expression Parser
+    ///
+    tk_method!(sub_expr_dict_items, 'b, <Parser<'a>, Vec<(Expr, Expr)>>, mut self, do_parse!(
+        items: separated_list!(comma_token, call_m!(self.sub_expr_dict_item)) >>
+        (items)
+));
+
+    tk_method!(sub_expr_dict_item, 'b, <Parser<'a>, (Expr, Expr)>, mut self, do_parse!(
+        key: many1!(not_colon_token)                      >>
+        colon_token                                  >>
+        value: call_m!(self.start_expr)                     >>
+        item: call_m!(self.build_dict_item, key, value)    >>
+        (item)
+    ));
+
     /// Helper for the recursive parsing of a subexpression as is common in
     /// in cases where something has an infix-y semantic. For example:
     /// ```x = 1 if y else 2``` or ```q = [i for i in entries if i >= 3]```
@@ -874,6 +904,19 @@ impl<'a> Parser<'a> {
         (self, result)
     }
 
+    fn build_dict_item<'b>(mut self,
+                           i: TkSlice<'b>,
+                           key: Vec<TkSlice<'b>>,
+                           value: Expr) -> (Parser<'a>, IResult<TkSlice<'b>, (Expr, Expr)>) {
+
+        let key_expr = match self.parse_sub_expr(&key) {
+            Ok(expr) => expr,
+            Err(error) => return (self, IResult::Error(error.code()))
+        };
+
+        let result: IResult<TkSlice<'b>, (Expr, Expr)> = IResult::Done(i, (key_expr, value));
+        (self, result)
+    }
 }
 
 
@@ -888,6 +931,7 @@ mod internal {
     // Specific constant and ast defined type tokens
     tk_named!(pub name_token        <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Name])));
     tk_named!(pub number_token      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::Number])));
+    tk_named!(pub string_token      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::String])));
 
     // Braces and Symbols
     tk_named!(pub lparen_token      <TkSlice<'a>>, ignore_spaces!(tag!(&[Id::LeftParen])));
@@ -1001,6 +1045,7 @@ mod internal {
     tk_named!(pub not_percent_token     <TkSlice<'a>>,  tk_is_none_of!(&[Id::Percent, Id::Newline]));
     tk_named!(pub not_doublestar_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::DoubleStar, Id::Newline]));
     tk_named!(pub not_dot_token         <TkSlice<'a>>,  tk_is_none_of!(&[Id::Dot, Id::Newline]));
+    tk_named!(pub not_colon_token       <TkSlice<'a>>,  tk_is_none_of!(&[Id::Colon, Id::Newline]));
 
     /// Unary Operatos: `+`, `-`,
     tk_named!(pub unaryop_token <TkSlice<'a>>, ignore_spaces!(
@@ -1205,6 +1250,12 @@ mod tests {
     basic_test!(expr_list_04, r#"[int("234"), 5 << 3, [1]]"#);
     // TODO: {T118} Binop Scanning Wrecks Args and Elems
     basic_test!(expr_list_05, r#"[3, [a,b,c,len([1,2,3])], x + y]"#);
+
+    // Expr::Dict
+    basic_test!(expr_dict_01, r#"{}"#);
+    basic_test!(expr_dict_02, r#"{a: b}"#);
+    basic_test!(expr_dict_03, r#"{a: {b: c}}"#);
+    basic_test!(expr_dict_04, r#"{2**8: 1, True: True, False: True, "f": {"dict": "bad"}, tuple([1,2,3,4]): 34.2}"#);
 
 
     // Sanity Checks
