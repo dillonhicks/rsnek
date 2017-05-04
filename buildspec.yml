@@ -3,6 +3,7 @@ version: 0.1
 phases:
   pre_build:
     commands:
+      - echo Install Toolchain started on `date`
       - echo Installing rust nightly toolchain
       - make toolchain
   build:
@@ -11,17 +12,22 @@ phases:
       - make build
       - echo Test started on `date`
       - make test
-      - echo Bench started on `date`
-      - make bench
       - echo Release started on `date`
       - make release
+      - echo Test Release started on `date`
+      - make test-release
+
 post_build:
     commands:
+      - echo Bench started on `date`
+      - make bench
+      - echo Valgrind started on `date`
+      - make valgrind
       - echo Docs started on `date`
       - make docs
       - echo Finshed on `date`
 artifacts:
-    files:
-      - 'docs/*'
-      - 'release/rsnek'
-    base-directory: 'target'
+  files:
+    - '**/*'
+  base-directory: 'target'
+  discard-paths: yes

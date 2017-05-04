@@ -68,7 +68,7 @@ BUILD_DATETIME := $(shell date -u +%FT%TZ)
 
 VERSION ?= $(CODEBUILD_SOURCE_VERSION)
 LOG_FORMAT ?= human
-
+CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
 
 .PHONY: all toolchain build
 
@@ -84,30 +84,59 @@ toolchain:
 		g++ \
 		gcc \
 		git \
-		make ;
+		make \
+		valgrind \
+		oprofile;
 
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
 
 
 build:
-	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=$(LOG_FORMAT) -p rsnek
+	$(CARGO) build --message-format=$(LOG_FORMAT) -p rsnek
 
 
 release:
-	PATH="/root/.cargo/bin:$(PATH)" cargo build --message-format=$(LOG_FORMAT) --release -p rsnek
+	$(CARGO) build --message-format=$(LOG_FORMAT) --release -p rsnek
 
 
 test:
-	PATH="/root/.cargo/bin:$(PATH)" cargo test --message-format=$(LOG_FORMAT) --all
+	$(CARGO) test --message-format=$(LOG_FORMAT) --all
 
 
 test-release:
-	PATH="/root/.cargo/bin:$(PATH)" cargo test --release --message-format=$(LOG_FORMAT) --all
+	$(CARGO) test --release --message-format=$(LOG_FORMAT) --all
 
 
 bench:
-	PATH="/root/.cargo/bin:$(PATH)" cargo bench --message-format=$(LOG_FORMAT) -p rsnek*
+	$(CARGO) bench --message-format=$(LOG_FORMAT) -p rsnek*
 
+
+# I do not expect there to be random memory leaks because Rust handles a lot of that.
+# This is more of a curiosity and an experiment to see:
+#  - If the cyclical ObjectRefs cause issues
+#  - Detect any hot code areas not obvious by rust benching
+#
+VALGRIND_PYTHON_SRCFILE=rsnek/tests/test.py
+VALGRIND_MEMCHECK_XMLFILE=target/release/valgrind.memcheck.xml
+valgrind:
+	-$(CARGO) install cargo-profiler
+	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
+	cat rsnek/src/main.rs >> rsnek/maingrind.rs
+	mv rsnek/src/main.rs rsnek/src/main.rs.bak
+	mv rsnek/maingrind.rs rsnek/src/main.rs
+	cd rsnek; \
+		cargo profiler callgrind --release ; \
+		cargo profiler cachegrind --release  -- $(VALGRIND_PYTHON_SRCFILE)
+	mv rsnek/src/main.rs.bak rsnek/src/main.rs
+	valgrind \
+		--tool=memcheck \
+		--leak-check=full \
+		--show-leak-kinds=all \
+		--verbose \
+		--xml=yes \
+		--xml-file=$(VALGRIND_MEMCHECK_XMLFILE) \
+		--track-fds=yes -v target/release/rsnek $(VALGRIND_PYTHON_SRCFILE)
+	cat $(VALGRIND_MEMCHECK_XMLFILE)
 
 # Get the status of the stages of the AWS CodePipeline for this project and
 # print the status of each stage and url to stdout.
