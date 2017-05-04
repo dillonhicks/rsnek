@@ -2,6 +2,7 @@ use nom::Slice;
 use slog;
 use slog_scope;
 
+
 use ::token::{NEWLINE_BYTES, NEWLINE, SPACE, Tk, Id, Tag};
 use ::slice::{TkSlice};
 use ::preprocessor::Preprocessor;
@@ -79,7 +80,7 @@ impl BlockScopePreprocessor {
         }
     }
 
-    pub fn name(&self) -> & str {
+    pub const fn name(&self) -> &str {
         BlockScopePreprocessor::NAME
     }
 
@@ -138,7 +139,7 @@ impl BlockScopePreprocessor {
                 stack_idx += 1;
                 indent_stack[stack_idx] = curr + indent;
                 slog_trace!(self.log,
-                "BlockScopePreprocessor";
+                "{}", self.name();
                 "action" => "emit",
                 "token" => "BlockStart",
                 "stack_idx" => stack_idx);
@@ -151,7 +152,7 @@ impl BlockScopePreprocessor {
                     stack_idx -= 1;
 
                     slog_trace!(self.log,
-                    "BlockScopePreprocessor";
+                    "{}", self.name();
                     "action" => "emit",
                     "token" => "BlockEnd",
                     "stack_idx" => stack_idx);
@@ -187,7 +188,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
 
         if indent == 0 {
             slog_trace!(self.log,
-                "BlockScopePreprocessor";
+                "{}", self.name();
                 "action" => "skip",
                 "reason" => "indent==0");
             return Ok(tokens.tokens().to_owned().into_boxed_slice());
@@ -196,21 +197,21 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
         let mut acc: Vec<TkSlice<'b>> = Vec::new();
 
         let mut stack_idx = 0;
-        let mut indent_stack: [usize; INDENT_STACK_SIZE]  = [0; INDENT_STACK_SIZE];
+        let mut indent_stack: [usize; INDENT_STACK_SIZE] = [0; INDENT_STACK_SIZE];
 
-        let mut start: Option<usize>        = None;
-        let mut end: Option<usize>          = None;
-        let mut is_continuation             = false;
-        let mut seen_non_ws                 = false;
+        let mut start: Option<usize> = None;
+        let mut end: Option<usize> = None;
+        let mut is_continuation = false;
+        let mut seen_non_ws = false;
 
-        let mut last_tk: (usize, Tk<'b>)    = (0, Tk::default());
+        let mut last_tk: (usize, Tk<'b>) = (0, Tk::default());
 
         for (idx, tk) in tokens.iter().enumerate() {
             match (last_tk.1.id(), tk.id(), is_continuation, seen_non_ws, start) {
                 // Just seen a newline on the last pass and it is not a \ escaped
                 // continuation so start collapsing the whitespace
                 (Id::Newline, Id::Space, false, false, None) => {
-                    if let Some(e) = end{
+                    if let Some(e) = end {
                         acc.push(tokens.slice(e..idx - 1))
                     } else {
                         acc.push(tokens.slice(..idx - 1));
@@ -220,7 +221,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     end = None;
                 },
                 // Continue to consume spaces
-                (Id::Space,   Id::Space, false, false, _) => {},
+                (Id::Space, Id::Space, false, false, _) => {},
                 // Found the first non ws char
                 (Id::Space, id, false, false, Some(s)) if id != Id::Space => {
                     // TODO: {T92} Formalize preprocessing to allow for injection of expression start
@@ -244,7 +245,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                 (Id::Newline, id, false, false, _) if id != Id::Space && id != Id::Newline => {
                     // TODO: {T92} Formalize preprocessing to allow for injection of expression start
                     // and end
-                    if let Some(e) = end{
+                    if let Some(e) = end {
                         acc.push(tokens.slice(e..idx - 1))
                     } else {
                         acc.push(tokens.slice(..idx - 1));
@@ -259,7 +260,6 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                         Ok(new_stack_idx) => stack_idx = new_stack_idx,
                         Err(string) => return Err(string)
                     };
-
                 },
                 // Continuation start case. It does not matter how many backslashes happen
                 // before the newline as long as the last backslash is immediately followed by
@@ -282,7 +282,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
 
                         error => {
                             slog_error!(self.log,
-                                "BlockScopePreprocessor";
+                                "{}", self.name();
                                 "error" => "LineContinuation"
                             );
                             return Err(format!(
@@ -291,7 +291,7 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     }
 
                     slog_trace!(self.log,
-                        "BlockScopePreprocessor";
+                        "{}", self.name();
                         "action" => "rewrite",
                         "Id::Backslash" => format!("{}", Id::Space),
                         "stack_idx" => stack_idx
@@ -304,9 +304,8 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                 (Id::Backslash, Id::Newline, true, _, Some(s)) => {
                     acc.push(tokens.slice(s..idx - 1));
 
-                    slog_trace!(
-                        self.log,
-                        "BlockScopePreprocessor";
+                    slog_trace!(self.log,
+                        "{}", self.name();
                         "action" => "emit",
                         "token" => "LineContinuation",
                         "stack_idx" => stack_idx
@@ -315,17 +314,20 @@ impl<'a> Preprocessor<'a> for BlockScopePreprocessor {
                     acc.push(TkSlice(&LINE_CONT));
                     start = Some(idx + 1);
                 },
-//                // TODO: {T92} Formalize preprocessing to allow for injection of expression start
-//                // and end
-//                // Newline after a Backslash Continuation, toggle the continuation to
-//                // false but keep seen_non_ws == true.
-//                (_, Id::Newline, true, _, _) => {
-//                    is_continuation = false;
-//                },
+                // TODO: {T92} Formalize preprocessing to allow for injection of expression start
+                // and end
+                // Newline after a Backslash Continuation, toggle the continuation to
+                // false but keep seen_non_ws == true.
+                (_, Id::Newline, true, _, _) => {
+                    is_continuation = false;
+                },
                 // Normal newline
                 (_, Id::Newline, false, _, _) => {
                     seen_non_ws = false;
                 },
+                ///
+                ///
+
                 _ => {}
             };
 

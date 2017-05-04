@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
+use ::resource::strings;
 use runtime::Runtime;
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
@@ -34,7 +35,7 @@ impl typing::BuiltinType for PyMeta {
         PyMeta {
             pytype: PyMeta::inject_selfref(PyMeta::alloc(native::Type {
                                                              name: "type".to_string(),
-                                                             module: "builtins".to_string(),
+                                                             module: strings::BUILTINS_MODULE.to_string(),
                                                              bases: Vec::new(),
                                                              subclasses: RefCell::new(Vec::new()),
                                                          })),

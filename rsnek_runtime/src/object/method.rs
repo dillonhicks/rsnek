@@ -221,7 +221,7 @@ api_trait!(binary, self, __divmod__, DivMod, op_divmod, native_divmod);
 api_trait!(binary, self, __floordiv__, FloorDivision, op_floordiv, native_floordiv);
 api_trait!(binary, self, __lshift__, LeftShift, op_lshift, native_lshift);
 api_trait!(binary, self, __mod__, Modulus, op_mod, native_mod);
-api_trait!(binary, self, __mul__, Multiply, op_mul, native_mul);
+api_trait!(binary, self, __mul__, Multiply, op_mul, native_mul, native::Native);
 api_trait!(binary, self, __matmul__, MatrixMultiply, op_matmul, native_matmul);
 api_trait!(binary, self, __or__, BitwiseOr, op_or, native_or);
 api_trait!(ternary, self, __pow__, Pow, op_pow, native_pow);
@@ -268,7 +268,7 @@ api_trait!(binary, self, __ixor__, InPlaceXOr, op_ixor, native_ixor);
 //  Collections
 // -----------------------------------
 api_trait!(binary, self, __contains__, Contains, op_contains, native_contains, native::Boolean);
-api_trait!(unary, self, __iter__, Iter, op_iter, native_iter);
+api_trait!(unary, self, __iter__, Iter, op_iter, native_iter, native::Iterator);
 api_trait!(4ary, self, __call__, Call, op_call, native_call);
 api_trait!(unary, self, __len__, Length, op_len, native_len, native::Integer);
 api_trait!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);
@@ -295,7 +295,7 @@ api_trait!(unary, self, clear, Clear, meth_clear, native_meth_clear);
 
 // Mapping
 api_trait!(binary, self, get, Get, meth_get, native_meth_get);
-api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys);
+api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys, native::Tuple);
 api_trait!(unary, self, values, Values, meth_values, native_meth_values);
 api_trait!(unary, self, items, Items, meth_items, native_meth_items);
 api_trait!(binary, self, popitem, PopItem, meth_popitem, native_meth_popitem);

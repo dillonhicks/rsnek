@@ -9,7 +9,7 @@ use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use traits::{NoneProvider, IntegerProvider};
 use object::{self, RtValue, typing};
-use object::method::{self, Id, GetItem, Hashed, SetItem};
+use object::method::{self, Id, GetItem, Hashed, SetItem, Keys};
 use object::selfref::{self, SelfRef};
 use object::typing::BuiltinType;
 
@@ -88,6 +88,12 @@ impl typing::BuiltinType for PyObjectType {
 pub struct ObjectValue(pub native::Object);
 pub type PyObject = RtValue<ObjectValue>;
 
+impl PyObject {
+    pub fn dir(&self) -> NativeResult<native::Tuple> {
+        let boxed: &Box<Builtin> = self.value.0.dict.0.borrow();
+        boxed.native_meth_keys()
+    }
+}
 
 //// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 ////    Python Object Traits

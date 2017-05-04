@@ -38,6 +38,7 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Str(ref $inner) => $e,
             &Builtin::Bytes(ref $inner) => $e,
             &Builtin::Tuple(ref $inner) =>$e,
+            &Builtin::List(ref $inner) =>$e,
             &Builtin::Function(ref $inner) => $e,
             &Builtin::Object(ref $inner) => $e,
             &Builtin::Type(ref $inner) => $e,
@@ -62,6 +63,7 @@ macro_rules! unary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op($rt),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($rt),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt),
+            &Builtin::List(ref $lhs) => $lhs.$op($rt),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt),
@@ -86,6 +88,7 @@ macro_rules! binary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::List(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $rhs),
@@ -110,6 +113,7 @@ macro_rules! ternary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::List(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
@@ -134,6 +138,7 @@ macro_rules! _4ary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::List(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Function(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Object(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Type(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
@@ -174,6 +179,7 @@ macro_rules! native_unary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op(),
             &Builtin::Bytes(ref $lhs) => $lhs.$op(),
             &Builtin::Tuple(ref $lhs) => $lhs.$op(),
+            &Builtin::List(ref $lhs) => $lhs.$op(),
             &Builtin::Function(ref $lhs) => $lhs.$op(),
             &Builtin::Object(ref $lhs) => $lhs.$op(),
             &Builtin::Type(ref $lhs) => $lhs.$op(),
@@ -198,6 +204,7 @@ macro_rules! native_binary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::List(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($rhs),
@@ -222,6 +229,7 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::Str(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::List(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Function(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Object(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Type(ref $lhs) => $lhs.$op($mid, $rhs),
@@ -246,6 +254,7 @@ macro_rules! native_4ary_op_foreach {
             &Builtin::Str(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Bytes(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Tuple(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::List(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Function(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Object(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Type(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
@@ -268,88 +277,88 @@ macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
 
             fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented())
+                Err(Error::system_not_implemented(stringify!($pyname)))
             }
         }
     };
@@ -387,6 +396,12 @@ macro_rules! strings_error_no_attribute {
 macro_rules! string_error_bad_attr_type {
     ($expect:expr, $actual:expr) => {
         &format!("attribute type must be '{}' not '{}'", $expect, $actual)
+    }
+}
+
+macro_rules! rsnek_exception_index {
+    ($typ:expr) => {
+        Error::index(&format!("{} {}", $typ, strings::ERROR_INDEX_OUT_OF_RANGE))
     }
 }
 

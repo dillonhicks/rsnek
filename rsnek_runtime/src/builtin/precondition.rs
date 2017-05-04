@@ -1,3 +1,5 @@
+///! this whole module is hacky garbage that should be refactored during {T3094} / {T111} (v0.8.0)
+use std::ops::Range;
 use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::Ref;
@@ -25,6 +27,19 @@ pub fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::No
     }
 }
 
+pub fn check_args_range(range: Range<usize>, pos_args: &ObjectRef) -> NativeResult<usize> {
+    let boxed: &Box<Builtin> = pos_args.0.borrow();
+    match boxed.deref() {
+        &Builtin::Tuple(ref tuple) => {
+            if range.contains(tuple.value.0.len()) {
+                Ok(tuple.value.0.len())
+            } else {
+                Err(Error::typerr(&format!("Expected {:?} args, got {}", range, tuple.value.0.len())))
+            }
+        }
+        _ => Err(Error::typerr("Expected type tuple for pos_args")),
+    }
+}
 
 #[inline(always)]
 pub fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> {

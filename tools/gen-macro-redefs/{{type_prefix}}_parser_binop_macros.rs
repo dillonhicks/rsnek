@@ -23,5 +23,5 @@ tk_method!(sub_expr_binop_{{binop.name.lower()}}, 'b, <Parser<'a>, Expr>, mut se
 tk_named!(pub {{binop.id.lower()}}_token  <TkSlice<'a>>,    ignore_spaces!(tag!(&[Id::{{binop.id}}])));{% endfor %}
 
 {% for binop in binops %}
-tk_named!(pub not_{{binop.id.lower()}}_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::{{binop.id}}]));{% endfor %}
+tk_named!(pub not_{{binop.id.lower()}}_token  <TkSlice<'a>>,  tk_is_none_of!(&[Id::{{binop.id}}, Id::Newline]));{% endfor %}
 

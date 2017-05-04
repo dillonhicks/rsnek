@@ -167,7 +167,6 @@ impl method::Next for PyIterator {
 
                 let boxed_idx: &Box<Builtin> = idx_obj.0.borrow();
 
-
                 match boxed.native_getitem(&boxed_idx) {
                     Ok(objref) => {
                         idx += 1;

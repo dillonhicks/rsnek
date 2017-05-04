@@ -101,6 +101,10 @@ test:
 	PATH="/root/.cargo/bin:$(PATH)" cargo test --message-format=$(LOG_FORMAT) --all
 
 
+test-release:
+	PATH="/root/.cargo/bin:$(PATH)" cargo test --release --message-format=$(LOG_FORMAT) --all
+
+
 bench:
 	PATH="/root/.cargo/bin:$(PATH)" cargo bench --message-format=$(LOG_FORMAT) -p rsnek*
 

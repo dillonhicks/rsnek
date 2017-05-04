@@ -11,14 +11,15 @@ use ::resource::strings;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
-use traits::{BooleanProvider, IntegerProvider, IteratorProvider, DefaultTupleProvider, TupleProvider};
+use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultTupleProvider, TupleProvider};
 use object::{self, RtValue, typing};
 use object::method::{self, Id, Length};
 use object::selfref::{self, SelfRef};
 
-use typedef::builtin::Builtin;
-use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Tuple};
+use ::typedef::objectref::ObjectRef;
+use ::typedef::collection::sequence;
 
 
 pub struct PyTupleType {
@@ -109,26 +110,47 @@ impl method::Hashed for PyTuple {
 }
 
 impl method::StringCast for PyTuple {
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+        let string = self.native_str()?;
+        Ok(rt.str(string))
+    }
 
-        let result = self.value.0.iter()
+    fn native_str(&self) -> NativeResult<native::String> {
+        let elems = self.value.0.iter()
                 .map(|ref item| {
                      let boxed: &Box<Builtin> = item.0.borrow();
                      boxed.native_str()
                  })
-                .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc});
+                .fold_results(
+                    Vec::with_capacity(self.value.0.len()),
+                    |mut acc, s| {acc.push(s); acc})?
+                .join(", ");
 
-        match result {
-            Ok(s) => Ok(format!("({})", s.join(", "))),
-            Err(err) => Err(err)
-        }
-
+        Ok(format!("({})", elems))
     }
 }
 impl method::BytesCast for PyTuple {}
 impl method::StringFormat for PyTuple {}
 impl method::StringRepresentation for PyTuple {}
-impl method::Equal for PyTuple {}
+impl method::Equal for PyTuple {
+    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = rhs.0.borrow();
+
+        let truth = self.native_eq(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+        match rhs {
+            &Builtin::Tuple(ref other) => {
+                let left = &self.value.0;
+                let right = &other.value.0;
+                Ok(sequence::equals(left, right))
+            }
+            _ => Ok(false)
+        }
+    }
+}
 impl method::NotEqual for PyTuple {}
 impl method::LessThan for PyTuple {}
 impl method::LessOrEqual for PyTuple {}
@@ -171,9 +193,7 @@ impl method::Multiply for PyTuple {
                     Some(int) if int <= 0   => Ok(rt.default_tuple()),
                     Some(int) if int == 1   => self.rc.upgrade(),
                     Some(int)               => {
-                        let value: Vec<ObjectRef> = (0..int)
-                            .flat_map(|_| self.value.0.iter().cloned())
-                            .collect::<Vec<_>>();
+                        let value = sequence::multiply::<Tuple>(&self.value.0, int);
                         Ok(rt.tuple(value))
                     },
                     None                    => {
@@ -221,14 +241,32 @@ impl method::InPlaceRightShift for PyTuple {}
 impl method::InPlaceSubtract for PyTuple {}
 impl method::InPlaceTrueDivision for PyTuple {}
 impl method::InPlaceXOr for PyTuple {}
-impl method::Contains for PyTuple {}
+
+impl method::Contains for PyTuple {
+    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = item.0.borrow();
+        let truth = self.native_contains(boxed)?;
+        Ok(rt.bool(truth))
+    }
+
+    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+        Ok(sequence::contains(&self.value.0, item))
+    }
+}
+
 impl method::Iter for PyTuple {
     fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+        let iter = self.native_iter()?;
+        Ok(rt.iter(iter))
+    }
+
+    fn native_iter(&self) -> NativeResult<native::Iterator> {
         match self.rc.upgrade() {
-            Ok(selfref) => Ok(rt.iter(native::Iterator::new(&selfref).unwrap())),
+            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
             Err(err) => Err(err)
         }
     }
+
 }
 
 impl method::Call for PyTuple {}
@@ -248,7 +286,6 @@ impl method::LengthHint for PyTuple {}
 impl method::Next for PyTuple {}
 impl method::Reversed for PyTuple {}
 impl method::GetItem for PyTuple {
-    /// native getitem now that we have self refs?
     #[allow(unused_variables)]
     fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
         let boxed: &Box<Builtin> = index.0.borrow();
@@ -257,18 +294,10 @@ impl method::GetItem for PyTuple {
 
     fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
         match index {
-            &Builtin::Int(ref obj) => {
-                match obj.value.0.to_usize() {
-                    Some(idx) => {
-                        match self.value.0.get(idx) {
-                            Some(objref) => Ok(objref.clone()),
-                            None => Err(Error::runtime("Index out of range")),
-                        }
-                    }
-                    None => Err(Error::runtime("Index out of range")),
-                }
+            &Builtin::Int(ref int) => {
+                sequence::get_index(&self.value.0, &int.value.0)
             }
-            _ => Err(Error::typerr("index was not an integer")),
+            _ => Err(Error::typerr("list index was not int")),
         }
     }
 }

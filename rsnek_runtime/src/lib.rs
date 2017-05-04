@@ -3,6 +3,7 @@
 #![feature(type_ascription)]
 #![feature(const_fn)]
 #![feature(exclusive_range_pattern)]
+#![feature(range_contains)]
 #![feature(test)]
 
 #[macro_use(slog_info, slog_log, slog_record, slog_b, slog_crit, slog_trace, slog_debug, slog_error, slog_warn, slog_kv, slog_record_static)]
