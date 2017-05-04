@@ -50,6 +50,7 @@ use ::object::method::{
     InvertValue,
     PositiveValue,
     NegateValue,
+    GetAttr,
 };
 use ::opcode::OpCode;
 use ::resource;
@@ -474,6 +475,22 @@ impl InterpreterState {
                 };
                 
                 let result = match self.exec_unaryop(rt, instr.code(), &operand) {
+                    Ok(objref) => objref,
+                    err => return Some(err)
+                };
+
+                self.push_stack(&result);
+                None
+            },
+            (OpCode::LoadAttr, Some(Native::Str(name))) => {
+                let value = match self.pop_stack() {
+                    Some(objref) => objref,
+                    None => return Some(Err(Error::system(
+                        &format!("No values in value stack for {:?}!", instr.code()))))
+                };
+
+                let boxed: &Box<Builtin> = value.0.borrow();
+                let result = match boxed.op_getattr(&rt, &rt.str(name)) {
                     Ok(objref) => objref,
                     err => return Some(err)
                 };
@@ -1105,7 +1122,7 @@ assert f, 'None or False failed as expected'
     assert_run!(int_lshift, "x = 20 << 21", ExitCode::Ok);
     assert_run!(int_rshift, "x = 22 >> 23", ExitCode::Ok);
 
-    assert_run!(int_neg,    "x = -1");
+    assert_run!(int_neg,    "x = -1", ExitCode::Ok);
 
     // create and call a function
     assert_run!(func_01, r#"
@@ -1176,6 +1193,15 @@ assert len(t) == 0
 
     assert_run!(contains_01, r#"
 assert "Good" in "Good Day!"
+    "#, ExitCode::Ok);
+
+    assert_run!(attribute_01, r#"
+number = 1245
+func = number.__hash__
+func2 = func.__hash__
+hash1 = func()
+hash2 = func()
+assert hash1 == hash2
     "#, ExitCode::Ok);
 
     #[bench]

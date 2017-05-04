@@ -13,7 +13,7 @@ use ::typedef::native::{self, Instr, Native};
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 
 
-#[derive(Debug, Copy, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
 pub enum Context {
     Load,
     Store
@@ -226,9 +226,7 @@ impl<'a> Compiler<'a> {
                     file!(), line!())))
             },
             Expr::Attribute {ref value, ref attr} => {
-                return Err(Error::system(&format!(
-                    "Compiler does not implement Attribute expressions; file: {}, line: {}",
-                    file!(), line!())))
+                self.compile_expr_attr(value, attr, ctx)?
             },
             Expr::List {ref elems} => {
                 self.compile_expr_list(elems)?
@@ -338,6 +336,19 @@ impl<'a> Compiler<'a> {
         Ok(vec![instr].into_boxed_slice())
     }
 
+    fn compile_expr_attr(&self, value: &'a Expr, attr: &'a OwnedTk, ctx: Context) -> CompilerResult {
+        if ctx != Context::Load {
+            return Err(Error::system(&format!(
+                "Compiler does not implement attribute set expressions; file: {}, line: {}",
+                file!(), line!())))
+        }
+
+        let mut instructions: Vec<Instr> = Vec::new();
+        instructions.append(&mut self.compile_expr(value, ctx)?.to_vec());
+        instructions.push(Instr(OpCode::LoadAttr, Some(Native::from(attr))));
+        Ok(instructions.into_boxed_slice())
+    }
+
     fn compile_expr_list(&self, elem_exprs: &'a[Expr]) -> CompilerResult {
         let mut instructions: Vec<Instr> = Vec::new();
 
@@ -441,6 +452,8 @@ z = x + y
     basic_test!(expr_binop_lshif,      "a << b");
     basic_test!(expr_binop_rshift,     "a >> b");
 
+    // Expr::Attribute
+    basic_test!(expr_attribute,        "thing.attribute.otherthing");
 
     basic_test!(multiline, r#"
 x = 1

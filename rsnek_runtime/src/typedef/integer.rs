@@ -7,15 +7,15 @@ use std::ops::Deref;
 use num::{self, Zero, ToPrimitive};
 
 use runtime::Runtime;
-use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
+use traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
 use resource::strings;
 use error::Error;
 use result::{NativeResult, RuntimeResult};
 use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
-use object::method::Equal;
+use object::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};
 
-use typedef::native::{self, HashId};
+use typedef::native::{self, HashId, SignatureBuilder};
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
 use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
@@ -91,7 +91,49 @@ impl object::PyAPI for PyInteger {}
 impl method::New for PyInteger {}
 impl method::Init for PyInteger {}
 impl method::Delete for PyInteger {}
-impl method::GetAttr for PyInteger {}
+impl method::GetAttr for PyInteger {
+    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = name.0.borrow();
+        match boxed.deref() {
+            &Builtin::Str(ref pystring) => {
+                let selfref = self.rc.upgrade()?;
+                let string = pystring.value.0.clone();
+
+                let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+                    let boxed: &Box<Builtin> = selfref.0.borrow();
+                    match &string.clone().as_str() {
+                        &"__str__"  => boxed.op_str(&rt),
+                        &"__hash__" => boxed.op_hash(&rt),
+                        &"__bool__" => boxed.op_bool(&rt),
+                        &"__int__"  => boxed.op_int(&rt),
+                        &"__neg__"  => boxed.op_neg(&rt),
+                        _ => unreachable!()
+                    }
+                });
+
+                match pystring.value.0.clone().as_str() {
+                    "__str__" |
+                    "__bool__" |
+                    "__int__" |
+                    "__neg__" |
+                    "__hash__" => {
+                        Ok(rt.function(native::Func {
+                            name: "int method wrapper".to_string(),
+                            signature: [].as_args(),
+                            module: strings::BUILTINS_MODULE.to_string(),
+                            callable: native::FuncType::Wrapper(callable)
+                        }))
+                    }
+                    other => Err(Error::name(other))
+                }
+
+            }
+            other => Err(Error::typerr(&format!(
+                "getattr <int>' requires string for attribute names, not {}",
+                other.debug_name())))
+        }
+    }
+}
 impl method::GetAttribute for PyInteger {}
 impl method::SetAttr for PyInteger {}
 impl method::DelAttr for PyInteger {}
