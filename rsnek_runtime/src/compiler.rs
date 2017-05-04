@@ -231,6 +231,9 @@ impl<'a> Compiler<'a> {
             Expr::List {ref elems} => {
                 self.compile_expr_list(elems)?
             },
+            Expr::Dict {ref items} => {
+                self.compile_expr_dict(items)?
+            }
             Expr::None => return Err(Error::system(&format!(
                 "Unreachable code executed at line: {}", line!())))
         };
@@ -359,6 +362,18 @@ impl<'a> Compiler<'a> {
         instructions.push(Instr(OpCode::BuildList, Some(Native::Count(elem_exprs.len()))));
         Ok(instructions.into_boxed_slice())
     }
+
+    fn compile_expr_dict(&self, items: &'a[(Expr, Expr)]) -> CompilerResult {
+        let mut instructions: Vec<Instr> = Vec::new();
+
+        for &(ref key, ref value) in items.iter().as_ref() {
+            instructions.append(&mut self.compile_expr(&key, Context::Load)?.to_vec());
+            instructions.append(&mut self.compile_expr(&value, Context::Load)?.to_vec());
+        }
+
+        instructions.push(Instr(OpCode::BuildMap, Some(Native::Count(items.len()))));
+        Ok(instructions.into_boxed_slice())
+    }
 }
 
 
@@ -454,6 +469,12 @@ z = x + y
 
     // Expr::Attribute
     basic_test!(expr_attribute,        "thing.attribute.otherthing");
+
+    // Expr::List
+    basic_test!(expr_list, "[1,2,3,4]");
+
+    // Expr::Dict
+    basic_test!(expr_dict, "{a: b, 'c': 'd', True: False}");
 
     basic_test!(multiline, r#"
 x = 1

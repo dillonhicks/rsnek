@@ -51,6 +51,7 @@ use ::object::method::{
     PositiveValue,
     NegateValue,
     GetAttr,
+    SetItem,
 };
 use ::opcode::OpCode;
 use ::resource;
@@ -67,7 +68,8 @@ use ::traits::{
     DictProvider,
     BooleanProvider,
     FrameProvider,
-    FunctionProvider
+    FunctionProvider,
+    DefaultDictProvider
 };
 use ::typedef::native::{self, Native, Instr, FuncType};
 use ::typedef::native::SignatureBuilder;
@@ -613,8 +615,7 @@ impl InterpreterState {
                 None
             },
             (OpCode::BuildList, Some(Native::Count(count))) => {
-                // TODO: Change to list when impl'd
-                let mut elems: native::Tuple = native::Tuple::new();
+                let mut elems = native::List::new();
                 for _ in 0..count {
                     if self.stack_view().is_empty() {
                         return Some(Err(Error::system(
@@ -628,7 +629,29 @@ impl InterpreterState {
                 trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref));
                 self.push_stack(&objref);
                 Some(Ok(rt.none()))
-            }
+            },
+            (OpCode::BuildMap, Some(Native::Count(count))) => {
+                let dict = rt.default_dict();
+                let boxed: &Box<Builtin> = dict.0.borrow();
+
+                for _ in 0..count  {
+                    if self.stack_view().is_empty() || self.stack_view().len() == 1 {
+                        return Some(Err(Error::system(
+                            "Value stack did not contain enough values for function call!")));
+                    }
+
+                    let value = self.pop_stack().unwrap();
+                    let key = self.pop_stack().unwrap();
+                    match boxed.op_setitem(&rt, &key, &value) {
+                        Ok(_) => continue,
+                        Err(err) => return Some(Err(err))
+                    };
+                }
+
+                trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", dict));
+                self.push_stack(&dict);
+                Some(Ok(rt.none()))
+            },
             (OpCode::PopTop, None) => {
                     match self.pop_stack() {
                         Some(objref) => Some(Ok(objref)),
@@ -1203,6 +1226,25 @@ hash1 = func()
 hash2 = func()
 assert hash1 == hash2
     "#, ExitCode::Ok);
+
+    assert_run!(dict_01, r#"
+x = {}
+assert len(x) == 0
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_02, r#"
+x = {True: 1}
+assert len(x) == 1
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_03, r#"
+crazytown = {2**8: 1, True: True, False: True, "f": {"dict": "bad"}, tuple([1,2,3,4]): 34.2}
+assert len(crazytown) == 5
+    "#, ExitCode::Ok);
+
+    assert_run!(dict_04, r#"
+test = {[1,2,3,4]: "bad key value"}
+    "#, ExitCode::GenericError);
 
     #[bench]
     fn print(b: &mut Bencher) {
