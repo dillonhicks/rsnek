@@ -399,3 +399,9 @@ macro_rules! string_error_bad_attr_type {
     }
 }
 
+macro_rules! rsnek_exception_index {
+    ($typ:expr) => {
+        Error::index(&format!("{} {}", $typ, strings::ERROR_INDEX_OUT_OF_RANGE))
+    }
+}
+

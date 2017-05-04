@@ -1087,6 +1087,7 @@ mod tests {
     macro_rules! assert_run {
         ($name:ident, $code:expr, $status:expr) => {
             #[test]
+            #[allow(non_snake_case)]
             fn $name() {
                 assert_eq!(run($code), $status as i64);
             }

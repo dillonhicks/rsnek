@@ -1,25 +1,22 @@
 use std::fmt;
-use std::ops::{Add, Deref};
+use std::ops::Deref;
 use std::borrow::Borrow;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 
 use itertools::Itertools;
-use num::{ToPrimitive, Zero};
+use num::ToPrimitive;
 
 use ::resource::strings;
 use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultListProvider, ListProvider};
-use object::{self, RtValue, typing, PyAPI};
-use object::method::{self, Id, Length, Iter, StringCast, Equal};
+use object::{RtValue, typing, PyAPI};
+use object::method::{self, Equal};
 use object::selfref::{self, SelfRef};
-use ::object::typing::BuiltinType;
 
 use ::typedef::collection::sequence;
 use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Native, List};
+use ::typedef::native::{self, List};
 use ::typedef::objectref::ObjectRef;
 
 
@@ -280,7 +277,7 @@ impl method::GetItem for PyList {
             &Builtin::Int(ref int) => {
                 sequence::get_index(&self.value.0, &int.value.0)
             }
-            _ => Err(Error::typerr("list index was not int")),
+            _ => Err(Error::typerr("list indices must be integers")),
         }
     }
 }
@@ -331,14 +328,15 @@ impl fmt::Debug for PyList {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
-    use std::cmp::PartialEq;
+    use num::Zero;
+
     use ::traits::{
         DefaultListProvider,
         NoneProvider,
         TupleProvider,
         FloatProvider
     };
-    use ::object::method::{BooleanCast, GetItem, Multiply, NotEqual};
+    use ::object::method::{BooleanCast, GetItem, Multiply, NotEqual, Length, StringCast, Iter};
     use super::*;
 
     fn setup() -> (Runtime,) {

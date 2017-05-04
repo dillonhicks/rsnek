@@ -99,6 +99,7 @@ impl method::GetAttr for PyInteger {
                 let selfref = self.rc.upgrade()?;
                 let string = pystring.value.0.clone();
 
+                #[allow(unused_variables)]
                 let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
                     let boxed: &Box<Builtin> = selfref.0.borrow();
                     match &string.clone().as_str() {
@@ -112,11 +113,11 @@ impl method::GetAttr for PyInteger {
                 });
 
                 match pystring.value.0.clone().as_str() {
-                    "__str__" |
-                    "__bool__" |
-                    "__int__" |
-                    "__neg__" |
-                    "__hash__" => {
+                    "__str__"   |
+                    "__bool__"  |
+                    "__int__"   |
+                    "__neg__"   |
+                    "__hash__"  => {
                         Ok(rt.function(native::Func {
                             name: "int method wrapper".to_string(),
                             signature: [].as_args(),

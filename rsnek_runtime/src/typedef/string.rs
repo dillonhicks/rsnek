@@ -20,7 +20,7 @@ use object::method;
 use typedef::native;
 use typedef::objectref::ObjectRef;
 use typedef::builtin::Builtin;
-use typedef::collection;
+use typedef::collection::sequence;
 use resource::strings;
 
 pub struct PyStringType {
@@ -309,27 +309,24 @@ impl method::Next for PyString {}
 impl method::Reversed for PyString {}
 impl method::GetItem for PyString {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
-        let boxed: &Box<Builtin> = index.0.borrow();
+    fn op_getitem(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+        let boxed: &Box<Builtin> = item.0.borrow();
         self.native_getitem(boxed)
     }
 
-    fn native_getitem(&self, item: &Builtin) -> RuntimeResult {
-        let len = self.value.0.len();
-
-        let idx = match item {
-            &Builtin::Int(ref obj) => {
-                match obj.value.0.to_usize() {
-                    Some(idx) if (0 <= idx) && (idx < len) => idx,
-                    Some(_) |
-                    None    => return Err(Error::runtime("string index out of range")),
-                }
+    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+        let substr = match index {
+            &Builtin::Int(ref int) => {
+                let byte = sequence::get_index(&self.value.0.as_bytes(), &int.value.0)?;
+                // TODO: {T3093} Determine the best policy for strings as a sequence since any kind
+                // of encoding ruins the uniform treatment of bytes as a singular index of a
+                // string.
+                String::from_utf8_lossy(&[byte][..]).to_string()
             }
             _ => return Err(Error::typerr("string indices must be integers")),
         };
 
-        let substring = self.value.0[idx..idx+1].to_string();
-        Ok(PyStringType::inject_selfref(PyStringType::alloc(substring)))
+        Ok(PyStringType::inject_selfref(PyStringType::alloc(substr)))
     }
 }
 

@@ -3,11 +3,10 @@ use std::borrow::Borrow;
 
 use ::builtin::precondition::{check_args, check_kwargs};
 use ::error::Error;
-use ::object::method::{GetItem, IntegerCast};
 use ::result::{RuntimeResult};
 use ::resource::strings;
 use ::runtime::Runtime;
-use ::traits::{IntegerProvider, TupleProvider, ModuleImporter};
+use ::traits::{TupleProvider, ModuleImporter};
 use ::typedef::objectref::ObjectRef;
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Func, FuncType, SignatureBuilder};

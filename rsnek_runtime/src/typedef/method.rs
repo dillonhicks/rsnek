@@ -160,6 +160,7 @@ impl method::GetAttr for PyFunction {
         match boxed.deref() {
             &Builtin::Str(ref pystring) => {
                 let selfref = self.rc.upgrade()?;
+                #[allow(unused_variables)]
                 let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
                     let b: &Box<Builtin> = selfref.0.borrow();
                     Ok(rt.int(b.native_hash()?))

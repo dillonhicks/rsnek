@@ -116,14 +116,14 @@ impl method::StringCast for PyTuple {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
-        let mut accumulator: Vec<String> = Vec::with_capacity(self.value.0.len());
-
         let elems = self.value.0.iter()
                 .map(|ref item| {
                      let boxed: &Box<Builtin> = item.0.borrow();
                      boxed.native_str()
                  })
-                .fold_results(accumulator, |mut acc, s| {acc.push(s); acc})?
+                .fold_results(
+                    Vec::with_capacity(self.value.0.len()),
+                    |mut acc, s| {acc.push(s); acc})?
                 .join(", ");
 
         Ok(format!("({})", elems))

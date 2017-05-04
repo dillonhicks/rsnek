@@ -1,23 +1,18 @@
 use std::borrow::Borrow;
 
-use object::method::{
+use ::object::method::{
     GetItem,
     Iter,
 };
-use runtime::Runtime;
-use traits::{
-    TupleProvider,
-    DefaultTupleProvider,
-    IntegerProvider
-};
-
-use result::{RuntimeResult};
-use typedef::objectref::ObjectRef;
+use ::runtime::Runtime;
+use ::result::RuntimeResult;
 use ::resource::strings;
-use typedef::builtin::Builtin;
-use typedef::native::{self, Func, FuncType, SignatureBuilder};
+use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
+use ::typedef::objectref::ObjectRef;
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 
-use builtin::precondition::{check_args, check_kwargs};
+use ::builtin::precondition::{check_args, check_kwargs, check_args_range};
 
 pub struct TupleFn;
 
@@ -42,23 +37,13 @@ impl TupleFn {
 fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
     trace!("call"; "native_builtin" => FUNC_NAME);
 
-    match check_args(0, &pos_args) {
-        Ok(_) => return Ok(rt.default_tuple()),
-        Err(err) => {}
-    };
-    match check_args(1, &pos_args) {
-        Err(err) => return Err(err),
-        _=> {},
-    }
-    match check_args(0, &starargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
+    let arg_count = check_args_range(0..2, &pos_args)?;
+    check_args(0, &starargs)?;
+    check_kwargs(0, &kwargs)?;
 
-    match check_kwargs(0, &kwargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
+    if arg_count == 0 {
+        return Ok(rt.default_tuple())
+    }
 
     let boxed: &Box<Builtin> = pos_args.0.borrow();
     let zero = rt.int(0);
@@ -66,27 +51,21 @@ fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kw
     let value = boxed.op_getitem(&rt, &zero).unwrap();
     let boxed: &Box<Builtin> = value.0.borrow();
 
-    let mut iter = boxed.op_iter(&rt)?;
-    let new_tuple = iter.map(|o| o.clone()).collect::<native::Tuple>();
+    let iter = boxed.op_iter(&rt)?;
+    let new_tuple = iter.collect::<native::Tuple>();
     Ok(rt.tuple(new_tuple))
 }
 
 
 #[cfg(test)]
 mod tests {
-
+    use ::traits::{DefaultDictProvider, ListProvider};
     use super::*;
-    use runtime::Runtime;
-    use traits::{IteratorProvider,
-                 DefaultDictProvider,
-                 ListProvider,
-                 StringProvider,
-                 NoneProvider};
+
 
     fn setup() -> Runtime {
         Runtime::new()
     }
-
 
     #[test]
     fn from_list() {
@@ -108,7 +87,7 @@ mod tests {
         let rt = setup();
         let int = rt.int(29345);
 
-        let tuple = rs_builtin_tuple(
+        rs_builtin_tuple(
             &rt, &rt.tuple(vec![int]),
             &rt.default_tuple(),
             &rt.default_dict()).unwrap();
