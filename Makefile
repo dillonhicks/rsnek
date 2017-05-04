@@ -86,7 +86,8 @@ toolchain:
 		git \
 		make \
 		valgrind \
-		oprofile;
+		oprofile \
+		linux-tools-generic ;
 
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
 
@@ -116,8 +117,10 @@ bench:
 #  - If the cyclical ObjectRefs cause issues
 #  - Detect any hot code areas not obvious by rust benching
 #
+RSNEK_BINARY=target/release/rsnek
 VALGRIND_PYTHON_SRCFILE=rsnek/tests/test.py
 VALGRIND_MEMCHECK_XMLFILE=target/release/valgrind.memcheck.xml
+
 valgrind:
 	-$(CARGO) install cargo-profiler
 	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
@@ -135,8 +138,16 @@ valgrind:
 		--verbose \
 		--xml=yes \
 		--xml-file=$(VALGRIND_MEMCHECK_XMLFILE) \
-		--track-fds=yes -v target/release/rsnek $(VALGRIND_PYTHON_SRCFILE)
+		--track-fds=yes -v $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
 	cat $(VALGRIND_MEMCHECK_XMLFILE)
+
+
+OPROF_OUTDIR=target/oprofile_data
+oprofile:
+	mkdir -p $(OPROF_OUTDIR)
+	operf -d $(OPROF_OUTDIR) $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
+	opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
+
 
 # Get the status of the stages of the AWS CodePipeline for this project and
 # print the status of each stage and url to stdout.

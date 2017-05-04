@@ -23,6 +23,8 @@ post_build:
       - make bench
       - echo Valgrind started on `date`
       - make valgrind
+      - echo Oprofile started on `date`
+      - make oprofile
       - echo Docs started on `date`
       - make docs
       - echo Finshed on `date`
