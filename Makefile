@@ -89,7 +89,7 @@ toolchain:
 		oprofile \
 		linux-tools-generic ;
 
-	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
+	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-05-03
 
 
 build:
