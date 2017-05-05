@@ -2,10 +2,11 @@ use std::ops::{Deref};
 use std::fs::File;
 use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref, Cell, RefCell};
 use std::marker::Sync;
 use std::io::{self, Read, Write};
 use std::collections::HashMap;
+use std::convert::From;
 
 use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
@@ -150,13 +151,116 @@ impl Interpreter {
 
 }
 
+#[derive(Clone, Debug, Serialize)]
+struct InterpreterFrame {
+    frame: ObjectRef,
+    stack: RefCell<native::List>,
+    lineno: Cell<usize>
+}
+
+
+impl InterpreterFrame {
+    pub fn new(frame: ObjectRef) -> Self {
+        InterpreterFrame {
+            frame: frame,
+            stack: RefCell::new(native::List::new()),
+            lineno: Cell::new(0)
+        }
+    }
+
+    pub fn object(&self) -> &ObjectRef {
+        &self.frame
+    }
+
+    pub fn stack(&self) -> Ref<native::List> {
+        self.stack.borrow()
+    }
+
+    pub fn line(&self) -> usize {
+        self.lineno.get()
+    }
+
+    pub fn set_line(&self, line: usize) -> usize {
+        trace!("InterpreterFrame"; "action" => "set_line", "value" => line);
+        let previous = self.lineno.get();
+        self.lineno.set(line);
+        previous
+    }
+
+    pub fn push_stack(&self, objref: &ObjectRef) {
+        self.stack.borrow_mut().push(objref.clone());
+    }
+
+    pub fn pop_stack(&self) -> Option<ObjectRef> {
+        self.stack.borrow_mut().pop()
+    }
+
+    pub fn clear_stack(&self) {
+        self.stack.borrow_mut().clear()
+    }
+
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct TracebackFrame {
+    frame: ObjectRef,
+    line: usize
+}
+
+impl TracebackFrame{
+    pub fn object(&self) -> &ObjectRef {
+        &self.frame
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+}
+
+
+impl<'a> From<&'a InterpreterFrame> for TracebackFrame {
+    fn from(frame: &InterpreterFrame) -> Self {
+        TracebackFrame {
+            frame: frame.object().clone(),
+            line: frame.line()
+        }
+    }
+}
+
+
 struct InterpreterState {
     rt: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
     ns: HashMap<native::String, ObjectRef>,
     // (frame, stack)
-    frames: VecDeque<(ObjectRef, RefCell<native::List>)>,
+    frames: VecDeque<InterpreterFrame>,
 }
+
+/// Macro to expand the optional of the `self.frames.back()` of
+/// `InterpreterState` in a way that allows you to to specify a block of
+/// code to run on the frame in a generic way that doesn't make a whole
+/// pot of al dente copy pasta.
+///
+/// ```ignore
+/// with_current_frame!(self |frame| {
+///     frame.<action>()
+/// })
+/// ```
+macro_rules! with_current_frame (
+    ($sel:ident |$f:ident| $blk:block) => (
+        match $sel.frames.back() {
+            Some(ref $f) => $blk,
+            None => {
+                let error = Error::system(&format!(
+                    "Interpreter has no call frames, this is a bug; file: {}, line: {}",
+                    file!(), line!()));
+                error.log();
+                panic!("{}", error);
+            }
+        }
+    );
+);
+
 
 impl InterpreterState {
     pub fn new(rt: &Runtime) -> Self {
@@ -179,12 +283,12 @@ impl InterpreterState {
         };
 
         let mut frames = VecDeque::new();
-        frames.push_back((rt.frame(main_frame), RefCell::new(native::List::new())));
+        frames.push_back(InterpreterFrame::new(rt.frame(main_frame)));
 
         let mut istate = InterpreterState {
             rt: rt.clone(),
             ns: HashMap::new(),
-            frames: frames
+            frames: frames,
         };
 
         // TODO: {T100} use scope resolution in the future
@@ -201,6 +305,12 @@ impl InterpreterState {
         istate.ns.insert(String::from("globals"), rt.get_builtin("globals"));
         istate.ns.insert(String::from("tuple"), rt.get_builtin("tuple"));
         istate
+    }
+
+    fn set_line(&mut self, line: usize) {
+        with_current_frame!(self |frame| {
+            frame.set_line(line);
+        })
     }
 
     fn pop_frame(&mut self)  {
@@ -221,12 +331,9 @@ impl InterpreterState {
             return Err(Error::recursion())
         }
 
-        let f_back = match self.frames.back() {
-            Some(&(ref f_back, _)) => f_back.clone(),
-            None => return Err(Error::system(&format!(
-                "Interpreter has no call frames, this is a bug; file: {}, line: {}",
-                file!(), line!())))
-        };
+        let f_back = with_current_frame!(self |frame| {
+            frame.object().clone()
+        });
 
         let new_frame = self.rt.frame(
             native::Frame {
@@ -239,54 +346,33 @@ impl InterpreterState {
         );
 
         trace!("Interpreter"; "action" => "push_frame", "idx" => self.frames.len());
-        self.frames.push_back((new_frame, RefCell::new(native::List::new())));
+        self.frames.push_back(InterpreterFrame::new(new_frame));
 
         Ok(self.frames.len())
     }
 
     fn push_stack(&mut self, objref: &ObjectRef)  {
-        match self.frames.back() {
-            Some(&(_, ref stack)) => stack.borrow_mut().push(objref.clone()),
-            None => Error::system(&format!(
-                "Interpreter has no call frames, this is a bug; file: {}, line: {}",
-                file!(), line!())).log()
-        }
+        with_current_frame!(self |frame| {
+            frame.push_stack(&objref);
+        });
     }
 
     fn pop_stack(&mut self) -> Option<ObjectRef> {
-        match self.frames.back() {
-            Some(&(_, ref stack)) => stack.borrow_mut().pop(),
-            None => {
-                let error = Error::system(&format!(
-                    "Interpreter has no call frames, this is a bug; file: {}, line: {}",
-                    file!(), line!()));
-                error.log();
-                panic!("{}", error);
-            }
-        }
+        with_current_frame!(self |frame| {
+            frame.pop_stack()
+        })
     }
 
     fn stack_view(&self) -> Ref<native::List> {
-        match self.frames.back() {
-            Some(&(_, ref stack)) => stack.borrow(),
-            None => {
-                let error = Error::system(&format!(
-                    "Interpreter has no call frames, this is a bug; file: {}, line: {}",
-                    file!(), line!()));
-                error.log();
-                panic!("{}", error);
-            }
-        }
+        with_current_frame!(self |frame| {
+            frame.stack()
+        })
     }
 
-    fn frame_view(&self) -> Box<[ObjectRef]> {
-        let mut frames: native::List = native::List::new();
-
-        for &(ref frame, _) in self.frames.iter() {
-            frames.push(frame.clone())
-        }
-
-        frames.into_boxed_slice()
+    fn frame_view(&self) -> Vec<TracebackFrame> {
+        self.frames.iter()
+            .map(TracebackFrame::from)
+            .collect::<Vec<_>>()
     }
 
 
@@ -295,7 +381,11 @@ impl InterpreterState {
     /// value stack.
     fn clear_traceback(&mut self) {
         self.frames.truncate(1);
-        self.frames[0].1.borrow_mut().clear();
+
+        with_current_frame!(self |frame| {
+            frame.clear_stack();
+            frame.set_line(0);
+        });
     }
 
     fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
@@ -523,6 +613,7 @@ impl InterpreterState {
                             FuncType::Wrapper(_)        |
                             FuncType::MethodWrapper(_, _)  => {
                                 let pos_args = args.into_iter().collect::<Vec<ObjectRef>>();
+
                                 match self.push_frame(&func) {
                                     Err(err) => Err(err),
                                     Ok(_) => {
@@ -696,7 +787,11 @@ impl InterpreterState {
                     true => None,
                     false => Some(Err(Error::assertion(&message)))
                 }
-            }
+            },
+            (OpCode::SetLineNumber, Some(Native::Count(line))) => {
+                self.set_line(line);
+                None
+            },
             opcode => Some(Err(Error::system(&format!(
                 "Unrecognized opcode pattern: {:?}", opcode
             ))))
@@ -723,28 +818,45 @@ impl InterpreterState {
     // TODO: This might be a decent thing to be part of Frame since
     // they should have all of the f_back pointers... maybe?
     pub fn format_traceback(&self) -> String {
-        let frames: Box<[ObjectRef]> = self.frame_view();
+        let frames: Vec<TracebackFrame> = self.frame_view();
 
         let names_result = (*frames).iter()
             .rev()
-            .map(|ref f| {
-                let boxed: &Box<Builtin> = f.0.borrow();
+            .map(|ref tbframe| {
+                let objref = tbframe.object();
+                let boxed: &Box<Builtin> = objref.0.borrow();
 
                 match boxed.deref() {
-                    &Builtin::Frame(ref pyframe) => Ok(pyframe.value.0.f_code.clone()),
+                    &Builtin::Frame(ref pyframe) => {
+                        let fcode = pyframe.value.0.f_code.clone();
+
+                        Ok((fcode, tbframe.line()))
+                    },
                     other => Err(Error::system(
                         &format!("{} is not a Frame object", other.debug_name())))
                 }
-            }).map_results(|ref code| {
+            }).map_results(|(ref code, line)| {
                 let boxed: &Box<Builtin> = code.0.borrow();
 
                 match boxed.deref() {
-                    &Builtin::Code(ref pycode) => Ok(format!(
-                        "<{} at {:?}>", pycode.value.0.co_name.clone(), (pycode as *const _))),
-                    &Builtin::Function(ref pyfunc) => Ok(format!(
-                        "<{} at {:?} - {}>", pyfunc.name(), (pyfunc as *const _), pyfunc.module())),
-                    other => Err(Error::system(
-                        &format!("{} is not a Code or Func object", other.debug_name())))
+                    &Builtin::Code(ref pycode) => {
+                        Ok(format!(
+                            "<{} at {:?}>",
+                            pycode.value.0.co_name.clone(),
+                            (pycode as *const _)))
+                    },
+                    &Builtin::Function(ref pyfunc) => {
+                        Ok(format!("<{} at {:?} in {} line ~{}>",
+                                   pyfunc.name(),
+                                   (pyfunc as *const _),
+                                   pyfunc.module(),
+                                   line))
+                    },
+                    other => {
+                        Err(Error::system(
+                            &format!("{} is not a Code or Func object, this is a bug!; file: {}, line: {}",
+                                     other.debug_name(), file!(), line!())))
+                    }
                 }
             })
             .fold_results(

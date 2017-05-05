@@ -149,6 +149,11 @@ oprofile:
 	opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
 
 
+perf:
+	perf stat -r 25 -ddd $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
+	perf stat -r 25 -ddd python -B $(VALGRIND_PYTHON_SRCFILE)
+
+
 # Get the status of the stages of the AWS CodePipeline for this project and
 # print the status of each stage and url to stdout.
 #

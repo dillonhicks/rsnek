@@ -55,7 +55,7 @@ pub enum Stmt {
     Pass,
     Break,
     Continue,
-    Newline,
+    Newline(),
 }
 
 

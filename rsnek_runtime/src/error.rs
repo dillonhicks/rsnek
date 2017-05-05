@@ -76,10 +76,10 @@ impl Error {
         Error(ErrorType::System, format!("{}, version: {}", message, strings::VERSION))
     }
 
-    pub fn system_not_implemented(name: &str) -> Error {
+    pub fn system_not_implemented(name: &str, extra: &str) -> Error {
         Error(ErrorType::System, format!(
-            "feature '{}' not implemented for type; version: {}",
-            name, strings::VERSION))
+            "feature '{}' not implemented for type; {}, version: {}",
+            name, extra, strings::VERSION))
     }
 
     pub fn recursion() -> Error {

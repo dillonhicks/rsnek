@@ -25,6 +25,8 @@ post_build:
       - make valgrind
       - echo Oprofile started on `date`
       - make oprofile
+      - echo Perf started on `date`
+      - make perf
       - echo Docs started on `date`
       - make docs
       - echo Finshed on `date`

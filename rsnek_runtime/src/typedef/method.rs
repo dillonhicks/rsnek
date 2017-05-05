@@ -302,7 +302,8 @@ impl method::Call for PyFunction {
 
     #[allow(unused_variables)]
     fn native_call(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<Builtin> {
-        Err(Error::system_not_implemented("PyFunction::native_call()"))
+        Err(Error::system_not_implemented("PyFunction::native_call()",
+                                          &format!("file: {}, line: {}", file!(), line!())))
     }
 }
 impl method::Length for PyFunction {}

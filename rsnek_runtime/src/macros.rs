@@ -277,88 +277,88 @@ macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
             fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
             fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
-                Err(Error::system_not_implemented(stringify!($pyname)))
+                Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
@@ -369,7 +369,7 @@ macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         //#[test]
         fn $pyname() {
-            println!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), stringify!($tname), stringify!($fname), stringify!($nfname));
+            println!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) , stringify!($tname), stringify!($fname), stringify!($nfname));
             unimplemented!()
         }
     };
