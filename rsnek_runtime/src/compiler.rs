@@ -184,7 +184,6 @@ impl<'a> Compiler<'a> {
             },
             Stmt::Block(ref stmts) => {
                 let mut block_ins: Vec<Instr> = vec![];
-                self.compile
                 for stmt in stmts.iter().as_ref() {
                     block_ins.append(&mut self.compile_stmt(&stmt)?.to_vec());
                 }
