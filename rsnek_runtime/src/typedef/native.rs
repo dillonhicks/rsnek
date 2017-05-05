@@ -94,32 +94,28 @@ pub struct Func {
 // the need for the none type.
 #[derive(Serialize)]
 pub enum FuncType {
-    #[serde(skip_serializing)]
-    Native(Box<NativeFn>),
+
     #[serde(skip_serializing)]
     Wrapper(Box<WrapperFn>),
+    #[serde(skip_serializing)]
+    MethodWrapper(ObjectRef, Box<WrapperFn>),
     Code(Code),
-    None,
 }
 
-impl Clone for FuncType {
-    fn clone(&self) -> Self {
-        match self {
-            &FuncType::Code(ref code) => FuncType::Code(code.clone()),
-            &FuncType::Native(_) => FuncType::None,
-            &FuncType::Wrapper(_) => FuncType::None,
-            &FuncType::None => FuncType::None
-        }
-    }
-}
 
 impl fmt::Debug for FuncType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let func_type = match self {
-            &FuncType::Native(ref func) => format!("Native(<function at {:?}>)", (func as *const _)),
-            &FuncType::Wrapper(ref func) => format!("Wrapper(<function at {:?}>)", (func as *const _)),
-            &FuncType::Code(_)  |
-            &FuncType::None     => format!("{:?}", self)
+            &FuncType::Wrapper(ref func) => {
+                format!("Wrapper(<function at {:?}>)", (func as *const _))
+            },
+            &FuncType::MethodWrapper(ref objref, ref func) => {
+                format!(
+                    "MethodWrapper(<method-wrapper of '{}' object at {:?}>)",
+                    objref.debug_name(),
+                    (func as *const _))
+            }
+            &FuncType::Code(_)  => format!("{:?}", self)
         };
 
         write!(f, "{}", func_type)

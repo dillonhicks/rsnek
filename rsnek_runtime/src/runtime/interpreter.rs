@@ -520,9 +520,8 @@ impl InterpreterState {
                 let result = match boxed.deref(){
                     &Builtin::Function(ref pyfunc) => {
                         match pyfunc.value.0.callable {
-                            FuncType::None => panic!(),
-                            FuncType::Native(_) |
-                            FuncType::Wrapper(_) => {
+                            FuncType::Wrapper(_)        |
+                            FuncType::MethodWrapper(_, _)  => {
                                 let pos_args = args.into_iter().collect::<Vec<ObjectRef>>();
                                 match self.push_frame(&func) {
                                     Err(err) => Err(err),
@@ -698,7 +697,9 @@ impl InterpreterState {
                     false => Some(Err(Error::assertion(&message)))
                 }
             }
-            _ => Some(Err(Error::not_implemented()))
+            opcode => Some(Err(Error::system(&format!(
+                "Unrecognized opcode pattern: {:?}", opcode
+            ))))
         }
     }
 

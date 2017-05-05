@@ -520,7 +520,7 @@ impl PyTypeProvider<native::None> for Runtime {
 
 
 //
-// method
+// Functions and Methods
 //
 impl FunctionProvider<native::Func> for Runtime {
     /// Create a function object from the native::Function and return its `ObjectRef`
@@ -553,6 +553,7 @@ impl FunctionProvider<ObjectRef> for Runtime {
         })
     }
 }
+
 
 //
 // Code

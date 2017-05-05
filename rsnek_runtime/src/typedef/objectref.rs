@@ -17,7 +17,7 @@ use result::RuntimeResult;
 use object::method::{Id, Next, StringCast};
 
 use typedef::builtin::Builtin;
-use typedef::native;
+use typedef::native::{self, ObjectId};
 
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -48,6 +48,16 @@ impl ObjectRef {
 
     pub fn weak_count(&self) -> native::Integer {
         native::Integer::from(Rc::weak_count(&self.0))
+    }
+
+    pub fn id(&self) -> ObjectId {
+        let boxed: &Box<Builtin> = self.0.borrow();
+        boxed.native_id()
+    }
+
+    pub fn debug_name(&self) -> &str {
+        let boxed: &Box<Builtin> = self.0.borrow();
+        boxed.debug_name()
     }
 
     pub fn to_string(&self) -> native::String {

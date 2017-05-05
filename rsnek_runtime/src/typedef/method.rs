@@ -18,7 +18,7 @@ use ::resource::strings;
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
-use typedef::native::{self, NativeFn, WrapperFn, Signature, FuncType, SignatureBuilder};
+use typedef::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
 use typedef::object::PyObjectType;
 use typedef::objectref::ObjectRef;
 
@@ -90,36 +90,15 @@ impl PyFunction {
         &self.value.0.module
     }
 
-    fn do_call_nativefn_rt(&self,
-                           rt: &Runtime,
-                           callable: &Box<NativeFn>,
-                           pos_args: &ObjectRef,
-                           star_args: &ObjectRef,
-                           kwargs: &ObjectRef)
-                           -> RuntimeResult {
-
-        let args = &(pos_args.clone(), star_args.clone(), kwargs.clone());
-
-        let (arg0, arg1, arg2) = match check_fnargs_rt(args) {
-            Ok(args) => args,
-            Err(err) => return Err(err)
-        };
-
-        match callable(&arg0, &arg1, &arg2) {
-            Ok(_) => Ok(rt.none()),
-            Err(err) => Err(err),
-        }
-    }
-
     #[allow(unused_variables)]
-    fn do_call_wrapperfn(&self,
-                         rt: &Runtime,
-                         callable: &Box<WrapperFn>,
-                        signature: &Signature,
-                         pos_args: &ObjectRef,
-                         star_args: &ObjectRef,
-                         kwargs: &ObjectRef)
-                         -> RuntimeResult {
+    fn call_wrapper(&self,
+                    rt: &Runtime,
+                    callable: &Box<WrapperFn>,
+                    signature: &Signature,
+                    pos_args: &ObjectRef,
+                    star_args: &ObjectRef,
+                    kwargs: &ObjectRef)
+                    -> RuntimeResult {
 
         let boxed: &Box<Builtin> = pos_args.0.borrow();
         match boxed.deref() {
@@ -220,6 +199,7 @@ impl method::Hashed for PyFunction {
         Ok(s.finish())
     }
 }
+
 impl method::StringCast for PyFunction {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
         match self.native_str() {
@@ -230,11 +210,11 @@ impl method::StringCast for PyFunction {
 
     fn native_str(&self) -> NativeResult<native::String> {
         let name = match self.value.0.callable {
-            FuncType::Native(_) => format!("<native_function {}>", self.value.0.name),
-            FuncType::Wrapper(_) => format!("<builtin-function {}>",
-                                                    self.value.0.name),
+            FuncType::Wrapper(_) => format!("<builtin-function {}>", self.value.0.name),
+            FuncType::MethodWrapper(ref objref, _) => {
+                format!("<method-wrapper {} at 0x{:x}>", self.value.0.name, self.rc.upgrade()?.id())
+            },
             FuncType::Code(_) =>format!("<function {}>", self.value.0.name),
-            FuncType::None => panic!()
         };
 
         Ok(name)
@@ -311,17 +291,18 @@ impl method::Iter for PyFunction {}
 impl method::Call for PyFunction {
     fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match self.value.0.callable {
-            FuncType::Native(ref func) => self.do_call_nativefn_rt(
-                &rt, func, &pos_args, &star_args, &kwargs),
-            FuncType::Wrapper(ref func) => self.do_call_wrapperfn(
+            FuncType::MethodWrapper(_, ref func) |
+            FuncType::Wrapper(ref func) => self.call_wrapper(
                 &rt, func, &self.value.0.signature, &pos_args, &star_args, &kwargs),
-            _ => Err(Error::not_implemented()),
+            FuncType::Code(_) => {
+                Err(Error::typerr("'code' object is not callable"))
+            }
         }
     }
 
     #[allow(unused_variables)]
     fn native_call(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<Builtin> {
-        Err(Error::not_implemented())
+        Err(Error::system_not_implemented("PyFunction::native_call()"))
     }
 }
 impl method::Length for PyFunction {}

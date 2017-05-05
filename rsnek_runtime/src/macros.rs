@@ -405,3 +405,105 @@ macro_rules! rsnek_exception_index {
     }
 }
 
+macro_rules! unary_method_wrapper (
+    ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
+        let selfref = $sel.rc.upgrade()?;
+        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+            let objref = selfref.clone();
+            check_args(0, &pos_args)?;
+            check_args(0, &starargs)?;
+            check_kwargs(0, &kwargs)?;
+
+            let boxed: &Box<Builtin> = objref.0.borrow();
+            match boxed.deref() {
+                &$builtin(ref value) => {
+                $func(value, rt)
+                }
+                _ => unreachable!()
+            }
+        });
+
+        Ok($rt.function(native::Func {
+            name: format!("'{}' of {} object", $fname, $tname),
+            signature: [].as_args(),
+            module: strings::BUILTINS_MODULE.to_string(),
+            callable: native::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
+        }))
+
+    });
+);
+
+
+macro_rules! binary_method_wrapper (
+    ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
+        let selfref = $sel.rc.upgrade()?;
+        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+            let objref = selfref.clone();
+            check_args(1, &pos_args)?;
+            check_args(0, &starargs)?;
+            check_kwargs(0, &kwargs)?;
+
+            let zero = rt.int(0);
+            let args_tuple: &Box<Builtin> = pos_args.0.borrow();
+            let arg = args_tuple.op_getitem(&rt, &zero)?;
+
+            let boxed: &Box<Builtin> = objref.0.borrow();
+            match boxed.deref() {
+                &$builtin(ref value) => {
+                $func(value, rt, &arg)
+                }
+                _ => unreachable!()
+            }
+        });
+
+        Ok($rt.function(native::Func {
+            name: format!("'{}' of {} object", $fname, $tname),
+            signature: ["arg1"].as_args(),
+            module: strings::BUILTINS_MODULE.to_string(),
+            callable: native::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
+        }))
+
+    });
+);
+
+
+macro_rules! ternary_method_wrapper (
+    ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
+        let selfref = $sel.rc.upgrade()?;
+        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+            let objref = selfref.clone();
+            check_args(2, &pos_args)?;
+            check_args(0, &starargs)?;
+            check_kwargs(0, &kwargs)?;
+
+            let args_tuple: &Box<Builtin> = pos_args.0.borrow();
+            let arg1 = args_tuple.op_getitem(&rt, &rt.int(0))?;
+            let arg2 = args_tuple.op_getitem(&rt, &rt.int(1))?;
+
+            let boxed: &Box<Builtin> = objref.0.borrow();
+            match boxed.deref() {
+                &$builtin(ref value) => {
+                $func(value, rt, &arg1, &arg2)
+                }
+                _ => unreachable!()
+            }
+        });
+
+        Ok($rt.function(native::Func {
+            name: format!("'{}' of {} object", $fname, $tname),
+            signature: ["arg1", "arg2"].as_args(),
+            module: strings::BUILTINS_MODULE.to_string(),
+            callable: native::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
+        }))
+
+    });
+);
+
+
+macro_rules! method_not_implemented {
+  ($i:ty, $($N:ident)+) => {
+    $(
+        impl method::$N for $i {}
+    )+
+  };
+}
