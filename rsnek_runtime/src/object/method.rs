@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 
 use ::error::Error;
 use ::object::RtObject;
-use ::result::{RuntimeResult, NativeResult};
+use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider};
 use ::typedef::builtin::Builtin;
@@ -19,10 +19,10 @@ api_trait!(4ary, self, __new__, New, op_new, native_new);
 //api_trait!(4ary, self, __init__, Init, op_init, native_init);
 #[allow(unused_variables)]
 pub trait Init {
-    fn op_init(&mut self, rt: &Runtime, named_args: &RtObject, args: &RtObject, kwargs: &RtObject) -> RuntimeResult {
+    fn op_init(&mut self, rt: &Runtime, named_args: &RtObject, args: &RtObject, kwargs: &RtObject) -> ObjectResult {
         Err(Error::not_implemented())
     }
-    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<native::None> {
+    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> RtResult<native::None> {
         Err(Error::not_implemented())
     }
 }
@@ -64,7 +64,7 @@ api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 //
 
 pub trait Id {
-    fn op_id(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_id(&self, rt: &Runtime) -> ObjectResult {
         Ok(rt.int(self.native_id()))
     }
 
@@ -76,17 +76,12 @@ pub trait Id {
 pub trait Is
     where Self: Id
 {
-    fn op_is(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
-
-        if self.native_is(rhs_builtin).unwrap() {
-            Ok(rt.bool(true))
-        } else {
-            Ok(rt.bool(false))
-        }
+    fn op_is(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let truth = self.native_is(rhs.as_ref())?;
+        Ok(rt.bool(truth))
     }
 
-    fn native_is(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_is(&self, other: &Builtin) -> RtResult<native::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
@@ -94,18 +89,13 @@ pub trait Is
 pub trait IsNot
     where Self: Id
 {
-    fn op_is_not(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
-
-        if self.native_is_not(rhs_builtin).unwrap() {
-            Ok(rt.bool(true))
-        } else {
-            Ok(rt.bool(false))
-        }
+    fn op_is_not(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let truth = self.native_is_not(rhs.as_ref())?;
+        Ok(rt.bool(truth))
     }
 
 
-    fn native_is_not(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_is_not(&self, other: &Builtin) -> RtResult<native::Boolean> {
         Ok(self.native_id() != other.native_id())
     }
 }
@@ -153,18 +143,13 @@ api_trait!(unary, self, __format__, StringFormat, op_format, native_format, nati
 /// `api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);`
 pub trait Equal {
     /// Default implementation of equals fallsbacks to op_is.
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
-
-        if self.native_eq(rhs_builtin).unwrap() {
-            Ok(rt.bool(true))
-        } else {
-            Ok(rt.bool(false))
-        }
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let truth = self.native_eq(rhs.as_ref())?;
+        Ok(rt.bool(truth))
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
         Ok(memory_address(&self) == other.native_id())
     }
 }
@@ -172,18 +157,13 @@ pub trait Equal {
 /// `api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);`
 pub trait NotEqual {
     /// Default implementation of equals fallsbacks to !op_is
-    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
-
-        if self.native_ne(rhs_builtin).unwrap() {
-            Ok(rt.bool(true))
-        } else {
-            Ok(rt.bool(false))
-        }
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let truth = self.native_ne(rhs.as_ref())?;
+        Ok(rt.bool(truth))
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_ne(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_ne(&self, other: &Builtin) -> RtResult<native::Boolean> {
         Ok(memory_address(&self) != other.native_id())
     }
 }

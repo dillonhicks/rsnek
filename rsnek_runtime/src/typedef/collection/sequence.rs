@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use num::ToPrimitive;
 
 use ::error::Error;
-use ::result::NativeResult;
+use ::result::RtResult;
 use ::resource::strings;
 use ::typedef::builtin::Builtin;
 use ::typedef::native;
@@ -20,8 +20,8 @@ pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> native::Boolea
 
 pub fn contains<'a>(seq: &'a [RtObject], item: &Builtin) -> native::Boolean {
     seq.iter()
-        .map(|objref| objref.0.borrow())
-        .any(|value: &Box<Builtin>| {
+        .map(|objref| objref.as_ref())
+        .any(|value: &Builtin| {
             *(value.deref()) == *item
         })
 }
@@ -43,7 +43,7 @@ pub fn multiply<'a, T>(seq: &'a [RtObject], factor: usize) -> T
 }
 
 /// Get index using the normal +/- indexing rules
-pub fn get_index<'a, T>(seq: &'a [T], index: &ToPrimitive) -> NativeResult<T>
+pub fn get_index<'a, T>(seq: &'a [T], index: &ToPrimitive) -> RtResult<T>
     where T: Clone, { //V: Index<usize, Output=T>
     // TODO: {T3091} update "sequence" to be the type name
     let index_err = Err(rsnek_exception_index!("sequence"));

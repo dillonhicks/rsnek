@@ -7,7 +7,7 @@ use num::ToPrimitive;
 
 use ::resource::strings;
 use error::Error;
-use result::{RuntimeResult, NativeResult};
+use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider,
              IteratorProvider, DefaultListProvider, ListProvider};
@@ -81,12 +81,12 @@ impl fmt::Debug for PyList {
 impl PyAPI for PyList {}
 
 impl method::StringCast for PyList {
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         let s = self.native_str()?;
         Ok(rt.str(s))
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         let elems = self.value.0.iter()
             .map(RtObject::native_str)
             .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc})
@@ -99,12 +99,12 @@ impl method::StringCast for PyList {
 
 impl method::Equal for PyList {
 
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let truth = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         match rhs {
             &Builtin::List(ref other) => {
                 let left = &self.value.0;
@@ -117,12 +117,12 @@ impl method::Equal for PyList {
 }
 
 impl method::NotEqual for PyList {
-    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let truth = self.native_ne(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         let truth = self.native_eq(rhs)?;
         Ok(!truth)
     } 
@@ -130,12 +130,12 @@ impl method::NotEqual for PyList {
 }
 
 impl method::BooleanCast for PyList {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         let truth = self.native_bool()?;
         Ok(rt.bool(truth))
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         Ok(!self.value.0.is_empty())
     }
 }
@@ -143,7 +143,7 @@ impl method::BooleanCast for PyList {
 
 impl method::Multiply for PyList {
 
-    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
             &Builtin::Int(ref int) => {
                 match int.value.0.to_usize() {
@@ -166,22 +166,22 @@ impl method::Multiply for PyList {
 
 
 impl method::Contains for PyList {
-    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> ObjectResult {
         let truth = self.native_contains(item.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_contains(&self, item: &Builtin) -> RtResult<native::Boolean> {
         Ok(sequence::contains(&self.value.0, item))
     }
 }
 impl method::Iter for PyList {
-    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_iter(&self, rt: &Runtime) -> ObjectResult {
         let iter = self.native_iter()?;
         Ok(rt.iter(iter))
     }
 
-    fn native_iter(&self) -> NativeResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<native::Iterator> {
         match self.rc.upgrade() {
             Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
             Err(err) => Err(err)
@@ -191,25 +191,25 @@ impl method::Iter for PyList {
 }
 
 impl method::Length for PyList {
-    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_len(&self, rt: &Runtime) -> ObjectResult {
         match self.native_len() {
             Ok(length) => Ok(rt.int(length)),
             Err(err) => Err(err),
         }
     }
 
-    fn native_len(&self) -> NativeResult<native::Integer> {
+    fn native_len(&self) -> RtResult<native::Integer> {
         Ok(native::Integer::from(self.value.0.len()))
     }
 }
 
 impl method::GetItem for PyList {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> ObjectResult {
         self.native_getitem(index.as_ref())
     }
 
-    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+    fn native_getitem(&self, index: &Builtin) -> ObjectResult {
         match index {
             &Builtin::Int(ref int) => {
                 sequence::get_index(&self.value.0, &int.value.0)

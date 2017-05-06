@@ -107,7 +107,7 @@ toolchain: $(CONDITIONAL_REQUIREMENTS)
 		oprofile \
 		linux-tools-generic
 
-	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-05-03
+	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
 
 
 build:
@@ -126,8 +126,11 @@ test-release:
 	$(CARGO) test --release --message-format=$(LOG_FORMAT) --all
 
 
-bench:
-	$(CARGO) bench --message-format=$(LOG_FORMAT) -p rsnek*
+bench-%:
+	-$(CARGO) bench --message-format=$(LOG_FORMAT) -p $*
+
+
+bench: bench-rsnek_compile bench-rsnek_runtime bench-rsnek
 
 
 # I do not expect there to be random memory leaks because Rust handles a lot of that.

@@ -6,7 +6,7 @@ use std::borrow::Borrow;
 use error::{Error, ErrorType};
 use runtime::Runtime;
 use traits::IntegerProvider;
-use result::{RuntimeResult, NativeResult};
+use result::{ObjectResult, RtResult};
 use object::{self, RtValue, typing};
 use object::selfref::{self, SelfRef};
 use object::method::{self, GetItem, Next};
@@ -102,14 +102,14 @@ impl object::PyAPI for PyIterator {}
 impl method::Next for PyIterator {
 
     #[allow(unused_variables)]
-    fn op_next(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_next(&self, rt: &Runtime) -> ObjectResult {
         match self.value.0 {
             // TODO: {T82} Use weakref or some other mechanism to not keep a handle to source forever?
             _ => self.native_next()
         }
     }
 
-    fn native_next(&self) -> NativeResult<RtObject> {
+    fn native_next(&self) -> RtResult<RtObject> {
         let ref rt = self.value.1;
 
         match self.value.0 {

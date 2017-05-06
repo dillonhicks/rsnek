@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
-use result::{RuntimeResult, NativeResult};
+use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{NoneProvider, IntegerProvider};
 use object::{self, RtValue, typing};
@@ -88,7 +88,7 @@ pub struct ObjectValue(pub native::Object);
 pub type PyObject = RtValue<ObjectValue>;
 
 impl PyObject {
-    pub fn dir(&self) -> NativeResult<native::Tuple> {
+    pub fn dir(&self) -> RtResult<native::Tuple> {
         self.value.0.dict.native_meth_keys()
     }
 
@@ -113,11 +113,11 @@ impl object::PyAPI for PyObject {}
 impl method::GetAttr for PyObject {
     // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
     #[allow(unused_variables)]
-    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
         self.native_getattr(name.as_ref())
     }
 
-    fn native_getattr(&self, name: &Builtin) -> NativeResult<RtObject> {
+    fn native_getattr(&self, name: &Builtin) -> RtResult<RtObject> {
         match name {
             &Builtin::Str(ref string) => {
                 let string_obj = string.rc.upgrade()?;
@@ -149,12 +149,12 @@ impl method::GetAttr for PyObject {
 }
 
 impl method::SetAttr for PyObject {
-    fn op_setattr(&self, rt: &Runtime, name: &RtObject, value: &RtObject) -> RuntimeResult {
+    fn op_setattr(&self, rt: &Runtime, name: &RtObject, value: &RtObject) -> ObjectResult {
         self.native_setattr(name.as_ref(), value.as_ref())?;
         Ok(rt.none())
     }
 
-    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
+    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> RtResult<native::None> {
 
         let hashid = name.native_hash()?;
         let key_ref = name.upgrade()?;
@@ -179,12 +179,12 @@ impl method::Id for PyObject {
 }
 
 impl method::Hashed for PyObject {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         let value = self.native_hash()?;
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         let mut s = DefaultHasher::new();
         self.native_id().hash(&mut s);
         Ok(s.finish())

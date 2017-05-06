@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
-use result::{RuntimeResult, NativeResult};
+use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
 use builtin::precondition::{check_kwargs, check_args, check_fnargs_rt};
@@ -109,7 +109,7 @@ impl PyFunction {
                     pos_args: &RtObject,
                     star_args: &RtObject,
                     kwargs: &RtObject)
-                    -> RuntimeResult {
+                    -> ObjectResult {
 
         match pos_args.as_ref() {
             &Builtin::Tuple(_) => {}
@@ -153,7 +153,7 @@ impl PyFunction {
         ('real', 1),
         ('to_bytes', <function int.to_bytes>)]
     */
-    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__"           => self.try_get_name(rt, name),
             "__abs__"           |
@@ -207,7 +207,7 @@ impl PyFunction {
         }
     }
 
-    fn try_get_name(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_name(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__" => Ok(rt.str(strings::INT_DOC_STRING)),
             missing => Err(Error::attribute(
@@ -215,7 +215,7 @@ impl PyFunction {
         }
     }
 
-    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__abs__"       => {PyFunction::op_abs},
             "__bool__"      => {PyFunction::op_bool},
@@ -235,7 +235,7 @@ impl PyFunction {
         unary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
     }
 
-    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__add__"          => {PyFunction::op_add},
             "__and__"          => {PyFunction::op_and},
@@ -276,7 +276,7 @@ impl PyFunction {
         binary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
     }
 
-    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__pow__"          => {PyFunction::op_pow},
             //"__rpow__"         => {PyFunction::op_rpow},
@@ -308,7 +308,7 @@ impl object::PyAPI for PyFunction {}
 
 /// `self.rhs`
 impl method::GetAttr for PyFunction {
-    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
         match name.as_ref() {
             &Builtin::Str(ref pystring) => {
@@ -338,12 +338,12 @@ impl method::Id for PyFunction {
 }
 
 impl method::Hashed for PyFunction {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         let value = self.native_hash()?;
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         let mut s = DefaultHasher::new();
         self.native_id().hash(&mut s);
         Ok(s.finish())
@@ -351,12 +351,12 @@ impl method::Hashed for PyFunction {
 }
 
 impl method::StringCast for PyFunction {
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         let value = self.native_str()?;
         Ok(rt.str(value))
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         let name = match self.value.0.callable {
             FuncType::Wrapper(_) => format!("<builtin-function {}>", self.value.0.name),
             FuncType::MethodWrapper(ref objref, _) => {
@@ -370,13 +370,13 @@ impl method::StringCast for PyFunction {
 }
 
 impl method::Equal for PyFunction {
-    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
 
 impl method::Call for PyFunction {
-    fn op_call(&self, rt: &Runtime, pos_args: &RtObject, star_args: &RtObject, kwargs: &RtObject) -> RuntimeResult {
+    fn op_call(&self, rt: &Runtime, pos_args: &RtObject, star_args: &RtObject, kwargs: &RtObject) -> ObjectResult {
         match self.value.0.callable {
             FuncType::MethodWrapper(_, ref func) |
             FuncType::Wrapper(ref func) => self.call_wrapper(
@@ -388,7 +388,7 @@ impl method::Call for PyFunction {
     }
 
     #[allow(unused_variables)]
-    fn native_call(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<Builtin> {
+    fn native_call(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> RtResult<Builtin> {
         Err(Error::system_not_implemented("PyFunction::native_call()",
                                           &format!("file: {}, line: {}", file!(), line!())))
     }

@@ -13,7 +13,7 @@ use ::object::RtObject;
 use ::object::selfref::{self, SelfRef};
 use ::object::{self, RtValue, method, typing};
 use ::resource::strings;
-use ::result::{NativeResult, RuntimeResult};
+use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
 use ::typedef::builtin::Builtin;
@@ -105,7 +105,7 @@ impl PyInteger {
         ('real', 1),
         ('to_bytes', <function int.to_bytes>)]
     */
-    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__"           => self.try_get_name(rt, name),
             "__abs__"           |
@@ -159,7 +159,7 @@ impl PyInteger {
         }
     }
 
-    fn try_get_name(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_name(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__" => Ok(rt.str(strings::INT_DOC_STRING)),
             missing => Err(Error::attribute(
@@ -167,7 +167,7 @@ impl PyInteger {
         }
     }
 
-    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__abs__"       => {PyInteger::op_abs},
             "__bool__"      => {PyInteger::op_bool},
@@ -187,7 +187,7 @@ impl PyInteger {
         unary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
     }
 
-    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__add__"          => {PyInteger::op_add},
             "__and__"          => {PyInteger::op_and},
@@ -228,7 +228,7 @@ impl PyInteger {
         binary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
     }
 
-    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__pow__"          => {PyInteger::op_pow},
             //"__rpow__"         => {PyInteger::op_rpow},
@@ -264,7 +264,7 @@ impl object::PyAPI for PyInteger {}
 
 /// `self.rhs`
 impl method::GetAttr for PyInteger {
-    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
         match name.as_ref() {
             &Builtin::Str(ref pystring) => {
@@ -282,12 +282,12 @@ impl method::GetAttr for PyInteger {
 
 /// `hash(self)`
 impl method::Hashed for PyInteger {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         let hash = self.native_hash()?;
         Ok(rt.int(hash))
     }
 
-    fn native_hash(&self) -> NativeResult<HashId> {
+    fn native_hash(&self) -> RtResult<HashId> {
         Ok(number::hash_int(&self.value.0))
     }
 }
@@ -295,12 +295,12 @@ impl method::Hashed for PyInteger {
 
 /// `str(self)`
 impl method::StringCast for PyInteger {
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         let string = self.native_str()?;
         Ok(rt.str(string))
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         Ok(format_int(&self.value.0))
     }
 }
@@ -308,12 +308,12 @@ impl method::StringCast for PyInteger {
 
 /// `repr(self)`
 impl method::StringRepresentation for PyInteger {
-    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_repr(&self, rt: &Runtime) -> ObjectResult {
         let string = self.native_repr()?;
         Ok(rt.str(string))
     }
 
-    fn native_repr(&self) -> NativeResult<native::String> {
+    fn native_repr(&self) -> RtResult<native::String> {
         Ok(format_int(&self.value.0))
     }
 }
@@ -321,12 +321,12 @@ impl method::StringRepresentation for PyInteger {
 
 /// `self == rhs`
 impl method::Equal for PyInteger {
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let value = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
         let lhs = IntAdapter(&self.value.0);
 
         match *other {
@@ -341,12 +341,12 @@ impl method::Equal for PyInteger {
 
 /// `self != rhs`
 impl method::NotEqual for PyInteger {
-    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let truth = self.native_ne(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         let truth = !self.native_eq(rhs)?;
         Ok(truth)
     }
@@ -354,7 +354,7 @@ impl method::NotEqual for PyInteger {
 
 /// `bool(self)`
 impl method::BooleanCast for PyInteger {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         if self.native_bool().unwrap() {
             Ok(rt.bool(true))
         } else {
@@ -362,7 +362,7 @@ impl method::BooleanCast for PyInteger {
         }
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         return Ok(!self.value.0.is_zero());
     }
 }
@@ -370,22 +370,22 @@ impl method::BooleanCast for PyInteger {
 /// `int(self)`
 impl method::IntegerCast for PyInteger {
     #[allow(unused_variables)]
-    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_int(&self, rt: &Runtime) -> ObjectResult {
         self.rc.upgrade()
     }
 
-    fn native_int(&self) -> NativeResult<native::Integer> {
+    fn native_int(&self) -> RtResult<native::Integer> {
         return Ok(self.value.0.clone());
     }
 }
 
 /// `-self`
 impl method::NegateValue for PyInteger {
-    fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_neg(&self, rt: &Runtime) -> ObjectResult {
         Ok(rt.int(- self.value.0.clone()))
     }
 
-    fn native_neg(&self) -> NativeResult<native::Number> {
+    fn native_neg(&self) -> RtResult<native::Number> {
         Ok(native::Number::Int(- self.value.0.clone()))
     }
 }
@@ -393,7 +393,7 @@ impl method::NegateValue for PyInteger {
 
 /// `self + rhs`
 impl method::Add for PyInteger {
-    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
         match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 + &rhs.value.0)),
@@ -413,7 +413,7 @@ impl method::Add for PyInteger {
 
 /// `self << rhs`
 impl method::LeftShift for PyInteger {
-    fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
         match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  {
@@ -436,7 +436,7 @@ impl method::LeftShift for PyInteger {
 
 /// `self * rhs`
 impl method::Multiply for PyInteger {
-    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 * &rhs.value.0)),
             &Builtin::Float(ref rhs) => {
@@ -458,7 +458,7 @@ impl method::Pow for PyInteger {
 
     // TODO: modulus not currently used
     #[allow(unused_variables)]
-    fn op_pow(&self, rt: &Runtime, exponent: &RtObject, modulus: &RtObject) -> RuntimeResult {
+    fn op_pow(&self, rt: &Runtime, exponent: &RtObject, modulus: &RtObject) -> ObjectResult {
         match exponent.as_ref() {
             &Builtin::Int(ref power) =>  {
                 let base = self.value.0.clone();
@@ -479,7 +479,7 @@ impl method::Pow for PyInteger {
 /// `self >> rhs`
 impl method::RightShift for PyInteger {
 
-    fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
         match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  {
@@ -502,7 +502,7 @@ impl method::RightShift for PyInteger {
 
 /// `self - rhs`
 impl method::Subtract for PyInteger {
-    fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 - &rhs.value.0)),
             &Builtin::Float(ref rhs) => {

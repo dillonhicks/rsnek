@@ -8,7 +8,7 @@ use ::object::method::{self, Hashed, StringRepresentation};
 use ::object::RtObject;
 use ::object::selfref::{self, SelfRef};
 use ::object::{self, RtValue, typing};
-use ::result::{NativeResult, RuntimeResult};
+use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use ::typedef::builtin::Builtin;
@@ -72,17 +72,17 @@ impl object::PyAPI for PyDict {}
 
 impl method::Hashed for PyDict {
     #[allow(unused_variables)]
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         Err(Error::typerr(&format!("Unhashable type {}", TYPE_NAME)))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         Err(Error::typerr(&format!("Unhashable type {}", TYPE_NAME)))
     }
 }
 
 impl method::StringCast for PyDict {
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         let mut strings: Vec<String> = Vec::new();
 
         for (key_wrapper, value) in self.value.0.borrow().iter() {
@@ -107,35 +107,35 @@ impl method::StringCast for PyDict {
 
 
 impl method::BooleanCast for PyDict {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         match self.native_bool() {
             Ok(value) => Ok(rt.bool(value)),
             Err(err) => Err(err)
         }
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         Ok(!self.value.0.borrow().is_empty())
     }
 }
 
 
 impl method::Length for PyDict {
-    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_len(&self, rt: &Runtime) -> ObjectResult {
         match self.native_len() {
             Ok(int) => Ok(rt.int(int)),
             Err(_) => unreachable!(),
         }
     }
 
-    fn native_len(&self) -> NativeResult<native::Integer> {
+    fn native_len(&self) -> RtResult<native::Integer> {
         Ok(native::Integer::from(self.value.0.borrow().len()))
     }
 }
 
 impl method::GetItem for PyDict {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, key: &RtObject) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, key: &RtObject) -> ObjectResult {
         match key.native_hash() {
             Ok(hash) => {
                 let key_wrapper = DictKey(hash, key.clone());
@@ -150,7 +150,7 @@ impl method::GetItem for PyDict {
         }
     }
 
-    fn native_getitem(&self, key: &Builtin) -> RuntimeResult {
+    fn native_getitem(&self, key: &Builtin) -> ObjectResult {
         match key {
             &Builtin::DictKey(ref key) => {
                 match self.value.0.borrow().get(key) {
@@ -164,7 +164,7 @@ impl method::GetItem for PyDict {
 }
 
 impl method::SetItem for PyDict {
-    fn op_setitem(&self, rt: &Runtime, key: &RtObject, value: &RtObject) -> RuntimeResult {
+    fn op_setitem(&self, rt: &Runtime, key: &RtObject, value: &RtObject) -> ObjectResult {
         match key.native_hash() {
             Ok(hash) => {
                 let key_wrapper = Builtin::DictKey(DictKey(hash, key.clone()));
@@ -179,7 +179,7 @@ impl method::SetItem for PyDict {
     }
 
     #[allow(unused_variables)]
-    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::None> {
+    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> RtResult<native::None> {
         match key {
             &Builtin::DictKey(ref key) => {
                 self.value.0.borrow_mut().insert(key.clone(), value.upgrade()?);
@@ -192,12 +192,12 @@ impl method::SetItem for PyDict {
 
 impl method::Keys for PyDict {
 
-    fn meth_keys(&self, rt: &Runtime) -> RuntimeResult {
+    fn meth_keys(&self, rt: &Runtime) -> ObjectResult {
         let keys = self.native_meth_keys()?;
         Ok(rt.tuple(keys))
     }
 
-    fn native_meth_keys(&self) -> NativeResult<native::Tuple> {
+    fn native_meth_keys(&self) -> RtResult<native::Tuple> {
         let keys = self.value.0.borrow().keys()
             .map(|key| key.value())
             .collect::<native::Tuple>();

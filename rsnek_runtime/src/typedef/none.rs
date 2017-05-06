@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use runtime::Runtime;
 use traits::{BooleanProvider, StringProvider};
-use result::{RuntimeResult, NativeResult};
+use result::{ObjectResult, RtResult};
 use object::selfref::{self, SelfRef};
 use object::{RtValue, PyAPI, method, typing};
 
@@ -80,23 +80,23 @@ impl PyAPI for PyNone {}
 
 
 impl method::StringCast for PyNone {
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         Ok(rt.str(self.value.1.clone()))
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         Ok(self.value.1.clone())
     }
 }
 
 
 impl method::Equal for PyNone {
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let truth = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         match rhs {
             &Builtin::None(_) => Ok(true),
             _ => Ok(false),
@@ -106,11 +106,11 @@ impl method::Equal for PyNone {
 
 
 impl method::BooleanCast for PyNone {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         Ok(rt.bool(false))
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         Ok(false)
     }
 }

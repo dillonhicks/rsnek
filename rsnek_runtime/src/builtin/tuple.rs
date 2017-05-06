@@ -1,18 +1,15 @@
 use std::borrow::Borrow;
 
-use ::object::method::{
-    GetItem,
-    Iter,
-};
-use ::runtime::Runtime;
-use ::result::RuntimeResult;
-use ::resource::strings;
-use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
+use ::builtin::precondition::{check_args, check_kwargs, check_args_range};
+use ::object::method::{GetItem, Iter};
 use ::object::RtObject as ObjectRef;
+use ::resource::strings;
+use ::result::ObjectResult;
+use ::runtime::Runtime;
+use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 
-use ::builtin::precondition::{check_args, check_kwargs, check_args_range};
 
 pub struct TupleFn;
 
@@ -34,7 +31,7 @@ impl TupleFn {
 }
 
 
-fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> ObjectResult {
     trace!("call"; "native_builtin" => FUNC_NAME);
 
     let arg_count = check_args_range(0..2, &pos_args)?;
@@ -45,14 +42,8 @@ fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kw
         return Ok(rt.default_tuple())
     }
 
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    let zero = rt.int(0);
-
-    let value = boxed.op_getitem(&rt, &zero).unwrap();
-    let boxed: &Box<Builtin> = value.0.borrow();
-
-    let iter = boxed.op_iter(&rt)?;
-    let new_tuple = iter.collect::<native::Tuple>();
+    let value = pos_args.op_getitem(&rt, &rt.int(0))?;
+    let new_tuple = value.op_iter(&rt)?.collect::<native::List>();
     Ok(rt.tuple(new_tuple))
 }
 

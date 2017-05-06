@@ -1,14 +1,15 @@
 use std::borrow::Borrow;
 
-use runtime::Runtime;
-use traits::{IteratorProvider, NoneProvider};
+use itertools::Itertools;
 
-use result::{RuntimeResult};
+use ::object::method::StringCast;
 use ::object::RtObject as ObjectRef;
 use ::resource::strings;
-use typedef::builtin::Builtin;
-use object::method::StringCast;
-use typedef::native::{self, Signature, Func, FuncType};
+use ::result::{ObjectResult};
+use ::runtime::Runtime;
+use ::traits::{IteratorProvider, NoneProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Signature, Func, FuncType};
 
 
 pub struct PrintFn;
@@ -33,7 +34,7 @@ impl PrintFn {
 #[allow(unused_variables)]
 fn rs_builtin_print(rt: &Runtime, pos_args: &ObjectRef,
                     starargs: &ObjectRef,
-                    kwargs: &ObjectRef) -> RuntimeResult {
+                    kwargs: &ObjectRef) -> ObjectResult {
     trace!("call"; "native_builtin" => "print");
 
     let mut strings: Vec<String> = Vec::new();
@@ -42,20 +43,17 @@ fn rs_builtin_print(rt: &Runtime, pos_args: &ObjectRef,
         Err(_) => unreachable!(),
     };
 
-    for objref in tuple_iterator {
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        let s = match boxed.native_str() {
-            Ok(string) => string,
-            Err(err) => {
-                warn!("Error during call"; "native_builtin" => "str");
-                format!("{}", objref)
+     let output = &tuple_iterator.map(|object| {
+            match object.native_str() {
+                 Ok(string) => string,
+                Err(err) => {
+                    warn!("Error during call"; "native_builtin" => "str");
+                    format!("{}", object)
+                }
             }
-        };
-
-        strings.push(s);
-    }
-
-    let output = strings.iter().fold(String::new(), |acc, s| acc + "\n >>>  " + s);
+        })
+         .map(|s| format!(">>> {}",s ))
+         .join("\n");
 
     // TODO: {T71} Wrap this in the "canblock" macro when implemented
     info!("rs_builtin_print";

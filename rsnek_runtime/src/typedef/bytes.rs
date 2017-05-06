@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use result::{NativeResult, RuntimeResult};
+use result::{RtResult, ObjectResult};
 use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
 
@@ -75,12 +75,12 @@ impl object::PyAPI for PyBytes {}
 
 
 impl method::Hashed for PyBytes {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         let value = self.native_hash()?;
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         let mut s = DefaultHasher::new();
         self.value.0.hash(&mut s);
         Ok(s.finish())
@@ -88,12 +88,12 @@ impl method::Hashed for PyBytes {
 }
 
 impl method::Equal for PyBytes {
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let value = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         match rhs {
             &Builtin::Bytes(ref bytes) => Ok(self.value.0 == bytes.value.0),
             _ => Ok(false),

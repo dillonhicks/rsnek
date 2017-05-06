@@ -13,7 +13,7 @@ use ::object::RtObject;
 use ::object::selfref::{self, SelfRef};
 use ::object::{self, RtValue, typing};
 use ::resource::strings;
-use ::result::{RuntimeResult, NativeResult};
+use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider, StringProvider,
                IteratorProvider, DefaultTupleProvider, TupleProvider};
@@ -83,12 +83,12 @@ impl fmt::Debug for PyTuple {
 impl object::PyAPI for PyTuple {}
 
 impl method::Hashed for PyTuple {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         let value = self.native_hash()?;
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         if self.native_len().unwrap().is_zero() {
             let mut s = DefaultHasher::new();
             let this_object = self.rc.upgrade()?;
@@ -104,12 +104,12 @@ impl method::Hashed for PyTuple {
 }
 
 impl method::StringCast for PyTuple {
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         let string = self.native_str()?;
         Ok(rt.str(string))
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         let elems = self.value.0.iter()
                 .map(RtObject::native_repr)
                 .fold_results(
@@ -123,12 +123,12 @@ impl method::StringCast for PyTuple {
 
 
 impl method::Equal for PyTuple {
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         let truth = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         match rhs {
             &Builtin::Tuple(ref other) => {
                 let left = &self.value.0;
@@ -142,19 +142,19 @@ impl method::Equal for PyTuple {
 
 
 impl method::BooleanCast for PyTuple {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         let truth = self.native_bool()?;
         Ok(rt.bool(truth))
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         Ok(!self.value.0.is_empty())
     }
 }
 
 
 impl method::Multiply for PyTuple {
-    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
             &Builtin::Int(ref int) => {
                 match int.value.0.to_usize() {
@@ -177,23 +177,23 @@ impl method::Multiply for PyTuple {
 
 
 impl method::Contains for PyTuple {
-    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> ObjectResult {
         let truth = self.native_contains(item.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_contains(&self, item: &Builtin) -> RtResult<native::Boolean> {
         Ok(sequence::contains(&self.value.0, item))
     }
 }
 
 impl method::Iter for PyTuple {
-    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_iter(&self, rt: &Runtime) -> ObjectResult {
         let iter = self.native_iter()?;
         Ok(rt.iter(iter))
     }
 
-    fn native_iter(&self) -> NativeResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<native::Iterator> {
         let this_object = self.rc.upgrade()?;
         Ok(native::Iterator::new(&this_object)?)
     }
@@ -202,12 +202,12 @@ impl method::Iter for PyTuple {
 
 
 impl method::Length for PyTuple {
-    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_len(&self, rt: &Runtime) -> ObjectResult {
         let value = self.native_len()?;
         Ok(rt.int(value))
     }
 
-    fn native_len(&self) -> NativeResult<native::Integer> {
+    fn native_len(&self) -> RtResult<native::Integer> {
         Ok(native::Integer::from(self.value.0.len()))
     }
 }
@@ -215,11 +215,11 @@ impl method::Length for PyTuple {
 
 impl method::GetItem for PyTuple {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> ObjectResult {
         self.native_getitem(index.as_ref())
     }
 
-    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+    fn native_getitem(&self, index: &Builtin) -> ObjectResult {
         match index {
             &Builtin::Int(ref int) => {
                 sequence::get_index(&self.value.0, &int.value.0)

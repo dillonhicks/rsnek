@@ -16,7 +16,7 @@ use ::object::selfref::{self, SelfRef};
 use ::object::typing::{self, BuiltinType};
 use ::object::{self, RtValue};
 use ::resource::strings;
-use ::result::{NativeResult, RuntimeResult};
+use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
                FunctionProvider, IteratorProvider};
@@ -99,7 +99,7 @@ impl PyString {
         ('real', 1),
         ('to_bytes', <function int.to_bytes>)]
     */
-    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__"           => self.try_get_name(rt, name),
             "__abs__"           |
@@ -153,7 +153,7 @@ impl PyString {
         }
     }
 
-    fn try_get_name(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_name(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__" => Ok(rt.str(strings::INT_DOC_STRING)),
             missing => Err(Error::attribute(
@@ -161,7 +161,7 @@ impl PyString {
         }
     }
 
-    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__abs__"       => {PyString::op_abs},
             "__bool__"      => {PyString::op_bool},
@@ -181,7 +181,7 @@ impl PyString {
         unary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
     }
 
-    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__add__"          => {PyString::op_add},
             "__and__"          => {PyString::op_and},
@@ -222,7 +222,7 @@ impl PyString {
         binary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
     }
 
-    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__pow__"          => {PyString::op_pow},
             //"__rpow__"         => {PyString::op_rpow},
@@ -247,7 +247,7 @@ impl object::PyAPI for PyString {}
 
 /// `self.rhs`
 impl method::GetAttr for PyString {
-    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
         match name.as_ref() {
             &Builtin::Str(ref pystring) => {
@@ -262,14 +262,14 @@ impl method::GetAttr for PyString {
 }
 
 impl method::Hashed for PyString {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         match self.native_hash() {
             Ok(value) => Ok(rt.int(native::Integer::from(value))),
             Err(err) => Err(err),
         }
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         let mut s = DefaultHasher::new();
         self.value.0.hash(&mut s);
         Ok(s.finish())
@@ -280,11 +280,11 @@ impl method::Hashed for PyString {
 impl method::StringCast for PyString {
 
     #[allow(unused_variables)]
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         self.rc.upgrade()
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         Ok(self.value.0.clone())
     }
 
@@ -292,14 +292,14 @@ impl method::StringCast for PyString {
 
 
 impl method::Equal for PyString {
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match self.native_eq(rhs.as_ref()) {
             Ok(value) => Ok(rt.bool(value)),
             _ => unreachable!(),
         }
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         match rhs {
             &Builtin::Str(ref string) => Ok(self.value.0.eq(&string.value.0)),
             _ => Ok(false),
@@ -309,28 +309,28 @@ impl method::Equal for PyString {
 
 
 impl method::BooleanCast for PyString {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         match self.native_bool() {
             Ok(bool) => Ok(rt.bool(bool)),
             Err(err) => Err(err)
         }
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         Ok(!self.value.0.is_empty())
     }
 }
 
 
 impl method::IntegerCast for PyString {
-    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_int(&self, rt: &Runtime) -> ObjectResult {
         match self.native_int() {
             Ok(int) => Ok(rt.int(int)),
             Err(err) => Err(err)
         }
     }
 
-    fn native_int(&self) -> NativeResult<native::Integer> {
+    fn native_int(&self) -> RtResult<native::Integer> {
         match native::Integer::from_str(&self.value.0) {
             Ok(int) => Ok(int),
             Err(_) => Err(Error::value(
@@ -343,9 +343,8 @@ impl method::IntegerCast for PyString {
 
 impl method::Add for PyString {
 
-    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-        match builtin.deref() {
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        match rhs.as_ref() {
             &Builtin::Str(ref other) => Ok(rt.str([&self.value.0[..], &other.value.0[..]].concat())),
             other => Err(Error::typerr(
                 &strings_error_bad_operand!("+", "str", other.debug_name()))),
@@ -355,10 +354,9 @@ impl method::Add for PyString {
 }
 
 impl method::Multiply for PyString {
-    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
-        match builtin.deref() {
+        match rhs.as_ref() {
             &Builtin::Int(ref int) => {
                 match int.value.0.to_usize() {
                     Some(int) if int <= 0   => Ok(rt.default_str()),
@@ -384,12 +382,12 @@ impl method::Multiply for PyString {
 
 
 impl method::Contains for PyString {
-    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> ObjectResult {
         let truth = self.native_contains(item.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_contains(&self, item: &Builtin) -> RtResult<native::Boolean> {
         match item {
             &Builtin::Str(ref string) => {
                 Ok(self.value.0.contains(&string.value.0))
@@ -402,12 +400,12 @@ impl method::Contains for PyString {
 }
 
 impl method::Iter for PyString {
-    fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_iter(&self, rt: &Runtime) -> ObjectResult {
         let iter = self.native_iter()?;
         Ok(rt.iter(iter))
     }
 
-    fn native_iter(&self) -> NativeResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<native::Iterator> {
         match self.rc.upgrade() {
             Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
             Err(err) => Err(err)
@@ -416,22 +414,22 @@ impl method::Iter for PyString {
 }
 
 impl method::Length for PyString {
-    fn op_len(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_len(&self, rt: &Runtime) -> ObjectResult {
         Ok(rt.int(self.value.0.len()))
     }
 
-    fn native_len(&self) -> NativeResult<native::Integer> {
+    fn native_len(&self) -> RtResult<native::Integer> {
         Ok(native::Integer::from(self.value.0.len()))
     }
 }
 
 impl method::GetItem for PyString {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, item: &RtObject) -> ObjectResult {
         self.native_getitem(item.as_ref())
     }
 
-    fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
+    fn native_getitem(&self, index: &Builtin) -> ObjectResult {
         let substr = match index {
             &Builtin::Int(ref int) => {
                 let byte = sequence::get_index(&self.value.0.as_bytes(), &int.value.0)?;

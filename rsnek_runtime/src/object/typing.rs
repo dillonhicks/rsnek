@@ -1,8 +1,7 @@
-use runtime::Runtime;
-use typedef::native;
+use ::object::method;
 use ::object::RtObject as ObjectRef;
-
-use object::method;
+use ::runtime::Runtime;
+use ::typedef::native;
 
 
 pub trait HasName {
@@ -10,7 +9,7 @@ pub trait HasName {
 }
 
 
-// TODO: {T49} Investigate an actual type opbject. Things to pinder: Allow arguments to new and
+// TODO: {T49} Investigate an actual type object. Things to ponder: Allow arguments to new and
 // init, inheritance? Missing bases, mro, etc.
 /// __builtins__.type: Defines how types are created
 pub trait Type: method::New + method::Init + HasName {}

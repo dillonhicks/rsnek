@@ -1,22 +1,21 @@
 use std;
-use std::convert::TryFrom;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::{RefMut, RefCell, Cell};
 use std::collections::{HashSet, HashMap, VecDeque};
+use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeSeq};
 
 use rsnek_compile::fmt;
+
 use ::error::Error;
-use ::opcode::OpCode;
-use ::typedef::native::{self, Instr, Native};
-
-
 use ::graph::{DiGraph, Graph, Node};
-use ::scope::{ScopeNode, ScopeHint, ManageScope};
+use ::opcode::OpCode;
 use ::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};
+use ::scope::{ScopeNode, ScopeHint, ManageScope};
+use ::typedef::native::{self, Instr, Native};
 
 
 pub trait TrackSymbol {

@@ -1,23 +1,15 @@
 use std::borrow::Borrow;
 
-use object::method::{
-    GetItem,
-    Iter,
-};
-use runtime::Runtime;
-use traits::{
-    ListProvider,
-    DefaultListProvider,
-    IntegerProvider
-};
-
-use result::{RuntimeResult};
-use ::object::RtObject as ObjectRef;
+use ::builtin::precondition::{check_args, check_kwargs, check_args_range};
+use ::object::method::{GetItem,Iter};
+use ::object::RtObject;
 use ::resource::strings;
-use typedef::builtin::Builtin;
-use typedef::native::{self, Func, FuncType, SignatureBuilder};
+use ::result::{ObjectResult};
+use ::runtime::Runtime;
+use ::traits::{ListProvider, DefaultListProvider, IntegerProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 
-use builtin::precondition::{check_args, check_kwargs, check_args_range};
 
 pub struct ListFn;
 
@@ -37,25 +29,19 @@ impl ListFn {
 }
 
 
-fn rs_builtin_list(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+fn rs_builtin_list(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs: &RtObject) -> ObjectResult {
     trace!("call"; "native_builtin" => "list");
 
     let arg_count = check_args_range(0..2, &pos_args)?;
     check_args(0, &starargs)?;
     check_kwargs(0, &kwargs)?;
-
+    
     if arg_count == 0 {
         return Ok(rt.default_list())
     }
 
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    let zero = rt.int(0);
-
-    let value = boxed.op_getitem(&rt, &zero).unwrap();
-    let boxed: &Box<Builtin> = value.0.borrow();
-
-    let iter = boxed.op_iter(&rt)?;
-    let new_list = iter.collect::<native::List>();
+    let value = pos_args.op_getitem(&rt, &rt.int(0))?;
+    let new_list  = value.op_iter(&rt)?.collect::<native::List>();
     Ok(rt.list(new_list))
 }
 

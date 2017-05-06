@@ -8,7 +8,7 @@ use error::Error;
 use runtime::Runtime;
 //use traits::{BooleanProvider, IntegerProvider, NoneProvider};
 
-use result::{RuntimeResult};
+use result::{ObjectResult};
 use typedef::builtin::Builtin;
 use typedef::native;
 use ::object::RtObject;
@@ -80,7 +80,7 @@ impl PyAPI for PyFrame { }
 
 impl method::GetAttr for PyFrame {
     #[allow(unused_variables)]
-    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
         let attr: &str = match name.as_ref() {
             &Builtin::Str(ref string) => &string.value.0,
             other => return Err(Error::typerr(

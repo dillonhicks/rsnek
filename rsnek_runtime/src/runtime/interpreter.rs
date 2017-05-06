@@ -1,21 +1,21 @@
-use std::ops::{Deref};
-use std::fs::File;
-use std::collections::vec_deque::VecDeque;
 use std::borrow::Borrow;
 use std::cell::{Ref, Cell, RefCell};
-use std::marker::Sync;
-use std::io::{self, Read, Write};
 use std::collections::HashMap;
+use std::collections::vec_deque::VecDeque;
 use std::convert::From;
+use std::fs::File;
+use std::io::{self, Read, Write};
+use std::marker::Sync;
+use std::ops::{Deref};
 
-use fringe::{OsStack, Generator};
 use fringe::generator::Yielder;
+use fringe::{OsStack, Generator};
 use itertools::Itertools;
 use num::Zero;
-use rustyline;
-use rustyline::Config as RLConfig;
 use rustyline::CompletionType;
+use rustyline::Config as RLConfig;
 use rustyline::error::ReadlineError;
+use rustyline;
 
 use rsnek_compile::fmt;
 
@@ -57,7 +57,7 @@ use ::object::method::{
 };
 use ::opcode::OpCode;
 use ::resource;
-use ::result::RuntimeResult;
+use ::result::ObjectResult;
 use ::runtime::Runtime;
 use ::traits::{
     NoneProvider,
@@ -389,51 +389,47 @@ impl InterpreterState {
         });
     }
 
-    fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &RtObject, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = lhs.0.borrow();
+    fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &RtObject, rhs: &RtObject) -> ObjectResult {
         match opcode {
-            OpCode::CompareIs               => boxed.op_is(&rt, &rhs),
-            OpCode::CompareIsNot            => boxed.op_is_not(&rt, &rhs),
-            OpCode::CompareEqual            => boxed.op_eq(&rt, &rhs),
-            OpCode::CompareIn               => {
-                let rhs_boxed: &Box<Builtin> = rhs.0.borrow();
-                rhs_boxed.op_contains(&rt, &lhs)
-            },
-            OpCode::CompareNotEqual         => boxed.op_ne(&rt, &rhs),
-            OpCode::CompareLess             => boxed.op_lt(&rt, &rhs),
-            OpCode::CompareLessOrEqual      => boxed.op_le(&rt, &rhs),
-            OpCode::CompareGreater          => boxed.op_gt(&rt, &rhs),
-            OpCode::CompareGreaterOrEqual   => boxed.op_ge(&rt, &rhs),
+            OpCode::CompareIs               => lhs.op_is(&rt, &rhs),
+            OpCode::CompareIsNot            => lhs.op_is_not(&rt, &rhs),
+            OpCode::CompareEqual            => lhs.op_eq(&rt, &rhs),
+            // Note flipped operators due to "lhs in rhs"
+            OpCode::CompareIn               => rhs.op_contains(&rt, &lhs),
+            OpCode::CompareNotEqual         => lhs.op_ne(&rt, &rhs),
+            OpCode::CompareLess             => lhs.op_lt(&rt, &rhs),
+            OpCode::CompareLessOrEqual      => lhs.op_le(&rt, &rhs),
+            OpCode::CompareGreater          => lhs.op_gt(&rt, &rhs),
+            OpCode::CompareGreaterOrEqual   => lhs.op_ge(&rt, &rhs),
             OpCode::LogicalAnd              => logical_and(rt, lhs, rhs),
             OpCode::LogicalOr               => logical_or(rt, lhs, rhs),
-            OpCode::BinaryAdd               => boxed.op_add(&rt, &rhs),
-            OpCode::BinarySubtract          => boxed.op_sub(&rt, &rhs),
-            OpCode::BinaryMultiply          => boxed.op_mul(&rt, &rhs),
-            OpCode::BinaryPower             => boxed.op_pow(&rt, &rhs, &rt.int(1)),
-            OpCode::BinaryTrueDivide        => boxed.op_truediv(&rt, &rhs),
-            OpCode::BinaryFloorDivide       => boxed.op_floordiv(&rt, &rhs),
-            OpCode::BinaryOr                => boxed.op_or(&rt, &rhs),
-            OpCode::BinaryModulo            => boxed.op_mod(&rt, &rhs),
-            OpCode::BinaryAnd               => boxed.op_and(&rt, &rhs),
-            OpCode::BinaryMatrixMultiply    => boxed.op_matmul(&rt, &rhs),
-            OpCode::BinaryXor               => boxed.op_xor(&rt, &rhs),
-            OpCode::BinaryLshift            => boxed.op_lshift(&rt, &rhs),
-            OpCode::BinaryRshift            => boxed.op_rshift(&rt, &rhs),
+            OpCode::BinaryAdd               => lhs.op_add(&rt, &rhs),
+            OpCode::BinarySubtract          => lhs.op_sub(&rt, &rhs),
+            OpCode::BinaryMultiply          => lhs.op_mul(&rt, &rhs),
+            OpCode::BinaryPower             => lhs.op_pow(&rt, &rhs, &rt.int(1)),
+            OpCode::BinaryTrueDivide        => lhs.op_truediv(&rt, &rhs),
+            OpCode::BinaryFloorDivide       => lhs.op_floordiv(&rt, &rhs),
+            OpCode::BinaryOr                => lhs.op_or(&rt, &rhs),
+            OpCode::BinaryModulo            => lhs.op_mod(&rt, &rhs),
+            OpCode::BinaryAnd               => lhs.op_and(&rt, &rhs),
+            OpCode::BinaryMatrixMultiply    => lhs.op_matmul(&rt, &rhs),
+            OpCode::BinaryXor               => lhs.op_xor(&rt, &rhs),
+            OpCode::BinaryLshift            => lhs.op_lshift(&rt, &rhs),
+            OpCode::BinaryRshift            => lhs.op_rshift(&rt, &rhs),
             opcode                           => Err(Error::system(
                 &format!("Unhandled binary operation {:?}, this is a bug!", opcode))),
         }
     }
 
-    fn exec_unaryop(&mut self, rt: &Runtime, opcode: OpCode, operand: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = operand.0.borrow();
+    fn exec_unaryop(&mut self, rt: &Runtime, opcode: OpCode, operand: &RtObject) -> ObjectResult {
         match opcode {
             OpCode::UnaryNot        => {
-                let value = boxed.op_bool(&rt)?;
+                let value = operand.op_bool(&rt)?;
                 Ok(rt.bool(!(value == rt.bool(true))))
             },
-            OpCode::UnaryNegative   => boxed.op_neg(&rt),
-            OpCode::UnaryPositive   => boxed.op_pos(&rt),
-            OpCode::UnaryInvert     => boxed.op_invert(&rt),
+            OpCode::UnaryNegative   => operand.op_neg(&rt),
+            OpCode::UnaryPositive   => operand.op_pos(&rt),
+            OpCode::UnaryInvert     => operand.op_invert(&rt),
             opcode                  => Err(Error::system(
                 &format!("Unhandled unary operation {:?}, this is a bug!", opcode))),
         }
@@ -444,7 +440,7 @@ impl InterpreterState {
     }
 
     /// Execute exactly one instruction
-    fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<RuntimeResult> {
+    fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<ObjectResult> {
         trace!("Interpreter"; "action" => "exec_one", "instr" => format!("{:?}", instr));
 
         match instr.tuple() {
@@ -576,15 +572,14 @@ impl InterpreterState {
                 None
             },
             (OpCode::LoadAttr, Some(Native::Str(name))) => {
-                let value = match self.pop_stack() {
-                    Some(objref) => objref,
+                let object = match self.pop_stack() {
+                    Some(obj) => obj,
                     None => return Some(Err(Error::system(
                         &format!("No values in value stack for {:?}!", instr.code()))))
                 };
 
-                let boxed: &Box<Builtin> = value.0.borrow();
-                let result = match boxed.op_getattr(&rt, &rt.str(name)) {
-                    Ok(objref) => objref,
+                let result = match object.op_getattr(&rt, &rt.str(name)) {
+                    Ok(obj) => obj,
                     err => return Some(err)
                 };
 
@@ -607,8 +602,7 @@ impl InterpreterState {
                     None => return Some(Err(Error::system("No values in value stack for call!")))
                 };
 
-                let boxed: &Box<Builtin> = func.0.borrow();
-                let result = match boxed.deref(){
+                let result = match func.as_ref(){
                     &Builtin::Function(ref pyfunc) => {
                         match pyfunc.value.0.callable {
                             FuncType::Wrapper(_)        |
@@ -618,7 +612,7 @@ impl InterpreterState {
                                 match self.push_frame(&func) {
                                     Err(err) => Err(err),
                                     Ok(_) => {
-                                        match boxed.op_call(&rt,
+                                        match pyfunc.op_call(&rt,
                                                             &rt.tuple(pos_args),
                                                             &rt.tuple(vec![]),
                                                             &rt.dict(native::None())) {
@@ -673,9 +667,9 @@ impl InterpreterState {
                 };
 
                 match result {
-                    Ok(objref) => {
-                        trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", objref.to_string()));
-                        self.push_stack(&objref)
+                    Ok(object) => {
+                        trace!("Interpreter"; "action" => "push_stack", "object" => format!("{:?}", object.to_string()));
+                        self.push_stack(&object)
                      },
                     Err(err) => {
                         // TODO: When there is exception handling, this is a prime place to
@@ -723,7 +717,6 @@ impl InterpreterState {
             },
             (OpCode::BuildMap, Some(Native::Count(count))) => {
                 let dict = rt.default_dict();
-                let boxed: &Box<Builtin> = dict.0.borrow();
 
                 for _ in 0..count  {
                     if self.stack_view().is_empty() || self.stack_view().len() == 1 {
@@ -733,7 +726,7 @@ impl InterpreterState {
 
                     let value = self.pop_stack().unwrap();
                     let key = self.pop_stack().unwrap();
-                    match boxed.op_setitem(&rt, &key, &value) {
+                    match dict.op_setitem(&rt, &key, &value) {
                         Ok(_) => continue,
                         Err(err) => return Some(Err(err))
                     };
@@ -761,23 +754,22 @@ impl InterpreterState {
                     args.push(self.pop_stack().unwrap());
                 }
 
-                let test: RtObject;
+                let assert: RtObject;
                 let mut message = "".to_string();
 
                 match args.len() {
                     2 => {
-                        test = args.pop().unwrap();
+                        assert = args.pop().unwrap();
                         message = args.pop().unwrap().to_string();
                     },
                     1 => {
-                        test = args.pop().unwrap();
+                        assert = args.pop().unwrap();
                     },
                     _ => return Some(Err(Error::system(
                         "Value stack did not contain an expected number of values!")))
                 }
 
-                let boxed: &Box<Builtin> = test.0.borrow();
-                let result = match boxed.op_bool(rt){
+                let result = match assert.op_bool(rt){
                     Ok(objref) => objref,
                     Err(err) => return Some(Err(err))
                 };
@@ -799,7 +791,7 @@ impl InterpreterState {
         }
     }
 
-    fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> RuntimeResult {
+    fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> ObjectResult {
         let mut objects: VecDeque<RtObject> = VecDeque::new();
 
         let result = ins.iter()
@@ -824,10 +816,8 @@ impl InterpreterState {
         let names_result = (*frames).iter()
             .rev()
             .map(|ref tbframe| {
-                let objref = tbframe.object();
-                let boxed: &Box<Builtin> = objref.0.borrow();
 
-                match boxed.deref() {
+                match tbframe.object().as_ref() {
                     &Builtin::Frame(ref pyframe) => {
                         let fcode = pyframe.value.0.f_code.clone();
 
@@ -837,9 +827,8 @@ impl InterpreterState {
                         &format!("{} is not a Frame object", other.debug_name())))
                 }
             }).map_results(|(ref code, line)| {
-                let boxed: &Box<Builtin> = code.0.borrow();
 
-                match boxed.deref() {
+                match code.as_ref() {
                     &Builtin::Code(ref pycode) => {
                         Ok(format!(
                             "<{} at {:?}>",
@@ -874,21 +863,19 @@ impl InterpreterState {
     pub fn log_state (&self) {
         // FIXME: Remove when parser/compiler allows for an expression of a single name
         // or maybe just hardcode that in?
-        let stack: String = self.stack_view().iter().enumerate().map(|(idx, objref)| {
-            let b: &Box<Builtin> = objref.0.borrow();
-            match b.native_str() {
-                Ok(s) => format!("{}: {} = {}", idx, b.debug_name(), s),
-                Err(_) => format!("{}: {} = ??", idx, b.debug_name()),
+        let stack: String = self.stack_view().iter().enumerate().map(|(idx, obj)| {
+            match obj.native_str() {
+                Ok(s) => format!("{}: {} = {}", idx, obj.as_ref().debug_name(), s),
+                Err(_) => format!("{}: {} = ??", idx, obj.as_ref().debug_name()),
             }
         }).collect::<Vec<String>>().join("\n");
 
-        let values: Vec<String> = self.ns.iter().map(|(key, v): (&String, &RtObject)| {
-            let b: &Box<Builtin> = v.0.borrow();
+        let values: Vec<String> = self.ns.iter().map(|(key, value): (&String, &RtObject)| {
 
-            match b.native_str() {
-                Ok(ref s) if s.len() > 100  => format!("{}: {} = {}...", key, b.debug_name(), &s[..100]),
-                Ok(s) => format!("{}: {} = {}", key, b.debug_name(), s),
-                Err(_) => format!("{}: {} = ??", key, b.debug_name()),
+            match value.native_str() {
+                Ok(ref s) if s.len() > 100  => format!("{}: {} = {}...", key, value.as_ref().debug_name(), &s[..100]),
+                Ok(s) => format!("{}: {} = {}", key, value.as_ref().debug_name(), s),
+                Err(_) => format!("{}: {} = ??", key, value.as_ref().debug_name()),
             }
         }).collect();
 
@@ -1171,10 +1158,9 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
         // Force pop in interactive mode to clear return values?
         match interpreter.force_pop() {
-            Some(objref) => {
-                if objref != rt.none() {
-                    let boxed: &Box<Builtin> = objref.0.borrow();
-                    let string = match boxed.native_str() {
+            Some(object) => {
+                if object != rt.none() {
+                    let string = match object.native_str() {
                         Ok(s) => s,
                         Err(err) => format!("{:?}Error: {}", err.0, err.1),
                     };

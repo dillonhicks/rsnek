@@ -13,7 +13,7 @@ use serde::ser::{Serializer};
 use rsnek_compile::{Id, Tag, Num, OwnedTk};
 
 use ::opcode::OpCode;
-use ::result::{RuntimeResult, NativeResult};
+use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::typedef;
 use ::object::RtObject;
@@ -77,8 +77,8 @@ pub type Set = std::collections::HashSet<SetElement>;
 pub type NativeFnArgs = (Tuple, Tuple, Dict);
 pub type FnArgs = (RtObject, RtObject, RtObject);
 
-pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
-pub type WrapperFn = Fn(&Runtime, &RtObject, &RtObject, &RtObject) -> RuntimeResult;
+pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> RtResult<Builtin>;
+pub type WrapperFn = Fn(&Runtime, &RtObject, &RtObject, &RtObject) -> ObjectResult;
 
 #[derive(Debug, Serialize)]
 pub struct Func {
@@ -129,7 +129,7 @@ pub enum Iterator {
 }
 
 impl Iterator {
-    pub fn new(source: &RtObject) -> NativeResult<Self> {
+    pub fn new(source: &RtObject) -> RtResult<Self> {
         // TODO: {T101} Type assertions on new iterators or make it part of the `iter()`
         // builtin?
         Ok(Iterator::Sequence {source: source.clone(), idx_next: Cell::new(0)})

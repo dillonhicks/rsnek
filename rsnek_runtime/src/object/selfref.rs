@@ -6,7 +6,7 @@ use num::Zero;
 
 use ::error::Error;
 use ::object::{RtObject, WeakRtObject};
-use ::result::RuntimeResult;
+use ::result::ObjectResult;
 use ::typedef::native;
 
 
@@ -27,7 +27,7 @@ pub trait SelfRef: Sized {
     fn weak_count(&self) -> native::Integer;
     fn set(&self, &RtObject);
     fn get(&self) -> WeakRtObject;
-    fn upgrade(&self) -> RuntimeResult;
+    fn upgrade(&self) -> ObjectResult;
 }
 
 
@@ -100,7 +100,7 @@ impl SelfRef for RefCount {
 
     /// Take the `WeakRtObject` backing the `SelfRef` and attempt to upgrade it
     /// to its strong version `RtObject`.
-    fn upgrade(&self) -> RuntimeResult {
+    fn upgrade(&self) -> ObjectResult {
         match *self.0.borrow().deref() {
             Some(ref weak) => weak.clone().upgrade(),
             None => Err(Error::runtime("Cannot upgrade a None weakref!")),

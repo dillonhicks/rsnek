@@ -12,7 +12,7 @@ use ::object::RtObject;
 use ::object::typing::BuiltinType;
 use ::object::method::{GetItem, SetAttr, GetAttr};
 use ::resource::strings;
-use ::result::{RuntimeResult};
+use ::result::{ObjectResult};
 use ::traits::{
     BooleanProvider,
     BytesProvider,
@@ -195,7 +195,7 @@ impl Runtime {
 
 
 impl<'a> ModuleImporter<&'a str> for Runtime {
-    fn import_module(&self, name: &'a str) -> RuntimeResult {
+    fn import_module(&self, name: &'a str) -> ObjectResult {
         match name {
             strings::BUILTINS_MODULE => {
                 let ref_: Ref<RtObject> = self.0.mod_builtins.borrow();
@@ -587,11 +587,10 @@ impl ModuleProvider<native::None> for Runtime {
 
 // Module registry
 impl ModuleFinder<&'static str> for Runtime {
-    fn get_module(&self, name: &'static str) -> RuntimeResult {
-        let boxed: Ref<RtObject> = self.0.modules.borrow();
-        let boxed: &Box<Builtin> = boxed.0.borrow();
+    fn get_module(&self, name: &'static str) -> ObjectResult {
+        let modules: Ref<RtObject> = self.0.modules.borrow();
 
-        match boxed.op_getitem(&self, &self.str(name)) {
+        match modules.op_getitem(&self, &self.str(name)) {
             Ok(objref) => Ok(objref),
             Err(Error(ErrorType::Key, _)) => Err(Error::module_not_found(name)),
             Err(err) => Err(err)
@@ -602,7 +601,7 @@ impl ModuleFinder<&'static str> for Runtime {
 impl<'a> ModuleImporter<(&'static str, &'a RtObject)> for Runtime {
 
     #[allow(unused_variables)]
-    fn import_module(&self, args: (&'static str, &RtObject)) -> RuntimeResult {
+    fn import_module(&self, args: (&'static str, &RtObject)) -> ObjectResult {
         Err(Error::not_implemented())
     }
 }
@@ -635,8 +634,7 @@ mod tests {
         let starargs = rt.tuple(vec![]);
         let kwargs = rt.dict(native::Dict::new());
 
-        let func = rt.get_builtin("len");
-        let len: &Box<Builtin> = func.0.borrow();
+        let len = rt.get_builtin("len");
 
         b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
 
