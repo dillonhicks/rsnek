@@ -121,8 +121,10 @@ RSNEK_BINARY=target/release/rsnek
 VALGRIND_PYTHON_SRCFILE=rsnek/tests/test.py
 VALGRIND_MEMCHECK_XMLFILE=target/release/valgrind.memcheck.xml
 VALGRIND_CACHEGRIND_FILE=target/release/valgrind.cachegrind.txt
+OPROF_OUTDIR=target/release/oprofile_data
+PERF_STATS_FILE=target/release/perf.stats.txt
 
-valgrind:
+perf:
 	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
 	cat rsnek/src/main.rs >> rsnek/maingrind.rs
 	mv rsnek/src/main.rs rsnek/src/main.rs.bak
@@ -144,21 +146,13 @@ valgrind:
 		-v $(RSNEK_BINARY) \
 		$(VALGRIND_PYTHON_SRCFILE)
 	-cat $(VALGRIND_CACHEGRIND_FILE)
-
-
-
-OPROF_OUTDIR=target/release/oprofile_data
-oprofile:
-	mkdir -p $(OPROF_OUTDIR)
+	-mkdir -p $(OPROF_OUTDIR)
 	-operf -d $(OPROF_OUTDIR) $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
 	-opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
 
-
-PERF_STATS_FILE=target/release/perf.stats.txt
-
-perf:
 	-perf stat -r 25 -ddd $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE) 2>&1 | tee -a $(PERF_STATS_FILE)
 	-perf stat -r 25 -ddd python -B $(VALGRIND_PYTHON_SRCFILE) | tee -a $(PERF_STATS_FILE)
+
 
 
 # Get the status of the stages of the AWS CodePipeline for this project and

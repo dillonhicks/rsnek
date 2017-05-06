@@ -12,18 +12,14 @@ phases:
       - make build
       - echo Test started on `date`
       - make test
+      - echo Bench started on `date`
+      - make bench
+      - echo Perf started on `date`
+      - make perf
       - echo Release started on `date`
       - make release
       - echo Test Release started on `date`
       - make test-release
-      - echo Bench started on `date`
-      - make bench
-      - echo Valgrind started on `date`
-      - make valgrind
-      - echo Oprofile started on `date`
-      - make oprofile
-      - echo Perf started on `date`
-      - make perf
       - echo Docs started on `date`
       - make docs
       - echo Finshed on `date`
