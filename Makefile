@@ -163,7 +163,7 @@ pipeline-status:
 
 #
 docs-%:
-	cargo rustdoc --lib -p $* -- \
+	$(CARGO) rustdoc --lib -p $* -- \
 	    --no-defaults \
 	    --passes strip-hidden \
 	    --passes collapse-docs \
@@ -177,7 +177,7 @@ docs-%:
 # directly to ensure that the private modules are present in the
 # documentation.
 docs:
-	cargo doc --all
+	$(CARGO) doc --all
 	$(MAKE) docs-rsnek_compile
 	$(MAKE) docs-rsnek_runtime
 
