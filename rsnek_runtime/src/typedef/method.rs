@@ -123,15 +123,21 @@ impl PyFunction {
 }
 
 
-//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-////    Python Object Traits
-//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl fmt::Display for PyFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Method")
+    }
+}
+
+impl fmt::Debug for PyFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Method")
+    }
+}
 
 
 impl object::PyAPI for PyFunction {}
-impl method::New for PyFunction {}
-impl method::Init for PyFunction {}
-impl method::Delete for PyFunction {}
+
 
 impl method::GetAttr for PyFunction {
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
@@ -165,11 +171,6 @@ impl method::GetAttr for PyFunction {
     }
 }
 
-impl method::GetAttribute for PyFunction {}
-
-impl method::SetAttr for PyFunction {}
-
-impl method::DelAttr for PyFunction {}
 
 impl method::Id for PyFunction {
     // TODO: {T104} why do we have to go back through the builtin? Is there a good reason to
@@ -220,74 +221,13 @@ impl method::StringCast for PyFunction {
         Ok(name)
     }
 }
-impl method::BytesCast for PyFunction {}
-impl method::StringFormat for PyFunction {}
-impl method::StringRepresentation for PyFunction {}
 
 impl method::Equal for PyFunction {
     fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
-impl method::NotEqual for PyFunction {}
-impl method::LessThan for PyFunction {}
-impl method::LessOrEqual for PyFunction {}
-impl method::GreaterOrEqual for PyFunction {}
-impl method::GreaterThan for PyFunction {}
-impl method::BooleanCast for PyFunction {}
-impl method::IntegerCast for PyFunction {}
-impl method::FloatCast for PyFunction {}
-impl method::ComplexCast for PyFunction {}
-impl method::Rounding for PyFunction {}
-impl method::Index for PyFunction {}
-impl method::NegateValue for PyFunction {}
-impl method::AbsValue for PyFunction {}
-impl method::PositiveValue for PyFunction {}
-impl method::InvertValue for PyFunction {}
-impl method::Add for PyFunction {}
-impl method::BitwiseAnd for PyFunction {}
-impl method::DivMod for PyFunction {}
-impl method::FloorDivision for PyFunction {}
-impl method::LeftShift for PyFunction {}
-impl method::Modulus for PyFunction {}
-impl method::Multiply for PyFunction {}
-impl method::MatrixMultiply for PyFunction {}
-impl method::BitwiseOr for PyFunction {}
-impl method::Pow for PyFunction {}
-impl method::RightShift for PyFunction {}
-impl method::Subtract for PyFunction {}
-impl method::TrueDivision for PyFunction {}
-impl method::XOr for PyFunction {}
-impl method::ReflectedAdd for PyFunction {}
-impl method::ReflectedBitwiseAnd for PyFunction {}
-impl method::ReflectedDivMod for PyFunction {}
-impl method::ReflectedFloorDivision for PyFunction {}
-impl method::ReflectedLeftShift for PyFunction {}
-impl method::ReflectedModulus for PyFunction {}
-impl method::ReflectedMultiply for PyFunction {}
-impl method::ReflectedMatrixMultiply for PyFunction {}
-impl method::ReflectedBitwiseOr for PyFunction {}
-impl method::ReflectedPow for PyFunction {}
-impl method::ReflectedRightShift for PyFunction {}
-impl method::ReflectedSubtract for PyFunction {}
-impl method::ReflectedTrueDivision for PyFunction {}
-impl method::ReflectedXOr for PyFunction {}
-impl method::InPlaceAdd for PyFunction {}
-impl method::InPlaceBitwiseAnd for PyFunction {}
-impl method::InPlaceDivMod for PyFunction {}
-impl method::InPlaceFloorDivision for PyFunction {}
-impl method::InPlaceLeftShift for PyFunction {}
-impl method::InPlaceModulus for PyFunction {}
-impl method::InPlaceMultiply for PyFunction {}
-impl method::InPlaceMatrixMultiply for PyFunction {}
-impl method::InPlaceBitwiseOr for PyFunction {}
-impl method::InPlacePow for PyFunction {}
-impl method::InPlaceRightShift for PyFunction {}
-impl method::InPlaceSubtract for PyFunction {}
-impl method::InPlaceTrueDivision for PyFunction {}
-impl method::InPlaceXOr for PyFunction {}
-impl method::Contains for PyFunction {}
-impl method::Iter for PyFunction {}
+
 impl method::Call for PyFunction {
     fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
         match self.value.0.callable {
@@ -306,65 +246,35 @@ impl method::Call for PyFunction {
                                           &format!("file: {}, line: {}", file!(), line!())))
     }
 }
-impl method::Length for PyFunction {}
-impl method::LengthHint for PyFunction {}
-impl method::Next for PyFunction {}
-impl method::Reversed for PyFunction {}
-impl method::GetItem for PyFunction {}
-impl method::SetItem for PyFunction {}
-impl method::DeleteItem for PyFunction {}
-impl method::Count for PyFunction {}
-impl method::Append for PyFunction {}
-impl method::Extend for PyFunction {}
-impl method::Pop for PyFunction {}
-impl method::Remove for PyFunction {}
-impl method::IsDisjoint for PyFunction {}
-impl method::AddItem for PyFunction {}
-impl method::Discard for PyFunction {}
-impl method::Clear for PyFunction {}
-impl method::Get for PyFunction {}
-impl method::Keys for PyFunction {}
-impl method::Values for PyFunction {}
-impl method::Items for PyFunction {}
-impl method::PopItem for PyFunction {}
-impl method::Update for PyFunction {}
-impl method::SetDefault for PyFunction {}
-impl method::Await for PyFunction {}
-impl method::Send for PyFunction {}
-impl method::Throw for PyFunction {}
-impl method::Close for PyFunction {}
-impl method::Exit for PyFunction {}
-impl method::Enter for PyFunction {}
-impl method::DescriptorGet for PyFunction {}
-impl method::DescriptorSet for PyFunction {}
-impl method::DescriptorSetName for PyFunction {}
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//        stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+method_not_implemented!(PyFunction,
+    AbsValue   Add   AddItem   Append
+    Await   BitwiseAnd   BitwiseOr   BooleanCast
+    BytesCast  Clear   Close   ComplexCast   Contains   Count   DelAttr
+    Delete   DeleteItem   DescriptorGet   DescriptorSet
+    DescriptorSetName   Discard   DivMod   Enter
+    Exit   Extend   FloatCast FloorDivision   Get   GetAttribute
+    GetItem   GreaterOrEqual   GreaterThan  InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr
+    InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
+    InPlaceModulus   InPlaceMultiply   InPlacePow   InPlaceRightShift
+    InPlaceSubtract   InPlaceTrueDivision   InPlaceXOr   Index
+    Init   IntegerCast   InvertValue   Is
+    IsDisjoint   IsNot   Items   Iter   Keys   LeftShift   Length   LengthHint
+    LessOrEqual   LessThan   MatrixMultiply   Modulus
+    Multiply   NegateValue   New   Next   NotEqual   Pop   PopItem   PositiveValue
+    Pow   ReflectedAdd   ReflectedBitwiseAnd   ReflectedBitwiseOr
+    ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift   ReflectedMatrixMultiply
+    ReflectedModulus   ReflectedMultiply   ReflectedPow   ReflectedRightShift
+    ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   Remove
+    Reversed   RightShift   Rounding   Send   SetAttr   SetDefault   SetItem
+    StringFormat   StringRepresentation   Subtract   Throw
+    TrueDivision   Update   Values   XOr
+);
 
-
-impl fmt::Display for PyFunction {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Method")
-    }
-}
-
-impl fmt::Debug for PyFunction {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Method")
-    }
-}
-
-
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//          Tests
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[cfg(test)]
-mod _api_method {
+mod tests {
     use traits::{FunctionProvider, BooleanProvider, NoneProvider, DictProvider, TupleProvider};
     use object::method::*;
     use super::*;
@@ -376,16 +286,14 @@ mod _api_method {
     #[test]
     fn is_() {
         let rt = setup_test();
-        let function = rt.function(native::None());
-        let function2 = function.clone();
-        let function3 = rt.function(native::None());
-
-        let boxed: &Box<Builtin> = function.0.borrow();
-
-        let result = boxed.op_is(&rt, &function2).unwrap();
+        let func = rt.function(native::None());
+        let func2 = func.clone();
+        let func3 = rt.function(native::None());
+        
+        let result = func.op_is(&rt, &func2).unwrap();
         assert_eq!(result, rt.bool(true));
 
-        let result = boxed.op_is(&rt, &function3).unwrap();
+        let result = func.op_is(&rt, &func3).unwrap();
         assert_eq!(result, rt.bool(false));
     }
 
@@ -393,16 +301,14 @@ mod _api_method {
     #[test]
     fn is_not() {
         let rt = setup_test();
-        let function = rt.function(native::None());
-        let function2 = function.clone();
-        let function3 = rt.function(native::None());
+        let func = rt.function(native::None());
+        let func2 = func.clone();
+        let func3 = rt.function(native::None());
 
-        let boxed: &Box<Builtin> = function.0.borrow();
-
-        let result = boxed.op_is_not(&rt, &function2).unwrap();
+        let result = func.op_is_not(&rt, &func2).unwrap();
         assert_eq!(result, rt.bool(false));
 
-        let result = boxed.op_is_not(&rt, &function3).unwrap();
+        let result = func.op_is_not(&rt, &func3).unwrap();
         assert_eq!(result, rt.bool(true));
     }
 
@@ -410,23 +316,14 @@ mod _api_method {
     #[test]
     fn __call__() {
         let rt = setup_test();
-        let function = rt.function(native::None());
+        let func = rt.function(native::None());
 
         let pos_args = rt.tuple(native::None());
         let starargs = rt.tuple(native::None());
         let kwargs = rt.dict(native::None());
 
-        let boxed: &Box<Builtin> = function.0.borrow();
-
-        let result = boxed.op_call(&rt, &pos_args, &starargs, &kwargs).unwrap();
+        let result = func.op_call(&rt, &pos_args, &starargs, &kwargs).unwrap();
         assert_eq!(result, rt.none());
     }
 
-
-    #[test]
-    fn debug() {
-        let rt = setup_test();
-        let object = rt.function(native::None());
-        println!("{:?}", object);
-    }
 }

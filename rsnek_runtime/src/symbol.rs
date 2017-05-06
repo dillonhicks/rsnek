@@ -8,11 +8,6 @@ use std::hash::{Hash, Hasher};
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeSeq};
 
-use rsnek_compile::{
-    Ast, Module, Stmt, Expr, Op, Lexer,
-    LexResult, Parser, ParserResult,
-    OwnedTk, Id};
-
 use rsnek_compile::fmt;
 use ::error::Error;
 use ::opcode::OpCode;

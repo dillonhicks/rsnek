@@ -69,82 +69,34 @@ pub struct IteratorValue(pub native::Iterator, pub Runtime);
 pub type PyIterator = RtValue<IteratorValue>;
 
 
+impl fmt::Display for PyIterator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Tuple({:?})", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyIterator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Tuple({:?})", self.value.0)
+    }
+}
+
+
+impl Iterator for PyIterator {
+    type Item = ObjectRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.native_next() {
+            Ok(objref) => Some(objref),
+            Err(Error(ErrorType::StopIteration, _)) => None,
+            Err(_) => panic!("Iterator logic fault")
+        }
+    }
+}
+
+
 impl object::PyAPI for PyIterator {}
-impl method::New for PyIterator {}
-impl method::Init for PyIterator {}
-impl method::Delete for PyIterator {}
-impl method::GetAttr for PyIterator {}
-impl method::GetAttribute for PyIterator {}
-impl method::SetAttr for PyIterator {}
-impl method::DelAttr for PyIterator {}
-impl method::Hashed for PyIterator {}
-impl method::StringCast for PyIterator {}
-impl method::BytesCast for PyIterator {}
-impl method::StringFormat for PyIterator {}
-impl method::StringRepresentation for PyIterator {}
-impl method::Equal for PyIterator {}
-impl method::NotEqual for PyIterator {}
-impl method::LessThan for PyIterator {}
-impl method::LessOrEqual for PyIterator {}
-impl method::GreaterOrEqual for PyIterator {}
-impl method::GreaterThan for PyIterator {}
-impl method::BooleanCast for PyIterator {}
-impl method::IntegerCast for PyIterator {}
-impl method::FloatCast for PyIterator {}
-impl method::ComplexCast for PyIterator {}
-impl method::Rounding for PyIterator {}
-impl method::Index for PyIterator {}
-impl method::NegateValue for PyIterator {}
-impl method::AbsValue for PyIterator {}
-impl method::PositiveValue for PyIterator {}
-impl method::InvertValue for PyIterator {}
-impl method::Add for PyIterator {}
-impl method::BitwiseAnd for PyIterator {}
-impl method::DivMod for PyIterator {}
-impl method::FloorDivision for PyIterator {}
-impl method::LeftShift for PyIterator {}
-impl method::Modulus for PyIterator {}
-impl method::Multiply for PyIterator {}
-impl method::MatrixMultiply for PyIterator {}
-impl method::BitwiseOr for PyIterator {}
-impl method::Pow for PyIterator {}
-impl method::RightShift for PyIterator {}
-impl method::Subtract for PyIterator {}
-impl method::TrueDivision for PyIterator {}
-impl method::XOr for PyIterator {}
-impl method::ReflectedAdd for PyIterator {}
-impl method::ReflectedBitwiseAnd for PyIterator {}
-impl method::ReflectedDivMod for PyIterator {}
-impl method::ReflectedFloorDivision for PyIterator {}
-impl method::ReflectedLeftShift for PyIterator {}
-impl method::ReflectedModulus for PyIterator {}
-impl method::ReflectedMultiply for PyIterator {}
-impl method::ReflectedMatrixMultiply for PyIterator {}
-impl method::ReflectedBitwiseOr for PyIterator {}
-impl method::ReflectedPow for PyIterator {}
-impl method::ReflectedRightShift for PyIterator {}
-impl method::ReflectedSubtract for PyIterator {}
-impl method::ReflectedTrueDivision for PyIterator {}
-impl method::ReflectedXOr for PyIterator {}
-impl method::InPlaceAdd for PyIterator {}
-impl method::InPlaceBitwiseAnd for PyIterator {}
-impl method::InPlaceDivMod for PyIterator {}
-impl method::InPlaceFloorDivision for PyIterator {}
-impl method::InPlaceLeftShift for PyIterator {}
-impl method::InPlaceModulus for PyIterator {}
-impl method::InPlaceMultiply for PyIterator {}
-impl method::InPlaceMatrixMultiply for PyIterator {}
-impl method::InPlaceBitwiseOr for PyIterator {}
-impl method::InPlacePow for PyIterator {}
-impl method::InPlaceRightShift for PyIterator {}
-impl method::InPlaceSubtract for PyIterator {}
-impl method::InPlaceTrueDivision for PyIterator {}
-impl method::InPlaceXOr for PyIterator {}
-impl method::Contains for PyIterator {}
-impl method::Iter for PyIterator {}
-impl method::Call for PyIterator {}
-impl method::Length for PyIterator {}
-impl method::LengthHint for PyIterator {}
+
 impl method::Next for PyIterator {
 
     #[allow(unused_variables)]
@@ -182,67 +134,39 @@ impl method::Next for PyIterator {
     }
 }
 
-impl method::Reversed for PyIterator {}
-impl method::GetItem for PyIterator {}
-impl method::SetItem for PyIterator {}
-impl method::DeleteItem for PyIterator {}
-impl method::Count for PyIterator {}
-impl method::Append for PyIterator {}
-impl method::Extend for PyIterator {}
-impl method::Pop for PyIterator {}
-impl method::Remove for PyIterator {}
-impl method::IsDisjoint for PyIterator {}
-impl method::AddItem for PyIterator {}
-impl method::Discard for PyIterator {}
-impl method::Clear for PyIterator {}
-impl method::Get for PyIterator {}
-impl method::Keys for PyIterator {}
-impl method::Values for PyIterator {}
-impl method::Items for PyIterator {}
-impl method::PopItem for PyIterator {}
-impl method::Update for PyIterator {}
-impl method::SetDefault for PyIterator {}
-impl method::Await for PyIterator {}
-impl method::Send for PyIterator {}
-impl method::Throw for PyIterator {}
-impl method::Close for PyIterator {}
-impl method::Exit for PyIterator {}
-impl method::Enter for PyIterator {}
-impl method::DescriptorGet for PyIterator {}
-impl method::DescriptorSet for PyIterator {}
-impl method::DescriptorSetName for PyIterator {}
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//      stdlib traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl fmt::Display for PyIterator {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Tuple({:?})", self.value.0)
-    }
-}
-
-impl fmt::Debug for PyIterator {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Tuple({:?})", self.value.0)
-    }
-}
-
-
-impl Iterator for PyIterator {
-    type Item = ObjectRef;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.native_next() {
-            Ok(objref) => Some(objref),
-            Err(Error(ErrorType::StopIteration, _)) => None,
-            Err(_) => panic!("Iterator logic fault")
-        }
-    }
-}
+method_not_implemented!(PyIterator,
+    AbsValue   Add   AddItem   Append
+    Await   BitwiseAnd   BitwiseOr   BooleanCast
+    BytesCast   Call   Clear   Close
+    ComplexCast   Contains   Count   DelAttr
+    Delete   DeleteItem   DescriptorGet   DescriptorSet
+    DescriptorSetName   Discard   DivMod   Enter
+    Equal   Exit   Extend   FloatCast
+    FloorDivision   Get   GetAttr   GetAttribute
+    GetItem   GreaterOrEqual   GreaterThan   Hashed
+    Id   InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr
+    InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
+    InPlaceModulus   InPlaceMultiply   InPlacePow   InPlaceRightShift
+    InPlaceSubtract   InPlaceTrueDivision   InPlaceXOr   Index
+    Init   IntegerCast   InvertValue   Is
+    IsDisjoint   IsNot   Items   Iter
+    Keys   LeftShift   Length   LengthHint
+    LessOrEqual   LessThan   MatrixMultiply   Modulus
+    Multiply   NegateValue   New
+    NotEqual   Pop   PopItem   PositiveValue
+    Pow   ReflectedAdd   ReflectedBitwiseAnd   ReflectedBitwiseOr
+    ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift   ReflectedMatrixMultiply
+    ReflectedModulus   ReflectedMultiply   ReflectedPow   ReflectedRightShift
+    ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   Remove
+    Reversed   RightShift   Rounding   Send
+    SetAttr   SetDefault   SetItem   StringCast
+    StringFormat   StringRepresentation   Subtract   Throw
+    TrueDivision   Update   Values   XOr
+);
 
 
 #[cfg(test)]
-mod _api_method {
+mod tests {
     #[allow(unused_imports)]
     use traits::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
     use object::method::*;

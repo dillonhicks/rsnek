@@ -72,7 +72,6 @@ pub type Dict = std::collections::HashMap<DictKey, ObjectRef>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct SetElement(pub HashId, pub ObjectRef);
-#[allow(dead_code)]
 pub type Set = std::collections::HashSet<SetElement>;
 
 pub type NativeFnArgs = (Tuple, Tuple, Dict);

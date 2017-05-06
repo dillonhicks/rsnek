@@ -96,15 +96,21 @@ impl PyObject {
 
 }
 
-//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-////    Python Object Traits
-//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl fmt::Display for PyObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value.0)
+    }
+}
+
+impl fmt::Debug for PyObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value.0)
+    }
+}
+
 
 
 impl object::PyAPI for PyObject {}
-impl method::New for PyObject {}
-impl method::Init for PyObject {}
-impl method::Delete for PyObject {}
 
 impl method::GetAttr for PyObject {
     // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
@@ -154,7 +160,6 @@ impl method::GetAttr for PyObject {
         }
     }
 }
-impl method::GetAttribute for PyObject {}
 
 impl method::SetAttr for PyObject {
     fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
@@ -192,7 +197,6 @@ impl method::SetAttr for PyObject {
     }
 }
 
-impl method::DelAttr for PyObject {}
 impl method::Id for PyObject {
     fn native_id(&self) -> native::ObjectId {
         match self.rc.upgrade() {
@@ -219,137 +223,40 @@ impl method::Hashed for PyObject {
         Ok(s.finish())
     }
 }
-impl method::StringCast for PyObject {}
-impl method::BytesCast for PyObject {}
-impl method::StringFormat for PyObject {}
-impl method::StringRepresentation for PyObject {}
-impl method::Equal for PyObject {}
-impl method::NotEqual for PyObject {}
-impl method::LessThan for PyObject {}
-impl method::LessOrEqual for PyObject {}
-impl method::GreaterOrEqual for PyObject {}
-impl method::GreaterThan for PyObject {}
-impl method::BooleanCast for PyObject {}
-impl method::IntegerCast for PyObject {}
-impl method::FloatCast for PyObject {}
-impl method::ComplexCast for PyObject {}
-impl method::Rounding for PyObject {}
-impl method::Index for PyObject {}
-impl method::NegateValue for PyObject {}
-impl method::AbsValue for PyObject {}
-impl method::PositiveValue for PyObject {}
-impl method::InvertValue for PyObject {}
-impl method::Add for PyObject {}
-impl method::BitwiseAnd for PyObject {}
-impl method::DivMod for PyObject {}
-impl method::FloorDivision for PyObject {}
-impl method::LeftShift for PyObject {}
-impl method::Modulus for PyObject {}
-impl method::Multiply for PyObject {}
-impl method::MatrixMultiply for PyObject {}
-impl method::BitwiseOr for PyObject {}
-impl method::Pow for PyObject {}
-impl method::RightShift for PyObject {}
-impl method::Subtract for PyObject {}
-impl method::TrueDivision for PyObject {}
-impl method::XOr for PyObject {}
-impl method::ReflectedAdd for PyObject {}
-impl method::ReflectedBitwiseAnd for PyObject {}
-impl method::ReflectedDivMod for PyObject {}
-impl method::ReflectedFloorDivision for PyObject {}
-impl method::ReflectedLeftShift for PyObject {}
-impl method::ReflectedModulus for PyObject {}
-impl method::ReflectedMultiply for PyObject {}
-impl method::ReflectedMatrixMultiply for PyObject {}
-impl method::ReflectedBitwiseOr for PyObject {}
-impl method::ReflectedPow for PyObject {}
-impl method::ReflectedRightShift for PyObject {}
-impl method::ReflectedSubtract for PyObject {}
-impl method::ReflectedTrueDivision for PyObject {}
-impl method::ReflectedXOr for PyObject {}
-impl method::InPlaceAdd for PyObject {}
-impl method::InPlaceBitwiseAnd for PyObject {}
-impl method::InPlaceDivMod for PyObject {}
-impl method::InPlaceFloorDivision for PyObject {}
-impl method::InPlaceLeftShift for PyObject {}
-impl method::InPlaceModulus for PyObject {}
-impl method::InPlaceMultiply for PyObject {}
-impl method::InPlaceMatrixMultiply for PyObject {}
-impl method::InPlaceBitwiseOr for PyObject {}
-impl method::InPlacePow for PyObject {}
-impl method::InPlaceRightShift for PyObject {}
-impl method::InPlaceSubtract for PyObject {}
-impl method::InPlaceTrueDivision for PyObject {}
-impl method::InPlaceXOr for PyObject {}
-impl method::Contains for PyObject {}
-impl method::Iter for PyObject {}
-impl method::Call for PyObject {}
-impl method::Length for PyObject {}
-impl method::LengthHint for PyObject {}
-impl method::Next for PyObject {}
-impl method::Reversed for PyObject {}
-impl method::GetItem for PyObject {}
-impl method::SetItem for PyObject {}
-impl method::DeleteItem for PyObject {}
-impl method::Count for PyObject {}
-impl method::Append for PyObject {}
-impl method::Extend for PyObject {}
-impl method::Pop for PyObject {}
-impl method::Remove for PyObject {}
-impl method::IsDisjoint for PyObject {}
-impl method::AddItem for PyObject {}
-impl method::Discard for PyObject {}
-impl method::Clear for PyObject {}
-impl method::Get for PyObject {}
-impl method::Keys for PyObject {}
-impl method::Values for PyObject {}
-impl method::Items for PyObject {}
-impl method::PopItem for PyObject {}
-impl method::Update for PyObject {}
-impl method::SetDefault for PyObject {}
-impl method::Await for PyObject {}
-impl method::Send for PyObject {}
-impl method::Throw for PyObject {}
-impl method::Close for PyObject {}
-impl method::Exit for PyObject {}
-impl method::Enter for PyObject {}
-impl method::DescriptorGet for PyObject {}
-impl method::DescriptorSet for PyObject {}
-impl method::DescriptorSetName for PyObject {}
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//        stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+method_not_implemented!(PyObject,
+    AbsValue   Add   AddItem   Append  Await   BitwiseAnd   BitwiseOr   BooleanCast
+    BytesCast   Call   Clear   Close  ComplexCast   Contains   Count   DelAttr
+    Delete   DeleteItem   DescriptorGet   DescriptorSet DescriptorSetName   Discard   DivMod
+    Enter Equal   Exit   Extend   FloatCast FloorDivision   Get  GetAttribute
+    GetItem   GreaterOrEqual   GreaterThan   InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr
+    InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
+    InPlaceModulus   InPlaceMultiply   InPlacePow   InPlaceRightShift  InPlaceSubtract
+    InPlaceTrueDivision   InPlaceXOr   Index   Init   IntegerCast   InvertValue   Is
+    IsDisjoint   IsNot   Items   Iter   Keys   LeftShift   Length   LengthHint
+    LessOrEqual   LessThan   MatrixMultiply   Modulus  Multiply   NegateValue   New   Next
+    NotEqual   Pop   PopItem   PositiveValue  Pow   ReflectedAdd   ReflectedBitwiseAnd
+    ReflectedBitwiseOr   ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift
+    ReflectedMatrixMultiply   ReflectedModulus   ReflectedMultiply   ReflectedPow
+    ReflectedRightShift   ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   Remove
+    Reversed   RightShift   Rounding   Send   SetDefault   SetItem   StringCast
+    StringFormat   StringRepresentation   Subtract   Throw TrueDivision   Update   Values   XOr
+);
 
-
-impl fmt::Display for PyObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.value.0)
-    }
-}
-
-impl fmt::Debug for PyObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.value.0)
-    }
-}
-
-
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//          Tests
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[cfg(test)]
-mod _api_method {
-    use traits::{BooleanProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
+mod tests {
+    use traits::{BooleanProvider, TupleProvider, NoneProvider, DictProvider,
+                 StringProvider, IntegerProvider, ObjectProvider};
     use object::method::*;
     use super::*;
+
 
     fn setup_test() -> (Runtime) {
         Runtime::new()
     }
+
 
     #[test]
     fn is_() {
@@ -397,27 +304,28 @@ mod _api_method {
         assert_eq!(result, rt.none())
     }
 
+    #[cfg(test)]
     mod __getattr__ {
         use super::*;
+
         #[test]
         fn set_and_get() {
             let rt = setup_test();
             let object = rt.object(native::None());
 
-            let boxed: &Box<Builtin> = object.0.borrow();
             let key = rt.str("hello");
             let value = rt.int(234);
 
-            let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+            let result = object.op_setattr(&rt, &key, &value).unwrap();
             assert_eq!(result, rt.none());
 
-            let result = boxed.op_getattr(&rt, &key).unwrap();
-            assert_eq!(result, value);
+            let attr = object.op_getattr(&rt, &key).unwrap();
+            assert_eq!(attr, value);
         }
 
         #[test]
         #[should_panic]
-        fn get_nonexistant_key() {
+        fn get_missing_key() {
             let rt = setup_test();
             let object = rt.object(native::None());
 
@@ -434,28 +342,6 @@ mod _api_method {
 
     }
 
-    #[test]
-    fn debug() {
-        let rt = setup_test();
-        let object = rt.object(native::None());
-        println!("{:?}", object);
-    }
-}
-
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//          Tests
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-#[cfg(test)]
-mod _integration {
-    use traits::{DictProvider, TupleProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
-    use object::method::*;
-    use super::*;
-
-    fn setup_test() -> (Runtime) {
-        Runtime::new()
-    }
 
     /// Milestone v0.2.0
     ///
@@ -466,22 +352,19 @@ mod _integration {
         let rt = setup_test();
         let object = rt.object(native::None());
 
-        let boxed: &Box<Builtin> = object.0.borrow();
+        let builtin_func = rt.get_builtin("len");
         let key = rt.str("test_function");
-
-        let func = rt.get_builtin("len");
-        let result = boxed.op_setattr(&rt, &key, &func).unwrap();
+        let result = object.op_setattr(&rt, &key, &builtin_func).unwrap();
         assert_eq!(result, rt.none());
 
-        let result = boxed.op_getattr(&rt, &key).unwrap();
-        assert_eq!(result, func);
+        let len = object.op_getattr(&rt, &key).unwrap();
+        assert_eq!(len, builtin_func);
 
         let tuple = rt.tuple(vec![rt.none(), rt.int(3), rt.str("Potato!@!@")]);
         let args = rt.tuple(vec![tuple.clone()]);
         let starargs = rt.tuple(vec![]);
         let kwargs = rt.dict(native::Dict::new());
 
-        let len: &Box<Builtin> = result.0.borrow();
         let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
         assert_eq!(result, rt.int(3));
     }

@@ -17,7 +17,7 @@ const_fn = []
 
 
 [dependencies]
-slog = {version = "2"}
+slog = {version = "2", features=["max_level_trace", "release_max_level_info"]}
 slog-scope = "^3.0.0"
 
 

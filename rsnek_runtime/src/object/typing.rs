@@ -20,6 +20,8 @@ pub trait BuiltinType {
     type T;
     type V;
 
+    //fn name() -> &'static str;
+
     /// Create the type and do any static initialization that may be needed
     fn init_type() -> Self;
 
@@ -31,4 +33,5 @@ pub trait BuiltinType {
 
     /// Create a new instance of the primitve type that his reference counted
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef;
+
 }

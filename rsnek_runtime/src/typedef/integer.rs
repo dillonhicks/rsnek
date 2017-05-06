@@ -89,6 +89,7 @@ impl typing::BuiltinType for PyIntegerType {
             rc: selfref::RefCount::default(),
         }
     }
+
 }
 
 
@@ -263,9 +264,6 @@ impl PyInteger {
 }
 
 
-// ---------------
-//  stdlib traits
-// ---------------
 impl fmt::Display for PyInteger {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value.0)
@@ -277,6 +275,7 @@ impl fmt::Debug for PyInteger {
         write!(f, "{:?}", self.value.0)
     }
 }
+
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
@@ -557,97 +556,28 @@ impl method::Subtract for PyInteger {
 }
 
 method_not_implemented!(PyInteger,
-    New
-    Init
-    Delete
-    GetAttribute
-    SetAttr
-    DelAttr
-    Id
-    Is
-    IsNot
-    BytesCast
-    StringFormat
-    LessThan
-    LessOrEqual
-    GreaterOrEqual
-    GreaterThan
-    FloatCast
-    ComplexCast
-    Rounding
-    Index
-    AbsValue
-    PositiveValue
-    InvertValue
-    BitwiseAnd
-    DivMod
-    FloorDivision
-    Modulus
-    BitwiseOr
-    MatrixMultiply
-    TrueDivision
-    XOr
-    ReflectedAdd
-    ReflectedBitwiseAnd
-    ReflectedDivMod
-    ReflectedFloorDivision
-    ReflectedLeftShift
-    ReflectedModulus
-    ReflectedMultiply
-    ReflectedMatrixMultiply
-    ReflectedBitwiseOr
-    ReflectedPow
-    ReflectedRightShift
-    ReflectedSubtract
-    ReflectedTrueDivision
-    ReflectedXOr
-    InPlaceAdd
-    InPlaceBitwiseAnd
-    InPlaceDivMod
-    InPlaceFloorDivision
-    InPlaceLeftShift
-    InPlaceModulus
-    InPlaceMultiply
-    InPlaceMatrixMultiply
-    InPlaceBitwiseOr
-    InPlacePow
-    InPlaceRightShift
-    InPlaceSubtract
-    InPlaceTrueDivision
-    InPlaceXOr
-    Contains
-    Iter
-    Call
-    Length
-    LengthHint
-    Next
-    Reversed
-    GetItem
-    SetItem
-    DeleteItem
-    Count
-    Append
-    Extend
-    Pop
-    Remove
-    IsDisjoint
-    AddItem
-    Discard
-    Clear
-    Get
-    Keys
-    Values
-    Items
-    PopItem
-    Update
-    SetDefault
-    Await
-    Send
-    Throw
-    Close
-    Exit
-    Enter
-    DescriptorGet
-    DescriptorSet
+    New   Init   Delete   GetAttribute   
+    SetAttr   DelAttr   Id   Is   
+    IsNot   BytesCast   StringFormat   LessThan   
+    LessOrEqual   GreaterOrEqual   GreaterThan   FloatCast   
+    ComplexCast   Rounding   Index   AbsValue   
+    PositiveValue   InvertValue   BitwiseAnd   DivMod   
+    FloorDivision   Modulus   BitwiseOr   MatrixMultiply   
+    TrueDivision   XOr   ReflectedAdd   ReflectedBitwiseAnd   
+    ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift   ReflectedModulus   
+    ReflectedMultiply   ReflectedMatrixMultiply   ReflectedBitwiseOr   ReflectedPow   
+    ReflectedRightShift   ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   
+    InPlaceAdd   InPlaceBitwiseAnd   InPlaceDivMod   InPlaceFloorDivision   
+    InPlaceLeftShift   InPlaceModulus   InPlaceMultiply   InPlaceMatrixMultiply   
+    InPlaceBitwiseOr   InPlacePow   InPlaceRightShift   InPlaceSubtract   
+    InPlaceTrueDivision   InPlaceXOr   Contains   Iter   
+    Call   Length   LengthHint   Next   
+    Reversed   GetItem   SetItem   DeleteItem   
+    Count   Append   Extend   Pop   
+    Remove   IsDisjoint   AddItem   Discard   
+    Clear   Get   Keys   Values   
+    Items   PopItem   Update   SetDefault   
+    Await   Send   Throw   Close   
+    Exit   Enter   DescriptorGet   DescriptorSet   
     DescriptorSetName
 );
