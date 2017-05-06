@@ -20,15 +20,15 @@ use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
 use typedef::object::PyObjectType;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 
 pub struct PyFunctionType {
-    pub function_type: ObjectRef,
+    pub function_type: RtObject,
 }
 
 impl PyFunctionType {
-    pub fn init_type(typeref: &ObjectRef, object: &ObjectRef) -> Self {
+    pub fn init_type(typeref: &RtObject, object: &RtObject) -> Self {
 
         let method = PyObjectType::inject_selfref(PyObjectType::alloc(
             native::Object {
@@ -47,7 +47,7 @@ impl typing::BuiltinType for PyFunctionType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyFunctionType::inject_selfref(PyFunctionType::alloc(value))
     }
 
@@ -55,8 +55,8 @@ impl typing::BuiltinType for PyFunctionType {
         unimplemented!()
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Function(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Function(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -95,9 +95,9 @@ impl PyFunction {
                     rt: &Runtime,
                     callable: &Box<WrapperFn>,
                     signature: &Signature,
-                    pos_args: &ObjectRef,
-                    star_args: &ObjectRef,
-                    kwargs: &ObjectRef)
+                    pos_args: &RtObject,
+                    star_args: &RtObject,
+                    kwargs: &RtObject)
                     -> RuntimeResult {
 
         let boxed: &Box<Builtin> = pos_args.0.borrow();
@@ -140,7 +140,7 @@ impl object::PyAPI for PyFunction {}
 
 
 impl method::GetAttr for PyFunction {
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = name.0.borrow();
         match boxed.deref() {
             &Builtin::Str(ref pystring) => {
@@ -229,7 +229,7 @@ impl method::Equal for PyFunction {
 }
 
 impl method::Call for PyFunction {
-    fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, star_args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    fn op_call(&self, rt: &Runtime, pos_args: &RtObject, star_args: &RtObject, kwargs: &RtObject) -> RuntimeResult {
         match self.value.0.callable {
             FuncType::MethodWrapper(_, ref func) |
             FuncType::Wrapper(ref func) => self.call_wrapper(

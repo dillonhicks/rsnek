@@ -18,11 +18,11 @@ use object::selfref::{self, SelfRef};
 use ::typedef::collection::sequence;
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, List};
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 
 pub struct PyListType {
-    pub empty: ObjectRef,
+    pub empty: RtObject,
 }
 
 
@@ -32,7 +32,7 @@ impl typing::BuiltinType for PyListType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyListType::inject_selfref(PyListType::alloc(value))
     }
 
@@ -40,8 +40,8 @@ impl typing::BuiltinType for PyListType {
         PyListType { empty: PyListType::inject_selfref(PyListType::alloc(native::List::new())) }
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::List(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::List(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -106,7 +106,7 @@ impl method::StringCast for PyList {
 
 impl method::Equal for PyList {
 
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
         let truth = self.native_eq(boxed)?;
         Ok(rt.bool(truth))
@@ -125,7 +125,7 @@ impl method::Equal for PyList {
 }
 
 impl method::NotEqual for PyList {
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
 
         let truth = self.native_ne(boxed)?;
@@ -155,7 +155,7 @@ impl method::BooleanCast for PyList {
 
 impl method::Multiply for PyList {
 
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -180,7 +180,7 @@ impl method::Multiply for PyList {
 
 
 impl method::Contains for PyList {
-    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = item.0.borrow();
         let truth = self.native_contains(boxed)?;
         Ok(rt.bool(truth))
@@ -220,7 +220,7 @@ impl method::Length for PyList {
 
 impl method::GetItem for PyList {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = index.0.borrow();
         self.native_getitem(boxed)
     }

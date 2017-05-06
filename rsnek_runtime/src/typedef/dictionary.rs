@@ -8,7 +8,7 @@ use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
 use traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use error::Error;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::native::{self, DictKey};
 use typedef::builtin::Builtin;
 
@@ -26,7 +26,7 @@ impl typing::BuiltinType for PyDictType {
     type V = native::Dict;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyDictType::inject_selfref(PyDictType::alloc(value))
     }
 
@@ -34,8 +34,8 @@ impl typing::BuiltinType for PyDictType {
         PyDictType {}
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Dict(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Dict(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -144,7 +144,7 @@ impl method::Length for PyDict {
 impl method::GetItem for PyDict {
     /// native getitem now that we have self refs?
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, keyref: &ObjectRef) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, keyref: &RtObject) -> RuntimeResult {
         let key_box: &Box<Builtin> = keyref.0.borrow();
         match key_box.native_hash() {
             Ok(hash) => {
@@ -181,7 +181,7 @@ impl method::GetItem for PyDict {
 }
 
 impl method::SetItem for PyDict {
-    fn op_setitem(&self, rt: &Runtime, keyref: &ObjectRef, valueref: &ObjectRef) -> RuntimeResult {
+    fn op_setitem(&self, rt: &Runtime, keyref: &RtObject, valueref: &RtObject) -> RuntimeResult {
         let boxed_key: &Box<Builtin> = keyref.0.borrow();
         match boxed_key.native_hash() {
             Ok(hash) => {

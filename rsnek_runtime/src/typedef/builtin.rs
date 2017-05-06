@@ -8,8 +8,8 @@ use traits::{IntegerProvider, BooleanProvider};
 use result::{NativeResult, RuntimeResult};
 
 use ::object::PyAPI;
-use ::object::RtObject as ObjectRef;
-use ::object::WeakRtObject as WeakObjectRef;
+use ::object::RtObject;
+use ::object::WeakRtObject as WeakRtObject;
 use ::object::method::{self, Id, StringRepresentation, Equal, Hashed};
 use ::object::selfref::SelfRef;
 
@@ -114,7 +114,7 @@ impl fmt::Display for Builtin {
 }
 
 impl Iterator for Builtin {
-    type Item = ObjectRef;
+    type Item = RtObject;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -153,13 +153,13 @@ impl SelfRef for Builtin {
         })
     }
 
-    fn set(&self, objref: &ObjectRef) {
+    fn set(&self, objref: &RtObject) {
         expr_foreach_builtin!(self, obj, {
             obj.rc.set(objref)
         })
     }
 
-    fn get(&self) -> WeakObjectRef {
+    fn get(&self) -> WeakRtObject {
         expr_foreach_builtin!(self, obj, {
             obj.rc.get()
         })
@@ -176,18 +176,18 @@ impl SelfRef for Builtin {
 impl PyAPI for Builtin {}
 
 impl method::GetAttr for Builtin {
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_getattr, lhs, name)
     }
 
-    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+    fn native_getattr(&self, name: &Builtin) -> NativeResult<RtObject> {
         native_foreach_builtin!(self, native_getattr, lhs, name)
     }
 }
 
 
 impl method::SetAttr for Builtin {
-    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+    fn op_setattr(&self, rt: &Runtime, name: &RtObject, value: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_setattr, lhs, name, value)
     }
 
@@ -210,7 +210,7 @@ impl method::Id for Builtin {
 
 
 impl method::Is for Builtin {
-    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is(rhs_builtin).unwrap() {
@@ -227,7 +227,7 @@ impl method::Is for Builtin {
 }
 
 impl method::IsNot for Builtin {
-    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is_not(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is_not(rhs_builtin).unwrap() {
@@ -294,7 +294,7 @@ impl method::StringRepresentation for Builtin {
 
 impl method::Equal for Builtin {
     /// Default implementation of equals fallsbacks to op_is.
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_eq, lhs, rhs)
     }
 
@@ -304,7 +304,7 @@ impl method::Equal for Builtin {
     }
 }
 impl method::NotEqual for Builtin {
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ne, lhs, rhs)
     }
 
@@ -314,7 +314,7 @@ impl method::NotEqual for Builtin {
 }
 
 impl method::LessThan for Builtin {
-    fn op_lt(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_lt(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_lt, lhs, rhs)
     }
 
@@ -323,7 +323,7 @@ impl method::LessThan for Builtin {
     }
 }
 impl method::LessOrEqual for Builtin {
-    fn op_le(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_le(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_le, lhs, rhs)
     }
 
@@ -332,7 +332,7 @@ impl method::LessOrEqual for Builtin {
     }
 }
 impl method::GreaterOrEqual for Builtin {
-    fn op_ge(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ge(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ge, lhs, rhs)
     }
 
@@ -341,7 +341,7 @@ impl method::GreaterOrEqual for Builtin {
     }
 }
 impl method::GreaterThan for Builtin {
-    fn op_gt(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_gt(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_gt, lhs, rhs)
     }
 
@@ -435,7 +435,7 @@ impl method::InvertValue for Builtin {
     }
 }
 impl method::Add for Builtin {
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult { 
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
 
@@ -444,7 +444,7 @@ impl method::Add for Builtin {
     }
 }
 impl method::BitwiseAnd for Builtin {
-    fn op_and(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_and(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_and, lhs, rhs)
     }
 
@@ -453,7 +453,7 @@ impl method::BitwiseAnd for Builtin {
     }
 }
 impl method::DivMod for Builtin {
-    fn op_divmod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_divmod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_divmod, lhs, rhs)
     }
 
@@ -462,7 +462,7 @@ impl method::DivMod for Builtin {
     }
 }
 impl method::FloorDivision for Builtin {
-    fn op_floordiv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_floordiv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_floordiv, lhs, rhs)
     }
 
@@ -471,7 +471,7 @@ impl method::FloorDivision for Builtin {
     }
 }
 impl method::LeftShift for Builtin {
-    fn op_lshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_lshift, lhs, rhs)
     }
 
@@ -480,7 +480,7 @@ impl method::LeftShift for Builtin {
     }
 }
 impl method::Modulus for Builtin {
-    fn op_mod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_mod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_mod, lhs, rhs)
     }
 
@@ -489,7 +489,7 @@ impl method::Modulus for Builtin {
     }
 }
 impl method::Multiply for Builtin {
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_mul, lhs, rhs)
     }
 
@@ -498,7 +498,7 @@ impl method::Multiply for Builtin {
     }
 }
 impl method::MatrixMultiply for Builtin {
-    fn op_matmul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_matmul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_matmul, lhs, rhs)
     }
 
@@ -507,7 +507,7 @@ impl method::MatrixMultiply for Builtin {
     }
 }
 impl method::BitwiseOr for Builtin {
-    fn op_or(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_or(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_or, lhs, rhs)
     }
 
@@ -516,7 +516,7 @@ impl method::BitwiseOr for Builtin {
     }
 }
 impl method::Pow for Builtin {
-    fn op_pow(&self, rt: &Runtime, power: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
+    fn op_pow(&self, rt: &Runtime, power: &RtObject, modulus: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_pow, base, power, modulus)
     }
 
@@ -525,7 +525,7 @@ impl method::Pow for Builtin {
     }
 }
 impl method::RightShift for Builtin {
-    fn op_rshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_rshift, lhs, rhs)
     }
 
@@ -534,7 +534,7 @@ impl method::RightShift for Builtin {
     }
 }
 impl method::Subtract for Builtin {
-    fn op_sub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_sub, lhs, rhs)
     }
 
@@ -543,7 +543,7 @@ impl method::Subtract for Builtin {
     }
 }
 impl method::TrueDivision for Builtin {
-    fn op_truediv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_truediv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_truediv, lhs, rhs)
     }
 
@@ -552,7 +552,7 @@ impl method::TrueDivision for Builtin {
     }
 }
 impl method::XOr for Builtin {
-    fn op_xor(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_xor(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_xor, lhs, rhs)
     }
 
@@ -562,7 +562,7 @@ impl method::XOr for Builtin {
 }
 
 impl method::InPlaceAdd for Builtin {
-    fn op_iadd(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_iadd(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_iadd, lhs, rhs)
     }
 
@@ -571,7 +571,7 @@ impl method::InPlaceAdd for Builtin {
     }
 }
 impl method::InPlaceBitwiseAnd for Builtin {
-    fn op_iand(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_iand(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_iand, lhs, rhs)
     }
 
@@ -580,7 +580,7 @@ impl method::InPlaceBitwiseAnd for Builtin {
     }
 }
 impl method::InPlaceDivMod for Builtin {
-    fn op_idivmod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_idivmod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_idivmod, lhs, rhs)
     }
 
@@ -589,7 +589,7 @@ impl method::InPlaceDivMod for Builtin {
     }
 }
 impl method::InPlaceFloorDivision for Builtin {
-    fn op_ifloordiv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ifloordiv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ifloordiv, lhs, rhs)
     }
 
@@ -598,7 +598,7 @@ impl method::InPlaceFloorDivision for Builtin {
     }
 }
 impl method::InPlaceLeftShift for Builtin {
-    fn op_ilshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ilshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ilshift, lhs, rhs)
     }
 
@@ -607,7 +607,7 @@ impl method::InPlaceLeftShift for Builtin {
     }
 }
 impl method::InPlaceModulus for Builtin {
-    fn op_imod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_imod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_imod, lhs, rhs)
     }
 
@@ -616,7 +616,7 @@ impl method::InPlaceModulus for Builtin {
     }
 }
 impl method::InPlaceMultiply for Builtin {
-    fn op_imul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_imul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_imul, lhs, rhs)
     }
 
@@ -625,7 +625,7 @@ impl method::InPlaceMultiply for Builtin {
     }
 }
 impl method::InPlaceMatrixMultiply for Builtin {
-    fn op_imatmul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_imatmul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_imatmul, lhs, rhs)
     }
 
@@ -634,7 +634,7 @@ impl method::InPlaceMatrixMultiply for Builtin {
     }
 }
 impl method::InPlaceBitwiseOr for Builtin {
-    fn op_ior(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ior(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ior, lhs, rhs)
     }
 
@@ -643,7 +643,7 @@ impl method::InPlaceBitwiseOr for Builtin {
     }
 }
 impl method::InPlacePow for Builtin {
-    fn op_ipow(&self, rt: &Runtime, power: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
+    fn op_ipow(&self, rt: &Runtime, power: &RtObject, modulus: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ipow, base, power, modulus)
     }
 
@@ -652,7 +652,7 @@ impl method::InPlacePow for Builtin {
     }
 }
 impl method::InPlaceRightShift for Builtin {
-    fn op_irshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_irshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_irshift, lhs, rhs)
     }
 
@@ -661,7 +661,7 @@ impl method::InPlaceRightShift for Builtin {
     }
 }
 impl method::InPlaceSubtract for Builtin {
-    fn op_isub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_isub(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_isub, lhs, rhs)
     }
 
@@ -670,7 +670,7 @@ impl method::InPlaceSubtract for Builtin {
     }
 }
 impl method::InPlaceTrueDivision for Builtin {
-    fn op_itruediv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_itruediv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_itruediv, lhs, rhs)
     }
 
@@ -679,7 +679,7 @@ impl method::InPlaceTrueDivision for Builtin {
     }
 }
 impl method::InPlaceXOr for Builtin {
-    fn op_ixor(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ixor(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_ixor, lhs, rhs)
     }
 
@@ -688,7 +688,7 @@ impl method::InPlaceXOr for Builtin {
     }
 }
 impl method::Contains for Builtin {
-    fn op_contains(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_contains, lhs, rhs)
     }
 
@@ -706,7 +706,7 @@ impl method::Iter for Builtin {
     }
 }
 impl method::Call for Builtin {
-    fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    fn op_call(&self, rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_call, method, pos_args, starargs, kwargs)
     }
 
@@ -729,23 +729,23 @@ impl method::Next for Builtin {
         foreach_builtin!(self, rt, op_next, lhs)
     }
 
-    fn native_next(&self) -> NativeResult<ObjectRef> {
+    fn native_next(&self) -> NativeResult<RtObject> {
         native_foreach_builtin!(self, native_next, lhs)
     }    
 }
 
 impl method::GetItem for Builtin {
-    fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_getitem, object, name)
     }
 
-    fn native_getitem(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+    fn native_getitem(&self, name: &Builtin) -> NativeResult<RtObject> {
         native_foreach_builtin!(self, native_getitem, object, name)
     }
 }
 
 impl method::SetItem for Builtin {
-    fn op_setitem(&self, rt: &Runtime, name: &ObjectRef, item: &ObjectRef) -> RuntimeResult {
+    fn op_setitem(&self, rt: &Runtime, name: &RtObject, item: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_setitem, object, name, item)
     }
 
@@ -755,7 +755,7 @@ impl method::SetItem for Builtin {
 }
 
 impl method::DeleteItem for Builtin {
-    fn op_delitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_delitem(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, op_delitem, object, name)
     }
 
@@ -765,7 +765,7 @@ impl method::DeleteItem for Builtin {
 }
 
 impl method::Count for Builtin {
-    fn meth_count(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_count(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_count, object, name)
     }
 
@@ -775,7 +775,7 @@ impl method::Count for Builtin {
 }
 
 impl method::Append for Builtin {
-    fn meth_append(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_append(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_append, object, name)
     }
 
@@ -785,7 +785,7 @@ impl method::Append for Builtin {
 }
 
 impl method::Extend for Builtin {
-    fn meth_extend(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_extend(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_extend, object, name)
     }
 
@@ -795,7 +795,7 @@ impl method::Extend for Builtin {
 }
 
 impl method::Pop for Builtin {
-    fn meth_pop(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_pop(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_pop, object, name)
     }
 
@@ -805,7 +805,7 @@ impl method::Pop for Builtin {
 }
 
 impl method::Remove for Builtin {
-    fn meth_remove(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_remove(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_remove, object, name)
     }
 
@@ -815,7 +815,7 @@ impl method::Remove for Builtin {
 }
 
 impl method::IsDisjoint for Builtin {
-    fn meth_isdisjoint(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_isdisjoint(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_isdisjoint, object, name)
     }
 
@@ -825,7 +825,7 @@ impl method::IsDisjoint for Builtin {
 }
 
 impl method::AddItem for Builtin {
-    fn meth_add(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn meth_add(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_add, object, name)
     }
 

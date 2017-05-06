@@ -7,7 +7,7 @@ use object::selfref::{self, SelfRef};
 
 use typedef::native;
 use typedef::builtin::Builtin;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 
 #[derive(Clone)]
@@ -19,7 +19,7 @@ impl typing::BuiltinType for PyComplexType {
     type V = native::Complex;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyComplexType::inject_selfref(PyComplexType::alloc(value))
     }
 
@@ -27,8 +27,8 @@ impl typing::BuiltinType for PyComplexType {
         PyComplexType {}
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Complex(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Complex(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();

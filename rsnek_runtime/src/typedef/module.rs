@@ -11,19 +11,19 @@ use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::object::{PyObject, ObjectValue};
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 
 // TODO: {T49} pretty Obvious need to have classobjs since PyModule is just an object with
 // a few required params
 pub struct PyModuleType {
-    pub object: ObjectRef,
-    pub pytype: ObjectRef,
+    pub object: RtObject,
+    pub pytype: RtObject,
 }
 
 
 impl PyModuleType {
-    pub fn init_type(typeref: &ObjectRef) -> Self {
+    pub fn init_type(typeref: &RtObject) -> Self {
         let typ = PyModuleType::inject_selfref(PyModuleType::alloc(native::Object {
             class: typeref.clone(),
             dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
@@ -50,7 +50,7 @@ impl typing::BuiltinType for PyModuleType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyModuleType::inject_selfref(PyModuleType::alloc(value))
     }
 
@@ -58,8 +58,8 @@ impl typing::BuiltinType for PyModuleType {
         unimplemented!()
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Module(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Module(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();

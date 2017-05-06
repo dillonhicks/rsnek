@@ -11,7 +11,7 @@ use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use ::result::{RuntimeResult, NativeResult};
 use ::typedef::builtin::Builtin;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use ::typedef::number;
 use ::typedef::native::{self, Number, HashId};
 
@@ -24,8 +24,8 @@ pub const FALSE_BYTES: &'static [u8] = &[0];
 
 #[derive(Clone)]
 pub struct PyBooleanType {
-    singleton_true: ObjectRef,
-    singleton_false: ObjectRef,
+    singleton_true: RtObject,
+    singleton_false: RtObject,
 }
 
 
@@ -35,7 +35,7 @@ impl typing::BuiltinType for PyBooleanType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         if value {
             self.singleton_true.clone()
         } else {
@@ -50,8 +50,8 @@ impl typing::BuiltinType for PyBooleanType {
         }
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Bool(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Bool(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -150,7 +150,7 @@ impl method::StringRepresentation for PyBoolean {
 
 /// `x == y`
 impl method::Equal for PyBoolean {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(rhs.as_ref()) {
@@ -174,7 +174,7 @@ impl method::Equal for PyBoolean {
 }
 
 impl method::NotEqual for PyBoolean {
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_ne(builtin.deref()) {

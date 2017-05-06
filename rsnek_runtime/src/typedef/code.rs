@@ -10,7 +10,7 @@ use object::typing;
 use object::method;
 
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 
 
@@ -21,7 +21,7 @@ impl typing::BuiltinType for PyCodeType {
     type V = native::Code;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyCodeType::inject_selfref(PyCodeType::alloc(value))
     }
 
@@ -30,8 +30,8 @@ impl typing::BuiltinType for PyCodeType {
     }
 
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Code(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Code(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();

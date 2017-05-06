@@ -14,7 +14,7 @@ use object::typing::BuiltinType;
 
 use typedef::builtin::Builtin;
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 
 pub struct PyIteratorType {
@@ -22,7 +22,7 @@ pub struct PyIteratorType {
 
 impl PyIteratorType {
 
-    pub fn empty(&self, rt: &Runtime) -> ObjectRef {
+    pub fn empty(&self, rt: &Runtime) -> RtObject {
         let value = IteratorValue(native::Iterator::Empty, rt.clone());
         self.new(&rt, value)
     }
@@ -34,7 +34,7 @@ impl typing::BuiltinType for PyIteratorType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyIteratorType::inject_selfref(PyIteratorType::alloc(value))
     }
 
@@ -42,8 +42,8 @@ impl typing::BuiltinType for PyIteratorType {
         PyIteratorType {}
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Iter(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Iter(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -83,7 +83,7 @@ impl fmt::Debug for PyIterator {
 
 
 impl Iterator for PyIterator {
-    type Item = ObjectRef;
+    type Item = RtObject;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.native_next() {
@@ -107,7 +107,7 @@ impl method::Next for PyIterator {
         }
     }
 
-    fn native_next(&self) -> NativeResult<ObjectRef> {
+    fn native_next(&self) -> NativeResult<RtObject> {
         let ref rt = self.value.1;
 
         match self.value.0 {
@@ -249,7 +249,7 @@ mod tests {
 
             let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
 
-            let mut results: Vec<ObjectRef> = vec![];
+            let mut results: Vec<RtObject> = vec![];
 
             for i in iterator {
                 results.push(i)

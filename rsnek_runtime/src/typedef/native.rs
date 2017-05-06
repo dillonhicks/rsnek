@@ -16,7 +16,7 @@ use ::opcode::OpCode;
 use ::result::{RuntimeResult, NativeResult};
 use ::runtime::Runtime;
 use ::typedef;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use ::typedef::builtin::Builtin;
 
 
@@ -53,32 +53,32 @@ pub struct None();
 //
 // Collection Primitive Types
 //
-pub type List = Vec<ObjectRef>;
-pub type Tuple = Vec<ObjectRef>;
+pub type List = Vec<RtObject>;
+pub type Tuple = Vec<RtObject>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct DictKey(pub HashId, pub ObjectRef);
+pub struct DictKey(pub HashId, pub RtObject);
 impl DictKey {
     pub fn hash(&self) -> HashId {
         self.0
     }
 
-    pub fn value(&self) -> ObjectRef {
+    pub fn value(&self) -> RtObject {
         self.1.clone()
     }
 }
 
-pub type Dict = std::collections::HashMap<DictKey, ObjectRef>;
+pub type Dict = std::collections::HashMap<DictKey, RtObject>;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct SetElement(pub HashId, pub ObjectRef);
+pub struct SetElement(pub HashId, pub RtObject);
 pub type Set = std::collections::HashSet<SetElement>;
 
 pub type NativeFnArgs = (Tuple, Tuple, Dict);
-pub type FnArgs = (ObjectRef, ObjectRef, ObjectRef);
+pub type FnArgs = (RtObject, RtObject, RtObject);
 
 pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> NativeResult<Builtin>;
-pub type WrapperFn = Fn(&Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult;
+pub type WrapperFn = Fn(&Runtime, &RtObject, &RtObject, &RtObject) -> RuntimeResult;
 
 #[derive(Debug, Serialize)]
 pub struct Func {
@@ -97,7 +97,7 @@ pub enum FuncType {
     #[serde(skip_serializing)]
     Wrapper(Box<WrapperFn>),
     #[serde(skip_serializing)]
-    MethodWrapper(ObjectRef, Box<WrapperFn>),
+    MethodWrapper(RtObject, Box<WrapperFn>),
     Code(Code),
 }
 
@@ -124,12 +124,12 @@ impl fmt::Debug for FuncType {
 
 #[derive(Debug)]
 pub enum Iterator {
-    Sequence {source: ObjectRef, idx_next: Cell<u64>},
+    Sequence {source: RtObject, idx_next: Cell<u64>},
     Empty,
 }
 
 impl Iterator {
-    pub fn new(source: &ObjectRef) -> NativeResult<Self> {
+    pub fn new(source: &RtObject) -> NativeResult<Self> {
         // TODO: {T101} Type assertions on new iterators or make it part of the `iter()`
         // builtin?
         Ok(Iterator::Sequence {source: source.clone(), idx_next: Cell::new(0)})
@@ -138,14 +138,14 @@ impl Iterator {
 
 #[derive(Debug)]
 pub struct Object {
-    pub class: ObjectRef,
-    pub dict: ObjectRef,
-    pub bases: ObjectRef,
+    pub class: RtObject,
+    pub dict: RtObject,
+    pub bases: RtObject,
 }
 
 #[allow(dead_code)]
 pub struct Module {
-    pub name: ObjectRef,
+    pub name: RtObject,
 
 }
 
@@ -196,9 +196,9 @@ pub struct Block {
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize)]
 pub struct Frame {
-    pub f_back: ObjectRef,
-    pub f_code: ObjectRef,
-    pub f_builtins: ObjectRef,
+    pub f_back: RtObject,
+    pub f_code: RtObject,
+    pub f_builtins: RtObject,
     #[serde(serialize_with = "serialize::integer")]
     pub f_lasti: Integer,
     pub blocks: VecDeque<Block>,
@@ -212,7 +212,7 @@ pub struct Signature {
     // vargs = "*name"
     vargs: Option<String>,
 
-    default_kwargs: std::collections::HashMap<String, ObjectRef>,
+    default_kwargs: std::collections::HashMap<String, RtObject>,
     // kwargs = "**name"
     kwargs: Option<String>,
 }

@@ -17,16 +17,16 @@ use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, DictKey};
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 
 pub struct PyObjectType {
-    pub object: ObjectRef,
-    pub pytype: ObjectRef,
+    pub object: RtObject,
+    pub pytype: RtObject,
 }
 
 impl PyObjectType {
-    pub fn init_type(typeref: &ObjectRef) -> Self {
+    pub fn init_type(typeref: &RtObject) -> Self {
 
         // TODO: {T106} Fundamental objects should have __setitem__ set to a attribute error
         let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
@@ -54,7 +54,7 @@ impl typing::BuiltinType for PyObjectType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyObjectType::inject_selfref(PyObjectType::alloc(value))
     }
 
@@ -62,8 +62,8 @@ impl typing::BuiltinType for PyObjectType {
         unimplemented!()
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Object(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Object(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -115,12 +115,12 @@ impl object::PyAPI for PyObject {}
 impl method::GetAttr for PyObject {
     // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
     #[allow(unused_variables)]
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = name.0.borrow();
         self.native_getattr(&boxed)
     }
 
-    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+    fn native_getattr(&self, name: &Builtin) -> NativeResult<RtObject> {
         match name {
             &Builtin::Str(ref string) => {
                 let stringref = match string.rc.upgrade() {
@@ -162,7 +162,7 @@ impl method::GetAttr for PyObject {
 }
 
 impl method::SetAttr for PyObject {
-    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+    fn op_setattr(&self, rt: &Runtime, name: &RtObject, value: &RtObject) -> RuntimeResult {
         let boxed_name: &Box<Builtin> = name.0.borrow();
         let boxed_value: &Box<Builtin> = value.0.borrow();
         match self.native_setattr(&boxed_name, boxed_value) {

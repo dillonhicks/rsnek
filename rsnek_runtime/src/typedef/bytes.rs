@@ -14,12 +14,12 @@ use object::typing;
 use object::method;
 
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 
 
 pub struct PyBytesType {
-    pub empty: ObjectRef,
+    pub empty: RtObject,
 }
 
 
@@ -28,7 +28,7 @@ impl typing::BuiltinType for PyBytesType {
     type V = native::Bytes;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyBytesType::inject_selfref(PyBytesType::alloc(value))
     }
 
@@ -37,8 +37,8 @@ impl typing::BuiltinType for PyBytesType {
     }
 
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Bytes(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Bytes(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -91,7 +91,7 @@ impl method::Hashed for PyBytes {
 }
 
 impl method::Equal for PyBytes {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(boxed) {

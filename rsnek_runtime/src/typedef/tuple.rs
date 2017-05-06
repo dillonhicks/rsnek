@@ -18,12 +18,12 @@ use object::selfref::{self, SelfRef};
 
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Tuple};
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use ::typedef::collection::sequence;
 
 
 pub struct PyTupleType {
-    pub empty: ObjectRef,
+    pub empty: RtObject,
 }
 
 
@@ -33,7 +33,7 @@ impl typing::BuiltinType for PyTupleType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyTupleType::inject_selfref(PyTupleType::alloc(value))
     }
 
@@ -41,8 +41,8 @@ impl typing::BuiltinType for PyTupleType {
         PyTupleType { empty: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())) }
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Tuple(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Tuple(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -138,7 +138,7 @@ impl method::StringCast for PyTuple {
 
 
 impl method::Equal for PyTuple {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
 
         let truth = self.native_eq(boxed)?;
@@ -174,7 +174,7 @@ impl method::BooleanCast for PyTuple {
 
 
 impl method::Multiply for PyTuple {
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -199,7 +199,7 @@ impl method::Multiply for PyTuple {
 
 
 impl method::Contains for PyTuple {
-    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = item.0.borrow();
         let truth = self.native_contains(boxed)?;
         Ok(rt.bool(truth))
@@ -242,7 +242,7 @@ impl method::Length for PyTuple {
 
 impl method::GetItem for PyTuple {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, index: &ObjectRef) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = index.0.borrow();
         self.native_getitem(boxed)
     }

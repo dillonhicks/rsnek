@@ -11,7 +11,7 @@ use runtime::Runtime;
 use result::{RuntimeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 
 //pub const FRAME_MAX_BLOCKS: usize = 20;
 
@@ -35,8 +35,8 @@ impl typing::BuiltinType for PyFrameType {
         }
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Frame(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Frame(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -51,7 +51,7 @@ impl typing::BuiltinType for PyFrameType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyFrameType::inject_selfref(PyFrameType::alloc(value))
     }
 
@@ -81,7 +81,7 @@ impl PyAPI for PyFrame { }
 
 impl method::GetAttr for PyFrame {
     #[allow(unused_variables)]
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = name.0.borrow();
 
         let attr: &str = match builtin.deref() {

@@ -17,7 +17,7 @@ use object::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, Negate
 use object::method::*;
 
 use typedef::native::{self, HashId, SignatureBuilder};
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
 use ::builtin::precondition::check_args;
@@ -42,7 +42,7 @@ Base 0 means to interpret the base from the string as an integer literal.
 
 #[derive(Clone)]
 pub struct PyIntegerType {
-    pub static_integers: Vec<ObjectRef>,
+    pub static_integers: Vec<RtObject>,
 }
 
 
@@ -51,7 +51,7 @@ impl typing::BuiltinType for PyIntegerType {
     type V = native::Integer;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: native::Integer) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: native::Integer) -> RtObject {
         match value.to_isize() {
             Some(idx @ -5..1024) => self.static_integers[(idx + 5) as usize].clone(),
             Some(_) |
@@ -61,7 +61,7 @@ impl typing::BuiltinType for PyIntegerType {
 
 
     fn init_type() -> Self {
-        let range: Vec<ObjectRef> = STATIC_INT_RANGE
+        let range: Vec<RtObject> = STATIC_INT_RANGE
             .map(native::Integer::from)
             .map(PyIntegerType::alloc)
             .map(PyIntegerType::inject_selfref)
@@ -69,8 +69,8 @@ impl typing::BuiltinType for PyIntegerType {
         PyIntegerType { static_integers: range }
     }
 
-    fn inject_selfref(value: PyInteger) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Int(value));
+    fn inject_selfref(value: PyInteger) -> RtObject {
+        let objref = RtObject::new(Builtin::Int(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -285,7 +285,7 @@ impl object::PyAPI for PyInteger {}
 
 /// `self.rhs`
 impl method::GetAttr for PyInteger {
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
 
         let boxed: &Box<Builtin> = name.0.borrow();
         match boxed.deref() {
@@ -343,7 +343,7 @@ impl method::StringRepresentation for PyInteger {
 
 /// `self == rhs`
 impl method::Equal for PyInteger {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         let value = self.native_eq(builtin.deref())?;
@@ -365,7 +365,7 @@ impl method::Equal for PyInteger {
 
 /// `self != rhs`
 impl method::NotEqual for PyInteger {
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         let truth = self.native_ne(builtin.deref())?;
@@ -419,7 +419,7 @@ impl method::NegateValue for PyInteger {
 
 /// `self + rhs`
 impl method::Add for PyInteger {
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
 
@@ -441,7 +441,7 @@ impl method::Add for PyInteger {
 
 /// `self << rhs`
 impl method::LeftShift for PyInteger {
-    fn op_lshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -465,7 +465,7 @@ impl method::LeftShift for PyInteger {
 
 /// `self * rhs`
 impl method::Multiply for PyInteger {
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -489,7 +489,7 @@ impl method::Pow for PyInteger {
 
     // TODO: modulus not currently used
     #[allow(unused_variables)]
-    fn op_pow(&self, rt: &Runtime, exponent: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
+    fn op_pow(&self, rt: &Runtime, exponent: &RtObject, modulus: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = exponent.0.borrow();
 
         match builtin.deref() {
@@ -512,7 +512,7 @@ impl method::Pow for PyInteger {
 /// `self >> rhs`
 impl method::RightShift for PyInteger {
 
-    fn op_rshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -536,7 +536,7 @@ impl method::RightShift for PyInteger {
 
 /// `self - rhs`
 impl method::Subtract for PyInteger {
-    fn op_sub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {

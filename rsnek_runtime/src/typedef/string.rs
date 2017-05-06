@@ -18,13 +18,13 @@ use object::typing::{self, BuiltinType};
 use object::method;
 
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 use typedef::collection::sequence;
 use resource::strings;
 
 pub struct PyStringType {
-    pub empty: ObjectRef,
+    pub empty: RtObject,
 }
 
 
@@ -33,7 +33,7 @@ impl typing::BuiltinType for PyStringType {
     type V = native::String;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyStringType::inject_selfref(PyStringType::alloc(value))
     }
 
@@ -44,8 +44,8 @@ impl typing::BuiltinType for PyStringType {
     }
 
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Str(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::Str(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -111,7 +111,7 @@ impl method::StringCast for PyString {
 
 
 impl method::Equal for PyString {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(boxed) {
@@ -164,7 +164,7 @@ impl method::IntegerCast for PyString {
 
 impl method::Add for PyString {
 
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
         match builtin.deref() {
             &Builtin::Str(ref other) => Ok(rt.str([&self.value.0[..], &other.value.0[..]].concat())),
@@ -176,7 +176,7 @@ impl method::Add for PyString {
 }
 
 impl method::Multiply for PyString {
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref() {
@@ -205,7 +205,7 @@ impl method::Multiply for PyString {
 
 
 impl method::Contains for PyString {
-    fn op_contains(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+    fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = item.0.borrow();
         let truth = self.native_contains(boxed)?;
         Ok(rt.bool(truth))
@@ -249,7 +249,7 @@ impl method::Length for PyString {
 
 impl method::GetItem for PyString {
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, item: &ObjectRef) -> RuntimeResult {
+    fn op_getitem(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = item.0.borrow();
         self.native_getitem(boxed)
     }

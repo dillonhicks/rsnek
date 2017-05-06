@@ -9,7 +9,7 @@ use object::selfref::{self, SelfRef};
 use object::{RtValue, PyAPI, method, typing};
 
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 
 
@@ -18,7 +18,7 @@ pub const NONE_STR: &'static str = "None";
 
 
 pub struct PyNoneType {
-    singleton_none: ObjectRef,
+    singleton_none: RtObject,
 }
 
 
@@ -28,7 +28,7 @@ impl typing::BuiltinType for PyNoneType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         return self.singleton_none.clone();
     }
 
@@ -36,8 +36,8 @@ impl typing::BuiltinType for PyNoneType {
         PyNoneType { singleton_none: PyNoneType::inject_selfref(PyNoneType::alloc(NONE)) }
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::None(value));
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let objref = RtObject::new(Builtin::None(value));
 
         let new = objref.clone();
 
@@ -93,7 +93,7 @@ impl method::StringCast for PyNone {
 
 
 impl method::Equal for PyNone {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = rhs.0.borrow();
         match self.native_eq(boxed) {
             Ok(truth) => Ok(rt.bool(truth)),

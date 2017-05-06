@@ -13,7 +13,7 @@ use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 
 use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 use typedef::number::{self, FloatAdapter, IntAdapter};
 
@@ -27,7 +27,7 @@ impl typing::BuiltinType for PyFloatType {
     type V = native::Float;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: native::Float) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: native::Float) -> RtObject {
         // TODO: {T99} Investigate object interning, see the methodology in integer.rs.
         // Can that be generalized?
         PyFloatType::inject_selfref(PyFloatType::alloc(value))
@@ -37,8 +37,8 @@ impl typing::BuiltinType for PyFloatType {
         PyFloatType {}
     }
 
-    fn inject_selfref(value: PyFloat) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Float(value));
+    fn inject_selfref(value: PyFloat) -> RtObject {
+        let objref = RtObject::new(Builtin::Float(value));
         let new = objref.clone();
 
         let boxed: &Box<Builtin> = objref.0.borrow();
@@ -114,7 +114,7 @@ impl method::StringRepresentation for PyFloat {
 }
 
 impl method::Equal for PyFloat {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match self.native_eq(builtin.deref()) {
@@ -173,7 +173,7 @@ impl method::FloatCast for PyFloat {
 
 
 impl method::Add for PyFloat {
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
         match builtin.deref(){
