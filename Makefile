@@ -128,8 +128,8 @@ valgrind:
 	mv rsnek/src/main.rs rsnek/src/main.rs.bak
 	mv rsnek/maingrind.rs rsnek/src/main.rs
 	cd rsnek; \
-		cargo profiler callgrind --release ; \
-		cargo profiler cachegrind --release  -- $(VALGRIND_PYTHON_SRCFILE)
+		$(CARGO) profiler callgrind --release ; \
+		$(CARGO) profiler cachegrind --release  -- $(VALGRIND_PYTHON_SRCFILE)
 	mv rsnek/src/main.rs.bak rsnek/src/main.rs
 	valgrind \
 		--tool=memcheck \
