@@ -1,13 +1,7 @@
 pub mod method;
 pub mod selfref;
 pub mod typing;
-pub mod operator;
-pub mod number;
-pub mod collection;
-pub mod compare;
-pub mod coroutine;
-pub mod context;
-pub mod attribute;
+
 
 
 /// Runtime Value delegate that holds its own self reference
