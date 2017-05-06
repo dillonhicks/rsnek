@@ -169,13 +169,13 @@ pub struct Type {
 }
 
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Code {
     pub co_name: String,
     pub co_names: Vec<String>,
     pub co_varnames: Vec<String>,
     pub co_code: Vec<Instr>,
-    //pub co_consts: Tuple,
+    pub co_consts: Vec<Code>,
     //pub co_argcount: Int,
     //pub co_cellvars: Tuple,
     //pub co_filename: Str,
@@ -304,7 +304,9 @@ macro_rules! signature_impls {
   };
 }
 
+
 signature_impls!(&'a str, 0 1 2 3 4 5 6);
+
 
 impl<'a> SignatureBuilder for &'a [String] {
     fn as_args(&self) -> Signature {

@@ -17,8 +17,9 @@ use ::error::Error;
 use ::opcode::OpCode;
 use ::typedef::native::{self, Instr, Native};
 use ::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
-use ::scope::{ScopeNode, ManageScope};
-use ::symbol::{SymbolMetadata, TrackSymbol};
+use ::scope::{ScopeNode, ManageScope, Descriptor};
+use ::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
+use ::graph::{Node, Graph};
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 
@@ -31,10 +32,31 @@ pub enum Context {
 
 
 #[derive(Debug, Clone, Serialize)]
+struct ModuleCode {
+    co_const: RefCell<Vec<native::Code>>
+}
+
+impl ModuleCode {
+    fn new() -> Self {
+        ModuleCode {
+            co_const: RefCell::new(Vec::new())
+        }
+    }
+
+    fn add_const(&self, code: &native::Code) -> usize {
+        let idx = self.co_const.borrow().len();
+        self.co_const.borrow_mut().push(code.clone());
+        idx
+    }
+}
+
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Compiler<'a> {
     lexer: Lexer,
     parser: Parser<'a>,
     metadata: SymbolMetadata,
+    module: ModuleCode,
 }
 
 
@@ -44,6 +66,7 @@ impl<'a> Compiler<'a> {
             lexer: Lexer::new(),
             parser: Parser::new(),
             metadata: SymbolMetadata::new(),
+            module: ModuleCode::new()
         }
     }
 
@@ -58,7 +81,12 @@ impl<'a> Compiler<'a> {
         match parser.parse_tokens(&tokens) {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
                 let result = self.compile_ast(&result.ast.borrow());
-                trace!("Compiler"; "action" => "dump_metadata", "metadata" => format!("{}", fmt::json(&self.metadata)));
+                trace!("Compiler";
+                    "action" => "dump_metadata",
+                    "metadata" => format!("{}", fmt::json(&self.metadata)));
+                trace!("Compiler";
+                    "action" => "dump_module",
+                    "module" => format!("{}", fmt::json(&self.module)));
                 result
             },
             other => {
@@ -105,7 +133,6 @@ impl<'a> Compiler<'a> {
 
         let ins: Box<[Instr]> = match *stmt {
             Stmt::FunctionDef {fntype: _, ref name, ref arguments, ref body } => {
-                self.define_symbol(&Native::from(name))?;
                 self.enter_scope(FunctionScope);
                 self.exit_scope(self.compile_stmt_funcdef(name, arguments, body))?
             },
@@ -191,6 +218,21 @@ impl<'a> Compiler<'a> {
             co_names: argnames.iter().cloned().collect::<Vec<_>>(),
             co_varnames: Vec::new(),
             co_code: stmt.to_vec(),
+            co_consts: Vec::new(),
+        };
+
+        let defn = Definition(name.as_string(), Native::Code(code.clone()));
+        self.define_symbol(&defn)?;
+
+        let parent = self.metadata.graph().get_node(
+            self.current_scope().parent_id());
+
+        match *parent {
+            Descriptor::Function(_) |
+            Descriptor::Module(_)   => {
+                self.module.add_const(&code);
+            },
+            _ => {}
         };
 
         instructions.append(&mut vec![
@@ -344,7 +386,7 @@ impl<'a> Compiler<'a> {
         let instr = match ctx {
             Context::Store => {
                 let name = Native::from(tk);
-                self.define_symbol(&name)?;
+                //self.define_symbol(&name)?;
                 Instr(OpCode::StoreName, Some(name))
             },
             Context::Load => {
@@ -352,7 +394,7 @@ impl<'a> Compiler<'a> {
                 let code = match tk.id() {
 
                     Id::Name => {
-                        self.use_symbol(&name)?;
+                        self.use_symbol(&Symbol::try_from(&name)?)?;
                         OpCode::LoadName
                     },
                     _ => OpCode::LoadConst
@@ -418,11 +460,11 @@ impl<'a> ManageScope for Compiler<'a> {
 
 
 impl<'a> TrackSymbol for Compiler<'a> {
-    fn define_symbol(&self, symbol: &Native) -> Result<(), Error> {
+    fn define_symbol(&self, symbol: &Definition) -> Result<(), Error> {
         self.metadata.define_symbol(symbol)
     }
 
-    fn use_symbol(&self, symbol: &Native) -> Result<(), Error> {
+    fn use_symbol(&self, symbol: &Symbol) -> Result<(), Error> {
         self.metadata.use_symbol(symbol)
     }
 }

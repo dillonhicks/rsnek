@@ -9,6 +9,7 @@ pub trait ManageScope {
 
 pub type ScopeNode = Descriptor<Scope>;
 
+
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone, Serialize)]
 pub enum ScopeHint {
     BaseScope,
@@ -23,6 +24,7 @@ pub struct Scope {
     parent_id: usize
 }
 
+
 impl Node for Scope {
     fn id(&self) -> usize {
         self.id
@@ -31,6 +33,7 @@ impl Node for Scope {
     fn parent_id(&self) -> usize {
         self.parent_id
     }
+
 }
 
 
@@ -63,6 +66,7 @@ impl Descriptor<Scope> {
             &Descriptor::Function(ref node)  => node
         }
     }
+
 }
 
 
@@ -75,5 +79,5 @@ impl Node for Descriptor<Scope> {
     fn parent_id(&self) -> usize {
         self.node().parent_id()
     }
-}
 
+}

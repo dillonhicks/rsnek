@@ -272,6 +272,7 @@ impl InterpreterState {
             co_names: Vec::new(),
             co_varnames: Vec::new(),
             co_code: Vec::new(),
+            co_consts: Vec::new()
         };
 
         let main_frame = native::Frame {

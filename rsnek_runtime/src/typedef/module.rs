@@ -13,6 +13,7 @@ use typedef::native;
 use typedef::object::{PyObject, ObjectValue};
 use typedef::objectref::ObjectRef;
 
+
 // TODO: {T49} pretty Obvious need to have classobjs since PyModule is just an object with
 // a few required params
 pub struct PyModuleType {
@@ -28,7 +29,6 @@ impl PyModuleType {
             dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
             bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
         }));
-
 
         let object = PyModuleType::inject_selfref(PyModuleType::alloc(native::Object {
             class: typeref.clone(),
