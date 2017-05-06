@@ -45,6 +45,9 @@ macro_rules! expr_foreach_builtin {
             &Builtin::Module(ref $inner) => $e,
             &Builtin::Code(ref $inner) => $e,
             &Builtin::Frame(ref $inner) => $e,
+            &Builtin::Set(ref $inner) => $e,
+            &Builtin::FrozenSet(ref $inner) => $e,
+
             _ => unreachable!()
         }
     );
@@ -70,6 +73,9 @@ macro_rules! unary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op($rt),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt),
             &Builtin::Frame(ref $lhs) => $lhs.$op($rt),
+            &Builtin::Set(ref $lhs) => $lhs.$op($rt),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt),
+
             _ => unreachable!()
         }
     };
@@ -95,6 +101,9 @@ macro_rules! binary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt, $rhs),
             &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $rhs),
+
             _ => unreachable!()
         }
     };
@@ -120,6 +129,9 @@ macro_rules! ternary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
             &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+
             _ => unreachable!()
         }
     };
@@ -145,6 +157,9 @@ macro_rules! _4ary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Code(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
             &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+
             _ => unreachable!()
         }
     };
@@ -186,6 +201,9 @@ macro_rules! native_unary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op(),
             &Builtin::Code(ref $lhs) => $lhs.$op(),
             &Builtin::Frame(ref $lhs) => $lhs.$op(),
+            &Builtin::Set(ref $lhs) => $lhs.$op(),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op(),
+
             _ => unreachable!()
         }
     };
@@ -211,6 +229,9 @@ macro_rules! native_binary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($rhs),
             &Builtin::Frame(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::Set(ref $lhs) => $lhs.$op($rhs),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rhs),
+
             _ => unreachable!()
         }
     };
@@ -236,6 +257,9 @@ macro_rules! native_ternary_op_foreach{
             &Builtin::Module(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Code(ref $lhs) => $lhs.$op($mid, $rhs),
             &Builtin::Frame(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::Set(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($mid, $rhs),
+
             _ => unreachable!()
         }
     };
@@ -261,6 +285,9 @@ macro_rules! native_4ary_op_foreach {
             &Builtin::Module(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Code(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
             &Builtin::Frame(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::Set(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+
             _ => unreachable!()
         }
     };
@@ -276,88 +303,88 @@ macro_rules! native_4ary_op_foreach {
 macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel) -> NativeResult<$nativety> {
+            fn $nfname(&$sel) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel) -> NativeResult<Builtin> {
+            fn $nfname(&$sel) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel, &Builtin) -> NativeResult<$nativety> {
+            fn $nfname(&$sel, &Builtin) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel, &Builtin) -> NativeResult<Builtin> {
+            fn $nfname(&$sel, &Builtin) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<$nativety> {
+            fn $nfname(&$sel, &Builtin, &Builtin) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel, &Builtin, &Builtin) -> NativeResult<Builtin> {
+            fn $nfname(&$sel, &Builtin, &Builtin) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> NativeResult<Builtin> {
+            fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &Vec<RtObject>) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            fn $nfname(&$sel, &Vec<Builtin>) -> NativeResult<Builtin> {
+            fn $nfname(&$sel, &Vec<Builtin>) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -369,7 +396,7 @@ macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         //#[test]
         fn $pyname() {
-            println!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) , stringify!($tname), stringify!($fname), stringify!($nfname));
+            trace!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) , stringify!($tname), stringify!($fname), stringify!($nfname));
             unimplemented!()
         }
     };
@@ -409,13 +436,12 @@ macro_rules! unary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
         let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
-            let objref = selfref.clone();
+            let object = selfref.clone();
             check_args(0, &pos_args)?;
             check_args(0, &starargs)?;
             check_kwargs(0, &kwargs)?;
 
-            let boxed: &Box<Builtin> = objref.0.borrow();
-            match boxed.deref() {
+            match object.as_ref() {
                 &$builtin(ref value) => {
                 $func(value, rt)
                 }
@@ -438,17 +464,14 @@ macro_rules! binary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
         let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
-            let objref = selfref.clone();
+            let object = selfref.clone();
             check_args(1, &pos_args)?;
             check_args(0, &starargs)?;
             check_kwargs(0, &kwargs)?;
 
-            let zero = rt.int(0);
-            let args_tuple: &Box<Builtin> = pos_args.0.borrow();
-            let arg = args_tuple.op_getitem(&rt, &zero)?;
+            let arg = pos_args.op_getitem(&rt, &rt.int(0))?;
 
-            let boxed: &Box<Builtin> = objref.0.borrow();
-            match boxed.deref() {
+            match object.as_ref() {
                 &$builtin(ref value) => {
                 $func(value, rt, &arg)
                 }
@@ -471,17 +494,14 @@ macro_rules! ternary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
         let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
-            let objref = selfref.clone();
+            let object = selfref.clone();
             check_args(2, &pos_args)?;
             check_args(0, &starargs)?;
             check_kwargs(0, &kwargs)?;
 
-            let args_tuple: &Box<Builtin> = pos_args.0.borrow();
-            let arg1 = args_tuple.op_getitem(&rt, &rt.int(0))?;
-            let arg2 = args_tuple.op_getitem(&rt, &rt.int(1))?;
-
-            let boxed: &Box<Builtin> = objref.0.borrow();
-            match boxed.deref() {
+            let arg1 = pos_args.op_getitem(&rt, &rt.int(0))?;
+            let arg2 = pos_args.op_getitem(&rt, &rt.int(1))?;
+            match object.as_ref() {
                 &$builtin(ref value) => {
                 $func(value, rt, &arg1, &arg2)
                 }

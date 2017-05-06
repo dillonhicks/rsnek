@@ -1,8 +1,7 @@
-use runtime::Runtime;
-use typedef::native;
-use typedef::objectref::ObjectRef;
-
-use object::method;
+use ::object::method;
+use ::object::RtObject as ObjectRef;
+use ::runtime::Runtime;
+use ::typedef::native;
 
 
 pub trait HasName {
@@ -10,7 +9,7 @@ pub trait HasName {
 }
 
 
-// TODO: {T49} Investigate an actual type opbject. Things to pinder: Allow arguments to new and
+// TODO: {T49} Investigate an actual type object. Things to ponder: Allow arguments to new and
 // init, inheritance? Missing bases, mro, etc.
 /// __builtins__.type: Defines how types are created
 pub trait Type: method::New + method::Init + HasName {}
@@ -19,6 +18,8 @@ pub trait Type: method::New + method::Init + HasName {}
 pub trait BuiltinType {
     type T;
     type V;
+
+    //fn name() -> &'static str;
 
     /// Create the type and do any static initialization that may be needed
     fn init_type() -> Self;
@@ -31,4 +32,5 @@ pub trait BuiltinType {
 
     /// Create a new instance of the primitve type that his reference counted
     fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef;
+
 }

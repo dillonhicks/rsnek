@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use result::{NativeResult, RuntimeResult};
+use result::{RtResult, ObjectResult};
 use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
 
@@ -14,12 +14,12 @@ use object::typing;
 use object::method;
 
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject;
 use typedef::builtin::Builtin;
 
 
 pub struct PyBytesType {
-    pub empty: ObjectRef,
+    pub empty: RtObject,
 }
 
 
@@ -28,7 +28,7 @@ impl typing::BuiltinType for PyBytesType {
     type V = native::Bytes;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyBytesType::inject_selfref(PyBytesType::alloc(value))
     }
 
@@ -37,14 +37,13 @@ impl typing::BuiltinType for PyBytesType {
     }
 
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Bytes(value));
-        let new = objref.clone();
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let object = RtObject::new(Builtin::Bytes(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Bytes(ref string) => {
-                string.rc.set(&objref.clone());
+                string.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -62,155 +61,88 @@ impl typing::BuiltinType for PyBytesType {
 
 
 pub struct StringValue(pub native::Bytes);
-
-
 pub type PyBytes = RtValue<StringValue>;
 
 
 impl fmt::Debug for PyBytes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "String {{ {:?} }}", self.value.0)
+        write!(f, "Bytes {{ {:?} }}", self.value.0)
     }
 }
 
 
-
-
 impl object::PyAPI for PyBytes {}
-impl method::New for PyBytes {}
-impl method::Init for PyBytes {}
-impl method::Delete for PyBytes {}
-impl method::GetAttr for PyBytes {}
-impl method::GetAttribute for PyBytes {}
-impl method::SetAttr for PyBytes {}
-impl method::DelAttr for PyBytes {}
-impl method::Id for PyBytes {}
-impl method::Is for PyBytes {}
-impl method::IsNot for PyBytes {}
+
+
 impl method::Hashed for PyBytes {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(value) => Ok(rt.int(native::Integer::from(value))),
-            Err(err) => Err(err),
-        }
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
+        let value = self.native_hash()?;
+        Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> NativeResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<native::HashId> {
         let mut s = DefaultHasher::new();
         self.value.0.hash(&mut s);
         Ok(s.finish())
     }
 }
-impl method::StringCast for PyBytes {}
-impl method::BytesCast for PyBytes {}
-impl method::StringFormat for PyBytes {}
-impl method::StringRepresentation for PyBytes {}
-impl method::Equal for PyBytes {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
 
-        match self.native_eq(boxed) {
-            Ok(value) => Ok(rt.bool(value)),
-            _ => unreachable!(),
-        }
+impl method::Equal for PyBytes {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let value = self.native_eq(rhs.as_ref())?;
+        Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         match rhs {
             &Builtin::Bytes(ref bytes) => Ok(self.value.0 == bytes.value.0),
             _ => Ok(false),
         }
     }
 }
-impl method::NotEqual for PyBytes {}
-impl method::LessThan for PyBytes {}
-impl method::LessOrEqual for PyBytes {}
-impl method::GreaterOrEqual for PyBytes {}
-impl method::GreaterThan for PyBytes {}
-impl method::BooleanCast for PyBytes {}
-impl method::IntegerCast for PyBytes {}
-impl method::FloatCast for PyBytes {}
-impl method::ComplexCast for PyBytes {}
-impl method::Rounding for PyBytes {}
-impl method::Index for PyBytes {}
-impl method::NegateValue for PyBytes {}
-impl method::AbsValue for PyBytes {}
-impl method::PositiveValue for PyBytes {}
-impl method::InvertValue for PyBytes {}
-impl method::Add for PyBytes {}
-impl method::BitwiseAnd for PyBytes {}
-impl method::DivMod for PyBytes {}
-impl method::FloorDivision for PyBytes {}
-impl method::LeftShift for PyBytes {}
-impl method::Modulus for PyBytes {}
-impl method::Multiply for PyBytes {}
-impl method::MatrixMultiply for PyBytes {}
-impl method::BitwiseOr for PyBytes {}
-impl method::Pow for PyBytes {}
-impl method::RightShift for PyBytes {}
-impl method::Subtract for PyBytes {}
-impl method::TrueDivision for PyBytes {}
-impl method::XOr for PyBytes {}
-impl method::ReflectedAdd for PyBytes {}
-impl method::ReflectedBitwiseAnd for PyBytes {}
-impl method::ReflectedDivMod for PyBytes {}
-impl method::ReflectedFloorDivision for PyBytes {}
-impl method::ReflectedLeftShift for PyBytes {}
-impl method::ReflectedModulus for PyBytes {}
-impl method::ReflectedMultiply for PyBytes {}
-impl method::ReflectedMatrixMultiply for PyBytes {}
-impl method::ReflectedBitwiseOr for PyBytes {}
-impl method::ReflectedPow for PyBytes {}
-impl method::ReflectedRightShift for PyBytes {}
-impl method::ReflectedSubtract for PyBytes {}
-impl method::ReflectedTrueDivision for PyBytes {}
-impl method::ReflectedXOr for PyBytes {}
-impl method::InPlaceAdd for PyBytes {}
-impl method::InPlaceBitwiseAnd for PyBytes {}
-impl method::InPlaceDivMod for PyBytes {}
-impl method::InPlaceFloorDivision for PyBytes {}
-impl method::InPlaceLeftShift for PyBytes {}
-impl method::InPlaceModulus for PyBytes {}
-impl method::InPlaceMultiply for PyBytes {}
-impl method::InPlaceMatrixMultiply for PyBytes {}
-impl method::InPlaceBitwiseOr for PyBytes {}
-impl method::InPlacePow for PyBytes {}
-impl method::InPlaceRightShift for PyBytes {}
-impl method::InPlaceSubtract for PyBytes {}
-impl method::InPlaceTrueDivision for PyBytes {}
-impl method::InPlaceXOr for PyBytes {}
-impl method::Contains for PyBytes {}
-impl method::Iter for PyBytes {}
-impl method::Call for PyBytes {}
-impl method::Length for PyBytes {}
-impl method::LengthHint for PyBytes {}
-impl method::Next for PyBytes {}
-impl method::Reversed for PyBytes {}
-impl method::GetItem for PyBytes {}
-impl method::SetItem for PyBytes {}
-impl method::DeleteItem for PyBytes {}
-impl method::Count for PyBytes {}
-impl method::Append for PyBytes {}
-impl method::Extend for PyBytes {}
-impl method::Pop for PyBytes {}
-impl method::Remove for PyBytes {}
-impl method::IsDisjoint for PyBytes {}
-impl method::AddItem for PyBytes {}
-impl method::Discard for PyBytes {}
-impl method::Clear for PyBytes {}
-impl method::Get for PyBytes {}
-impl method::Keys for PyBytes {}
-impl method::Values for PyBytes {}
-impl method::Items for PyBytes {}
-impl method::PopItem for PyBytes {}
-impl method::Update for PyBytes {}
-impl method::SetDefault for PyBytes {}
-impl method::Await for PyBytes {}
-impl method::Send for PyBytes {}
-impl method::Throw for PyBytes {}
-impl method::Close for PyBytes {}
-impl method::Exit for PyBytes {}
-impl method::Enter for PyBytes {}
-impl method::DescriptorGet for PyBytes {}
-impl method::DescriptorSet for PyBytes {}
-impl method::DescriptorSetName for PyBytes {}
+
+
+method_not_implemented!(PyBytes,
+    AbsValue   Add   AddItem   Append
+    Await   BitwiseAnd   BitwiseOr   BooleanCast
+    BytesCast   Call   Clear   Close
+    ComplexCast   Contains   Count   DelAttr
+    Delete   DeleteItem   DescriptorGet   DescriptorSet
+    DescriptorSetName   Discard   DivMod   Enter
+    Exit   Extend   FloatCast
+    FloorDivision   Get   GetAttr   GetAttribute
+    GetItem   GreaterOrEqual   GreaterThan
+    Id   InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr
+    InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
+    InPlaceModulus   InPlaceMultiply   InPlacePow   InPlaceRightShift
+    InPlaceSubtract   InPlaceTrueDivision   InPlaceXOr   Index
+    Init   IntegerCast   InvertValue   Is
+    IsDisjoint   IsNot   Items   Iter
+    Keys   LeftShift   Length   LengthHint
+    LessOrEqual   LessThan   MatrixMultiply   Modulus
+    Multiply   NegateValue   New   Next
+    NotEqual   Pop   PopItem   PositiveValue
+    Pow   ReflectedAdd   ReflectedBitwiseAnd   ReflectedBitwiseOr
+    ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift   ReflectedMatrixMultiply
+    ReflectedModulus   ReflectedMultiply   ReflectedPow   ReflectedRightShift
+    ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   Remove
+    Reversed   RightShift   Rounding   Send
+    SetAttr   SetDefault   SetItem   StringCast
+    StringFormat   StringRepresentation   Subtract   Throw
+    TrueDivision   Update   Values   XOr
+);
+
+
+#[cfg(test)]
+mod tests {
+    use ::runtime::Runtime;
+
+    fn setup() -> (Runtime, ) {
+        (Runtime::new(), )
+    }
+
+    #[test]
+    fn stub() {
+        info!("stub");
+    }
+}

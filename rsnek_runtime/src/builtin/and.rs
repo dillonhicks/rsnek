@@ -2,17 +2,16 @@ use std::borrow::Borrow;
 
 use ::object::method::BooleanCast;
 use ::runtime::Runtime;
-use ::result::RuntimeResult;
+use ::result::ObjectResult;
 use ::typedef::builtin::Builtin;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::traits::BooleanProvider;
 
 
-pub fn logical_and<'a>(rt: &Runtime, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
-    let builtin: &Box<Builtin> = lhs.0.borrow();
-    match builtin.op_bool(rt) {
-        Ok(objref) => {
-            if objref == rt.bool(false) {
+pub fn logical_and<'a>(rt: &Runtime, lhs: &ObjectRef, rhs: &ObjectRef) -> ObjectResult {
+    match lhs.op_bool(rt) {
+        Ok(object) => {
+            if object == rt.bool(false) {
                 return Ok(lhs.clone())
             }
         },

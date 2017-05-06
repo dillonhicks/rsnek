@@ -1,16 +1,15 @@
 use std::borrow::Borrow;
 
-use object::method::{GetItem, Iter, BooleanCast};
-use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider};
-
-use result::{RuntimeResult};
-use typedef::objectref::ObjectRef;
+use ::builtin::precondition::{check_args, check_kwargs};
+use ::object::method::{GetItem, Iter, BooleanCast};
+use ::object::RtObject;
 use ::resource::strings;
-use typedef::builtin::Builtin;
-use typedef::native::{self, Func, FuncType, SignatureBuilder};
+use ::result::{ObjectResult};
+use ::runtime::Runtime;
+use ::traits::{IntegerProvider, BooleanProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 
-use builtin::precondition::{check_args, check_kwargs};
 
 pub struct AnyFn;
 
@@ -30,46 +29,29 @@ impl AnyFn {
 }
 
 
-fn rs_builtin_any(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+fn rs_builtin_any(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs: &RtObject) -> ObjectResult {
     trace!("call"; "native_builtin" => "any");
 
-    match check_args(1, &pos_args) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
+    check_args(1, &pos_args)?;
+    check_args(0, &starargs)?;
+    check_kwargs(0, &kwargs)?;
 
-    match check_args(0, &starargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
-
-    match check_kwargs(0, &kwargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
-
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    let zero = rt.int(0);
-
-    let value = boxed.op_getitem(&rt, &zero).unwrap();
-    let boxed: &Box<Builtin> = value.0.borrow();
-
-    let iterable = match boxed.op_iter(&rt) {
-        Ok(objref) => objref,
-        Err(err) => return Err(err)
-    };
+    let value = pos_args.op_getitem(&rt, &rt.int(0))?;
+    let iterable = value.op_iter(&rt)?;
 
     Ok(rt.bool(iterator_any(&rt, iterable)))
 }
 
 
 pub fn iterator_any<I>(rt: &Runtime, iterator: I) -> native::Boolean
-    where I: Iterator<Item=ObjectRef> {
-    iterator.map(|objref| {
-        let builtin: &Box<Builtin> = objref.0.borrow();
-        builtin.op_bool(&rt).unwrap_or(rt.bool(true))
-    })
-    .any(|objref| objref == rt.bool(true))
+    where I: Iterator<Item=RtObject> {
+
+    let true_ = rt.bool(true);
+    
+    iterator
+        .map(|obj| obj.op_bool(&rt).unwrap_or(rt.bool(false)))
+        .any(|t| t == true_)
+
 }
 
 

@@ -5,23 +5,23 @@ use std::borrow::Borrow;
 use num::ToPrimitive;
 
 use ::error::Error;
-use ::result::NativeResult;
+use ::result::RtResult;
 use ::resource::strings;
 use ::typedef::builtin::Builtin;
 use ::typedef::native;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject;
 
 
-pub fn equals<'a>(left: &'a [ObjectRef], right: &'a [ObjectRef]) -> native::Boolean {
+pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> native::Boolean {
     ((left.len() == right.len()) &&
         left.iter().zip(right.iter())
             .all(|(l, r)| l == r))
 }
 
-pub fn contains<'a>(seq: &'a [ObjectRef], item: &Builtin) -> native::Boolean {
+pub fn contains<'a>(seq: &'a [RtObject], item: &Builtin) -> native::Boolean {
     seq.iter()
-        .map(|objref| objref.0.borrow())
-        .any(|value: &Box<Builtin>| {
+        .map(|objref| objref.as_ref())
+        .any(|value: &Builtin| {
             *(value.deref()) == *item
         })
 }
@@ -33,8 +33,8 @@ pub fn contains<'a>(seq: &'a [ObjectRef], item: &Builtin) -> native::Boolean {
 /// let repeated_3_times = multiply(&objects, 3);
 /// assert_eq!(repeated_3_times.len(), objects.len() * 3);
 /// ```
-pub fn multiply<'a, T>(seq: &'a [ObjectRef], factor: usize) -> T
-    where T: FromIterator<ObjectRef> {
+pub fn multiply<'a, T>(seq: &'a [RtObject], factor: usize) -> T
+    where T: FromIterator<RtObject> {
     // TODO: {T3092} determine the efficiency of this vs. preallocating a vector
     // and cloning the slice into the vector n times.
     (0..factor)
@@ -43,7 +43,7 @@ pub fn multiply<'a, T>(seq: &'a [ObjectRef], factor: usize) -> T
 }
 
 /// Get index using the normal +/- indexing rules
-pub fn get_index<'a, T>(seq: &'a [T], index: &ToPrimitive) -> NativeResult<T>
+pub fn get_index<'a, T>(seq: &'a [T], index: &ToPrimitive) -> RtResult<T>
     where T: Clone, { //V: Index<usize, Output=T>
     // TODO: {T3091} update "sequence" to be the type name
     let index_err = Err(rsnek_exception_index!("sequence"));

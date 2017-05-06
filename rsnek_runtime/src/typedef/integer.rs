@@ -3,46 +3,31 @@ use std::fmt;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
-
 use num::{self, Zero, ToPrimitive};
 
-use runtime::Runtime;
-use traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
-use resource::strings;
-use error::Error;
-use result::{NativeResult, RuntimeResult};
-use object::{self, RtValue, method, typing};
-use object::selfref::{self, SelfRef};
-use object::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};
-use object::method::*;
-
-use typedef::native::{self, HashId, SignatureBuilder};
-use typedef::objectref::ObjectRef;
-use typedef::builtin::Builtin;
+use ::builtin::precondition::{check_args, check_kwargs};
+use ::error::Error;
+use ::object::method::*;
+use ::object::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};
+use ::object::RtObject;
+use ::object::selfref::{self, SelfRef};
+use ::object::{self, RtValue, method, typing};
+use ::resource::strings;
+use ::result::{RtResult, ObjectResult};
+use ::runtime::Runtime;
+use ::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, HashId, SignatureBuilder};
 use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
-use ::builtin::precondition::check_args;
-use ::builtin::precondition::check_kwargs;
+
 
 const STATIC_INT_RANGE: std::ops::Range<isize> = -5..1024;
-const DOCSTRING: &'static str = r#"int(x=0) -> integer
-int(x, base=10) -> integer
+const TYPE_NAME: &'static str = "int";
 
-Convert a number or string to an integer, or return 0 if no arguments
-are given.  If x is a number, return x.__int__().  For floating point
-numbers, this truncates towards zero.
-
-If x is not a number or if base is given, then x must be a string,
-bytes, or bytearray instance representing an integer literal in the
-given base.  The literal can be preceded by '+' or '-' and be surrounded
-by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.
-Base 0 means to interpret the base from the string as an integer literal.
->>> int('0b100', base=0)
-4
-"#;
 
 #[derive(Clone)]
 pub struct PyIntegerType {
-    pub static_integers: Vec<ObjectRef>,
+    pub static_integers: Vec<RtObject>,
 }
 
 
@@ -51,7 +36,7 @@ impl typing::BuiltinType for PyIntegerType {
     type V = native::Integer;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: native::Integer) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: native::Integer) -> RtObject {
         match value.to_isize() {
             Some(idx @ -5..1024) => self.static_integers[(idx + 5) as usize].clone(),
             Some(_) |
@@ -61,7 +46,7 @@ impl typing::BuiltinType for PyIntegerType {
 
 
     fn init_type() -> Self {
-        let range: Vec<ObjectRef> = STATIC_INT_RANGE
+        let range: Vec<RtObject> = STATIC_INT_RANGE
             .map(native::Integer::from)
             .map(PyIntegerType::alloc)
             .map(PyIntegerType::inject_selfref)
@@ -69,14 +54,13 @@ impl typing::BuiltinType for PyIntegerType {
         PyIntegerType { static_integers: range }
     }
 
-    fn inject_selfref(value: PyInteger) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Int(value));
-        let new = objref.clone();
+    fn inject_selfref(value: PyInteger) -> RtObject {
+        let object = RtObject::new(Builtin::Int(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Int(ref int) => {
-                int.rc.set(&objref.clone());
+                int.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -89,12 +73,8 @@ impl typing::BuiltinType for PyIntegerType {
             rc: selfref::RefCount::default(),
         }
     }
+
 }
-
-
-impl method::New for PyIntegerType {}
-impl method::Init for PyIntegerType {}
-impl method::Delete for PyIntegerType {}
 
 
 pub struct IntValue(pub native::Integer);
@@ -125,7 +105,7 @@ impl PyInteger {
         ('real', 1),
         ('to_bytes', <function int.to_bytes>)]
     */
-    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
             "__doc__"           => self.try_get_name(rt, name),
             "__abs__"           |
@@ -175,19 +155,19 @@ impl PyInteger {
             "__rpow__"          |
             "__setattr__"       => self.try_get_ternary_method(rt, name),
             missing => return Err(Error::attribute(
-                &strings_error_no_attribute!("int", missing)))
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
         }
     }
 
-    fn try_get_name(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_name(&self, rt: &Runtime, name: &str) -> ObjectResult {
         match name {
-            "__doc__" => Ok(rt.str(DOCSTRING)),
+            "__doc__" => Ok(rt.str(strings::INT_DOC_STRING)),
             missing => Err(Error::attribute(
-                &strings_error_no_attribute!("int", missing)))
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
         }
     }
 
-    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__abs__"       => {PyInteger::op_abs},
             "__bool__"      => {PyInteger::op_bool},
@@ -201,13 +181,13 @@ impl PyInteger {
             "__repr__"      => {PyInteger::op_repr},
             "__str__"       => {PyInteger::op_str},
             missing => return Err(Error::attribute(
-                &strings_error_no_attribute!("int", missing)))
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        unary_method_wrapper!(self, "int", name, rt, Builtin::Int, func)
+        unary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
     }
 
-    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__add__"          => {PyInteger::op_add},
             "__and__"          => {PyInteger::op_and},
@@ -242,30 +222,27 @@ impl PyInteger {
             "__truediv__"      => {PyInteger::op_truediv},
             "__xor__"          => {PyInteger::op_xor},
             missing => return Err(Error::attribute(
-                &strings_error_no_attribute!("int", missing)))
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        binary_method_wrapper!(self, "int", name, rt, Builtin::Int, func)
+        binary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
     }
 
-    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
         let func = match name {
             "__pow__"          => {PyInteger::op_pow},
             //"__rpow__"         => {PyInteger::op_rpow},
             "__setattr__"      => {PyInteger::op_setattr},
             missing => return Err(Error::attribute(
-                &strings_error_no_attribute!("int", missing)))
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        ternary_method_wrapper!(self, "int", name, rt, Builtin::Int, func)
+        ternary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
     }
 
 }
 
 
-// ---------------
-//  stdlib traits
-// ---------------
 impl fmt::Display for PyInteger {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value.0)
@@ -278,6 +255,7 @@ impl fmt::Debug for PyInteger {
     }
 }
 
+
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -286,17 +264,16 @@ impl object::PyAPI for PyInteger {}
 
 /// `self.rhs`
 impl method::GetAttr for PyInteger {
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
-        let boxed: &Box<Builtin> = name.0.borrow();
-        match boxed.deref() {
+        match name.as_ref() {
             &Builtin::Str(ref pystring) => {
-                let selfref = self.rc.upgrade()?;
                 let string = pystring.value.0.clone();
                 self.get_attribute(&rt, &string)
             }
             other => Err(Error::typerr(&format!(
-                "getattr <int>' requires string for attribute names, not {}",
+                "getattr <{}>' requires string for attribute names, not {}",
+                TYPE_NAME,
                 other.debug_name())))
         }
     }
@@ -305,12 +282,12 @@ impl method::GetAttr for PyInteger {
 
 /// `hash(self)`
 impl method::Hashed for PyInteger {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         let hash = self.native_hash()?;
         Ok(rt.int(hash))
     }
 
-    fn native_hash(&self) -> NativeResult<HashId> {
+    fn native_hash(&self) -> RtResult<HashId> {
         Ok(number::hash_int(&self.value.0))
     }
 }
@@ -318,12 +295,12 @@ impl method::Hashed for PyInteger {
 
 /// `str(self)`
 impl method::StringCast for PyInteger {
-    fn op_str(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_str(&self, rt: &Runtime) -> ObjectResult {
         let string = self.native_str()?;
         Ok(rt.str(string))
     }
 
-    fn native_str(&self) -> NativeResult<native::String> {
+    fn native_str(&self) -> RtResult<native::String> {
         Ok(format_int(&self.value.0))
     }
 }
@@ -331,12 +308,12 @@ impl method::StringCast for PyInteger {
 
 /// `repr(self)`
 impl method::StringRepresentation for PyInteger {
-    fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_repr(&self, rt: &Runtime) -> ObjectResult {
         let string = self.native_repr()?;
         Ok(rt.str(string))
     }
 
-    fn native_repr(&self) -> NativeResult<native::String> {
+    fn native_repr(&self) -> RtResult<native::String> {
         Ok(format_int(&self.value.0))
     }
 }
@@ -344,14 +321,12 @@ impl method::StringRepresentation for PyInteger {
 
 /// `self == rhs`
 impl method::Equal for PyInteger {
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        let value = self.native_eq(builtin.deref())?;
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let value = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, other: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
         let lhs = IntAdapter(&self.value.0);
 
         match *other {
@@ -366,14 +341,12 @@ impl method::Equal for PyInteger {
 
 /// `self != rhs`
 impl method::NotEqual for PyInteger {
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        let truth = self.native_ne(builtin.deref())?;
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        let truth = self.native_ne(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
         let truth = !self.native_eq(rhs)?;
         Ok(truth)
     }
@@ -381,7 +354,7 @@ impl method::NotEqual for PyInteger {
 
 /// `bool(self)`
 impl method::BooleanCast for PyInteger {
-    fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_bool(&self, rt: &Runtime) -> ObjectResult {
         if self.native_bool().unwrap() {
             Ok(rt.bool(true))
         } else {
@@ -389,7 +362,7 @@ impl method::BooleanCast for PyInteger {
         }
     }
 
-    fn native_bool(&self) -> NativeResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<native::Boolean> {
         return Ok(!self.value.0.is_zero());
     }
 }
@@ -397,22 +370,22 @@ impl method::BooleanCast for PyInteger {
 /// `int(self)`
 impl method::IntegerCast for PyInteger {
     #[allow(unused_variables)]
-    fn op_int(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_int(&self, rt: &Runtime) -> ObjectResult {
         self.rc.upgrade()
     }
 
-    fn native_int(&self) -> NativeResult<native::Integer> {
+    fn native_int(&self) -> RtResult<native::Integer> {
         return Ok(self.value.0.clone());
     }
 }
 
 /// `-self`
 impl method::NegateValue for PyInteger {
-    fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
+    fn op_neg(&self, rt: &Runtime) -> ObjectResult {
         Ok(rt.int(- self.value.0.clone()))
     }
 
-    fn native_neg(&self) -> NativeResult<native::Number> {
+    fn native_neg(&self) -> RtResult<native::Number> {
         Ok(native::Number::Int(- self.value.0.clone()))
     }
 }
@@ -420,11 +393,9 @@ impl method::NegateValue for PyInteger {
 
 /// `self + rhs`
 impl method::Add for PyInteger {
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
-
-        match builtin.deref() {
+        match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 + &rhs.value.0)),
             &Builtin::Float(ref rhs) => {
                 match self.value.0.to_f64() {
@@ -434,7 +405,7 @@ impl method::Add for PyInteger {
                 }
             }
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("+", "int", other.debug_name())))
+                &strings_error_bad_operand!("+", TYPE_NAME, other.debug_name())))
         }
     }
 
@@ -442,10 +413,9 @@ impl method::Add for PyInteger {
 
 /// `self << rhs`
 impl method::LeftShift for PyInteger {
-    fn op_lshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
+    fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
-        match builtin.deref() {
+        match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  {
                 #[allow(unused_comparisons)]
                 match rhs.value.0.to_usize() {
@@ -459,17 +429,15 @@ impl method::LeftShift for PyInteger {
                 }
             },
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("<<", "int", other.debug_name())))
+                &strings_error_bad_operand!("<<", TYPE_NAME, other.debug_name())))
         }
     }
 }
 
 /// `self * rhs`
 impl method::Multiply for PyInteger {
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref() {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 * &rhs.value.0)),
             &Builtin::Float(ref rhs) => {
                 match self.value.0.to_f64() {
@@ -480,7 +448,7 @@ impl method::Multiply for PyInteger {
             }
 
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("*", "int", other.debug_name()))),
+                &strings_error_bad_operand!("*", TYPE_NAME, other.debug_name()))),
         }
     }
 }
@@ -490,10 +458,8 @@ impl method::Pow for PyInteger {
 
     // TODO: modulus not currently used
     #[allow(unused_variables)]
-    fn op_pow(&self, rt: &Runtime, exponent: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = exponent.0.borrow();
-
-        match builtin.deref() {
+    fn op_pow(&self, rt: &Runtime, exponent: &RtObject, modulus: &RtObject) -> ObjectResult {
+        match exponent.as_ref() {
             &Builtin::Int(ref power) =>  {
                 let base = self.value.0.clone();
 
@@ -505,7 +471,7 @@ impl method::Pow for PyInteger {
                 }
             },
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("**", "int", other.debug_name()))),
+                &strings_error_bad_operand!("**", TYPE_NAME, other.debug_name()))),
         }
     }
 }
@@ -513,10 +479,9 @@ impl method::Pow for PyInteger {
 /// `self >> rhs`
 impl method::RightShift for PyInteger {
 
-    fn op_rshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
+    fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
-        match builtin.deref() {
+        match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  {
                 #[allow(unused_comparisons)]
                 match rhs.value.0.to_usize() {
@@ -530,17 +495,15 @@ impl method::RightShift for PyInteger {
                 }
             },
             other => Err(Error::typerr(
-                &strings_error_bad_operand!(">>", "int", other.debug_name()))),
+                &strings_error_bad_operand!(">>", TYPE_NAME, other.debug_name()))),
         }
     }
 }
 
 /// `self - rhs`
 impl method::Subtract for PyInteger {
-    fn op_sub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref() {
+    fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        match rhs.as_ref() {
             &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 - &rhs.value.0)),
             &Builtin::Float(ref rhs) => {
                 match self.value.0.to_f64() {
@@ -550,104 +513,35 @@ impl method::Subtract for PyInteger {
                 }
             }
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("-", "int", other.debug_name())))
+                &strings_error_bad_operand!("-", TYPE_NAME, other.debug_name())))
         }
     }
 
 }
 
 method_not_implemented!(PyInteger,
-    New
-    Init
-    Delete
-    GetAttribute
-    SetAttr
-    DelAttr
-    Id
-    Is
-    IsNot
-    BytesCast
-    StringFormat
-    LessThan
-    LessOrEqual
-    GreaterOrEqual
-    GreaterThan
-    FloatCast
-    ComplexCast
-    Rounding
-    Index
-    AbsValue
-    PositiveValue
-    InvertValue
-    BitwiseAnd
-    DivMod
-    FloorDivision
-    Modulus
-    BitwiseOr
-    MatrixMultiply
-    TrueDivision
-    XOr
-    ReflectedAdd
-    ReflectedBitwiseAnd
-    ReflectedDivMod
-    ReflectedFloorDivision
-    ReflectedLeftShift
-    ReflectedModulus
-    ReflectedMultiply
-    ReflectedMatrixMultiply
-    ReflectedBitwiseOr
-    ReflectedPow
-    ReflectedRightShift
-    ReflectedSubtract
-    ReflectedTrueDivision
-    ReflectedXOr
-    InPlaceAdd
-    InPlaceBitwiseAnd
-    InPlaceDivMod
-    InPlaceFloorDivision
-    InPlaceLeftShift
-    InPlaceModulus
-    InPlaceMultiply
-    InPlaceMatrixMultiply
-    InPlaceBitwiseOr
-    InPlacePow
-    InPlaceRightShift
-    InPlaceSubtract
-    InPlaceTrueDivision
-    InPlaceXOr
-    Contains
-    Iter
-    Call
-    Length
-    LengthHint
-    Next
-    Reversed
-    GetItem
-    SetItem
-    DeleteItem
-    Count
-    Append
-    Extend
-    Pop
-    Remove
-    IsDisjoint
-    AddItem
-    Discard
-    Clear
-    Get
-    Keys
-    Values
-    Items
-    PopItem
-    Update
-    SetDefault
-    Await
-    Send
-    Throw
-    Close
-    Exit
-    Enter
-    DescriptorGet
-    DescriptorSet
+    New   Init   Delete   GetAttribute   
+    SetAttr   DelAttr   Id   Is   
+    IsNot   BytesCast   StringFormat   LessThan   
+    LessOrEqual   GreaterOrEqual   GreaterThan   FloatCast   
+    ComplexCast   Rounding   Index   AbsValue   
+    PositiveValue   InvertValue   BitwiseAnd   DivMod   
+    FloorDivision   Modulus   BitwiseOr   MatrixMultiply   
+    TrueDivision   XOr   ReflectedAdd   ReflectedBitwiseAnd   
+    ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift   ReflectedModulus   
+    ReflectedMultiply   ReflectedMatrixMultiply   ReflectedBitwiseOr   ReflectedPow   
+    ReflectedRightShift   ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   
+    InPlaceAdd   InPlaceBitwiseAnd   InPlaceDivMod   InPlaceFloorDivision   
+    InPlaceLeftShift   InPlaceModulus   InPlaceMultiply   InPlaceMatrixMultiply   
+    InPlaceBitwiseOr   InPlacePow   InPlaceRightShift   InPlaceSubtract   
+    InPlaceTrueDivision   InPlaceXOr   Contains   Iter   
+    Call   Length   LengthHint   Next   
+    Reversed   GetItem   SetItem   DeleteItem   
+    Count   Append   Extend   Pop   
+    Remove   IsDisjoint   AddItem   Discard   
+    Clear   Get   Keys   Values   
+    Items   PopItem   Update   SetDefault   
+    Await   Send   Throw   Close   
+    Exit   Enter   DescriptorGet   DescriptorSet   
     DescriptorSetName
 );

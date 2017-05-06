@@ -7,7 +7,6 @@ pub mod bytes;
 pub mod tuple;
 pub mod list;
 pub mod dictionary;
-pub mod objectref;
 pub mod set;
 pub mod frozenset;
 pub mod complex;
@@ -20,5 +19,6 @@ pub mod method;
 pub mod module;
 pub mod code;
 pub mod frame;
+
 mod number;
 mod collection;

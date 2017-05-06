@@ -1,16 +1,15 @@
 use std::borrow::Borrow;
 
-use object::method::{GetItem};
-use runtime::Runtime;
-use traits::{IntegerProvider, StringProvider};
-
-use result::{RuntimeResult};
-use typedef::objectref::ObjectRef;
+use ::builtin::precondition::{check_args, check_kwargs};
+use ::object::method::{GetItem};
+use ::object::RtObject as ObjectRef;
 use ::resource::strings;
-use typedef::builtin::Builtin;
-use typedef::native::{self, Signature, Func, FuncType};
+use ::result::{ObjectResult};
+use ::runtime::Runtime;
+use ::traits::{IntegerProvider, StringProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, Signature, Func, FuncType};
 
-use builtin::precondition::{check_args, check_kwargs};
 
 pub struct TypeFn;
 
@@ -31,35 +30,16 @@ impl TypeFn {
 }
 
 
-fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+fn rs_builtin_typefn(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> ObjectResult {
     trace!("call"; "native_builtin" => "type");
-    match check_args(1, &pos_args) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
+    check_args(1, &pos_args)?;
+    check_args(0, &starargs)?;
+    check_kwargs(0, &kwargs)?;
 
-    match check_args(0, &starargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
+    let value = pos_args.op_getitem(&rt, &rt.int(0))?;
 
-    match check_kwargs(0, &kwargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
-
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    let zero = rt.int(0);
-
-    let name;
-
-    {
-        let value = boxed.op_getitem(&rt, &zero).unwrap();
-        let boxed: &Box<Builtin> = value.0.borrow();
-        name = boxed.debug_name().to_string();
-    }
 
     // Hack for demo purposes since there are not type and class objects yet
     // TODO: {T49} return the type when type objects are a thing
-    Ok(rt.str(name))
+    Ok(rt.str(value.as_ref().debug_name()))
 }

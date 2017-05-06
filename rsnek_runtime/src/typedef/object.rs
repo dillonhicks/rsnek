@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 use error::Error;
-use result::{RuntimeResult, NativeResult};
+use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{NoneProvider, IntegerProvider};
 use object::{self, RtValue, typing};
@@ -17,16 +17,16 @@ use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, DictKey};
-use typedef::objectref::ObjectRef;
+use ::object::RtObject;
 
 
 pub struct PyObjectType {
-    pub object: ObjectRef,
-    pub pytype: ObjectRef,
+    pub object: RtObject,
+    pub pytype: RtObject,
 }
 
 impl PyObjectType {
-    pub fn init_type(typeref: &ObjectRef) -> Self {
+    pub fn init_type(typeref: &RtObject) -> Self {
 
         // TODO: {T106} Fundamental objects should have __setitem__ set to a attribute error
         let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
@@ -54,7 +54,7 @@ impl typing::BuiltinType for PyObjectType {
 
     #[inline(always)]
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: Self::V) -> ObjectRef {
+    fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
         PyObjectType::inject_selfref(PyObjectType::alloc(value))
     }
 
@@ -62,14 +62,13 @@ impl typing::BuiltinType for PyObjectType {
         unimplemented!()
     }
 
-    fn inject_selfref(value: Self::T) -> ObjectRef {
-        let objref = ObjectRef::new(Builtin::Object(value));
-        let new = objref.clone();
+    fn inject_selfref(value: Self::T) -> RtObject {
+        let object = RtObject::new(Builtin::Object(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
-            &Builtin::Object(ref object) => {
-                object.rc.set(&objref.clone());
+        match object.as_ref() {
+            &Builtin::Object(ref value) => {
+                value.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -89,239 +88,11 @@ pub struct ObjectValue(pub native::Object);
 pub type PyObject = RtValue<ObjectValue>;
 
 impl PyObject {
-    pub fn dir(&self) -> NativeResult<native::Tuple> {
-        let boxed: &Box<Builtin> = self.value.0.dict.0.borrow();
-        boxed.native_meth_keys()
+    pub fn dir(&self) -> RtResult<native::Tuple> {
+        self.value.0.dict.native_meth_keys()
     }
 
 }
-
-//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-////    Python Object Traits
-//// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-
-impl object::PyAPI for PyObject {}
-impl method::New for PyObject {}
-impl method::Init for PyObject {}
-impl method::Delete for PyObject {}
-
-impl method::GetAttr for PyObject {
-    // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
-    #[allow(unused_variables)]
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
-        let boxed: &Box<Builtin> = name.0.borrow();
-        self.native_getattr(&boxed)
-    }
-
-    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
-        match name {
-            &Builtin::Str(ref string) => {
-                let stringref = match string.rc.upgrade() {
-                    Ok(objref) => objref,
-                    Err(err) => return Err(err),
-                };
-
-                let key = DictKey(string.native_hash().unwrap(), stringref);
-                let dict: &Box<Builtin> = self.value
-                    .0
-                    .dict
-                    .0
-                    .borrow();
-                match dict.native_getitem(&Builtin::DictKey(key)) {
-                    Ok(objref) => Ok(objref),
-                    Err(err) => {
-                        let boxed: &Box<Builtin> = self.value
-                            .0
-                            .bases
-                            .0
-                            .borrow();
-
-                        match boxed.deref() {
-                            &Builtin::Tuple(ref tuple) => {
-                                for base in &tuple.value.0 {
-                                    println!("{:?}", base);
-                                }
-                            }
-                            _ => unreachable!(),
-                        }
-                        println!("NOOPE!");
-                        Err(err)
-                    }
-                }
-            }
-            _ => Err(Error::typerr("getattr(): attribute name must be string")),
-        }
-    }
-}
-impl method::GetAttribute for PyObject {}
-
-impl method::SetAttr for PyObject {
-    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
-        let boxed_name: &Box<Builtin> = name.0.borrow();
-        let boxed_value: &Box<Builtin> = value.0.borrow();
-        match self.native_setattr(&boxed_name, boxed_value) {
-            Ok(_) => Ok(rt.none()),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> NativeResult<native::None> {
-
-        let hashid = match name.native_hash() {
-            Ok(hash) => hash,
-            Err(err) => return Err(err),
-        };
-
-        let key_ref = match name.upgrade() {
-            Ok(objref) => objref,
-            Err(err) => return Err(err),
-        };
-
-        let key = DictKey(hashid, key_ref);
-        let dict: &Box<Builtin> = self.value
-            .0
-            .dict
-            .0
-            .borrow();
-
-        match dict.native_setitem(&Builtin::DictKey(key), &value) {
-            Ok(_) => Ok(native::None()),
-            Err(_) => Err(Error::attribute("Could not set attribute")),
-        }
-    }
-}
-
-impl method::DelAttr for PyObject {}
-impl method::Id for PyObject {
-    fn native_id(&self) -> native::ObjectId {
-        match self.rc.upgrade() {
-            Ok(objref) => {
-                let boxed: &Box<Builtin> = objref.0.borrow();
-                boxed.native_id()
-            }
-            Err(_) => 0,
-        }
-    }
-}
-
-impl method::Hashed for PyObject {
-    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(hashid) => Ok(rt.int(hashid)),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn native_hash(&self) -> NativeResult<native::HashId> {
-        let mut s = DefaultHasher::new();
-        self.native_id().hash(&mut s);
-        Ok(s.finish())
-    }
-}
-impl method::StringCast for PyObject {}
-impl method::BytesCast for PyObject {}
-impl method::StringFormat for PyObject {}
-impl method::StringRepresentation for PyObject {}
-impl method::Equal for PyObject {}
-impl method::NotEqual for PyObject {}
-impl method::LessThan for PyObject {}
-impl method::LessOrEqual for PyObject {}
-impl method::GreaterOrEqual for PyObject {}
-impl method::GreaterThan for PyObject {}
-impl method::BooleanCast for PyObject {}
-impl method::IntegerCast for PyObject {}
-impl method::FloatCast for PyObject {}
-impl method::ComplexCast for PyObject {}
-impl method::Rounding for PyObject {}
-impl method::Index for PyObject {}
-impl method::NegateValue for PyObject {}
-impl method::AbsValue for PyObject {}
-impl method::PositiveValue for PyObject {}
-impl method::InvertValue for PyObject {}
-impl method::Add for PyObject {}
-impl method::BitwiseAnd for PyObject {}
-impl method::DivMod for PyObject {}
-impl method::FloorDivision for PyObject {}
-impl method::LeftShift for PyObject {}
-impl method::Modulus for PyObject {}
-impl method::Multiply for PyObject {}
-impl method::MatrixMultiply for PyObject {}
-impl method::BitwiseOr for PyObject {}
-impl method::Pow for PyObject {}
-impl method::RightShift for PyObject {}
-impl method::Subtract for PyObject {}
-impl method::TrueDivision for PyObject {}
-impl method::XOr for PyObject {}
-impl method::ReflectedAdd for PyObject {}
-impl method::ReflectedBitwiseAnd for PyObject {}
-impl method::ReflectedDivMod for PyObject {}
-impl method::ReflectedFloorDivision for PyObject {}
-impl method::ReflectedLeftShift for PyObject {}
-impl method::ReflectedModulus for PyObject {}
-impl method::ReflectedMultiply for PyObject {}
-impl method::ReflectedMatrixMultiply for PyObject {}
-impl method::ReflectedBitwiseOr for PyObject {}
-impl method::ReflectedPow for PyObject {}
-impl method::ReflectedRightShift for PyObject {}
-impl method::ReflectedSubtract for PyObject {}
-impl method::ReflectedTrueDivision for PyObject {}
-impl method::ReflectedXOr for PyObject {}
-impl method::InPlaceAdd for PyObject {}
-impl method::InPlaceBitwiseAnd for PyObject {}
-impl method::InPlaceDivMod for PyObject {}
-impl method::InPlaceFloorDivision for PyObject {}
-impl method::InPlaceLeftShift for PyObject {}
-impl method::InPlaceModulus for PyObject {}
-impl method::InPlaceMultiply for PyObject {}
-impl method::InPlaceMatrixMultiply for PyObject {}
-impl method::InPlaceBitwiseOr for PyObject {}
-impl method::InPlacePow for PyObject {}
-impl method::InPlaceRightShift for PyObject {}
-impl method::InPlaceSubtract for PyObject {}
-impl method::InPlaceTrueDivision for PyObject {}
-impl method::InPlaceXOr for PyObject {}
-impl method::Contains for PyObject {}
-impl method::Iter for PyObject {}
-impl method::Call for PyObject {}
-impl method::Length for PyObject {}
-impl method::LengthHint for PyObject {}
-impl method::Next for PyObject {}
-impl method::Reversed for PyObject {}
-impl method::GetItem for PyObject {}
-impl method::SetItem for PyObject {}
-impl method::DeleteItem for PyObject {}
-impl method::Count for PyObject {}
-impl method::Append for PyObject {}
-impl method::Extend for PyObject {}
-impl method::Pop for PyObject {}
-impl method::Remove for PyObject {}
-impl method::IsDisjoint for PyObject {}
-impl method::AddItem for PyObject {}
-impl method::Discard for PyObject {}
-impl method::Clear for PyObject {}
-impl method::Get for PyObject {}
-impl method::Keys for PyObject {}
-impl method::Values for PyObject {}
-impl method::Items for PyObject {}
-impl method::PopItem for PyObject {}
-impl method::Update for PyObject {}
-impl method::SetDefault for PyObject {}
-impl method::Await for PyObject {}
-impl method::Send for PyObject {}
-impl method::Throw for PyObject {}
-impl method::Close for PyObject {}
-impl method::Exit for PyObject {}
-impl method::Enter for PyObject {}
-impl method::DescriptorGet for PyObject {}
-impl method::DescriptorSet for PyObject {}
-impl method::DescriptorSetName for PyObject {}
-
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//        stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
 
 impl fmt::Display for PyObject {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -337,19 +108,122 @@ impl fmt::Debug for PyObject {
 
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//          Tests
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl object::PyAPI for PyObject {}
+
+impl method::GetAttr for PyObject {
+    // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
+    #[allow(unused_variables)]
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
+        self.native_getattr(name.as_ref())
+    }
+
+    fn native_getattr(&self, name: &Builtin) -> RtResult<RtObject> {
+        match name {
+            &Builtin::Str(ref string) => {
+                let string_obj = string.rc.upgrade()?;
+
+                let key = DictKey(string.native_hash()?, string_obj);
+                let dict = &self.value.0.dict;
+
+                match dict.native_getitem(&Builtin::DictKey(key)) {
+                    Ok(objref) => Ok(objref),
+                    Err(err) => {
+                        let bases = &self.value.0.bases;
+
+                        match bases.as_ref() {
+                            &Builtin::Tuple(ref tuple) => {
+                                for base in &tuple.value.0 {
+                                    info!("{:?}", base);
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                        info!("NOPE!");
+                        Err(err)
+                    }
+                }
+            }
+            _ => Err(Error::typerr("getattr(): attribute name must be string")),
+        }
+    }
+}
+
+impl method::SetAttr for PyObject {
+    fn op_setattr(&self, rt: &Runtime, name: &RtObject, value: &RtObject) -> ObjectResult {
+        self.native_setattr(name.as_ref(), value.as_ref())?;
+        Ok(rt.none())
+    }
+
+    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> RtResult<native::None> {
+
+        let hashid = name.native_hash()?;
+        let key_ref = name.upgrade()?;
+
+        let key = DictKey(hashid, key_ref);
+        let dict = &self.value.0.dict;
+
+        match dict.native_setitem(&Builtin::DictKey(key), &value) {
+            Ok(_) => Ok(native::None()),
+            Err(_) => Err(Error::attribute("Could not set attribute")),
+        }
+    }
+}
+
+impl method::Id for PyObject {
+    fn native_id(&self) -> native::ObjectId {
+        match self.rc.upgrade() {
+            Ok(this_object) => this_object.native_id(),
+            Err(_) => 0,
+        }
+    }
+}
+
+impl method::Hashed for PyObject {
+    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
+        let value = self.native_hash()?;
+        Ok(rt.int(value))
+    }
+
+    fn native_hash(&self) -> RtResult<native::HashId> {
+        let mut s = DefaultHasher::new();
+        self.native_id().hash(&mut s);
+        Ok(s.finish())
+    }
+}
+
+
+method_not_implemented!(PyObject,
+    AbsValue   Add   AddItem   Append  Await   BitwiseAnd   BitwiseOr   BooleanCast
+    BytesCast   Call   Clear   Close  ComplexCast   Contains   Count   DelAttr
+    Delete   DeleteItem   DescriptorGet   DescriptorSet DescriptorSetName   Discard   DivMod
+    Enter Equal   Exit   Extend   FloatCast FloorDivision   Get  GetAttribute
+    GetItem   GreaterOrEqual   GreaterThan   InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr
+    InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
+    InPlaceModulus   InPlaceMultiply   InPlacePow   InPlaceRightShift  InPlaceSubtract
+    InPlaceTrueDivision   InPlaceXOr   Index   Init   IntegerCast   InvertValue   Is
+    IsDisjoint   IsNot   Items   Iter   Keys   LeftShift   Length   LengthHint
+    LessOrEqual   LessThan   MatrixMultiply   Modulus  Multiply   NegateValue   New   Next
+    NotEqual   Pop   PopItem   PositiveValue  Pow   ReflectedAdd   ReflectedBitwiseAnd
+    ReflectedBitwiseOr   ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift
+    ReflectedMatrixMultiply   ReflectedModulus   ReflectedMultiply   ReflectedPow
+    ReflectedRightShift   ReflectedSubtract   ReflectedTrueDivision   ReflectedXOr   Remove
+    Reversed   RightShift   Rounding   Send   SetDefault   SetItem   StringCast
+    StringFormat   StringRepresentation   Subtract   Throw TrueDivision   Update   Values   XOr
+);
+
 
 #[cfg(test)]
-mod _api_method {
-    use traits::{BooleanProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
+mod tests {
+    use traits::{BooleanProvider, TupleProvider, NoneProvider, DictProvider,
+                 StringProvider, IntegerProvider, ObjectProvider};
     use object::method::*;
     use super::*;
+
 
     fn setup_test() -> (Runtime) {
         Runtime::new()
     }
+
 
     #[test]
     fn is_() {
@@ -358,12 +232,10 @@ mod _api_method {
         let object2 = object.clone();
         let object3 = rt.object(native::None());
 
-        let boxed: &Box<Builtin> = object.0.borrow();
-
-        let result = boxed.op_is(&rt, &object2).unwrap();
+        let result = object.op_is(&rt, &object2).unwrap();
         assert_eq!(result, rt.bool(true));
 
-        let result = boxed.op_is(&rt, &object3).unwrap();
+        let result = object.op_is(&rt, &object3).unwrap();
         assert_eq!(result, rt.bool(false));
     }
 
@@ -375,12 +247,10 @@ mod _api_method {
         let object2 = object.clone();
         let object3 = rt.object(native::None());
 
-        let boxed: &Box<Builtin> = object.0.borrow();
-
-        let result = boxed.op_is_not(&rt, &object2).unwrap();
+        let result = object.op_is_not(&rt, &object2).unwrap();
         assert_eq!(result, rt.bool(false));
 
-        let result = boxed.op_is_not(&rt, &object3).unwrap();
+        let result = object.op_is_not(&rt, &object3).unwrap();
         assert_eq!(result, rt.bool(true));
     }
 
@@ -389,73 +259,50 @@ mod _api_method {
         let rt = setup_test();
         let object = rt.object(native::None());
 
-        let boxed: &Box<Builtin> = object.0.borrow();
         let key = rt.str("hello");
         let value = rt.int(234);
 
-        let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+        let result = object.op_setattr(&rt, &key, &value).unwrap();
         assert_eq!(result, rt.none())
     }
 
+    #[cfg(test)]
     mod __getattr__ {
         use super::*;
+
         #[test]
         fn set_and_get() {
             let rt = setup_test();
             let object = rt.object(native::None());
 
-            let boxed: &Box<Builtin> = object.0.borrow();
             let key = rt.str("hello");
             let value = rt.int(234);
 
-            let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+            let result = object.op_setattr(&rt, &key, &value).unwrap();
             assert_eq!(result, rt.none());
 
-            let result = boxed.op_getattr(&rt, &key).unwrap();
-            assert_eq!(result, value);
+            let attr = object.op_getattr(&rt, &key).unwrap();
+            assert_eq!(attr, value);
         }
 
         #[test]
         #[should_panic]
-        fn get_nonexistant_key() {
+        fn get_missing_key() {
             let rt = setup_test();
             let object = rt.object(native::None());
 
-            let boxed: &Box<Builtin> = object.0.borrow();
             let key = rt.str("hello");
             let value = rt.int(234);
 
-            let result = boxed.op_setattr(&rt, &key, &value).unwrap();
+            let result = object.op_setattr(&rt, &key, &value).unwrap();
             assert_eq!(result, rt.none());
 
             let key = rt.str("baddie");
-            boxed.op_getattr(&rt, &key).unwrap();
+            object.op_getattr(&rt, &key).unwrap();
         }
 
     }
 
-    #[test]
-    fn debug() {
-        let rt = setup_test();
-        let object = rt.object(native::None());
-        println!("{:?}", object);
-    }
-}
-
-
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//          Tests
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-#[cfg(test)]
-mod _integration {
-    use traits::{DictProvider, TupleProvider, NoneProvider, StringProvider, IntegerProvider, ObjectProvider};
-    use object::method::*;
-    use super::*;
-
-    fn setup_test() -> (Runtime) {
-        Runtime::new()
-    }
 
     /// Milestone v0.2.0
     ///
@@ -466,22 +313,19 @@ mod _integration {
         let rt = setup_test();
         let object = rt.object(native::None());
 
-        let boxed: &Box<Builtin> = object.0.borrow();
+        let builtin_func = rt.get_builtin("len");
         let key = rt.str("test_function");
-
-        let func = rt.get_builtin("len");
-        let result = boxed.op_setattr(&rt, &key, &func).unwrap();
+        let result = object.op_setattr(&rt, &key, &builtin_func).unwrap();
         assert_eq!(result, rt.none());
 
-        let result = boxed.op_getattr(&rt, &key).unwrap();
-        assert_eq!(result, func);
+        let len = object.op_getattr(&rt, &key).unwrap();
+        assert_eq!(len, builtin_func);
 
         let tuple = rt.tuple(vec![rt.none(), rt.int(3), rt.str("Potato!@!@")]);
         let args = rt.tuple(vec![tuple.clone()]);
         let starargs = rt.tuple(vec![]);
         let kwargs = rt.dict(native::Dict::new());
 
-        let len: &Box<Builtin> = result.0.borrow();
         let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
         assert_eq!(result, rt.int(3));
     }

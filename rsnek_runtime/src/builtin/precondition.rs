@@ -4,18 +4,16 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::Ref;
 
-use result::{NativeResult};
-use error::Error;
-
-use typedef::native;
-use typedef::objectref::ObjectRef;
-use typedef::builtin::Builtin;
+use ::error::Error;
+use ::object::RtObject as ObjectRef;
+use ::result::{RtResult};
+use ::typedef::builtin::Builtin;
+use ::typedef::native;
 
 
 #[inline(always)]
-pub fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::None> {
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    match boxed.deref() {
+pub fn check_args(count: usize, pos_args: &ObjectRef) -> RtResult<native::None> {
+    match pos_args.as_ref() {
         &Builtin::Tuple(ref tuple) => {
             if tuple.value.0.len() == count {
                 Ok(native::None())
@@ -27,9 +25,8 @@ pub fn check_args(count: usize, pos_args: &ObjectRef) -> NativeResult<native::No
     }
 }
 
-pub fn check_args_range(range: Range<usize>, pos_args: &ObjectRef) -> NativeResult<usize> {
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    match boxed.deref() {
+pub fn check_args_range(range: Range<usize>, pos_args: &ObjectRef) -> RtResult<usize> {
+    match pos_args.as_ref() {
         &Builtin::Tuple(ref tuple) => {
             if range.contains(tuple.value.0.len()) {
                 Ok(tuple.value.0.len())
@@ -42,9 +39,8 @@ pub fn check_args_range(range: Range<usize>, pos_args: &ObjectRef) -> NativeResu
 }
 
 #[inline(always)]
-pub fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::None> {
-    let boxed: &Box<Builtin> = kwargs.0.borrow();
-    match boxed.deref() {
+pub fn check_kwargs(count: usize, kwargs: &ObjectRef) -> RtResult<native::None> {
+    match kwargs.as_ref() {
 
         &Builtin::Dict(ref dict) => {
             let borrowed: Ref<native::Dict> = dict.value.0.borrow();
@@ -63,11 +59,10 @@ pub fn check_kwargs(count: usize, kwargs: &ObjectRef) -> NativeResult<native::No
 
 /// Check and copy args as part of the native method calling conventions
 #[inline(always)]
-pub fn check_fnargs_rt(fnargs: &native::FnArgs) -> NativeResult<native::NativeFnArgs> {
+pub fn check_fnargs_rt(fnargs: &native::FnArgs) -> RtResult<native::NativeFnArgs> {
     let &(ref pos_args, ref starargs, ref kwargs) = fnargs;
 
-    let boxed: &Box<Builtin> = pos_args.0.borrow();
-    let arg0: native::Tuple = match boxed.deref() {
+    let arg0: native::Tuple = match pos_args.as_ref() {
         &Builtin::Tuple(ref tuple) => {
             tuple.value
                 .0
@@ -78,8 +73,7 @@ pub fn check_fnargs_rt(fnargs: &native::FnArgs) -> NativeResult<native::NativeFn
         _ => return Err(Error::typerr("Expected type tuple for pos_args")),
     };
 
-    let boxed: &Box<Builtin> = starargs.0.borrow();
-    let arg1: native::Tuple = match boxed.deref() {
+    let arg1: native::Tuple = match starargs.as_ref() {
         &Builtin::Tuple(ref tuple) => {
             tuple.value
                 .0
@@ -90,8 +84,7 @@ pub fn check_fnargs_rt(fnargs: &native::FnArgs) -> NativeResult<native::NativeFn
         _ => return Err(Error::typerr("Expected type tuple for *args")),
     };
 
-    let boxed: &Box<Builtin> = kwargs.0.borrow();
-    let arg2: native::Dict = match boxed.deref() {
+    let arg2: native::Dict = match kwargs.as_ref() {
         &Builtin::Dict(ref dict) => {
             let borrowed: Ref<native::Dict> = dict.value.0.borrow();
             borrowed.iter().map(|(key, value)| (key.clone(), value.clone())).collect()

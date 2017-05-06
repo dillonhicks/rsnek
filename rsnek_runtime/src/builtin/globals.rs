@@ -3,11 +3,11 @@ use std::borrow::Borrow;
 
 use ::builtin::precondition::{check_args, check_kwargs};
 use ::error::Error;
-use ::result::{RuntimeResult};
+use ::result::{ObjectResult};
 use ::resource::strings;
 use ::runtime::Runtime;
 use ::traits::{TupleProvider, ModuleImporter};
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject;
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 
@@ -32,27 +32,15 @@ impl GlobalsFn {
 }
 
 
-fn rs_builtin_globals(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+fn rs_builtin_globals(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs: &RtObject) -> ObjectResult {
     trace!("call"; "native_builtin" => FUNC_NAME);
-
-    match check_args(0, &pos_args) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
-
-    match check_args(0, &starargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
-
-    match check_kwargs(0, &kwargs) {
-        Err(err) => return Err(err),
-        _ => {}
-    };
+    check_args(0, &pos_args)?;
+    check_args(0, &starargs)?;
+    check_kwargs(0, &kwargs)?;
 
     let builtins = rt.import_module(strings::BUILTINS_MODULE)?;
-    let boxed: &Box<Builtin> = builtins.0.borrow();
-    let attrs = match boxed.deref() {
+
+    let attrs = match builtins.as_ref() {
         &Builtin::Module(ref object) => object.dir()?,
         _ => return Err(Error::system(
                 &format!("Module was not an object; file: {}, line: {}", file!(), line!())))
