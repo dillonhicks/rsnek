@@ -146,12 +146,12 @@ impl method::GetAttr for PyObject {
                         match boxed.deref() {
                             &Builtin::Tuple(ref tuple) => {
                                 for base in &tuple.value.0 {
-                                    println!("{:?}", base);
+                                    info!("{:?}", base);
                                 }
                             }
                             _ => unreachable!(),
                         }
-                        println!("NOOPE!");
+                        info!("NOOPE!");
                         Err(err)
                     }
                 }

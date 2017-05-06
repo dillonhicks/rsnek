@@ -325,7 +325,7 @@ macro_rules! api_trait {
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject) -> RuntimeResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
@@ -336,7 +336,7 @@ macro_rules! api_trait {
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject) -> RuntimeResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
@@ -347,7 +347,7 @@ macro_rules! api_trait {
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> RuntimeResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
@@ -358,7 +358,7 @@ macro_rules! api_trait {
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> RuntimeResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
@@ -369,7 +369,7 @@ macro_rules! api_trait {
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &ObjectRef, &ObjectRef, &ObjectRef) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &RtObject, &RtObject, &RtObject) -> RuntimeResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
@@ -380,7 +380,7 @@ macro_rules! api_trait {
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
-            fn $fname(&$sel, &Runtime, &Vec<ObjectRef>) -> RuntimeResult {
+            fn $fname(&$sel, &Runtime, &Vec<RtObject>) -> RuntimeResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
@@ -396,7 +396,7 @@ macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         //#[test]
         fn $pyname() {
-            println!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) , stringify!($tname), stringify!($fname), stringify!($nfname));
+            trace!("[stub] {} {} {} {} {}", stringify!($args), stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) , stringify!($tname), stringify!($fname), stringify!($nfname));
             unimplemented!()
         }
     };

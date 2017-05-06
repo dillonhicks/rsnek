@@ -246,7 +246,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> CompilerResult {
-        // println!("CompileAssignment(target={:?}, value={:?})", target, value);
+        // info!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
         let ins: Box<[Instr]> = self.compile_expr(value, Context::Load)?;
         instructions.append(&mut ins.to_vec());
@@ -490,7 +490,7 @@ mod tests {
 
 
     fn assert_compile<'a>(text: &'a str) {
-        println!("<Input>\n\n{}\n\n</Input>", text);
+        info!("<Input>\n\n{}\n\n</Input>", text);
 
         let mut compiler = Compiler::new();
         let lexer = Lexer::new();
@@ -501,19 +501,19 @@ mod tests {
             _ => unreachable!()
         };
 
-        println!("Tokens({}):\n----------------------------------------\n{}\n",
+        info!("Tokens({}):\n----------------------------------------\n{}\n",
                  tokens.len(), fmt::tokens(&tokens, true));
 
         match parser.parse_tokens(&tokens) {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
-                println!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::json(result.ast.borrow()));
+                info!("Ast(tokens: {:?})\n{}", tokens.len(), fmt::json(result.ast.borrow()));
                 let ins = compiler.compile_ast(result.ast.borrow()).unwrap();
 
-                println!();
-                println!("Compiled Instructions ({}):", ins.len());
-                println!("--------------------------------");
-                println!("{:#?}", ins);
-                println!("{}", fmt::json(&ins))
+                info!("");
+                info!("Compiled Instructions ({}):", ins.len());
+                info!("--------------------------------");
+                info!("{:#?}", ins);
+                info!("{}", fmt::json(&ins))
             },
             result => panic!("\n\nERROR: {}\n\n", fmt::json(&result))
         }

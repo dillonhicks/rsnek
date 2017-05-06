@@ -114,6 +114,6 @@ mod tests {
 
     #[test]
     fn stub() {
-        println!("stub");
+        info!("stub");
     }
 }

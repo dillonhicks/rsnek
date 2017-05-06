@@ -445,9 +445,9 @@ mod tests {
 
     #[test]
     fn value_serialization() {
-        println!("{}", json(&Native::Int(
+        info!("{}", json(&Native::Int(
             Integer::from_str("12341234124312423143214132432145932958392853094543214324").unwrap())));
-        println!("{}", json(&Native::Complex(Complex::new(234.345, 622.9900000000001))));
+        info!("{}", json(&Native::Complex(Complex::new(234.345, 622.9900000000001))));
     }
 
 

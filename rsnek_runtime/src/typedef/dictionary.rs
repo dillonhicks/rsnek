@@ -149,7 +149,6 @@ impl method::GetItem for PyDict {
         match key_box.native_hash() {
             Ok(hash) => {
                 let key = DictKey(hash, keyref.clone());
-                println!("HASHED: {:?}", key);
                 match self.value
                           .0
                           .borrow()
@@ -360,8 +359,8 @@ mod tests {
         let result = boxed.op_setitem(&rt, &key, &value).unwrap();
         assert_eq!(result, rt.none());
 
-        println!("{:?}", dict);
-        println!("{:?}", key);
+        info!("{:?}", dict);
+        info!("{:?}", key);
         let result = boxed.op_getitem(&rt, &key).unwrap();
         assert_eq!(result, value);
     }

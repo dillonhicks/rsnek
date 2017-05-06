@@ -1,13 +1,12 @@
 use std::borrow::Borrow;
 
-use error::Error;
-use runtime::Runtime;
-use traits::{BooleanProvider, IntegerProvider};
-
-use result::{RuntimeResult, NativeResult};
-use typedef::builtin::Builtin;
-use typedef::native;
-use ::object::RtObject as ObjectRef;
+use ::error::Error;
+use ::object::RtObject;
+use ::result::{RuntimeResult, NativeResult};
+use ::runtime::Runtime;
+use ::traits::{BooleanProvider, IntegerProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native;
 
 
 /// Big index of all traits used to define builtin objects
@@ -20,7 +19,7 @@ api_trait!(4ary, self, __new__, New, op_new, native_new);
 //api_trait!(4ary, self, __init__, Init, op_init, native_init);
 #[allow(unused_variables)]
 pub trait Init {
-    fn op_init(&mut self, rt: &Runtime, named_args: &ObjectRef, args: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+    fn op_init(&mut self, rt: &Runtime, named_args: &RtObject, args: &RtObject, kwargs: &RtObject) -> RuntimeResult {
         Err(Error::not_implemented())
     }
     fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> NativeResult<native::None> {
@@ -48,7 +47,7 @@ pub fn memory_address<T>(data: &T) -> native::ObjectId {
 // ----------------------------------
 //  Object
 // ----------------------------------
-api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr, ObjectRef);
+api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr, RtObject);
 api_trait!(binary, self, __getattribute__, GetAttribute, op_getattribute, native_getattribute);
 api_trait!(ternary, self, __setattr__, SetAttr, op_setattr, native_setattr, native::None);
 api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
@@ -77,7 +76,7 @@ pub trait Id {
 pub trait Is
     where Self: Id
 {
-    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is(rhs_builtin).unwrap() {
@@ -95,7 +94,7 @@ pub trait Is
 pub trait IsNot
     where Self: Id
 {
-    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_is_not(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is_not(rhs_builtin).unwrap() {
@@ -154,7 +153,7 @@ api_trait!(unary, self, __format__, StringFormat, op_format, native_format, nati
 /// `api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);`
 pub trait Equal {
     /// Default implementation of equals fallsbacks to op_is.
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_eq(rhs_builtin).unwrap() {
@@ -173,7 +172,7 @@ pub trait Equal {
 /// `api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);`
 pub trait NotEqual {
     /// Default implementation of equals fallsbacks to !op_is
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_ne(rhs_builtin).unwrap() {
@@ -272,11 +271,11 @@ api_trait!(unary, self, __iter__, Iter, op_iter, native_iter, native::Iterator);
 api_trait!(4ary, self, __call__, Call, op_call, native_call);
 api_trait!(unary, self, __len__, Length, op_len, native_len, native::Integer);
 api_trait!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);
-api_trait!(unary, self, __next__, Next, op_next, native_next, ObjectRef);
+api_trait!(unary, self, __next__, Next, op_next, native_next, RtObject);
 api_trait!(unary, self, __reversed__, Reversed, op_reversed, native_reversed);
 
 // Sequences
-api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem, ObjectRef);
+api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem, RtObject);
 api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::None);
 api_trait!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
 api_trait!(binary, self, count, Count, meth_count, native_meth_count, native::Integer);

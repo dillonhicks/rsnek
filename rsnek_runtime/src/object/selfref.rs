@@ -1,14 +1,12 @@
+use std::cell::RefCell;
 use std::fmt::{Debug, Formatter, Result};
 use std::ops::Deref;
-use std::cell::RefCell;
 
 use num::Zero;
 
-use result::RuntimeResult;
-use error::Error;
-
-use ::object::WeakRtObject as WeakObjectRef;
-use ::object::RtObject as ObjectRef;
+use ::error::Error;
+use ::object::{RtObject, WeakRtObject};
+use ::result::RuntimeResult;
 use ::typedef::native;
 
 
@@ -27,8 +25,8 @@ use ::typedef::native;
 pub trait SelfRef: Sized {
     fn strong_count(&self) -> native::Integer;
     fn weak_count(&self) -> native::Integer;
-    fn set(&self, &ObjectRef);
-    fn get(&self) -> WeakObjectRef;
+    fn set(&self, &RtObject);
+    fn get(&self) -> WeakRtObject;
     fn upgrade(&self) -> RuntimeResult;
 }
 
@@ -44,7 +42,7 @@ pub struct RefCountedValue<T, V: SelfRef> {
 /// RefCount struct that holds a mutable and optional weakref
 /// this is so instances can have a reference to their own RefCount
 ///
-pub struct RefCount(pub RefCell<Option<WeakObjectRef>>);
+pub struct RefCount(pub RefCell<Option<WeakRtObject>>);
 
 impl Clone for RefCount {
     fn clone(&self) -> Self {
@@ -56,7 +54,7 @@ impl Clone for RefCount {
 }
 
 impl SelfRef for RefCount {
-    /// Unwrap the optional type and proxy to the underlying WeakObjectRef if present
+    /// Unwrap the optional type and proxy to the underlying WeakRtObject if present
     /// otherwise return 0.
     fn strong_count(&self) -> native::Integer {
         match *self.0.borrow().deref() {
@@ -65,7 +63,7 @@ impl SelfRef for RefCount {
         }
     }
 
-    /// Unwrap the optional type and proxy to the underlying WeakObjectRef if present
+    /// Unwrap the optional type and proxy to the underlying WeakRtObject if present
     /// otherwise return 0.
     fn weak_count(&self) -> native::Integer {
         let count: native::Integer;
@@ -80,9 +78,9 @@ impl SelfRef for RefCount {
         count
     }
 
-    /// Set the `SelfRef` from strong `ObjectRef` by cloning and downgrading that
+    /// Set the `SelfRef` from strong `RtObject` by cloning and downgrading that
     /// reference.
-    fn set(&self, selfref: &ObjectRef) {
+    fn set(&self, selfref: &RtObject) {
         let mut rc = self.0.borrow_mut();
         match *rc {
             None => *rc = Some(selfref.downgrade()),
@@ -91,8 +89,8 @@ impl SelfRef for RefCount {
         }
     }
 
-    /// Return a clone of of the backing `WeakObjectRef`
-    fn get(&self) -> WeakObjectRef {
+    /// Return a clone of of the backing `WeakRtObject`
+    fn get(&self) -> WeakRtObject {
         match *self.0.borrow().deref() {
             Some(ref weak) => weak.clone(),
             // TODO: {T97} Make this an error and not a runtime panic
@@ -100,8 +98,8 @@ impl SelfRef for RefCount {
         }
     }
 
-    /// Take the `WeakObjectRef` backing the `SelfRef` and attempt to upgrade it
-    /// to its strong version `ObjectRef`.
+    /// Take the `WeakRtObject` backing the `SelfRef` and attempt to upgrade it
+    /// to its strong version `RtObject`.
     fn upgrade(&self) -> RuntimeResult {
         match *self.0.borrow().deref() {
             Some(ref weak) => weak.clone().upgrade(),

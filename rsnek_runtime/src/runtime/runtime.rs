@@ -39,10 +39,9 @@ use traits::{
 use result::{RuntimeResult};
 use error::{Error, ErrorType};
 use builtin;
-
+use ::object::RtObject;
 use typedef::native::{self, SignatureBuilder};
 use typedef::builtin::Builtin;
-use ::object::RtObject as ObjectRef;
 use typedef::none::{PyNoneType, NONE};
 use typedef::boolean::PyBooleanType;
 use typedef::integer::PyIntegerType;
@@ -93,8 +92,8 @@ pub struct BuiltinTypes {
 // TODO: {T99} add ability to intern objects
 struct RuntimeInternal {
     types: BuiltinTypes,
-    modules: RefCell<ObjectRef>, // should be a dict
-    mod_builtins: RefCell<ObjectRef>,
+    modules: RefCell<RtObject>, // should be a dict
+    mod_builtins: RefCell<RtObject>,
 }
 
 
@@ -158,11 +157,11 @@ impl Runtime {
 
         let rt = Runtime(Rc::new(Box::new(internal)));
         {
-            let mut _mod: RefMut<ObjectRef> = rt.0.mod_builtins.borrow_mut();
+            let mut _mod: RefMut<RtObject> = rt.0.mod_builtins.borrow_mut();
             *_mod = rt.module(native::None());
         }
         {
-            let mut _mod: RefMut<ObjectRef> = rt.0.modules.borrow_mut();
+            let mut _mod: RefMut<RtObject> = rt.0.modules.borrow_mut();
             *_mod = rt.dict(native::None());
         }
 
@@ -185,14 +184,14 @@ impl Runtime {
     }
 
     pub fn register_builtin(&self, func: native::Func) {
-        let boxed: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+        let boxed: Ref<RtObject> = self.0.mod_builtins.borrow();
         let boxed: &Box<Builtin> = boxed.0.borrow();
         let key = self.str(func.name.as_str());
         boxed.op_setattr(&self, &key, &self.function(func)).unwrap();
     }
 
-    pub fn get_builtin(&self, name: &'static str) -> ObjectRef {
-        let boxed: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+    pub fn get_builtin(&self, name: &'static str) -> RtObject {
+        let boxed: Ref<RtObject> = self.0.mod_builtins.borrow();
         let boxed: &Box<Builtin> = boxed.0.borrow();
         let key = self.str(name);
         boxed.op_getattr(&self, &key).unwrap()
@@ -204,7 +203,7 @@ impl<'a> ModuleImporter<&'a str> for Runtime {
     fn import_module(&self, name: &'a str) -> RuntimeResult {
         match name {
             strings::BUILTINS_MODULE => {
-                let ref_: Ref<ObjectRef> = self.0.mod_builtins.borrow();
+                let ref_: Ref<RtObject> = self.0.mod_builtins.borrow();
                 Ok(ref_.clone())
             },
             _ => Err(Error::module_not_found(name))
@@ -217,7 +216,7 @@ impl<'a> ModuleImporter<&'a str> for Runtime {
 //
 impl NoneProvider for Runtime {
     #[inline]
-    fn none(&self) -> ObjectRef {
+    fn none(&self) -> RtObject {
         self.0
             .types
             .none
@@ -230,7 +229,7 @@ impl NoneProvider for Runtime {
 //
 impl BooleanProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn bool(&self, value: native::None) -> ObjectRef {
+    fn bool(&self, value: native::None) -> RtObject {
         self.0
             .types
             .bool
@@ -239,7 +238,7 @@ impl BooleanProvider<native::None> for Runtime {
 }
 
 impl BooleanProvider<native::Boolean> for Runtime {
-    fn bool(&self, value: native::Boolean) -> ObjectRef {
+    fn bool(&self, value: native::Boolean) -> RtObject {
         self.0
             .types
             .bool
@@ -253,7 +252,7 @@ impl BooleanProvider<native::Boolean> for Runtime {
 
 impl IntegerProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn int(&self, value: native::None) -> ObjectRef {
+    fn int(&self, value: native::None) -> RtObject {
         self.0
             .types
             .int
@@ -263,7 +262,7 @@ impl IntegerProvider<native::None> for Runtime {
 
 
 impl IntegerProvider<native::Integer> for Runtime {
-    fn int(&self, value: native::Integer) -> ObjectRef {
+    fn int(&self, value: native::Integer) -> RtObject {
         self.0
             .types
             .int
@@ -272,7 +271,7 @@ impl IntegerProvider<native::Integer> for Runtime {
 }
 
 impl IntegerProvider<native::ObjectId> for Runtime {
-    fn int(&self, value: native::ObjectId) -> ObjectRef {
+    fn int(&self, value: native::ObjectId) -> RtObject {
         self.0
             .types
             .int
@@ -281,7 +280,7 @@ impl IntegerProvider<native::ObjectId> for Runtime {
 }
 
 impl IntegerProvider<i32> for Runtime {
-    fn int(&self, value: i32) -> ObjectRef {
+    fn int(&self, value: i32) -> RtObject {
         self.0
             .types
             .int
@@ -290,7 +289,7 @@ impl IntegerProvider<i32> for Runtime {
 }
 
 impl IntegerProvider<i64> for Runtime {
-    fn int(&self, value: i64) -> ObjectRef {
+    fn int(&self, value: i64) -> RtObject {
         self.0
             .types
             .int
@@ -303,14 +302,14 @@ impl IntegerProvider<i64> for Runtime {
 //
 impl FloatProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn float(&self, value: native::None) -> ObjectRef {
+    fn float(&self, value: native::None) -> RtObject {
         self.0.types.float.new(&self, 0.0)
     }
 }
 
 
 impl FloatProvider<native::Float> for Runtime {
-    fn float(&self, value: native::Float) -> ObjectRef {
+    fn float(&self, value: native::Float) -> RtObject {
         self.0.types.float.new(&self, value)
     }
 }
@@ -322,7 +321,7 @@ impl FloatProvider<native::Float> for Runtime {
 
 impl IteratorProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn iter(&self, value: native::None) -> ObjectRef {
+    fn iter(&self, value: native::None) -> RtObject {
         self.0.types.iterator.empty(&self)
     }
 }
@@ -330,7 +329,7 @@ impl IteratorProvider<native::None> for Runtime {
 
 impl IteratorProvider<native::Iterator> for Runtime {
     #[allow(unused_variables)]
-    fn iter(&self, value: native::Iterator) -> ObjectRef {
+    fn iter(&self, value: native::Iterator) -> RtObject {
         let wrapped = IteratorValue(value, self.clone());
         self.0
             .types
@@ -346,7 +345,7 @@ impl IteratorProvider<native::Iterator> for Runtime {
 
 impl StringProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn str(&self, value: native::None) -> ObjectRef {
+    fn str(&self, value: native::None) -> RtObject {
         self.0
             .types
             .string
@@ -358,7 +357,7 @@ impl StringProvider<native::None> for Runtime {
 
 impl BytesProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn bytes(&self, value: native::None) -> ObjectRef {
+    fn bytes(&self, value: native::None) -> RtObject {
         self.0
             .types
             .bytes
@@ -370,7 +369,7 @@ impl BytesProvider<native::None> for Runtime {
 
 impl StringProvider<native::String> for Runtime {
     #[allow(unused_variables)]
-    fn str(&self, value: native::String) -> ObjectRef {
+    fn str(&self, value: native::String) -> RtObject {
         self.0
             .types
             .string
@@ -380,7 +379,7 @@ impl StringProvider<native::String> for Runtime {
 
 impl<'a>  StringProvider<&'a str> for Runtime {
     #[allow(unused_variables)]
-    fn str(&self, value: &'a str) -> ObjectRef {
+    fn str(&self, value: &'a str) -> RtObject {
         self.0
             .types
             .string
@@ -389,7 +388,7 @@ impl<'a>  StringProvider<&'a str> for Runtime {
 }
 
 impl DefaultStringProvider for Runtime {
-    fn default_str(&self) -> ObjectRef {
+    fn default_str(&self) -> RtObject {
         self.0.types.string.empty.clone()
     }
 }
@@ -398,21 +397,21 @@ impl DefaultStringProvider for Runtime {
 // Dict
 //
 impl DictProvider<native::Dict> for Runtime {
-    fn dict(&self, value: native::Dict) -> ObjectRef {
+    fn dict(&self, value: native::Dict) -> RtObject {
         self.0.types.dict.new(&self, value)
     }
 }
 
 impl DictProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn dict(&self, value: native::None) -> ObjectRef {
+    fn dict(&self, value: native::None) -> RtObject {
         self.default_dict()
     }
 }
 
 
 impl DefaultDictProvider for Runtime {
-    fn default_dict(&self) -> ObjectRef {
+    fn default_dict(&self) -> RtObject {
         self.0.types.dict.new(&self, native::Dict::new())
     }
 }
@@ -422,14 +421,14 @@ impl DefaultDictProvider for Runtime {
 //
 impl TupleProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn tuple(&self, value: native::None) -> ObjectRef {
+    fn tuple(&self, value: native::None) -> RtObject {
         self.default_tuple()
     }
 }
 
 
 impl TupleProvider<native::Tuple> for Runtime {
-    fn tuple(&self, value: native::Tuple) -> ObjectRef {
+    fn tuple(&self, value: native::Tuple) -> RtObject {
         self.0
             .types
             .tuple
@@ -438,7 +437,7 @@ impl TupleProvider<native::Tuple> for Runtime {
 }
 
 impl DefaultTupleProvider for Runtime {
-    fn default_tuple(&self) -> ObjectRef {
+    fn default_tuple(&self) -> RtObject {
         self.0.types.tuple.empty.clone()
     }
 }
@@ -449,13 +448,13 @@ impl DefaultTupleProvider for Runtime {
 
 impl ListProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn list(&self, value: native::None) -> ObjectRef {
+    fn list(&self, value: native::None) -> RtObject {
         self.default_list()
     }
 }
 
 impl ListProvider<native::List> for Runtime {
-    fn list(&self, value: native::List) -> ObjectRef {
+    fn list(&self, value: native::List) -> RtObject {
         self.0
             .types
             .list
@@ -466,7 +465,7 @@ impl ListProvider<native::List> for Runtime {
 
 
 impl DefaultListProvider for Runtime {
-    fn default_list(&self) -> ObjectRef {
+    fn default_list(&self) -> RtObject {
         self.0.types.list.empty.clone()
     }
 }
@@ -476,7 +475,7 @@ impl DefaultListProvider for Runtime {
 //
 impl ObjectProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn object(&self, value: native::None) -> ObjectRef {
+    fn object(&self, value: native::None) -> RtObject {
         self.0
             .types
             .object
@@ -496,7 +495,7 @@ impl ObjectProvider<native::None> for Runtime {
 
 impl ObjectProvider<native::Object> for Runtime {
     #[allow(unused_variables)]
-    fn object(&self, value: native::Object) -> ObjectRef {
+    fn object(&self, value: native::Object) -> RtObject {
         self.0
             .types
             .object
@@ -509,7 +508,7 @@ impl ObjectProvider<native::Object> for Runtime {
 //
 impl PyTypeProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn pytype(&self, value: native::None) -> ObjectRef {
+    fn pytype(&self, value: native::None) -> RtObject {
         self.0
             .types
             .meta
@@ -523,8 +522,8 @@ impl PyTypeProvider<native::None> for Runtime {
 // Functions and Methods
 //
 impl FunctionProvider<native::Func> for Runtime {
-    /// Create a function object from the native::Function and return its `ObjectRef`
-    fn function(&self, value: native::Func) -> ObjectRef {
+    /// Create a function object from the native::Function and return its `RtObject`
+    fn function(&self, value: native::Func) -> RtObject {
         self.0
             .types
             .function
@@ -535,15 +534,15 @@ impl FunctionProvider<native::Func> for Runtime {
 impl FunctionProvider<native::None> for Runtime {
     /// Create a function object that returns Ok(None)
     #[allow(unused_variables)]
-    fn function(&self, value: native::None) -> ObjectRef {
+    fn function(&self, value: native::None) -> RtObject {
         self.function(self.none())
     }
 }
 
-impl FunctionProvider<ObjectRef> for Runtime {
+impl FunctionProvider<RtObject> for Runtime {
     /// Create a function object that returns Ok(value)
     #[allow(unused_variables)]
-    fn function(&self, value: ObjectRef) -> ObjectRef {
+    fn function(&self, value: RtObject) -> RtObject {
         let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
         self.function(native::Func {
             name: String::from("returns_const"),
@@ -559,7 +558,7 @@ impl FunctionProvider<ObjectRef> for Runtime {
 // Code
 //
 impl CodeProvider<native::Code> for Runtime {
-    fn code(&self, value: native::Code) -> ObjectRef {
+    fn code(&self, value: native::Code) -> RtObject {
         self.0.types.code.new(&self, value)
     }
 }
@@ -568,14 +567,14 @@ impl CodeProvider<native::Code> for Runtime {
 // Frames
 //
 impl FrameProvider<native::Frame> for Runtime {
-    fn frame(&self, value: native::Frame) -> ObjectRef {
+    fn frame(&self, value: native::Frame) -> RtObject {
         self.0.types.frame.new(&self, value)
     }
 }
 
 impl DefaultFrameProvider for Runtime {
     #[allow(unused_variables)]
-    fn default_frame(&self) -> ObjectRef {
+    fn default_frame(&self) -> RtObject {
         self.0.types.frame.new(&self, native::Frame {
             f_lasti: native::Integer::zero(),
             f_builtins: self.default_dict(),
@@ -591,7 +590,7 @@ impl DefaultFrameProvider for Runtime {
 //
 impl ModuleProvider<native::None> for Runtime {
     #[allow(unused_variables)]
-    fn module(&self, value: native::None) -> ObjectRef {
+    fn module(&self, value: native::None) -> RtObject {
         self.0
             .types
             .module
@@ -612,7 +611,7 @@ impl ModuleProvider<native::None> for Runtime {
 // Module registry
 impl ModuleFinder<&'static str> for Runtime {
     fn get_module(&self, name: &'static str) -> RuntimeResult {
-        let boxed: Ref<ObjectRef> = self.0.modules.borrow();
+        let boxed: Ref<RtObject> = self.0.modules.borrow();
         let boxed: &Box<Builtin> = boxed.0.borrow();
 
         match boxed.op_getitem(&self, &self.str(name)) {
@@ -623,10 +622,10 @@ impl ModuleFinder<&'static str> for Runtime {
     }
 }
 
-impl<'a> ModuleImporter<(&'static str, &'a ObjectRef)> for Runtime {
+impl<'a> ModuleImporter<(&'static str, &'a RtObject)> for Runtime {
 
     #[allow(unused_variables)]
-    fn import_module(&self, args: (&'static str, &ObjectRef)) -> RuntimeResult {
+    fn import_module(&self, args: (&'static str, &RtObject)) -> RuntimeResult {
         Err(Error::not_implemented())
     }
 }

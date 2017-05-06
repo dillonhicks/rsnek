@@ -49,7 +49,7 @@ CODEBUILD_SOURCE_REPO_URL ?= NotSet
 # with the version of the source code to be built. For GitHub, the
 # commit ID, branch name, or tag name associated with the version of the
 # source code to be built.
-CODEBUILD_SOURCE_VERSION ?= notset
+CODEBUILD_SOURCE_VERSION ?= NotSet
 
 # The directory path that AWS CodeBuild uses for the build (for
 # example, /tmp/src123456789/src).
@@ -62,7 +62,6 @@ IMAGE_NAME = rust-toolchain
 IMAGE_REPO = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE_NAME)
 ECR_LOGIN := $(shell aws ecr get-login --region=$(AWS_REGION) 2>/dev/null || echo 'echo "NO AWSCLI INSTALLED!" && false')
 
-
 BUILD_DATETIME := $(shell date -u +%FT%TZ)
 
 
@@ -70,14 +69,33 @@ VERSION ?= $(CODEBUILD_SOURCE_VERSION)
 LOG_FORMAT ?= human
 CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
 
-.PHONY: all toolchain build
+
+# When building in CODEBUILD and running on EC2 special packages
+# are needed to run things like oprofile and perf.
+#
+ifeq ($(CODEBUILD_BUILD_ID), NotSet)
+CONDITIONAL_REQUIREMENTS=
+else
+CONDITIONAL_REQUIREMENTS=ec2-requirements
+endif
+
+
+.PHONY: all toolchain build release test \
+	test-release bench perf docs clean \
+	pipeline-status
 
 
 all:
 	exit 1
 
 
-toolchain:
+ec2-requirements:
+	apt-get update && apt-get install -y \
+		linux-tools-4.4.39-34.54.amzn1.x86_64 \
+		linux-cloud-tools-4.4.39-34.54.amzn1.x86_64
+
+
+toolchain: $(CONDITIONAL_REQUIREMENTS)
 	apt-get update && apt-get install -y \
 		cmake \
 		curl \
@@ -87,7 +105,7 @@ toolchain:
 		make \
 		valgrind \
 		oprofile \
-		linux-tools-generic ;
+		linux-tools-generic
 
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-05-03
 

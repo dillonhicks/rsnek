@@ -22,6 +22,7 @@ use rsnek_compile::fmt;
 use ::builtin::{logical_and, logical_or};
 use ::compiler::Compiler;
 use ::error::Error;
+use ::object::RtObject;
 use ::object::method::{
     Add,
     Subtract,
@@ -75,7 +76,6 @@ use ::traits::{
 use ::typedef::native::{self, Native, Instr, FuncType};
 use ::typedef::native::SignatureBuilder;
 use ::typedef::builtin::Builtin;
-use ::object::RtObject as ObjectRef;
 
 
 const RECURSION_LIMIT: usize = 256;
@@ -153,14 +153,14 @@ impl Interpreter {
 
 #[derive(Clone, Debug, Serialize)]
 struct InterpreterFrame {
-    frame: ObjectRef,
+    frame: RtObject,
     stack: RefCell<native::List>,
     lineno: Cell<usize>
 }
 
 
 impl InterpreterFrame {
-    pub fn new(frame: ObjectRef) -> Self {
+    pub fn new(frame: RtObject) -> Self {
         InterpreterFrame {
             frame: frame,
             stack: RefCell::new(native::List::new()),
@@ -168,7 +168,7 @@ impl InterpreterFrame {
         }
     }
 
-    pub fn object(&self) -> &ObjectRef {
+    pub fn object(&self) -> &RtObject {
         &self.frame
     }
 
@@ -187,11 +187,11 @@ impl InterpreterFrame {
         previous
     }
 
-    pub fn push_stack(&self, objref: &ObjectRef) {
+    pub fn push_stack(&self, objref: &RtObject) {
         self.stack.borrow_mut().push(objref.clone());
     }
 
-    pub fn pop_stack(&self) -> Option<ObjectRef> {
+    pub fn pop_stack(&self) -> Option<RtObject> {
         self.stack.borrow_mut().pop()
     }
 
@@ -203,12 +203,12 @@ impl InterpreterFrame {
 
 #[derive(Clone, Debug, Serialize)]
 struct TracebackFrame {
-    frame: ObjectRef,
+    frame: RtObject,
     line: usize
 }
 
 impl TracebackFrame{
-    pub fn object(&self) -> &ObjectRef {
+    pub fn object(&self) -> &RtObject {
         &self.frame
     }
 
@@ -231,7 +231,7 @@ impl<'a> From<&'a InterpreterFrame> for TracebackFrame {
 struct InterpreterState {
     rt: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
-    ns: HashMap<native::String, ObjectRef>,
+    ns: HashMap<native::String, RtObject>,
     // (frame, stack)
     frames: VecDeque<InterpreterFrame>,
 }
@@ -327,7 +327,7 @@ impl InterpreterState {
 
     }
 
-    fn push_frame(&mut self, func: &ObjectRef) -> Result<usize, Error>{
+    fn push_frame(&mut self, func: &RtObject) -> Result<usize, Error>{
         if self.frames.len() + 1 == RECURSION_LIMIT {
             return Err(Error::recursion())
         }
@@ -352,13 +352,13 @@ impl InterpreterState {
         Ok(self.frames.len())
     }
 
-    fn push_stack(&mut self, objref: &ObjectRef)  {
+    fn push_stack(&mut self, objref: &RtObject)  {
         with_current_frame!(self |frame| {
             frame.push_stack(&objref);
         });
     }
 
-    fn pop_stack(&mut self) -> Option<ObjectRef> {
+    fn pop_stack(&mut self) -> Option<RtObject> {
         with_current_frame!(self |frame| {
             frame.pop_stack()
         })
@@ -389,7 +389,7 @@ impl InterpreterState {
         });
     }
 
-    fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &ObjectRef, rhs: &ObjectRef) -> RuntimeResult {
+    fn exec_binop(&mut self, rt: &Runtime, opcode: OpCode, lhs: &RtObject, rhs: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = lhs.0.borrow();
         match opcode {
             OpCode::CompareIs               => boxed.op_is(&rt, &rhs),
@@ -424,7 +424,7 @@ impl InterpreterState {
         }
     }
 
-    fn exec_unaryop(&mut self, rt: &Runtime, opcode: OpCode, operand: &ObjectRef) -> RuntimeResult {
+    fn exec_unaryop(&mut self, rt: &Runtime, opcode: OpCode, operand: &RtObject) -> RuntimeResult {
         let boxed: &Box<Builtin> = operand.0.borrow();
         match opcode {
             OpCode::UnaryNot        => {
@@ -439,7 +439,7 @@ impl InterpreterState {
         }
     }
 
-    fn force_pop(&mut self) -> Option<ObjectRef> {
+    fn force_pop(&mut self) -> Option<RtObject> {
         self.pop_stack()
     }
 
@@ -592,7 +592,7 @@ impl InterpreterState {
                 None
             }
             (OpCode::CallFunction, Some(Native::Count(arg_count))) => {
-                let mut args: VecDeque<ObjectRef> = VecDeque::new();
+                let mut args: VecDeque<RtObject> = VecDeque::new();
                 for _ in 0..(arg_count + 1) {
                     if self.stack_view().is_empty() {
                         return Some(Err(Error::system(
@@ -613,7 +613,7 @@ impl InterpreterState {
                         match pyfunc.value.0.callable {
                             FuncType::Wrapper(_)        |
                             FuncType::MethodWrapper(_, _)  => {
-                                let pos_args = args.into_iter().collect::<Vec<ObjectRef>>();
+                                let pos_args = args.into_iter().collect::<Vec<RtObject>>();
 
                                 match self.push_frame(&func) {
                                     Err(err) => Err(err),
@@ -751,7 +751,7 @@ impl InterpreterState {
 
             },
             (OpCode::AssertCondition, Some(Native::Count(arg_count))) => {
-                let mut args: Vec<ObjectRef> = Vec::new();
+                let mut args: Vec<RtObject> = Vec::new();
                 for _ in 0..arg_count {
                     if self.stack_view().is_empty() {
                         return Some(Err(Error::system(
@@ -761,7 +761,7 @@ impl InterpreterState {
                     args.push(self.pop_stack().unwrap());
                 }
 
-                let test: ObjectRef;
+                let test: RtObject;
                 let mut message = "".to_string();
 
                 match args.len() {
@@ -800,7 +800,7 @@ impl InterpreterState {
     }
 
     fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> RuntimeResult {
-        let mut objects: VecDeque<ObjectRef> = VecDeque::new();
+        let mut objects: VecDeque<RtObject> = VecDeque::new();
 
         let result = ins.iter()
             .map(|ref instr| self.exec_one(&rt, instr))
@@ -882,7 +882,7 @@ impl InterpreterState {
             }
         }).collect::<Vec<String>>().join("\n");
 
-        let values: Vec<String> = self.ns.iter().map(|(key, v): (&String, &ObjectRef)| {
+        let values: Vec<String> = self.ns.iter().map(|(key, v): (&String, &RtObject)| {
             let b: &Box<Builtin> = v.0.borrow();
 
             match b.native_str() {

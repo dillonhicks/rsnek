@@ -255,7 +255,7 @@ mod tests {
                 results.push(i)
             }
 
-            println!("Total: {}", results.len());
+            info!("Total: {}", results.len());
         }
 
     }
