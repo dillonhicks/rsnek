@@ -7,8 +7,9 @@ use num::Zero;
 use result::RuntimeResult;
 use error::Error;
 
-use typedef::objectref::{WeakObjectRef, ObjectRef};
-use typedef::native;
+use ::object::WeakRtObject as WeakObjectRef;
+use ::object::RtObject as ObjectRef;
+use ::typedef::native;
 
 
 /// A trait that must be implemented on a refcount wrapper type

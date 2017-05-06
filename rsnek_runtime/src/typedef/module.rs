@@ -11,7 +11,7 @@ use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::object::{PyObject, ObjectValue};
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 // TODO: {T49} pretty Obvious need to have classobjs since PyModule is just an object with

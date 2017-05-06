@@ -22,25 +22,18 @@ use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, ObjectId};
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//      Types and Structs
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+pub struct RtObject(pub native::RuntimeRef);
 
-pub struct ObjectRef(pub native::RuntimeRef);
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//       Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl ObjectRef {
+impl RtObject {
     #[inline]
-    pub fn new(value: Builtin) -> ObjectRef {
-        ObjectRef(Rc::new(Box::new(value)))
+    pub fn new(value: Builtin) -> RtObject {
+        RtObject(Rc::new(Box::new(value)))
     }
 
-    /// Downgrade the ObjectRef to a WeakObjectRef
-    pub fn downgrade(&self) -> WeakObjectRef {
-        WeakObjectRef(Rc::downgrade(&self.0))
+    /// Downgrade the RtObject to a WeakRtObject
+    pub fn downgrade(&self) -> WeakRtObject {
+        WeakRtObject(Rc::downgrade(&self.0))
     }
 
     pub fn strong_count(&self) -> native::Integer {
@@ -71,7 +64,7 @@ impl ObjectRef {
 }
 
 
-impl Serialize for ObjectRef {
+impl Serialize for RtObject {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer {
 
@@ -80,8 +73,8 @@ impl Serialize for ObjectRef {
 }
 
 
-impl std::cmp::PartialEq for ObjectRef {
-    fn eq(&self, rhs: &ObjectRef) -> bool {
+impl std::cmp::PartialEq for RtObject {
+    fn eq(&self, rhs: &RtObject) -> bool {
         let lhs_box: &Box<Builtin> = self.0.borrow();
 
         let rhs_box: &Box<Builtin> = rhs.0.borrow();
@@ -90,16 +83,16 @@ impl std::cmp::PartialEq for ObjectRef {
 }
 
 
-impl std::cmp::Eq for ObjectRef {}
+impl std::cmp::Eq for RtObject {}
 
 
-impl Clone for ObjectRef {
+impl Clone for RtObject {
     fn clone(&self) -> Self {
-        ObjectRef((self.0).clone())
+        RtObject((self.0).clone())
     }
 }
 
-impl Hash for ObjectRef {
+impl Hash for RtObject {
     #[allow(unused_variables)]
     fn hash<H: Hasher>(&self, s: &mut H) {
         // noop since we use Holder elements with manually computed hashes
@@ -107,7 +100,7 @@ impl Hash for ObjectRef {
 }
 
 
-impl std::fmt::Display for ObjectRef {
+impl std::fmt::Display for RtObject {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let boxed: &Box<Builtin> = self.0.borrow();
         let builtin = boxed.deref();
@@ -115,7 +108,7 @@ impl std::fmt::Display for ObjectRef {
     }
 }
 
-impl std::fmt::Debug for ObjectRef {
+impl std::fmt::Debug for RtObject {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let boxed: &Box<Builtin> = self.0.borrow();
         let builtin = boxed.deref();
@@ -123,7 +116,7 @@ impl std::fmt::Debug for ObjectRef {
     }
 }
 
-impl AsRef<Builtin> for ObjectRef {
+impl AsRef<Builtin> for RtObject {
     fn as_ref(&self) -> &Builtin {
         let boxed: &Box<Builtin> = self.0.borrow();
         boxed.deref()
@@ -133,8 +126,8 @@ impl AsRef<Builtin> for ObjectRef {
 /// While it is cool to be able to directly iterate over an objectref
 /// it is impractical and likely impossible to debug if the critical
 /// case is hit.
-impl Iterator for ObjectRef {
-    type Item = ObjectRef;
+impl Iterator for RtObject {
+    type Item = RtObject;
 
     fn next(&mut self) -> Option<Self::Item> {
         let boxed: &Box<Builtin> = self.0.borrow();
@@ -158,25 +151,25 @@ impl Iterator for ObjectRef {
 
 
 
-impl object::PyAPI for ObjectRef {}
-impl method::New for ObjectRef {}
-impl method::Init for ObjectRef {}
-impl method::Delete for ObjectRef {}
-impl method::GetAttr for ObjectRef {
-    fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl object::PyAPI for RtObject {}
+impl method::New for RtObject {}
+impl method::Init for RtObject {}
+impl method::Delete for RtObject {}
+impl method::GetAttr for RtObject {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_getattr, lhs, name)
     }
 
-    fn native_getattr(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+    fn native_getattr(&self, name: &Builtin) -> NativeResult<RtObject> {
         let builtin: &Box<Builtin> = self.0.borrow();
         native_foreach_builtin!(builtin.deref(), native_getattr, lhs, name)
     }
 }
 
-impl method::GetAttribute for ObjectRef {}
-impl method::SetAttr for ObjectRef {
-    fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
+impl method::GetAttribute for RtObject {}
+impl method::SetAttr for RtObject {
+    fn op_setattr(&self, rt: &Runtime, name: &RtObject, value: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_setattr, lhs, name, value)
     }
@@ -186,8 +179,8 @@ impl method::SetAttr for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_setattr, lhs, name, value)
     }
 }
-impl method::DelAttr for ObjectRef {}
-impl method::Id for ObjectRef {
+impl method::DelAttr for RtObject {}
+impl method::Id for RtObject {
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
         Ok(rt.int(self.native_id()))
     }
@@ -201,8 +194,8 @@ impl method::Id for ObjectRef {
 }
 
 
-impl method::Is for ObjectRef {
-    fn op_is(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::Is for RtObject {
+    fn op_is(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is(rhs_builtin).unwrap() {
@@ -218,8 +211,8 @@ impl method::Is for ObjectRef {
     }
 }
 
-impl method::IsNot for ObjectRef {
-    fn op_is_not(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::IsNot for RtObject {
+    fn op_is_not(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let rhs_builtin: &Box<Builtin> = rhs.0.borrow();
 
         if self.native_is_not(rhs_builtin).unwrap() {
@@ -234,7 +227,7 @@ impl method::IsNot for ObjectRef {
     }
 }
 
-impl method::Hashed for ObjectRef {
+impl method::Hashed for RtObject {
 
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
@@ -247,7 +240,7 @@ impl method::Hashed for ObjectRef {
     }
 }
 
-impl method::StringCast for ObjectRef {
+impl method::StringCast for RtObject {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_str, obj)
@@ -258,7 +251,7 @@ impl method::StringCast for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_str, obj)
     }
 }
-impl method::BytesCast for ObjectRef {
+impl method::BytesCast for RtObject {
     fn op_bytes(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_bytes, obj)
@@ -269,7 +262,7 @@ impl method::BytesCast for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_bytes, obj)
     }
 }
-impl method::StringFormat for ObjectRef {
+impl method::StringFormat for RtObject {
     fn op_format(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_format, obj)
@@ -280,7 +273,7 @@ impl method::StringFormat for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_format, obj)
     }
 }
-impl method::StringRepresentation for ObjectRef {
+impl method::StringRepresentation for RtObject {
     fn op_repr(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_repr, obj)
@@ -292,9 +285,9 @@ impl method::StringRepresentation for ObjectRef {
     }
 }
 
-impl method::Equal for ObjectRef {
+impl method::Equal for RtObject {
     /// Default implementation of equals fallsbacks to op_is.
-    fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_eq, lhs, rhs)
     }
@@ -305,8 +298,8 @@ impl method::Equal for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_eq, lhs, rhs)
     }
 }
-impl method::NotEqual for ObjectRef {
-    fn op_ne(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::NotEqual for RtObject {
+    fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ne, lhs, rhs)
     }
@@ -317,8 +310,8 @@ impl method::NotEqual for ObjectRef {
     }
 }
 
-impl method::LessThan for ObjectRef {
-    fn op_lt(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::LessThan for RtObject {
+    fn op_lt(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_lt, lhs, rhs)
     }
@@ -328,8 +321,8 @@ impl method::LessThan for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_lt, lhs, rhs)
     }
 }
-impl method::LessOrEqual for ObjectRef {
-    fn op_le(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::LessOrEqual for RtObject {
+    fn op_le(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_le, lhs, rhs)
     }
@@ -339,8 +332,8 @@ impl method::LessOrEqual for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_le, lhs, rhs)
     }
 }
-impl method::GreaterOrEqual for ObjectRef {
-    fn op_ge(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::GreaterOrEqual for RtObject {
+    fn op_ge(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ge, lhs, rhs)
     }
@@ -350,8 +343,8 @@ impl method::GreaterOrEqual for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_ge, lhs, rhs)
     }
 }
-impl method::GreaterThan for ObjectRef {
-    fn op_gt(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::GreaterThan for RtObject {
+    fn op_gt(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_gt, lhs, rhs)
     }
@@ -361,7 +354,7 @@ impl method::GreaterThan for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_gt, lhs, rhs)
     }
 }
-impl method::BooleanCast for ObjectRef {
+impl method::BooleanCast for RtObject {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_bool, obj)
@@ -373,7 +366,7 @@ impl method::BooleanCast for ObjectRef {
     }
 }
 
-impl method::IntegerCast for ObjectRef {
+impl method::IntegerCast for RtObject {
     fn op_int(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_int, obj)
@@ -385,7 +378,7 @@ impl method::IntegerCast for ObjectRef {
     }
 }
 
-impl method::FloatCast for ObjectRef {
+impl method::FloatCast for RtObject {
     fn op_float(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_float, obj)
@@ -397,7 +390,7 @@ impl method::FloatCast for ObjectRef {
     }
 }
 
-impl method::ComplexCast for ObjectRef {
+impl method::ComplexCast for RtObject {
     fn op_complex(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_complex, obj)
@@ -409,8 +402,8 @@ impl method::ComplexCast for ObjectRef {
     }
 }
 
-impl method::Rounding for ObjectRef {}
-impl method::Index for ObjectRef {
+impl method::Rounding for RtObject {}
+impl method::Index for RtObject {
     fn op_index(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_index, obj)
@@ -421,7 +414,7 @@ impl method::Index for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_index, obj)
     }
 }
-impl method::NegateValue for ObjectRef {
+impl method::NegateValue for RtObject {
     fn op_neg(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_neg, obj)
@@ -432,7 +425,7 @@ impl method::NegateValue for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_neg, obj)
     }
 }
-impl method::AbsValue for ObjectRef {
+impl method::AbsValue for RtObject {
     fn op_abs(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_abs, obj)
@@ -443,7 +436,7 @@ impl method::AbsValue for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_abs, obj)
     }
 }
-impl method::PositiveValue for ObjectRef {
+impl method::PositiveValue for RtObject {
     fn op_pos(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_pos, obj)
@@ -454,7 +447,7 @@ impl method::PositiveValue for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_pos, obj)
     }
 }
-impl method::InvertValue for ObjectRef {
+impl method::InvertValue for RtObject {
     fn op_invert(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_invert, obj)
@@ -465,8 +458,8 @@ impl method::InvertValue for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_invert, obj)
     }
 }
-impl method::Add for ObjectRef {
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::Add for RtObject {
+    fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_add, lhs, rhs)
     }
@@ -476,8 +469,8 @@ impl method::Add for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_add, lhs, rhs)
     }
 }
-impl method::BitwiseAnd for ObjectRef {
-    fn op_and(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::BitwiseAnd for RtObject {
+    fn op_and(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_and, lhs, rhs)
     }
@@ -487,8 +480,8 @@ impl method::BitwiseAnd for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_and, lhs, rhs)
     }
 }
-impl method::DivMod for ObjectRef {
-    fn op_divmod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::DivMod for RtObject {
+    fn op_divmod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_divmod, lhs, rhs)
     }
@@ -498,8 +491,8 @@ impl method::DivMod for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_divmod, lhs, rhs)
     }
 }
-impl method::FloorDivision for ObjectRef {
-    fn op_floordiv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::FloorDivision for RtObject {
+    fn op_floordiv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_floordiv, lhs, rhs)
     }
@@ -509,8 +502,8 @@ impl method::FloorDivision for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_floordiv, lhs, rhs)
     }
 }
-impl method::LeftShift for ObjectRef {
-    fn op_lshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::LeftShift for RtObject {
+    fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_lshift, lhs, rhs)
     }
@@ -520,8 +513,8 @@ impl method::LeftShift for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_lshift, lhs, rhs)
     }
 }
-impl method::Modulus for ObjectRef {
-    fn op_mod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::Modulus for RtObject {
+    fn op_mod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_mod, lhs, rhs)
     }
@@ -531,8 +524,8 @@ impl method::Modulus for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_mod, lhs, rhs)
     }
 }
-impl method::Multiply for ObjectRef {
-    fn op_mul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::Multiply for RtObject {
+    fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_mul, lhs, rhs)
     }
@@ -542,8 +535,8 @@ impl method::Multiply for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_mul, lhs, rhs)
     }
 }
-impl method::MatrixMultiply for ObjectRef {
-    fn op_matmul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::MatrixMultiply for RtObject {
+    fn op_matmul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_matmul, lhs, rhs)
     }
@@ -553,8 +546,8 @@ impl method::MatrixMultiply for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_matmul, lhs, rhs)
     }
 }
-impl method::BitwiseOr for ObjectRef {
-    fn op_or(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::BitwiseOr for RtObject {
+    fn op_or(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_or, lhs, rhs)
     }
@@ -564,8 +557,8 @@ impl method::BitwiseOr for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_or, lhs, rhs)
     }
 }
-impl method::Pow for ObjectRef {
-    fn op_pow(&self, rt: &Runtime, power: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
+impl method::Pow for RtObject {
+    fn op_pow(&self, rt: &Runtime, power: &RtObject, modulus: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_pow, base, power, modulus)
     }
@@ -575,8 +568,8 @@ impl method::Pow for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_pow, base, power, modulus)
     }
 }
-impl method::RightShift for ObjectRef {
-    fn op_rshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::RightShift for RtObject {
+    fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_rshift, lhs, rhs)
     }
@@ -586,8 +579,8 @@ impl method::RightShift for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_rshift, lhs, rhs)
     }
 }
-impl method::Subtract for ObjectRef {
-    fn op_sub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::Subtract for RtObject {
+    fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_sub, lhs, rhs)
     }
@@ -597,8 +590,8 @@ impl method::Subtract for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_sub, lhs, rhs)
     }
 }
-impl method::TrueDivision for ObjectRef {
-    fn op_truediv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::TrueDivision for RtObject {
+    fn op_truediv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_truediv, lhs, rhs)
     }
@@ -608,8 +601,8 @@ impl method::TrueDivision for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_truediv, lhs, rhs)
     }
 }
-impl method::XOr for ObjectRef {
-    fn op_xor(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::XOr for RtObject {
+    fn op_xor(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_xor, lhs, rhs)
     }
@@ -619,22 +612,22 @@ impl method::XOr for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_xor, lhs, rhs)
     }
 }
-impl method::ReflectedAdd for ObjectRef {}
-impl method::ReflectedBitwiseAnd for ObjectRef {}
-impl method::ReflectedDivMod for ObjectRef {}
-impl method::ReflectedFloorDivision for ObjectRef {}
-impl method::ReflectedLeftShift for ObjectRef {}
-impl method::ReflectedModulus for ObjectRef {}
-impl method::ReflectedMultiply for ObjectRef {}
-impl method::ReflectedMatrixMultiply for ObjectRef {}
-impl method::ReflectedBitwiseOr for ObjectRef {}
-impl method::ReflectedPow for ObjectRef {}
-impl method::ReflectedRightShift for ObjectRef {}
-impl method::ReflectedSubtract for ObjectRef {}
-impl method::ReflectedTrueDivision for ObjectRef {}
-impl method::ReflectedXOr for ObjectRef {}
-impl method::InPlaceAdd for ObjectRef {
-    fn op_iadd(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::ReflectedAdd for RtObject {}
+impl method::ReflectedBitwiseAnd for RtObject {}
+impl method::ReflectedDivMod for RtObject {}
+impl method::ReflectedFloorDivision for RtObject {}
+impl method::ReflectedLeftShift for RtObject {}
+impl method::ReflectedModulus for RtObject {}
+impl method::ReflectedMultiply for RtObject {}
+impl method::ReflectedMatrixMultiply for RtObject {}
+impl method::ReflectedBitwiseOr for RtObject {}
+impl method::ReflectedPow for RtObject {}
+impl method::ReflectedRightShift for RtObject {}
+impl method::ReflectedSubtract for RtObject {}
+impl method::ReflectedTrueDivision for RtObject {}
+impl method::ReflectedXOr for RtObject {}
+impl method::InPlaceAdd for RtObject {
+    fn op_iadd(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_iadd, lhs, rhs)
     }
@@ -644,8 +637,8 @@ impl method::InPlaceAdd for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_iadd, lhs, rhs)
     }
 }
-impl method::InPlaceBitwiseAnd for ObjectRef {
-    fn op_iand(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceBitwiseAnd for RtObject {
+    fn op_iand(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_iand, lhs, rhs)
     }
@@ -655,8 +648,8 @@ impl method::InPlaceBitwiseAnd for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_iand, lhs, rhs)
     }
 }
-impl method::InPlaceDivMod for ObjectRef {
-    fn op_idivmod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceDivMod for RtObject {
+    fn op_idivmod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_idivmod, lhs, rhs)
     }
@@ -666,8 +659,8 @@ impl method::InPlaceDivMod for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_idivmod, lhs, rhs)
     }
 }
-impl method::InPlaceFloorDivision for ObjectRef {
-    fn op_ifloordiv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceFloorDivision for RtObject {
+    fn op_ifloordiv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ifloordiv, lhs, rhs)
     }
@@ -677,8 +670,8 @@ impl method::InPlaceFloorDivision for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_ifloordiv, lhs, rhs)
     }
 }
-impl method::InPlaceLeftShift for ObjectRef {
-    fn op_ilshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceLeftShift for RtObject {
+    fn op_ilshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ilshift, lhs, rhs)
     }
@@ -688,8 +681,8 @@ impl method::InPlaceLeftShift for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_ilshift, lhs, rhs)
     }
 }
-impl method::InPlaceModulus for ObjectRef {
-    fn op_imod(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceModulus for RtObject {
+    fn op_imod(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_imod, lhs, rhs)
     }
@@ -699,8 +692,8 @@ impl method::InPlaceModulus for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_imod, lhs, rhs)
     }
 }
-impl method::InPlaceMultiply for ObjectRef {
-    fn op_imul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceMultiply for RtObject {
+    fn op_imul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_imul, lhs, rhs)
     }
@@ -710,8 +703,8 @@ impl method::InPlaceMultiply for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_imul, lhs, rhs)
     }
 }
-impl method::InPlaceMatrixMultiply for ObjectRef {
-    fn op_imatmul(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceMatrixMultiply for RtObject {
+    fn op_imatmul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_imatmul, lhs, rhs)
     }
@@ -721,8 +714,8 @@ impl method::InPlaceMatrixMultiply for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_imatmul, lhs, rhs)
     }
 }
-impl method::InPlaceBitwiseOr for ObjectRef {
-    fn op_ior(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceBitwiseOr for RtObject {
+    fn op_ior(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ior, lhs, rhs)
     }
@@ -732,8 +725,8 @@ impl method::InPlaceBitwiseOr for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_ior, lhs, rhs)
     }
 }
-impl method::InPlacePow for ObjectRef {
-    fn op_ipow(&self, rt: &Runtime, power: &ObjectRef, modulus: &ObjectRef) -> RuntimeResult {
+impl method::InPlacePow for RtObject {
+    fn op_ipow(&self, rt: &Runtime, power: &RtObject, modulus: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ipow, base, power, modulus)
     }
@@ -743,8 +736,8 @@ impl method::InPlacePow for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_ipow, base, power, modulus)
     }
 }
-impl method::InPlaceRightShift for ObjectRef {
-    fn op_irshift(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceRightShift for RtObject {
+    fn op_irshift(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_irshift, lhs, rhs)
     }
@@ -754,8 +747,8 @@ impl method::InPlaceRightShift for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_irshift, lhs, rhs)
     }
 }
-impl method::InPlaceSubtract for ObjectRef {
-    fn op_isub(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceSubtract for RtObject {
+    fn op_isub(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_isub, lhs, rhs)
     }
@@ -765,8 +758,8 @@ impl method::InPlaceSubtract for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_isub, lhs, rhs)
     }
 }
-impl method::InPlaceTrueDivision for ObjectRef {
-    fn op_itruediv(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceTrueDivision for RtObject {
+    fn op_itruediv(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_itruediv, lhs, rhs)
     }
@@ -776,8 +769,8 @@ impl method::InPlaceTrueDivision for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_itruediv, lhs, rhs)
     }
 }
-impl method::InPlaceXOr for ObjectRef {
-    fn op_ixor(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::InPlaceXOr for RtObject {
+    fn op_ixor(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_ixor, lhs, rhs)
     }
@@ -787,8 +780,8 @@ impl method::InPlaceXOr for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_ixor, lhs, rhs)
     }
 }
-impl method::Contains for ObjectRef {
-    fn op_contains(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
+impl method::Contains for RtObject {
+    fn op_contains(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_contains, lhs, rhs)
     }
@@ -798,7 +791,7 @@ impl method::Contains for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_contains, lhs, rhs)
     }
 }
-impl method::Iter for ObjectRef {
+impl method::Iter for RtObject {
     fn op_iter(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_iter, lhs)
@@ -809,8 +802,8 @@ impl method::Iter for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_iter, lhs)
     }
 }
-impl method::Call for ObjectRef {
-    fn op_call(&self, rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kwargs: &ObjectRef) -> RuntimeResult {
+impl method::Call for RtObject {
+    fn op_call(&self, rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_call, method, pos_args, starargs, kwargs)
     }
@@ -820,7 +813,7 @@ impl method::Call for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_call, method, pos_args, starargs, kwargs)
     }
 }
-impl method::Length for ObjectRef {
+impl method::Length for RtObject {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_len, lhs)
@@ -831,33 +824,33 @@ impl method::Length for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_len, lhs)
     }
 }
-impl method::LengthHint for ObjectRef {}
-impl method::Next for ObjectRef {
+impl method::LengthHint for RtObject {}
+impl method::Next for RtObject {
     fn op_next(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_next, lhs)
     }
 
-    fn native_next(&self) -> NativeResult<ObjectRef> {
+    fn native_next(&self) -> NativeResult<RtObject> {
         let builtin: &Box<Builtin> = self.0.borrow();
         native_foreach_builtin!(builtin.deref(), native_next, lhs)
     }
 }
-impl method::Reversed for ObjectRef {}
-impl method::GetItem for ObjectRef {
-    fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::Reversed for RtObject {}
+impl method::GetItem for RtObject {
+    fn op_getitem(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_getitem, object, name)
     }
 
-    fn native_getitem(&self, name: &Builtin) -> NativeResult<ObjectRef> {
+    fn native_getitem(&self, name: &Builtin) -> NativeResult<RtObject> {
         let builtin: &Box<Builtin> = self.0.borrow();
         native_foreach_builtin!(builtin.deref(), native_getitem, object, name)
     }
 }
 
-impl method::SetItem for ObjectRef {
-    fn op_setitem(&self, rt: &Runtime, name: &ObjectRef, item: &ObjectRef) -> RuntimeResult {
+impl method::SetItem for RtObject {
+    fn op_setitem(&self, rt: &Runtime, name: &RtObject, item: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_setitem, object, name, item)
     }
@@ -868,8 +861,8 @@ impl method::SetItem for ObjectRef {
     }
 }
 
-impl method::DeleteItem for ObjectRef {
-    fn op_delitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::DeleteItem for RtObject {
+    fn op_delitem(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, op_delitem, object, name)
     }
@@ -880,8 +873,8 @@ impl method::DeleteItem for ObjectRef {
     }
 }
 
-impl method::Count for ObjectRef {
-    fn meth_count(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::Count for RtObject {
+    fn meth_count(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_count, object, name)
     }
@@ -892,8 +885,8 @@ impl method::Count for ObjectRef {
     }
 }
 
-impl method::Append for ObjectRef {
-    fn meth_append(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::Append for RtObject {
+    fn meth_append(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_append, object, name)
     }
@@ -904,8 +897,8 @@ impl method::Append for ObjectRef {
     }
 }
 
-impl method::Extend for ObjectRef {
-    fn meth_extend(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::Extend for RtObject {
+    fn meth_extend(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_extend, object, name)
     }
@@ -916,8 +909,8 @@ impl method::Extend for ObjectRef {
     }
 }
 
-impl method::Pop for ObjectRef {
-    fn meth_pop(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::Pop for RtObject {
+    fn meth_pop(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_pop, object, name)
     }
@@ -928,8 +921,8 @@ impl method::Pop for ObjectRef {
     }
 }
 
-impl method::Remove for ObjectRef {
-    fn meth_remove(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::Remove for RtObject {
+    fn meth_remove(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_remove, object, name)
     }
@@ -940,8 +933,8 @@ impl method::Remove for ObjectRef {
     }
 }
 
-impl method::IsDisjoint for ObjectRef {
-    fn meth_isdisjoint(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::IsDisjoint for RtObject {
+    fn meth_isdisjoint(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_isdisjoint, object, name)
     }
@@ -952,8 +945,8 @@ impl method::IsDisjoint for ObjectRef {
     }
 }
 
-impl method::AddItem for ObjectRef {
-    fn meth_add(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
+impl method::AddItem for RtObject {
+    fn meth_add(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_add, object, name)
     }
@@ -964,10 +957,10 @@ impl method::AddItem for ObjectRef {
     }
 }
 
-impl method::Discard for ObjectRef {}
-impl method::Clear for ObjectRef {}
-impl method::Get for ObjectRef {}
-impl method::Keys for ObjectRef {
+impl method::Discard for RtObject {}
+impl method::Clear for RtObject {}
+impl method::Get for RtObject {}
+impl method::Keys for RtObject {
     fn meth_keys(&self, rt: &Runtime) -> RuntimeResult {
         let builtin: &Box<Builtin> = self.0.borrow();
         foreach_builtin!(builtin.deref(), rt, meth_keys, object)
@@ -978,34 +971,34 @@ impl method::Keys for ObjectRef {
         native_foreach_builtin!(builtin.deref(), native_meth_keys, object)
     }
 }
-impl method::Values for ObjectRef {}
-impl method::Items for ObjectRef {}
-impl method::PopItem for ObjectRef {}
-impl method::Update for ObjectRef {}
-impl method::SetDefault for ObjectRef {}
-impl method::Await for ObjectRef {}
-impl method::Send for ObjectRef {}
-impl method::Throw for ObjectRef {}
-impl method::Close for ObjectRef {}
-impl method::Exit for ObjectRef {}
-impl method::Enter for ObjectRef {}
-impl method::DescriptorGet for ObjectRef {}
-impl method::DescriptorSet for ObjectRef {}
-impl method::DescriptorSetName for ObjectRef {}
+impl method::Values for RtObject {}
+impl method::Items for RtObject {}
+impl method::PopItem for RtObject {}
+impl method::Update for RtObject {}
+impl method::SetDefault for RtObject {}
+impl method::Await for RtObject {}
+impl method::Send for RtObject {}
+impl method::Throw for RtObject {}
+impl method::Close for RtObject {}
+impl method::Exit for RtObject {}
+impl method::Enter for RtObject {}
+impl method::DescriptorGet for RtObject {}
+impl method::DescriptorSet for RtObject {}
+impl method::DescriptorSetName for RtObject {}
 
 
 ///
-pub struct WeakObjectRef(pub native::RuntimeWeakRef);
+pub struct WeakRtObject(pub native::RuntimeWeakRef);
 
 
-impl Default for WeakObjectRef {
-    fn default() -> WeakObjectRef {
-        WeakObjectRef(Weak::default())
+impl Default for WeakRtObject {
+    fn default() -> WeakRtObject {
+        WeakRtObject(Weak::default())
     }
 }
 
 
-impl WeakObjectRef {
+impl WeakRtObject {
     pub fn weak_count(&self) -> native::Integer {
         let count: native::Integer;
         {
@@ -1039,18 +1032,18 @@ impl WeakObjectRef {
     pub fn upgrade(&self) -> RuntimeResult {
         match Weak::upgrade(&self.0) {
             None => Err(Error::runtime("Attempted to create a strong ref to a an object with no existing refs")),
-            Some(objref) => Ok(ObjectRef(objref)),
+            Some(objref) => Ok(RtObject(objref)),
         }
     }
 }
 
-impl Clone for WeakObjectRef {
+impl Clone for WeakRtObject {
     fn clone(&self) -> Self {
-        WeakObjectRef((self.0).clone())
+        WeakRtObject((self.0).clone())
     }
 }
 
-impl Hash for WeakObjectRef {
+impl Hash for WeakRtObject {
     #[allow(unused_variables)]
     fn hash<H: Hasher>(&self, state: &mut H) {
         // noop since we use Holder elements with manually computed hashes

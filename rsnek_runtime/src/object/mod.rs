@@ -1,7 +1,9 @@
 pub mod method;
 pub mod selfref;
 pub mod typing;
+mod rtobject;
 
+pub use self::rtobject::{RtObject, WeakRtObject};
 
 
 /// Runtime Value delegate that holds its own self reference

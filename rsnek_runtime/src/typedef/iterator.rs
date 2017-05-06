@@ -14,7 +14,7 @@ use object::typing::BuiltinType;
 
 use typedef::builtin::Builtin;
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 pub struct PyIteratorType {

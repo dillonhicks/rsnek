@@ -10,7 +10,7 @@ use object::typing;
 use object::method;
 
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::builtin::Builtin;
 
 

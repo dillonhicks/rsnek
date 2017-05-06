@@ -9,7 +9,7 @@ use ::result::NativeResult;
 use ::resource::strings;
 use ::typedef::builtin::Builtin;
 use ::typedef::native;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 pub fn equals<'a>(left: &'a [ObjectRef], right: &'a [ObjectRef]) -> native::Boolean {

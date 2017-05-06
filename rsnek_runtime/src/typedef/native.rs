@@ -16,7 +16,7 @@ use ::opcode::OpCode;
 use ::result::{RuntimeResult, NativeResult};
 use ::runtime::Runtime;
 use ::typedef;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::typedef::builtin::Builtin;
 
 

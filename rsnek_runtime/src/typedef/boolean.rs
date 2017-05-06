@@ -11,7 +11,7 @@ use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use ::result::{RuntimeResult, NativeResult};
 use ::typedef::builtin::Builtin;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::typedef::number;
 use ::typedef::native::{self, Number, HashId};
 
@@ -153,7 +153,7 @@ impl method::Equal for PyBoolean {
     fn op_eq(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         let builtin: &Box<Builtin> = rhs.0.borrow();
 
-        match self.native_eq(builtin.deref()) {
+        match self.native_eq(rhs.as_ref()) {
             Ok(value) => {
                 if value {
                     Ok(rt.bool(true))

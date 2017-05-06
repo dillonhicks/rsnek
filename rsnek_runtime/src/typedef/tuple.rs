@@ -18,7 +18,7 @@ use object::selfref::{self, SelfRef};
 
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Tuple};
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::typedef::collection::sequence;
 
 

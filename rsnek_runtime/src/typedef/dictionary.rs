@@ -8,7 +8,7 @@ use result::{NativeResult, RuntimeResult};
 use runtime::Runtime;
 use traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use error::Error;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::native::{self, DictKey};
 use typedef::builtin::Builtin;
 

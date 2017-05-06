@@ -12,7 +12,7 @@ use traits::{
 };
 
 use result::{RuntimeResult};
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::resource::strings;
 use typedef::builtin::Builtin;
 use typedef::native::{self, Func, FuncType, SignatureBuilder};

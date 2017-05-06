@@ -75,7 +75,7 @@ use ::traits::{
 use ::typedef::native::{self, Native, Instr, FuncType};
 use ::typedef::native::SignatureBuilder;
 use ::typedef::builtin::Builtin;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 const RECURSION_LIMIT: usize = 256;

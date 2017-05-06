@@ -7,30 +7,31 @@ use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
 use result::{NativeResult, RuntimeResult};
 
-use object;
-use object::method::{self, Id, StringRepresentation, Equal, Hashed};
-use object::selfref::SelfRef;
+use ::object::PyAPI;
+use ::object::RtObject as ObjectRef;
+use ::object::WeakRtObject as WeakObjectRef;
+use ::object::method::{self, Id, StringRepresentation, Equal, Hashed};
+use ::object::selfref::SelfRef;
 
-use typedef::native;
-use typedef::dictionary::PyDict;
-use typedef::object::PyObject;
-use typedef::boolean::PyBoolean;
-use typedef::integer::PyInteger;
-use typedef::float::PyFloat;
-use typedef::iterator::PyIterator;
-use typedef::string::PyString;
-use typedef::bytes::PyBytes;
-use typedef::complex::PyComplex;
-use typedef::none::PyNone;
-use typedef::tuple::PyTuple;
-use typedef::list::PyList;
-use typedef::objectref::{ObjectRef, WeakObjectRef};
-use typedef::pytype::PyType;
-use typedef::method::PyFunction;
-use typedef::code::PyCode;
-use typedef::frame::PyFrame;
-use typedef::set::PySet;
-use typedef::frozenset::PyFrozenSet;
+use ::typedef::native;
+use ::typedef::dictionary::PyDict;
+use ::typedef::object::PyObject;
+use ::typedef::boolean::PyBoolean;
+use ::typedef::integer::PyInteger;
+use ::typedef::float::PyFloat;
+use ::typedef::iterator::PyIterator;
+use ::typedef::string::PyString;
+use ::typedef::bytes::PyBytes;
+use ::typedef::complex::PyComplex;
+use ::typedef::none::PyNone;
+use ::typedef::tuple::PyTuple;
+use ::typedef::list::PyList;
+use ::typedef::pytype::PyType;
+use ::typedef::method::PyFunction;
+use ::typedef::code::PyCode;
+use ::typedef::frame::PyFrame;
+use ::typedef::set::PySet;
+use ::typedef::frozenset::PyFrozenSet;
 
 
 #[allow(dead_code)]
@@ -87,10 +88,49 @@ impl Builtin {
     }
 }
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//     Struct Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
+impl std::cmp::PartialEq for Builtin {
+    fn eq(&self, rhs: &Builtin) -> bool {
+        self.native_eq(rhs).unwrap_or(false)
+    }
+}
 
+impl std::cmp::Eq for Builtin {}
+
+impl fmt::Debug for Builtin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        expr_foreach_builtin!(self, obj, {
+            write!(f, "{:?}", obj)
+        })
+    }
+}
+
+impl fmt::Display for Builtin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.native_repr() {
+            Ok(string) => write!(f, "{}", string),
+            _ => write!(f, "BuiltinType(repr_error=True)"),
+        }
+    }
+}
+
+impl Iterator for Builtin {
+    type Item = ObjectRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            &mut Builtin::Iter(ref mut iterator) => {
+                iterator.next()
+            }
+            _ => None
+        }
+    }
+}
+
+impl Hash for Builtin {
+    fn hash<H: Hasher>(&self, state: &mut H) where H: Hasher{
+        self.native_hash().unwrap().hash(state);
+    }
+}
 
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //     New Object Traits
@@ -133,10 +173,8 @@ impl SelfRef for Builtin {
 }
 
 
-impl object::PyAPI for Builtin {}
-impl method::New for Builtin {}
-impl method::Init for Builtin {}
-impl method::Delete for Builtin {}
+impl PyAPI for Builtin {}
+
 impl method::GetAttr for Builtin {
     fn op_getattr(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_getattr, lhs, name)
@@ -147,7 +185,7 @@ impl method::GetAttr for Builtin {
     }
 }
 
-impl method::GetAttribute for Builtin {}
+
 impl method::SetAttr for Builtin {
     fn op_setattr(&self, rt: &Runtime, name: &ObjectRef, value: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_setattr, lhs, name, value)
@@ -157,7 +195,7 @@ impl method::SetAttr for Builtin {
         native_foreach_builtin!(self, native_setattr, lhs, name, value)
     }
 }
-impl method::DelAttr for Builtin {}
+
 impl method::Id for Builtin {
     fn op_id(&self, rt: &Runtime) -> RuntimeResult {
         Ok(rt.int(self.native_id()))
@@ -351,7 +389,6 @@ impl method::ComplexCast for Builtin {
     }
 }
 
-impl method::Rounding for Builtin {}
 impl method::Index for Builtin {
     fn op_index(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_index, obj)
@@ -398,8 +435,7 @@ impl method::InvertValue for Builtin {
     }
 }
 impl method::Add for Builtin {
-    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
-        trace!("Builtin"; "action" => "call", "method" => "op_add");
+    fn op_add(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult { 
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
 
@@ -524,20 +560,7 @@ impl method::XOr for Builtin {
         native_foreach_builtin!(self, native_xor, lhs, rhs)
     }
 }
-impl method::ReflectedAdd for Builtin {}
-impl method::ReflectedBitwiseAnd for Builtin {}
-impl method::ReflectedDivMod for Builtin {}
-impl method::ReflectedFloorDivision for Builtin {}
-impl method::ReflectedLeftShift for Builtin {}
-impl method::ReflectedModulus for Builtin {}
-impl method::ReflectedMultiply for Builtin {}
-impl method::ReflectedMatrixMultiply for Builtin {}
-impl method::ReflectedBitwiseOr for Builtin {}
-impl method::ReflectedPow for Builtin {}
-impl method::ReflectedRightShift for Builtin {}
-impl method::ReflectedSubtract for Builtin {}
-impl method::ReflectedTrueDivision for Builtin {}
-impl method::ReflectedXOr for Builtin {}
+
 impl method::InPlaceAdd for Builtin {
     fn op_iadd(&self, rt: &Runtime, rhs: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_iadd, lhs, rhs)
@@ -700,7 +723,7 @@ impl method::Length for Builtin {
         native_foreach_builtin!(self, native_len, lhs)
     }
 }
-impl method::LengthHint for Builtin {}
+
 impl method::Next for Builtin {
     fn op_next(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, op_next, lhs)
@@ -710,7 +733,7 @@ impl method::Next for Builtin {
         native_foreach_builtin!(self, native_next, lhs)
     }    
 }
-impl method::Reversed for Builtin {}
+
 impl method::GetItem for Builtin {
     fn op_getitem(&self, rt: &Runtime, name: &ObjectRef) -> RuntimeResult {
         foreach_builtin!(self, rt, op_getitem, object, name)
@@ -811,9 +834,7 @@ impl method::AddItem for Builtin {
     }
 }
 
-impl method::Discard for Builtin {}
-impl method::Clear for Builtin {}
-impl method::Get for Builtin {}
+
 impl method::Keys for Builtin {
     fn meth_keys(&self, rt: &Runtime) -> RuntimeResult {
         foreach_builtin!(self, rt, meth_keys, object)
@@ -823,89 +844,15 @@ impl method::Keys for Builtin {
         native_foreach_builtin!(self, native_meth_keys, object)
     }    
 }
-impl method::Values for Builtin {}
-impl method::Items for Builtin {}
-impl method::PopItem for Builtin {}
-impl method::Update for Builtin {}
-impl method::SetDefault for Builtin {}
-impl method::Await for Builtin {}
-impl method::Send for Builtin {}
-impl method::Throw for Builtin {}
-impl method::Close for Builtin {}
-impl method::Exit for Builtin {}
-impl method::Enter for Builtin {}
-impl method::DescriptorGet for Builtin {}
-impl method::DescriptorSet for Builtin {}
-impl method::DescriptorSetName for Builtin {}
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//     stdlib Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-impl std::cmp::PartialEq for Builtin {
-    fn eq(&self, rhs: &Builtin) -> bool {
-        self.native_eq(rhs).unwrap_or(false)
-    }
-}
-
-impl std::cmp::Eq for Builtin {}
-
-impl fmt::Debug for Builtin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        expr_foreach_builtin!(self, obj, {
-            write!(f, "{:?}", obj)
-        })
-    }
-}
-
-impl fmt::Display for Builtin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.native_repr() {
-            Ok(string) => write!(f, "{}", string),
-            _ => write!(f, "BuiltinType(repr_error=True)"),
-        }
-    }
-}
-
-impl Iterator for Builtin {
-    type Item = ObjectRef;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            &mut Builtin::Iter(ref mut iterator) => {
-                iterator.next()
-            }
-            _ => None
-        }
-    }
-}
-
-
-impl Hash for Builtin {
-    fn hash<H: Hasher>(&self, state: &mut H) where H: Hasher{
-        self.native_hash().unwrap().hash(state);
-//
-//        let variant_id = match *self {
-//            Builtin::Object(_) => 1,
-//            Builtin::None(_) => 2,
-//            Builtin::Bool(_) => 3,
-//            Builtin::Int(_) => 4,
-//            Builtin::Float(_) => 5,
-//            Builtin::Iter(_) => 6,
-//            Builtin::Complex(_) => 7,
-//            Builtin::Str(_) => 8,
-//            Builtin::Bytes(_) => 9,
-//            Builtin::Dict(_) => 10,
-//            Builtin::Tuple(_) => 11,
-//            Builtin::List(_) => 12,
-//            Builtin::Type(_) => 13,
-//            Builtin::Function(_) => 14,
-//            Builtin::Module(_) => 15,
-//            Builtin::Code(_) => 16,
-//            Builtin::Frame(_) => 17,
-//            Builtin::DictKey(_) => 18,
-//        };
-//        variant_id.hash(state);
-    }
-}
+method_not_implemented!(Builtin,
+    Await   Clear   Close   DelAttr   Delete   
+    DescriptorGet   DescriptorSet   DescriptorSetName   Discard   Enter   
+    Exit   Get   GetAttribute   Init   Items   
+    LengthHint   New   PopItem   ReflectedAdd   ReflectedBitwiseAnd   
+    ReflectedBitwiseOr   ReflectedDivMod   ReflectedFloorDivision   ReflectedLeftShift
+    ReflectedMatrixMultiply  ReflectedModulus   ReflectedMultiply   ReflectedPow
+    ReflectedRightShift   ReflectedSubtract  ReflectedTrueDivision   ReflectedXOr   Reversed
+    Rounding   Send   SetDefault   Throw   Update   Values
+);

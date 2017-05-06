@@ -7,7 +7,7 @@ use ::result::{RuntimeResult};
 use ::resource::strings;
 use ::runtime::Runtime;
 use ::traits::{TupleProvider, ModuleImporter};
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 

@@ -1,5 +1,5 @@
 use result::RuntimeResult;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 pub trait New<T> {

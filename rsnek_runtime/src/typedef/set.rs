@@ -7,7 +7,7 @@ use object::selfref::{self, SelfRef};
 
 use typedef::native;
 use typedef::builtin::Builtin;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 #[derive(Clone)]

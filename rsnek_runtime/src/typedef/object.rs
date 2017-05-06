@@ -17,7 +17,7 @@ use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, DictKey};
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 pub struct PyObjectType {

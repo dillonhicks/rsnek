@@ -11,7 +11,7 @@ use runtime::Runtime;
 use result::{RuntimeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 //pub const FRAME_MAX_BLOCKS: usize = 20;
 

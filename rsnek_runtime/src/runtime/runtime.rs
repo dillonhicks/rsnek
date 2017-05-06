@@ -42,7 +42,7 @@ use builtin;
 
 use typedef::native::{self, SignatureBuilder};
 use typedef::builtin::Builtin;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::none::{PyNoneType, NONE};
 use typedef::boolean::PyBooleanType;
 use typedef::integer::PyIntegerType;

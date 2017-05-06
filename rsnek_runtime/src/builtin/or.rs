@@ -4,7 +4,7 @@ use ::object::method::BooleanCast;
 use ::runtime::Runtime;
 use ::result::RuntimeResult;
 use ::typedef::builtin::Builtin;
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::traits::BooleanProvider;
 
 

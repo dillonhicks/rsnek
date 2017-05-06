@@ -4,7 +4,7 @@ use runtime::Runtime;
 use traits::{IteratorProvider, NoneProvider};
 
 use result::{RuntimeResult};
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::resource::strings;
 use typedef::builtin::Builtin;
 use object::method::StringCast;

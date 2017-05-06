@@ -1,6 +1,6 @@
 use runtime::Runtime;
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 use object::method;
 

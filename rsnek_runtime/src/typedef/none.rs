@@ -9,7 +9,7 @@ use object::selfref::{self, SelfRef};
 use object::{RtValue, PyAPI, method, typing};
 
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::builtin::Builtin;
 
 

@@ -8,7 +8,7 @@ use result::{NativeResult};
 use error::Error;
 
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::builtin::Builtin;
 
 

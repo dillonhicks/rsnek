@@ -1,6 +1,6 @@
 use std::result;
 use error::Error;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 pub type RuntimeResult = result::Result<ObjectRef, Error>;

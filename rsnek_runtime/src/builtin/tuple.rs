@@ -8,7 +8,7 @@ use ::runtime::Runtime;
 use ::result::RuntimeResult;
 use ::resource::strings;
 use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
-use ::typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
 

@@ -9,7 +9,7 @@ use object::{self, RtValue, method, typing};
 use object::selfref::{self, SelfRef};
 
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::builtin::Builtin;
 
 

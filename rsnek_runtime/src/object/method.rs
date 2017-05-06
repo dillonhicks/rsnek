@@ -7,7 +7,7 @@ use traits::{BooleanProvider, IntegerProvider};
 use result::{RuntimeResult, NativeResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 /// Big index of all traits used to define builtin objects

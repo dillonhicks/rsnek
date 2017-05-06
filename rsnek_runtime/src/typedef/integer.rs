@@ -17,7 +17,7 @@ use object::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, Negate
 use object::method::*;
 
 use typedef::native::{self, HashId, SignatureBuilder};
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 use typedef::builtin::Builtin;
 use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
 use ::builtin::precondition::check_args;

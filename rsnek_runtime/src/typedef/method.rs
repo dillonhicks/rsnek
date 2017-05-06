@@ -20,7 +20,7 @@ use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
 use typedef::object::PyObjectType;
-use typedef::objectref::ObjectRef;
+use ::object::RtObject as ObjectRef;
 
 
 pub struct PyFunctionType {
