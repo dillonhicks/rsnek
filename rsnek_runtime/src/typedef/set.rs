@@ -28,13 +28,12 @@ impl typing::BuiltinType for PySetType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Set(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Set(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
-            &Builtin::Set(ref complex) => {
-                complex.rc.set(&objref.clone());
+        match object.as_ref() {
+            &Builtin::Set(ref set) => {
+                set.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }

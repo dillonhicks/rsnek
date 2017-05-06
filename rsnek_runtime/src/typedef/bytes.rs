@@ -38,13 +38,12 @@ impl typing::BuiltinType for PyBytesType {
 
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Bytes(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Bytes(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Bytes(ref string) => {
-                string.rc.set(&objref.clone());
+                string.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -77,10 +76,8 @@ impl object::PyAPI for PyBytes {}
 
 impl method::Hashed for PyBytes {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(value) => Ok(rt.int(native::Integer::from(value))),
-            Err(err) => Err(err),
-        }
+        let value = self.native_hash()?;
+        Ok(rt.int(value))
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId> {
@@ -92,12 +89,8 @@ impl method::Hashed for PyBytes {
 
 impl method::Equal for PyBytes {
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
-
-        match self.native_eq(boxed) {
-            Ok(value) => Ok(rt.bool(value)),
-            _ => unreachable!(),
-        }
+        let value = self.native_eq(rhs.as_ref())?;
+        Ok(rt.bool(value))
     }
 
     fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {

@@ -7,19 +7,19 @@ use std::collections::hash_map::DefaultHasher;
 use itertools::Itertools;
 use num::{ToPrimitive, Zero};
 
-use ::resource::strings;
-use error::Error;
-use result::{RuntimeResult, NativeResult};
-use runtime::Runtime;
-use traits::{BooleanProvider, IntegerProvider, StringProvider, IteratorProvider, DefaultTupleProvider, TupleProvider};
-use object::{self, RtValue, typing};
-use object::method::{self, Id, Length};
-use object::selfref::{self, SelfRef};
-
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Tuple};
+use ::error::Error;
+use ::object::method::{self, Id, Length, StringRepresentation};
 use ::object::RtObject;
+use ::object::selfref::{self, SelfRef};
+use ::object::{self, RtValue, typing};
+use ::resource::strings;
+use ::result::{RuntimeResult, NativeResult};
+use ::runtime::Runtime;
+use ::traits::{BooleanProvider, IntegerProvider, StringProvider,
+               IteratorProvider, DefaultTupleProvider, TupleProvider};
+use ::typedef::builtin::Builtin;
 use ::typedef::collection::sequence;
+use ::typedef::native::{self, Tuple};
 
 
 pub struct PyTupleType {
@@ -42,13 +42,12 @@ impl typing::BuiltinType for PyTupleType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Tuple(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Tuple(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Tuple(ref tuple) => {
-                tuple.rc.set(&objref.clone());
+                tuple.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -85,32 +84,21 @@ impl object::PyAPI for PyTuple {}
 
 impl method::Hashed for PyTuple {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(hashid) => Ok(rt.int(hashid)),
-            Err(err) => Err(err),
-        }
+        let value = self.native_hash()?;
+        Ok(rt.int(value))
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId> {
         if self.native_len().unwrap().is_zero() {
             let mut s = DefaultHasher::new();
-            match self.rc.upgrade() {
-                Ok(objref) => {
-                    let boxed: &Box<Builtin> = objref.0.borrow();
-                    boxed.native_id().hash(&mut s);
-                    return Ok(s.finish());
-                }
-                Err(err) => return Err(err),
-            }
+            let this_object = self.rc.upgrade()?;
+            this_object.native_id().hash(&mut s);
+
+            return Ok(s.finish());
         }
 
-        self.value
-            .0
-            .iter()
-            .map(|ref item| {
-                     let boxed: &Box<Builtin> = item.0.borrow();
-                     boxed.native_hash()
-                 })
+        self.value.0.iter()
+            .map(RtObject::native_hash)
             .fold_results(0, Add::add)
     }
 }
@@ -123,14 +111,11 @@ impl method::StringCast for PyTuple {
 
     fn native_str(&self) -> NativeResult<native::String> {
         let elems = self.value.0.iter()
-                .map(|ref item| {
-                     let boxed: &Box<Builtin> = item.0.borrow();
-                     boxed.native_str()
-                 })
+                .map(RtObject::native_repr)
                 .fold_results(
                     Vec::with_capacity(self.value.0.len()),
-                    |mut acc, s| {acc.push(s); acc})?
-                .join(", ");
+                    |mut acc, s| {acc.push(s); acc})
+                ?.join(", ");
 
         Ok(format!("({})", elems))
     }
@@ -139,9 +124,7 @@ impl method::StringCast for PyTuple {
 
 impl method::Equal for PyTuple {
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
-
-        let truth = self.native_eq(boxed)?;
+        let truth = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
@@ -158,13 +141,10 @@ impl method::Equal for PyTuple {
 }
 
 
-
 impl method::BooleanCast for PyTuple {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_bool() {
-            Ok(bool) => Ok(rt.bool(bool)),
-            Err(err) => Err(err)
-        }
+        let truth = self.native_bool()?;
+        Ok(rt.bool(truth))
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
@@ -175,9 +155,7 @@ impl method::BooleanCast for PyTuple {
 
 impl method::Multiply for PyTuple {
     fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref() {
+        match rhs.as_ref() {
             &Builtin::Int(ref int) => {
                 match int.value.0.to_usize() {
                     Some(int) if int <= 0   => Ok(rt.default_tuple()),
@@ -200,8 +178,7 @@ impl method::Multiply for PyTuple {
 
 impl method::Contains for PyTuple {
     fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = item.0.borrow();
-        let truth = self.native_contains(boxed)?;
+        let truth = self.native_contains(item.as_ref())?;
         Ok(rt.bool(truth))
     }
 
@@ -217,10 +194,8 @@ impl method::Iter for PyTuple {
     }
 
     fn native_iter(&self) -> NativeResult<native::Iterator> {
-        match self.rc.upgrade() {
-            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
-            Err(err) => Err(err)
-        }
+        let this_object = self.rc.upgrade()?;
+        Ok(native::Iterator::new(&this_object)?)
     }
 
 }
@@ -228,10 +203,8 @@ impl method::Iter for PyTuple {
 
 impl method::Length for PyTuple {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_len() {
-            Ok(length) => Ok(rt.int(length)),
-            Err(err) => Err(err),
-        }
+        let value = self.native_len()?;
+        Ok(rt.int(value))
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
@@ -243,8 +216,7 @@ impl method::Length for PyTuple {
 impl method::GetItem for PyTuple {
     #[allow(unused_variables)]
     fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = index.0.borrow();
-        self.native_getitem(boxed)
+        self.native_getitem(index.as_ref())
     }
 
     fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
@@ -295,12 +267,10 @@ mod tests {
         let tuple2 = tuple.clone();
         let tuple3 = rt.tuple(vec![rt.tuple(native::None())]);
 
-        let boxed: &Box<Builtin> = tuple.0.borrow();
-
-        let result = boxed.op_is(&rt, &tuple2).unwrap();
+        let result = tuple.op_is(&rt, &tuple2).unwrap();
         assert_eq!(result, rt.bool(true));
 
-        let result = boxed.op_is(&rt, &tuple3).unwrap();
+        let result = tuple.op_is(&rt, &tuple3).unwrap();
         assert_eq!(result, rt.bool(false));
     }
 
@@ -314,10 +284,8 @@ mod tests {
             let tuple = rt.tuple(native::None());
             let tuple2 = tuple.clone();
 
-            let boxed: &Box<Builtin> = tuple.0.borrow();
-            let r1 = boxed.op_hash(&rt).unwrap();
-            let boxed: &Box<Builtin> = tuple2.0.borrow();
-            let r2 = boxed.op_hash(&rt).unwrap();
+            let r1 = tuple.op_hash(&rt).unwrap();
+            let r2 = tuple2.op_hash(&rt).unwrap();
 
             assert_eq!(r1, r2);
         }
@@ -330,12 +298,9 @@ mod tests {
             let tuple = rt.tuple(vec![rt.int(1), rt.int(2), rt.str("3")]);
             let tuple2 = rt.tuple(vec![rt.int(1), rt.int(2), rt.str("3")]);
 
-            let boxed: &Box<Builtin> = tuple.0.borrow();
-            let r1 = boxed.op_hash(&rt).unwrap();
-            let boxed: &Box<Builtin> = tuple2.0.borrow();
-            let r2 = boxed.op_hash(&rt).unwrap();
-            let boxed: &Box<Builtin> = empty.0.borrow();
-            let r3 = boxed.op_hash(&rt).unwrap();
+            let r1 = tuple.op_hash(&rt).unwrap();
+            let r2 = tuple2.op_hash(&rt).unwrap();
+            let r3 = empty.op_hash(&rt).unwrap();
 
             assert_eq!(r1, r2);
             assert!(r1 != r3);
@@ -347,8 +312,7 @@ mod tests {
             let rt = setup_test();
 
             let tuple = rt.tuple(vec![rt.dict(native::None())]);
-            let boxed: &Box<Builtin> = tuple.0.borrow();
-            boxed.op_hash(&rt).unwrap();
+            tuple.op_hash(&rt).unwrap();
         }
     }
 }

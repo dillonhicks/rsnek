@@ -28,13 +28,12 @@ impl typing::BuiltinType for PyFrozenSetType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::FrozenSet(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::FrozenSet(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::FrozenSet(ref complex) => {
-                complex.rc.set(&objref.clone());
+                complex.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }

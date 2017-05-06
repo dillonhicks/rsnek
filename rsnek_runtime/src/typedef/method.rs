@@ -8,7 +8,8 @@ use error::Error;
 use result::{RuntimeResult, NativeResult};
 use runtime::Runtime;
 use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
-use builtin::precondition::check_fnargs_rt;
+use builtin::precondition::{check_kwargs, check_args, check_fnargs_rt};
+use ::object::method::*;
 use object::{self, RtValue, typing};
 use object::method::{self, Id, Hashed};
 use object::selfref::{self, SelfRef};
@@ -21,6 +22,9 @@ use typedef::builtin::Builtin;
 use typedef::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
 use typedef::object::PyObjectType;
 use ::object::RtObject;
+
+
+const TYPE_NAME: &'static str = "builtin_function_or_method";
 
 
 pub struct PyFunctionType {
@@ -56,13 +60,12 @@ impl typing::BuiltinType for PyFunctionType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Function(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Function(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
-            &Builtin::Function(ref object) => {
-                object.rc.set(&objref.clone());
+        match object.as_ref() {
+            &Builtin::Function(ref func) => {
+                func.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -90,6 +93,14 @@ impl PyFunction {
         &self.value.0.module
     }
 
+    pub fn type_name(&self) -> &str {
+        match self.value.0.callable {
+            FuncType::MethodWrapper(_, _) => "method-wrapper",
+            FuncType::Wrapper(_) => TYPE_NAME,
+            FuncType::Code(_) => "function"
+        }
+    }
+
     #[allow(unused_variables)]
     fn call_wrapper(&self,
                     rt: &Runtime,
@@ -100,28 +111,184 @@ impl PyFunction {
                     kwargs: &RtObject)
                     -> RuntimeResult {
 
-        let boxed: &Box<Builtin> = pos_args.0.borrow();
-        match boxed.deref() {
+        match pos_args.as_ref() {
             &Builtin::Tuple(_) => {}
             _ => return Err(Error::typerr("Expected type tuple for pos_args")),
         };
 
-        let boxed: &Box<Builtin> = star_args.0.borrow();
-        match boxed.deref() {
+        match star_args.as_ref() {
             &Builtin::Tuple(_) => {}
             _ => return Err(Error::typerr("Expected type tuple for *args")),
         };
 
-        let boxed: &Box<Builtin> = kwargs.0.borrow();
-        match boxed.deref() {
+        match kwargs.as_ref() {
             &Builtin::Dict(_) => {}
-            _ => return Err(Error::typerr("Expected type tuple for **args")),
+            _ => return Err(Error::typerr("Expected type dict for **args")),
         };
 
         callable(&rt, &pos_args, &star_args, &kwargs)
     }
-}
 
+    /* Missing
+        [('__ceil__', <function int.__ceil__>),
+        ('__class__', int),
+        ('__dir__', <function int.__dir__>),
+        ('__floor__', <function int.__floor__>),
+        ('__format__', <function int.__format__>),
+        ('__getnewargs__', <function int.__getnewargs__>),
+        ('__init_subclass__', <function int.__init_subclass__>),
+        ('__new__', <function int.__new__>),
+        ('__reduce__', <function int.__reduce__>),
+        ('__reduce_ex__', <function int.__reduce_ex__>),
+        ('__round__', <function int.__round__>),
+        ('__sizeof__', <function int.__sizeof__>),
+        ('__subclasshook__', <function int.__subclasshook__>),
+        ('__trunc__', <function int.__trunc__>),
+        ('bit_length', <function int.bit_length>),
+        ('conjugate', <function int.conjugate>),
+        ('denominator', 1),
+        ('from_bytes', <function int.from_bytes>),
+        ('imag', 0),
+        ('numerator', 1),
+        ('real', 1),
+        ('to_bytes', <function int.to_bytes>)]
+    */
+    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        match name {
+            "__doc__"           => self.try_get_name(rt, name),
+            "__abs__"           |
+            "__bool__"          |
+            "__float__"         |
+            "__hash__"          |
+            "__index__"         |
+            "__int__"           |
+            "__invert__"        |
+            "__neg__"           |
+            "__pos__"           |
+            "__repr__"          |
+            "__str__"           => self.try_get_unary_method(rt, name),
+            "__add__"           |
+            "__and__"           |
+            "__delattr__"       |
+            "__divmod__"        |
+            "__eq__"            |
+            "__floordiv__"      |
+            "__ge__"            |
+            "__getattribute__"  |
+            "__gt__"            |
+            "__le__"            |
+            "__lshift__"        |
+            "__lt__"            |
+            "__mod__"           |
+            "__mul__"           |
+            "__ne__"            |
+            "__or__"            |
+            "__radd__"          |
+            "__rand__"          |
+            "__rdivmod__"       |
+            "__rfloordiv__"     |
+            "__rlshift__"       |
+            "__rmod__"          |
+            "__rmul__"          |
+            "__ror__"           |
+            "__rrshift__"       |
+            "__rshift__"        |
+            "__rsub__"          |
+            "__rtruediv__"      |
+            "__rxor__"          |
+            "__sub__"           |
+            "__truediv__"       |
+            "__xor__"           => self.try_get_binary_method(rt, name),
+            "__pow__"           |
+            "__rpow__"          |
+            "__setattr__"       => self.try_get_ternary_method(rt, name),
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(self.type_name(), missing)))
+        }
+    }
+
+    fn try_get_name(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        match name {
+            "__doc__" => Ok(rt.str(strings::INT_DOC_STRING)),
+            missing => Err(Error::attribute(
+                &strings_error_no_attribute!(self.type_name(), missing)))
+        }
+    }
+
+    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        let func = match name {
+            "__abs__"       => {PyFunction::op_abs},
+            "__bool__"      => {PyFunction::op_bool},
+            "__float__"     => {PyFunction::op_float},
+            "__hash__"      => {PyFunction::op_hash},
+            "__index__"     => {PyFunction::op_index},
+            "__int__"       => {PyFunction::op_int},
+            "__invert__"    => {PyFunction::op_invert},
+            "__neg__"       => {PyFunction::op_neg},
+            "__pos__"       => {PyFunction::op_pos},
+            "__repr__"      => {PyFunction::op_repr},
+            "__str__"       => {PyFunction::op_str},
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(self.type_name(), missing)))
+        };
+
+        unary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
+    }
+
+    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        let func = match name {
+            "__add__"          => {PyFunction::op_add},
+            "__and__"          => {PyFunction::op_and},
+            "__delattr__"      => {PyFunction::op_delattr},
+            "__divmod__"       => {PyFunction::op_divmod},
+            "__eq__"           => {PyFunction::op_eq},
+            "__floordiv__"     => {PyFunction::op_floordiv},
+            "__ge__"           => {PyFunction::op_ge},
+            "__getattribute__" => {PyFunction::op_getattribute},
+            "__gt__"           => {PyFunction::op_gt},
+            "__le__"           => {PyFunction::op_le},
+            "__lshift__"       => {PyFunction::op_lshift},
+            "__lt__"           => {PyFunction::op_lt},
+            "__mod__"          => {PyFunction::op_mod},
+            "__mul__"          => {PyFunction::op_mul},
+            "__ne__"           => {PyFunction::op_ne},
+            "__or__"           => {PyFunction::op_or},
+            "__radd__"         => {PyFunction::op_radd},
+            "__rand__"         => {PyFunction::op_rand},
+            "__rdivmod__"      => {PyFunction::op_rdivmod},
+            "__rfloordiv__"    => {PyFunction::op_rfloordiv},
+            "__rlshift__"      => {PyFunction::op_rlshift},
+            "__rmod__"         => {PyFunction::op_rmod},
+            "__rmul__"         => {PyFunction::op_rmul},
+            "__ror__"          => {PyFunction::op_ror},
+            "__rrshift__"      => {PyFunction::op_rrshift},
+            "__rshift__"       => {PyFunction::op_rshift},
+            "__rsub__"         => {PyFunction::op_rsub},
+            "__rtruediv__"     => {PyFunction::op_rtruediv},
+            "__rxor__"         => {PyFunction::op_rxor},
+            "__sub__"          => {PyFunction::op_sub},
+            "__truediv__"      => {PyFunction::op_truediv},
+            "__xor__"          => {PyFunction::op_xor},
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(self.type_name(), missing)))
+        };
+
+        binary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
+    }
+
+    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        let func = match name {
+            "__pow__"          => {PyFunction::op_pow},
+            //"__rpow__"         => {PyFunction::op_rpow},
+            "__setattr__"      => {PyFunction::op_setattr},
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(self.type_name(), missing)))
+        };
+
+        ternary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
+    }
+
+}
 
 impl fmt::Display for PyFunction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -139,33 +306,18 @@ impl fmt::Debug for PyFunction {
 impl object::PyAPI for PyFunction {}
 
 
+/// `self.rhs`
 impl method::GetAttr for PyFunction {
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = name.0.borrow();
-        match boxed.deref() {
+
+        match name.as_ref() {
             &Builtin::Str(ref pystring) => {
-                let selfref = self.rc.upgrade()?;
-                #[allow(unused_variables)]
-                let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
-                    let b: &Box<Builtin> = selfref.0.borrow();
-                    Ok(rt.int(b.native_hash()?))
-                });
-
-                match pystring.value.0.as_str() {
-                    "__hash__" => {
-                        Ok(rt.function(native::Func {
-                            name: "method __hash__".to_string(),
-                            signature: [].as_args(),
-                            module: strings::BUILTINS_MODULE.to_string(),
-                            callable: native::FuncType::Wrapper(callable)
-                        }))
-                    }
-                    other => Err(Error::name(other))
-                }
-
+                let string = pystring.value.0.clone();
+                self.get_attribute(&rt, &string)
             }
             other => Err(Error::typerr(&format!(
-                "getattr <int>' requires string for attribute names, not {}",
+                "getattr <{}>' requires string for attribute names, not {}",
+                TYPE_NAME,
                 other.debug_name())))
         }
     }
@@ -177,9 +329,8 @@ impl method::Id for PyFunction {
     //  special case this at the builtin.rs layer?
     fn native_id(&self) -> native::ObjectId {
         match self.rc.upgrade() {
-            Ok(objref) => {
-                let boxed: &Box<Builtin> = objref.0.borrow();
-                boxed.native_id()
+            Ok(this_object) => {
+                this_object.native_id()
             }
             Err(_) => 0,
         }
@@ -188,10 +339,8 @@ impl method::Id for PyFunction {
 
 impl method::Hashed for PyFunction {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_hash() {
-            Ok(hashid) => Ok(rt.int(hashid)),
-            Err(err) => Err(err),
-        }
+        let value = self.native_hash()?;
+        Ok(rt.int(value))
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId> {
@@ -203,10 +352,8 @@ impl method::Hashed for PyFunction {
 
 impl method::StringCast for PyFunction {
     fn op_str(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_str() {
-            Ok(string) => Ok(rt.str(string)),
-            Err(err) => Err(err)
-        }
+        let value = self.native_str()?;
+        Ok(rt.str(value))
     }
 
     fn native_str(&self) -> NativeResult<native::String> {

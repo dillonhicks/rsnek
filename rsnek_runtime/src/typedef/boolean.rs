@@ -51,13 +51,12 @@ impl typing::BuiltinType for PyBooleanType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Bool(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Bool(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Bool(ref boolean) => {
-                boolean.rc.set(&objref.clone());
+                boolean.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -151,8 +150,6 @@ impl method::StringRepresentation for PyBoolean {
 /// `x == y`
 impl method::Equal for PyBoolean {
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
         match self.native_eq(rhs.as_ref()) {
             Ok(value) => {
                 if value {
@@ -175,9 +172,7 @@ impl method::Equal for PyBoolean {
 
 impl method::NotEqual for PyBoolean {
     fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match self.native_ne(builtin.deref()) {
+        match self.native_ne(rhs.as_ref()) {
             Ok(value) => {
                 if value {
                     Ok(rt.bool(true))
@@ -191,7 +186,7 @@ impl method::NotEqual for PyBoolean {
 
     fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
         match rhs.native_bool() {
-            Ok(value) => Ok(self.native_bool().unwrap() != value),
+            Ok(value) => Ok(self.native_bool()? != value),
             Err(err) => Err(err),
         }
     }

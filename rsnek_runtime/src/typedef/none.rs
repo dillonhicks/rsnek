@@ -37,14 +37,12 @@ impl typing::BuiltinType for PyNoneType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::None(value));
+        let object = RtObject::new(Builtin::None(value));
+        let new = object.clone();
 
-        let new = objref.clone();
-
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::None(ref none) => {
-                none.rc.set(&objref.clone());
+                none.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -94,11 +92,8 @@ impl method::StringCast for PyNone {
 
 impl method::Equal for PyNone {
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
-        match self.native_eq(boxed) {
-            Ok(truth) => Ok(rt.bool(truth)),
-            Err(err) => Err(err),
-        }
+        let truth = self.native_eq(rhs.as_ref())?;
+        Ok(rt.bool(truth))
     }
 
     fn native_eq(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {

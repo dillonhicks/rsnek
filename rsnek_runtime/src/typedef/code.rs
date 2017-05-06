@@ -31,13 +31,12 @@ impl typing::BuiltinType for PyCodeType {
 
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Code(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Code(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Code(ref code) => {
-                code.rc.set(&objref.clone());
+                code.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }

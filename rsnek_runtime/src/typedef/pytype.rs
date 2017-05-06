@@ -40,13 +40,12 @@ impl typing::BuiltinType for PyMeta {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Type(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Type(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Type(ref pytype) => {
-                pytype.rc.set(&objref.clone());
+                pytype.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }

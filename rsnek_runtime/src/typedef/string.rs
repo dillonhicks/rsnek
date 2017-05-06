@@ -7,21 +7,26 @@ use std::str::FromStr;
 
 use num::ToPrimitive;
 
-use result::{NativeResult, RuntimeResult};
-use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider, IteratorProvider};
-use error::Error;
-
-use object::{self, RtValue};
-use object::selfref::{self, SelfRef};
-use object::typing::{self, BuiltinType};
-use object::method;
-
-use typedef::native;
+use ::builtin::precondition::{check_args, check_kwargs};
+use ::error::Error;
+use ::object::method;
+use ::object::method::*;
 use ::object::RtObject;
-use typedef::builtin::Builtin;
-use typedef::collection::sequence;
-use resource::strings;
+use ::object::selfref::{self, SelfRef};
+use ::object::typing::{self, BuiltinType};
+use ::object::{self, RtValue};
+use ::resource::strings;
+use ::result::{NativeResult, RuntimeResult};
+use ::runtime::Runtime;
+use ::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
+               FunctionProvider, IteratorProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::collection::sequence;
+use ::typedef::native::{self, SignatureBuilder};
+
+
+const TYPE_NAME: &'static str = "str";
+
 
 pub struct PyStringType {
     pub empty: RtObject,
@@ -37,21 +42,18 @@ impl typing::BuiltinType for PyStringType {
         PyStringType::inject_selfref(PyStringType::alloc(value))
     }
 
-
-
     fn init_type() -> Self {
         PyStringType { empty: PyStringType::inject_selfref(PyStringType::alloc("".to_string())) }
     }
 
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Str(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Str(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Str(ref string) => {
-                string.rc.set(&objref.clone());
+                string.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -71,6 +73,169 @@ impl typing::BuiltinType for PyStringType {
 pub struct StringValue(pub native::String);
 pub type PyString = RtValue<StringValue>;
 
+
+impl PyString {
+    /* Missing
+        [('__ceil__', <function int.__ceil__>),
+        ('__class__', int),
+        ('__dir__', <function int.__dir__>),
+        ('__floor__', <function int.__floor__>),
+        ('__format__', <function int.__format__>),
+        ('__getnewargs__', <function int.__getnewargs__>),
+        ('__init_subclass__', <function int.__init_subclass__>),
+        ('__new__', <function int.__new__>),
+        ('__reduce__', <function int.__reduce__>),
+        ('__reduce_ex__', <function int.__reduce_ex__>),
+        ('__round__', <function int.__round__>),
+        ('__sizeof__', <function int.__sizeof__>),
+        ('__subclasshook__', <function int.__subclasshook__>),
+        ('__trunc__', <function int.__trunc__>),
+        ('bit_length', <function int.bit_length>),
+        ('conjugate', <function int.conjugate>),
+        ('denominator', 1),
+        ('from_bytes', <function int.from_bytes>),
+        ('imag', 0),
+        ('numerator', 1),
+        ('real', 1),
+        ('to_bytes', <function int.to_bytes>)]
+    */
+    pub fn get_attribute(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        match name {
+            "__doc__"           => self.try_get_name(rt, name),
+            "__abs__"           |
+            "__bool__"          |
+            "__float__"         |
+            "__hash__"          |
+            "__index__"         |
+            "__int__"           |
+            "__invert__"        |
+            "__neg__"           |
+            "__pos__"           |
+            "__repr__"          |
+            "__str__"           => self.try_get_unary_method(rt, name),
+            "__add__"           |
+            "__and__"           |
+            "__delattr__"       |
+            "__divmod__"        |
+            "__eq__"            |
+            "__floordiv__"      |
+            "__ge__"            |
+            "__getattribute__"  |
+            "__gt__"            |
+            "__le__"            |
+            "__lshift__"        |
+            "__lt__"            |
+            "__mod__"           |
+            "__mul__"           |
+            "__ne__"            |
+            "__or__"            |
+            "__radd__"          |
+            "__rand__"          |
+            "__rdivmod__"       |
+            "__rfloordiv__"     |
+            "__rlshift__"       |
+            "__rmod__"          |
+            "__rmul__"          |
+            "__ror__"           |
+            "__rrshift__"       |
+            "__rshift__"        |
+            "__rsub__"          |
+            "__rtruediv__"      |
+            "__rxor__"          |
+            "__sub__"           |
+            "__truediv__"       |
+            "__xor__"           => self.try_get_binary_method(rt, name),
+            "__pow__"           |
+            "__rpow__"          |
+            "__setattr__"       => self.try_get_ternary_method(rt, name),
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
+        }
+    }
+
+    fn try_get_name(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        match name {
+            "__doc__" => Ok(rt.str(strings::INT_DOC_STRING)),
+            missing => Err(Error::attribute(
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
+        }
+    }
+
+    fn try_get_unary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        let func = match name {
+            "__abs__"       => {PyString::op_abs},
+            "__bool__"      => {PyString::op_bool},
+            "__float__"     => {PyString::op_float},
+            "__hash__"      => {PyString::op_hash},
+            "__index__"     => {PyString::op_index},
+            "__int__"       => {PyString::op_int},
+            "__invert__"    => {PyString::op_invert},
+            "__neg__"       => {PyString::op_neg},
+            "__pos__"       => {PyString::op_pos},
+            "__repr__"      => {PyString::op_repr},
+            "__str__"       => {PyString::op_str},
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
+        };
+
+        unary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
+    }
+
+    fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        let func = match name {
+            "__add__"          => {PyString::op_add},
+            "__and__"          => {PyString::op_and},
+            "__delattr__"      => {PyString::op_delattr},
+            "__divmod__"       => {PyString::op_divmod},
+            "__eq__"           => {PyString::op_eq},
+            "__floordiv__"     => {PyString::op_floordiv},
+            "__ge__"           => {PyString::op_ge},
+            "__getattribute__" => {PyString::op_getattribute},
+            "__gt__"           => {PyString::op_gt},
+            "__le__"           => {PyString::op_le},
+            "__lshift__"       => {PyString::op_lshift},
+            "__lt__"           => {PyString::op_lt},
+            "__mod__"          => {PyString::op_mod},
+            "__mul__"          => {PyString::op_mul},
+            "__ne__"           => {PyString::op_ne},
+            "__or__"           => {PyString::op_or},
+            "__radd__"         => {PyString::op_radd},
+            "__rand__"         => {PyString::op_rand},
+            "__rdivmod__"      => {PyString::op_rdivmod},
+            "__rfloordiv__"    => {PyString::op_rfloordiv},
+            "__rlshift__"      => {PyString::op_rlshift},
+            "__rmod__"         => {PyString::op_rmod},
+            "__rmul__"         => {PyString::op_rmul},
+            "__ror__"          => {PyString::op_ror},
+            "__rrshift__"      => {PyString::op_rrshift},
+            "__rshift__"       => {PyString::op_rshift},
+            "__rsub__"         => {PyString::op_rsub},
+            "__rtruediv__"     => {PyString::op_rtruediv},
+            "__rxor__"         => {PyString::op_rxor},
+            "__sub__"          => {PyString::op_sub},
+            "__truediv__"      => {PyString::op_truediv},
+            "__xor__"          => {PyString::op_xor},
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
+        };
+
+        binary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
+    }
+
+    fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> RuntimeResult {
+        let func = match name {
+            "__pow__"          => {PyString::op_pow},
+            //"__rpow__"         => {PyString::op_rpow},
+            "__setattr__"      => {PyString::op_setattr},
+            missing => return Err(Error::attribute(
+                &strings_error_no_attribute!(TYPE_NAME, missing)))
+        };
+
+        ternary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
+    }
+
+}
+
 impl fmt::Debug for PyString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "String {{ {:?} }}", self.value.0)
@@ -79,6 +244,22 @@ impl fmt::Debug for PyString {
 
 
 impl object::PyAPI for PyString {}
+
+/// `self.rhs`
+impl method::GetAttr for PyString {
+    fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
+
+        match name.as_ref() {
+            &Builtin::Str(ref pystring) => {
+                let string = pystring.value.0.clone();
+                self.get_attribute(&rt, &string)
+            }
+            other => Err(Error::typerr(&format!(
+                "getattr <{}>' requires string for attribute names, not {}",
+                TYPE_NAME, other.debug_name())))
+        }
+    }
+}
 
 impl method::Hashed for PyString {
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
@@ -112,9 +293,7 @@ impl method::StringCast for PyString {
 
 impl method::Equal for PyString {
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
-
-        match self.native_eq(boxed) {
+        match self.native_eq(rhs.as_ref()) {
             Ok(value) => Ok(rt.bool(value)),
             _ => unreachable!(),
         }
@@ -197,7 +376,7 @@ impl method::Multiply for PyString {
                 }
             }
             other => Err(Error::typerr(
-                &strings_error_bad_operand!("*", "str", other.debug_name())))
+                &strings_error_bad_operand!("*", TYPE_NAME, other.debug_name())))
         }
     }
 
@@ -206,8 +385,7 @@ impl method::Multiply for PyString {
 
 impl method::Contains for PyString {
     fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = item.0.borrow();
-        let truth = self.native_contains(boxed)?;
+        let truth = self.native_contains(item.as_ref())?;
         Ok(rt.bool(truth))
     }
 
@@ -217,8 +395,8 @@ impl method::Contains for PyString {
                 Ok(self.value.0.contains(&string.value.0))
             },
             other => Err(Error::typerr(&format!(
-                "in <string>' requires string as left operand, not {}",
-                other.debug_name())))
+                "in <{}>' requires string as left operand, not {}",
+                TYPE_NAME, other.debug_name())))
         }
     }
 }
@@ -239,7 +417,7 @@ impl method::Iter for PyString {
 
 impl method::Length for PyString {
     fn op_len(&self, rt: &Runtime) -> RuntimeResult {
-        Ok(rt.int(self.value.0.len() as i64))
+        Ok(rt.int(self.value.0.len()))
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
@@ -250,8 +428,7 @@ impl method::Length for PyString {
 impl method::GetItem for PyString {
     #[allow(unused_variables)]
     fn op_getitem(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = item.0.borrow();
-        self.native_getitem(boxed)
+        self.native_getitem(item.as_ref())
     }
 
     fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
@@ -276,7 +453,7 @@ method_not_implemented!(PyString,
     BytesCast   Call   Clear   Close   ComplexCast   Count   
     DelAttr   Delete   DeleteItem   DescriptorGet   DescriptorSet   DescriptorSetName   
     Discard   DivMod   Enter   Exit   Extend   FloatCast   
-    FloorDivision   Get   GetAttr   GetAttribute   GreaterOrEqual   GreaterThan   
+    FloorDivision   Get  GetAttribute   GreaterOrEqual   GreaterThan
     Id   Index   Init   InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr   
     InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
     InPlaceModulus   InPlaceMultiply InPlacePow   InPlaceRightShift   InPlaceSubtract

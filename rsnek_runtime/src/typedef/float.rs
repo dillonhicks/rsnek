@@ -38,13 +38,12 @@ impl typing::BuiltinType for PyFloatType {
     }
 
     fn inject_selfref(value: PyFloat) -> RtObject {
-        let objref = RtObject::new(Builtin::Float(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Float(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Float(ref int) => {
-                int.rc.set(&objref.clone());
+                int.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -77,10 +76,8 @@ impl fmt::Debug for PyFloat {
 }
 
 
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
-//    Python Object Traits
-// +-+-+-+-+-+-+-+-+-+-+-+-+-+
 impl object::PyAPI for PyFloat {}
+
 
 impl method::Hashed for PyFloat {
     // TODO: {T87} python has its own algo for hashing floats ensure to look at that for compat.
@@ -115,9 +112,7 @@ impl method::StringRepresentation for PyFloat {
 
 impl method::Equal for PyFloat {
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match self.native_eq(builtin.deref()) {
+        match self.native_eq(rhs.as_ref()) {
             Ok(value) => Ok(rt.bool(value)),
             Err(err) => Err(err),
         }
@@ -135,7 +130,7 @@ impl method::Equal for PyFloat {
 
 impl method::BooleanCast for PyFloat {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        if self.native_bool().unwrap() {
+        if self.native_bool()? {
             Ok(rt.bool(true))
         } else {
             Ok(rt.bool(false))
@@ -174,9 +169,7 @@ impl method::FloatCast for PyFloat {
 
 impl method::Add for PyFloat {
     fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref(){
+        match rhs.as_ref(){
             &Builtin::Float(ref rhs) => {
                 // TODO: {T103} Use checked arithmetic where appropriate... this is not the only
                 // example. But the float (and some int) methods are likely to be the highest

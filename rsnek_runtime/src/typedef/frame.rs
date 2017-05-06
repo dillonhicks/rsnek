@@ -36,13 +36,12 @@ impl typing::BuiltinType for PyFrameType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Frame(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Frame(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Frame(ref boolean) => {
-                boolean.rc.set(&objref.clone());
+                boolean.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -82,9 +81,7 @@ impl PyAPI for PyFrame { }
 impl method::GetAttr for PyFrame {
     #[allow(unused_variables)]
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = name.0.borrow();
-
-        let attr: &str = match builtin.deref() {
+        let attr: &str = match name.as_ref() {
             &Builtin::Str(ref string) => &string.value.0,
             other => return Err(Error::typerr(
                 &string_error_bad_attr_type!("str", other.debug_name()))),

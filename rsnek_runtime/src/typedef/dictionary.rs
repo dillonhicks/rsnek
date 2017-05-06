@@ -3,18 +3,19 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 
-
-use result::{NativeResult, RuntimeResult};
-use runtime::Runtime;
-use traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
-use error::Error;
+use ::error::Error;
+use ::object::method::{self, Hashed, StringRepresentation};
 use ::object::RtObject;
-use typedef::native::{self, DictKey};
-use typedef::builtin::Builtin;
+use ::object::selfref::{self, SelfRef};
+use ::object::{self, RtValue, typing};
+use ::result::{NativeResult, RuntimeResult};
+use ::runtime::Runtime;
+use ::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
+use ::typedef::builtin::Builtin;
+use ::typedef::native::{self, DictKey};
 
-use object::{self, RtValue, typing};
-use object::method::{self, Hashed};
-use object::selfref::{self, SelfRef};
+
+const TYPE_NAME: &'static str = "dict";
 
 
 #[derive(Clone)]
@@ -35,13 +36,12 @@ impl typing::BuiltinType for PyDictType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Dict(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Dict(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Dict(ref dict) => {
-                dict.rc.set(&objref.clone());
+                dict.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -55,7 +55,6 @@ impl typing::BuiltinType for PyDictType {
         }
     }
 }
-
 
 pub struct DictValue(pub RefCell<native::Dict>);
 pub type PyDict = RtValue<DictValue>;
@@ -74,30 +73,29 @@ impl object::PyAPI for PyDict {}
 impl method::Hashed for PyDict {
     #[allow(unused_variables)]
     fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-        Err(Error::typerr("Unhashable type dict"))
+        Err(Error::typerr(&format!("Unhashable type {}", TYPE_NAME)))
     }
 
     fn native_hash(&self) -> NativeResult<native::HashId> {
-        Err(Error::typerr("Unhashable type dict"))
+        Err(Error::typerr(&format!("Unhashable type {}", TYPE_NAME)))
     }
 }
+
 impl method::StringCast for PyDict {
     fn native_str(&self) -> NativeResult<native::String> {
         let mut strings: Vec<String> = Vec::new();
 
-        for (key, value) in self.value.0.borrow().iter() {
+        for (key_wrapper, value) in self.value.0.borrow().iter() {
 
-            let keyobj = &key.1;
-            let boxed: &Box<Builtin> = keyobj.0.borrow();
-            let ks = match boxed.native_str() {
+            let key = &key_wrapper.1;
+            let ks = match key.native_repr() {
                 Ok(s) => s,
-                Err(_) => format!("{}", boxed)
+                Err(_) => format!("{:?}", key)
             };
 
-            let boxed: &Box<Builtin> = value.0.borrow();
-            let vs = match boxed.native_str() {
+            let vs = match value.native_repr() {
                 Ok(s) => s,
-                Err(_) => format!("{}", boxed)
+                Err(_) => format!("{:?}", value)
             };
 
             strings.push([ks, vs].join(": "));
@@ -117,10 +115,7 @@ impl method::BooleanCast for PyDict {
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
-        Ok(!self.value
-                .0
-                .borrow()
-                .is_empty())
+        Ok(!self.value.0.borrow().is_empty())
     }
 }
 
@@ -134,28 +129,20 @@ impl method::Length for PyDict {
     }
 
     fn native_len(&self) -> NativeResult<native::Integer> {
-        Ok(native::Integer::from(self.value
-                                     .0
-                                     .borrow()
-                                     .len()))
+        Ok(native::Integer::from(self.value.0.borrow().len()))
     }
 }
 
 impl method::GetItem for PyDict {
-    /// native getitem now that we have self refs?
     #[allow(unused_variables)]
-    fn op_getitem(&self, rt: &Runtime, keyref: &RtObject) -> RuntimeResult {
-        let key_box: &Box<Builtin> = keyref.0.borrow();
-        match key_box.native_hash() {
+    fn op_getitem(&self, rt: &Runtime, key: &RtObject) -> RuntimeResult {
+        match key.native_hash() {
             Ok(hash) => {
-                let key = DictKey(hash, keyref.clone());
-                match self.value
-                          .0
-                          .borrow()
-                          .get(&key) {
+                let key_wrapper = DictKey(hash, key.clone());
+                match self.value.0.borrow().get(&key_wrapper) {
                     Some(objref) => Ok(objref.clone()),
                     None => {
-                        Err(Error::key(&format!("KeyError: {:?}", keyref.to_string())))
+                        Err(Error::key(&format!("KeyError: {:?}", key)))
                     }
                 }
             }
@@ -166,12 +153,9 @@ impl method::GetItem for PyDict {
     fn native_getitem(&self, key: &Builtin) -> RuntimeResult {
         match key {
             &Builtin::DictKey(ref key) => {
-                match self.value
-                          .0
-                          .borrow()
-                          .get(key) {
+                match self.value.0.borrow().get(key) {
                     Some(value) => Ok(value.clone()),
-                    None => Err(Error::key("No such key")),
+                    None =>  Err(Error::key(&format!("KeyError: {:?}", key))),
                 }
             }
             _ => Err(Error::typerr("key is not a dictkey type")),
@@ -180,14 +164,12 @@ impl method::GetItem for PyDict {
 }
 
 impl method::SetItem for PyDict {
-    fn op_setitem(&self, rt: &Runtime, keyref: &RtObject, valueref: &RtObject) -> RuntimeResult {
-        let boxed_key: &Box<Builtin> = keyref.0.borrow();
-        match boxed_key.native_hash() {
+    fn op_setitem(&self, rt: &Runtime, key: &RtObject, value: &RtObject) -> RuntimeResult {
+        match key.native_hash() {
             Ok(hash) => {
-                let key = DictKey(hash, keyref.clone());
-                let boxed_value: &Box<Builtin> = valueref.0.borrow();
+                let key_wrapper = Builtin::DictKey(DictKey(hash, key.clone()));
 
-                match self.native_setitem(&Builtin::DictKey(key), boxed_value) {
+                match self.native_setitem(&key_wrapper, value.as_ref()) {
                     Ok(_) => Ok(rt.none()),
                     Err(err) => Err(err),
                 }
@@ -198,18 +180,9 @@ impl method::SetItem for PyDict {
 
     #[allow(unused_variables)]
     fn native_setitem(&self, key: &Builtin, value: &Builtin) -> NativeResult<native::None> {
-
-        let objref = match value.upgrade() {
-            Ok(objref) => objref,
-            Err(err) => return Err(err),
-        };
-
         match key {
             &Builtin::DictKey(ref key) => {
-                self.value
-                    .0
-                    .borrow_mut()
-                    .insert(key.clone(), objref);
+                self.value.0.borrow_mut().insert(key.clone(), value.upgrade()?);
                 Ok(native::None())
             }
             _ => Err(Error::typerr("key is not a dictkey type")),
@@ -295,16 +268,15 @@ mod tests {
         let rt = setup_test();
 
         let dict = rt.dict(native::None());
-        let boxed: &Box<Builtin> = dict.0.borrow();
 
-        let result = boxed.op_bool(&rt).unwrap();
+        let result = dict.op_bool(&rt).unwrap();
         assert_eq!(result, rt.bool(false));
 
         let key = rt.str("helloworld");
         let value = rt.int(1234);
-        boxed.op_setitem(&rt, &key, &value).unwrap();
+        dict.op_setitem(&rt, &key, &value).unwrap();
 
-        let result = boxed.op_bool(&rt).unwrap();
+        let result = dict.op_bool(&rt).unwrap();
         assert_eq!(result, rt.bool(true));
     }
 
@@ -312,11 +284,9 @@ mod tests {
     #[should_panic]
     fn __int__() {
         let rt = setup_test();
-
+        
         let dict = rt.dict(native::None());
-        let boxed: &Box<Builtin> = dict.0.borrow();
-
-        boxed.op_int(&rt).unwrap();
+        dict.op_int(&rt).unwrap();
     }
 
     /// Mutable collection types should not be hashable
@@ -325,9 +295,8 @@ mod tests {
     fn __hash__() {
         let rt = setup_test();
         let dict = rt.dict(native::None());
-        let boxed: &Box<Builtin> = dict.0.borrow();
 
-        boxed.op_hash(&rt).unwrap();
+        dict.op_hash(&rt).unwrap();
     }
 
 
@@ -339,9 +308,7 @@ mod tests {
         let key = rt.str("hello");
         let value = rt.int(234);
 
-        let boxed: &Box<Builtin> = dict.0.borrow();
-
-        let result = boxed.op_setitem(&rt, &key, &value).unwrap();
+        let result = dict.op_setitem(&rt, &key, &value).unwrap();
         assert_eq!(result, rt.none());
 
     }
@@ -354,14 +321,13 @@ mod tests {
         let key = rt.str("hello");
         let value = rt.int(234);
 
-        let boxed: &Box<Builtin> = dict.0.borrow();
 
-        let result = boxed.op_setitem(&rt, &key, &value).unwrap();
+        let result = dict.op_setitem(&rt, &key, &value).unwrap();
         assert_eq!(result, rt.none());
 
         info!("{:?}", dict);
         info!("{:?}", key);
-        let result = boxed.op_getitem(&rt, &key).unwrap();
+        let result = dict.op_getitem(&rt, &key).unwrap();
         assert_eq!(result, value);
     }
 

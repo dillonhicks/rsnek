@@ -91,8 +91,8 @@ all:
 
 ec2-requirements:
 	apt-get update && apt-get install -y \
-		linux-tools-4.4.39-34.54.amzn1.x86_64 \
-		linux-cloud-tools-4.4.39-34.54.amzn1.x86_64
+		linux-tools \
+		linux-cloud-tools
 
 
 toolchain: $(CONDITIONAL_REQUIREMENTS)

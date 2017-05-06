@@ -17,8 +17,11 @@ use typedef::native;
 use ::object::RtObject;
 
 
-pub struct PyIteratorType {
-}
+const TYPE_NAME: &'static str = "iter";
+
+
+pub struct PyIteratorType {}
+
 
 impl PyIteratorType {
 
@@ -43,13 +46,12 @@ impl typing::BuiltinType for PyIteratorType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::Iter(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::Iter(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::Iter(ref tuple) => {
-                tuple.rc.set(&objref.clone());
+                tuple.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -71,13 +73,13 @@ pub type PyIterator = RtValue<IteratorValue>;
 
 impl fmt::Display for PyIterator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Tuple({:?})", self.value.0)
+        write!(f, "Iterator({:?})", self.value.0)
     }
 }
 
 impl fmt::Debug for PyIterator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Tuple({:?})", self.value.0)
+        write!(f, "Iterator({:?})", self.value.0)
     }
 }
 
@@ -113,13 +115,9 @@ impl method::Next for PyIterator {
         match self.value.0 {
             // TODO: {T82} Use weakref or some other mechanism to not keep a handle to source forever?
             native::Iterator::Sequence {ref source, ref idx_next} => {
-                let boxed: &Box<Builtin> = source.0.borrow();
-                let mut idx = idx_next.get();
-                let idx_obj = rt.int(idx);
+                let mut idx = idx_next.get();;
 
-                let boxed_idx: &Box<Builtin> = idx_obj.0.borrow();
-
-                match boxed.native_getitem(&boxed_idx) {
+                match source.native_getitem(rt.int(idx).as_ref()) {
                     Ok(objref) => {
                         idx += 1;
                         idx_next.set(idx);
@@ -168,7 +166,8 @@ method_not_implemented!(PyIterator,
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
-    use traits::{IteratorProvider, BooleanProvider, IntegerProvider, NoneProvider, TupleProvider};
+    use traits::{IteratorProvider, BooleanProvider, IntegerProvider,
+                 StringProvider, NoneProvider, TupleProvider};
     use object::method::*;
     use test::Bencher;
     use super::*;
@@ -180,15 +179,13 @@ mod tests {
     #[test]
     fn is_() {
         let rt = setup_test();
-        let iterator = rt.iter(native::None());
-        let iterator2 = iterator.clone();
+        let iter = rt.iter(native::None());
+        let iter2 = iter.clone();
 
-        let boxed: &Box<Builtin> = iterator.0.borrow();
-
-        let result = boxed.op_is(&rt, &iterator2).unwrap();
+        let result = iter.op_is(&rt, &iter2).unwrap();
         assert_eq!(result, rt.bool(true));
 
-        let result = boxed.op_is(&rt, &rt.int(1)).unwrap();
+        let result = iter.op_is(&rt, &rt.int(1)).unwrap();
         assert_eq!(result, rt.bool(false));
     }
 
@@ -200,39 +197,50 @@ mod tests {
         fn empty() {
             let rt = setup_test();
             let iterator = rt.iter(native::None());
-
-            let boxed: &Box<Builtin> = iterator.0.borrow();
             // Should raise an StopIteration error
-            boxed.op_next(&rt).unwrap();
+            iterator.op_next(&rt).unwrap();
         }
 
         #[test]
         fn len3_tuple() {
             let rt = setup_test();
             let tuple = rt.tuple(vec![rt.none(), rt.int(1), rt.bool(true)]);
-            let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+            let iter = rt.iter(native::Iterator::new(&tuple).unwrap());
 
-            let boxed: &Box<Builtin> = iterator.0.borrow();
-            let result = boxed.op_next(&rt).unwrap();
+            let result = iter.op_next(&rt).unwrap();
             assert_eq!(result, rt.none());
 
-            let result = boxed.op_next(&rt).unwrap();
+            let result = iter.op_next(&rt).unwrap();
             assert_eq!(result, rt.int(1));
 
-            let result = boxed.op_next(&rt).unwrap();
+            let result = iter.op_next(&rt).unwrap();
             assert_eq!(result, rt.bool(true));
         }
 
         /// See the time it takes to fully consume an iterator backed by a reasonably sized
         /// tuple.
         #[bench]
-        fn iter_objref(b: &mut Bencher) {
+        fn iter_4k_list(b: &mut Bencher) {
             let rt = setup_test();
-            let tuple = rt.tuple(vec![rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.none(), rt.int(1), rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true),rt.bool(true)]);
+            let elems = (0..4092).map(|i|
+                {
+                    match i % 5 {
+                        0 => rt.bool(false),
+                        1 => rt.bool(true),
+                        2 => rt.int(i),
+                        3 => rt.str(format!("{}", i)),
+                        4 |
+                        _ => rt.none()
+
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            let tuple = rt.tuple(elems);
+
             b.iter(|| {
-                let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
-                let boxed: &Box<Builtin> = iterator.0.borrow();
-                match boxed.deref() {
+                let iter = rt.iter(native::Iterator::new(&tuple).unwrap());
+                match iter.as_ref() {
                     &Builtin::Iter(ref iterator) => {
                         loop {
                             match iterator.native_next() {
@@ -250,7 +258,6 @@ mod tests {
             let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
 
             let mut results: Vec<RtObject> = vec![];
-
             for i in iterator {
                 results.push(i)
             }

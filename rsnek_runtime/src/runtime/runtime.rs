@@ -4,62 +4,59 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::{Rc, Weak};
 use std::collections::VecDeque;
 
-use num::Zero;
+use num::{Num, Zero};
 
-use object::typing::BuiltinType;
-use object::method::{GetItem, SetAttr, GetAttr};
-
-use traits::{
+use ::builtin;
+use ::error::{Error, ErrorType};
+use ::object::RtObject;
+use ::object::typing::BuiltinType;
+use ::object::method::{GetItem, SetAttr, GetAttr};
+use ::resource::strings;
+use ::result::{RuntimeResult};
+use ::traits::{
+    BooleanProvider,
+    BytesProvider,
+    CodeProvider,
+    DictProvider,
+    FloatProvider,
+    FrameProvider,
+    FunctionProvider,
+    IntegerProvider,
+    IteratorProvider,
+    ListProvider,
+    ModuleFinder,
     ModuleImporter,
     ModuleProvider,
-    ModuleFinder,
-    BooleanProvider,
-    IntegerProvider,
-    FloatProvider,
-    IteratorProvider,
-    StringProvider,
-    BytesProvider,
     NoneProvider,
     ObjectProvider,
-    DictProvider,
-    TupleProvider,
-    ListProvider,
-    FunctionProvider,
     PyTypeProvider,
-    CodeProvider,
-    FrameProvider,
+    StringProvider,
+    TupleProvider,
 
     DefaultDictProvider,
     DefaultFrameProvider,
+    DefaultListProvider,
     DefaultStringProvider,
     DefaultTupleProvider,
-    DefaultListProvider,
 };
-
-use result::{RuntimeResult};
-use error::{Error, ErrorType};
-use builtin;
-use ::object::RtObject;
-use typedef::native::{self, SignatureBuilder};
-use typedef::builtin::Builtin;
-use typedef::none::{PyNoneType, NONE};
-use typedef::boolean::PyBooleanType;
-use typedef::integer::PyIntegerType;
-use typedef::float::PyFloatType;
-use typedef::iterator::{PyIteratorType, IteratorValue};
-use typedef::string::PyStringType;
-use typedef::bytes::PyBytesType;
-use typedef::dictionary::PyDictType;
-use typedef::object::PyObjectType;
-use typedef::tuple::PyTupleType;
-use typedef::list::PyListType;
-use typedef::pytype::PyMeta;
-use typedef::method::PyFunctionType;
-use typedef::module::PyModuleType;
-use typedef::code::PyCodeType;
-use typedef::frame::PyFrameType;
-
-use ::resource::strings;
+use ::typedef::boolean::PyBooleanType;
+use ::typedef::builtin::Builtin;
+use ::typedef::bytes::PyBytesType;
+use ::typedef::code::PyCodeType;
+use ::typedef::dictionary::PyDictType;
+use ::typedef::float::PyFloatType;
+use ::typedef::frame::PyFrameType;
+use ::typedef::integer::PyIntegerType;
+use ::typedef::iterator::{PyIteratorType, IteratorValue};
+use ::typedef::list::PyListType;
+use ::typedef::method::PyFunctionType;
+use ::typedef::module::PyModuleType;
+use ::typedef::native::{self, SignatureBuilder};
+use ::typedef::none::{PyNoneType, NONE};
+use ::typedef::object::PyObjectType;
+use ::typedef::pytype::PyMeta;
+use ::typedef::string::PyStringType;
+use ::typedef::tuple::PyTupleType;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
@@ -184,20 +181,18 @@ impl Runtime {
     }
 
     pub fn register_builtin(&self, func: native::Func) {
-        let boxed: Ref<RtObject> = self.0.mod_builtins.borrow();
-        let boxed: &Box<Builtin> = boxed.0.borrow();
-        let key = self.str(func.name.as_str());
-        boxed.op_setattr(&self, &key, &self.function(func)).unwrap();
+        let module: Ref<RtObject> = self.0.mod_builtins.borrow();
+        let key = self.str(func.name.as_ref());
+        module.op_setattr(&self, &key, &self.function(func)).unwrap();
     }
 
     pub fn get_builtin(&self, name: &'static str) -> RtObject {
-        let boxed: Ref<RtObject> = self.0.mod_builtins.borrow();
-        let boxed: &Box<Builtin> = boxed.0.borrow();
+        let module: Ref<RtObject> = self.0.mod_builtins.borrow();
         let key = self.str(name);
-        boxed.op_getattr(&self, &key).unwrap()
+        module.op_getattr(&self, &key).unwrap()
     }
-
 }
+
 
 impl<'a> ModuleImporter<&'a str> for Runtime {
     fn import_module(&self, name: &'a str) -> RuntimeResult {
@@ -227,6 +222,7 @@ impl NoneProvider for Runtime {
 //
 // Boolean
 //
+#[deprecated]
 impl BooleanProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn bool(&self, value: native::None) -> RtObject {
@@ -249,7 +245,19 @@ impl BooleanProvider<native::Boolean> for Runtime {
 //
 // Integer
 //
+impl<T: Num> IntegerProvider<T> for Runtime
+        where native::Integer: std::convert::From<T> {
 
+    fn int(&self, value: T) -> RtObject {
+        self.0
+            .types
+            .int
+            .new(&self, native::Integer::from(value))
+    }
+}
+
+
+#[deprecated]
 impl IntegerProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn int(&self, value: native::None) -> RtObject {
@@ -261,45 +269,10 @@ impl IntegerProvider<native::None> for Runtime {
 }
 
 
-impl IntegerProvider<native::Integer> for Runtime {
-    fn int(&self, value: native::Integer) -> RtObject {
-        self.0
-            .types
-            .int
-            .new(&self, value)
-    }
-}
-
-impl IntegerProvider<native::ObjectId> for Runtime {
-    fn int(&self, value: native::ObjectId) -> RtObject {
-        self.0
-            .types
-            .int
-            .new(&self, native::Integer::from(value))
-    }
-}
-
-impl IntegerProvider<i32> for Runtime {
-    fn int(&self, value: i32) -> RtObject {
-        self.0
-            .types
-            .int
-            .new(&self, native::Integer::from(value))
-    }
-}
-
-impl IntegerProvider<i64> for Runtime {
-    fn int(&self, value: i64) -> RtObject {
-        self.0
-            .types
-            .int
-            .new(&self, native::Integer::from(value))
-    }
-}
-
 //
 // Float
 //
+#[deprecated]
 impl FloatProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn float(&self, value: native::None) -> RtObject {
@@ -318,7 +291,7 @@ impl FloatProvider<native::Float> for Runtime {
 //
 // Iterators
 //
-
+#[deprecated]
 impl IteratorProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn iter(&self, value: native::None) -> RtObject {
@@ -342,7 +315,7 @@ impl IteratorProvider<native::Iterator> for Runtime {
 //
 // String
 //
-
+#[deprecated]
 impl StringProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn str(&self, value: native::None) -> RtObject {
@@ -354,7 +327,7 @@ impl StringProvider<native::None> for Runtime {
     }
 }
 
-
+#[deprecated]
 impl BytesProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn bytes(&self, value: native::None) -> RtObject {
@@ -402,6 +375,7 @@ impl DictProvider<native::Dict> for Runtime {
     }
 }
 
+#[deprecated]
 impl DictProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn dict(&self, value: native::None) -> RtObject {
@@ -419,6 +393,7 @@ impl DefaultDictProvider for Runtime {
 //
 // Tuple
 //
+#[deprecated]
 impl TupleProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn tuple(&self, value: native::None) -> RtObject {
@@ -445,7 +420,7 @@ impl DefaultTupleProvider for Runtime {
 //
 // List
 //
-
+#[deprecated]
 impl ListProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn list(&self, value: native::None) -> RtObject {
@@ -463,7 +438,6 @@ impl ListProvider<native::List> for Runtime {
 }
 
 
-
 impl DefaultListProvider for Runtime {
     fn default_list(&self) -> RtObject {
         self.0.types.list.empty.clone()
@@ -473,6 +447,7 @@ impl DefaultListProvider for Runtime {
 //
 // Object
 //
+#[deprecated]
 impl ObjectProvider<native::None> for Runtime {
     #[allow(unused_variables)]
     fn object(&self, value: native::None) -> RtObject {
@@ -531,6 +506,7 @@ impl FunctionProvider<native::Func> for Runtime {
     }
 }
 
+#[deprecated]
 impl FunctionProvider<native::None> for Runtime {
     /// Create a function object that returns Ok(None)
     #[allow(unused_variables)]
@@ -571,6 +547,7 @@ impl FrameProvider<native::Frame> for Runtime {
         self.0.types.frame.new(&self, value)
     }
 }
+
 
 impl DefaultFrameProvider for Runtime {
     #[allow(unused_variables)]
@@ -639,7 +616,7 @@ impl std::fmt::Debug for Runtime {
 
 
 #[cfg(test)]
-mod _api {
+mod tests {
 
     use super::*;
     use object::method::Call;

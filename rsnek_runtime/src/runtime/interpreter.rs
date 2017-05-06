@@ -1106,7 +1106,6 @@ fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
 
 /// Entry point for the interactive repl mode of the interpreter
 fn python_main_interactive(rt: &Runtime) -> i64 {
-    let mut compiler = Compiler::new();
 
     let config = RLConfig::builder()
         .history_ignore_space(true)
@@ -1146,7 +1145,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
         };
 
 
-
+        let mut compiler = Compiler::new();
         let ins = match compiler.compile_str(&text) {
             Ok(ins) => ins,
             Err(err) => {

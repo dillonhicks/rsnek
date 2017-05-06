@@ -41,13 +41,12 @@ impl typing::BuiltinType for PyListType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let objref = RtObject::new(Builtin::List(value));
-        let new = objref.clone();
+        let object = RtObject::new(Builtin::List(value));
+        let new = object.clone();
 
-        let boxed: &Box<Builtin> = objref.0.borrow();
-        match boxed.deref() {
+        match object.as_ref() {
             &Builtin::List(ref list) => {
-                list.rc.set(&objref.clone());
+                list.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
@@ -88,18 +87,12 @@ impl method::StringCast for PyList {
     }
 
     fn native_str(&self) -> NativeResult<native::String> {
+        let elems = self.value.0.iter()
+            .map(RtObject::native_str)
+            .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc})
+            ?.join(", ");
 
-        let result = self.value.0.iter()
-            .map(|ref item| {
-                let boxed: &Box<Builtin> = item.0.borrow();
-                boxed.native_str()
-            })
-            .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc});
-
-        match result {
-            Ok(s) => Ok(format!("[{}]", s.join(", "))),
-            Err(err) => Err(err)
-        }
+        Ok(format!("[{}]", elems))
     }
 }
 
@@ -107,8 +100,7 @@ impl method::StringCast for PyList {
 impl method::Equal for PyList {
 
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
-        let truth = self.native_eq(boxed)?;
+        let truth = self.native_eq(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
@@ -126,14 +118,12 @@ impl method::Equal for PyList {
 
 impl method::NotEqual for PyList {
     fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = rhs.0.borrow();
-
-        let truth = self.native_ne(boxed)?;
+        let truth = self.native_ne(rhs.as_ref())?;
         Ok(rt.bool(truth))
     }
 
     fn native_ne(&self, rhs: &Builtin) -> NativeResult<native::Boolean> {
-        let truth = self.native_eq(&rhs)?;
+        let truth = self.native_eq(rhs)?;
         Ok(!truth)
     } 
     
@@ -141,10 +131,8 @@ impl method::NotEqual for PyList {
 
 impl method::BooleanCast for PyList {
     fn op_bool(&self, rt: &Runtime) -> RuntimeResult {
-        match self.native_bool() {
-            Ok(bool) => Ok(rt.bool(bool)),
-            Err(err) => Err(err)
-        }
+        let truth = self.native_bool()?;
+        Ok(rt.bool(truth))
     }
 
     fn native_bool(&self) -> NativeResult<native::Boolean> {
@@ -156,9 +144,7 @@ impl method::BooleanCast for PyList {
 impl method::Multiply for PyList {
 
     fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> RuntimeResult {
-        let builtin: &Box<Builtin> = rhs.0.borrow();
-
-        match builtin.deref() {
+        match rhs.as_ref() {
             &Builtin::Int(ref int) => {
                 match int.value.0.to_usize() {
                     Some(int) if int <= 0   => Ok(rt.default_list()),
@@ -181,8 +167,7 @@ impl method::Multiply for PyList {
 
 impl method::Contains for PyList {
     fn op_contains(&self, rt: &Runtime, item: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = item.0.borrow();
-        let truth = self.native_contains(boxed)?;
+        let truth = self.native_contains(item.as_ref())?;
         Ok(rt.bool(truth))
     }
 
@@ -221,8 +206,7 @@ impl method::Length for PyList {
 impl method::GetItem for PyList {
     #[allow(unused_variables)]
     fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> RuntimeResult {
-        let boxed: &Box<Builtin> = index.0.borrow();
-        self.native_getitem(boxed)
+        self.native_getitem(index.as_ref())
     }
 
     fn native_getitem(&self, index: &Builtin) -> RuntimeResult {
