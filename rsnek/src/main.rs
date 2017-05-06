@@ -23,7 +23,9 @@ use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Mode};
 fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build();
+    /// Chan size should probably be at least the recursion limit so it doesn't overflow
+    /// when a python script gets into super recursion
+    let drain = slog_async::Async::new(drain).chan_size(8 * 1024).build();
     let drain = drain.filter_level(slog::Level::Trace).fuse();
 
     let log = slog::Logger::root(Arc::new(drain.fuse()), o!());

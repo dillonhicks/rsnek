@@ -89,7 +89,7 @@ toolchain:
 		oprofile \
 		linux-tools-generic ;
 
-	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
+	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly-2017-05-03
 
 
 build:
@@ -147,6 +147,11 @@ oprofile:
 	mkdir -p $(OPROF_OUTDIR)
 	operf -d $(OPROF_OUTDIR) $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
 	opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
+
+
+perf:
+	perf stat -r 25 -ddd $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
+	perf stat -r 25 -ddd python -B $(VALGRIND_PYTHON_SRCFILE)
 
 
 # Get the status of the stages of the AWS CodePipeline for this project and

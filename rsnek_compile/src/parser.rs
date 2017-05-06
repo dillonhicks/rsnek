@@ -144,8 +144,9 @@ impl<'a> Parser<'a> {
     // Example of keeping parser state, see sub_stmt_next_line.
     // Eventually the parser should inject extra context into
     // ast nodes for richer errors.
-    fn inc_lineno(&mut self) {
+    fn inc_lineno(&mut self) -> usize{
         self.state.line += 1;
+        self.state.line
     }
 
     // AST Parser-Builders - they map approximately with Grammar.txt exceptions
@@ -295,7 +296,7 @@ impl<'a> Parser<'a> {
     tk_method!(sub_stmt_next_line, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         newline_token                                           >>
 
-        ({self.inc_lineno(); Stmt::Newline})
+        (Stmt::Newline(self.inc_lineno()))
     ));
 
 

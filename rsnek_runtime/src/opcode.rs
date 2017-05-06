@@ -131,5 +131,8 @@ pub enum OpCode {
     CompareIn                = 1033,
     CompareNotIn             = 1034,
     CompareIs                = 1035,
-    CompareIsNot             = 1036
+    CompareIsNot             = 1036,
+
+    SetLineNumber            = 2048,
 }
+

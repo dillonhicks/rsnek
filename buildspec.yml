@@ -16,18 +16,18 @@ phases:
       - make release
       - echo Test Release started on `date`
       - make test-release
-
-post_build:
-    commands:
       - echo Bench started on `date`
       - make bench
       - echo Valgrind started on `date`
       - make valgrind
       - echo Oprofile started on `date`
       - make oprofile
+      - echo Perf started on `date`
+      - make perf
       - echo Docs started on `date`
       - make docs
       - echo Finshed on `date`
+
 artifacts:
   files:
     - '**/*'

@@ -1,19 +1,29 @@
-use std::borrow::Borrow;
+use std::convert::TryFrom;
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::{RefMut, RefCell, Cell};
+use std::collections::{HashSet, HashMap, VecDeque};
+use std::hash::Hash;
+
+use serde::{Serialize, Serializer};
+use serde::ser::{SerializeSeq};
 
 use rsnek_compile::{
     Ast, Module, Stmt, Expr, Op, Lexer,
     LexResult, Parser, ParserResult,
     OwnedTk, Id};
-
 use rsnek_compile::fmt;
+
 use ::error::Error;
 use ::opcode::OpCode;
 use ::typedef::native::{self, Instr, Native};
+use ::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
+use ::scope::{ScopeNode, ManageScope};
+use ::symbol::{SymbolMetadata, TrackSymbol};
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone, Serialize)]
 pub enum Context {
     Load,
     Store
@@ -21,12 +31,11 @@ pub enum Context {
 
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Compiler<'a>{
+pub struct Compiler<'a> {
     lexer: Lexer,
-    parser: Parser<'a>
+    parser: Parser<'a>,
+    metadata: SymbolMetadata,
 }
-
-
 
 
 impl<'a> Compiler<'a> {
@@ -34,6 +43,7 @@ impl<'a> Compiler<'a> {
         Compiler {
             lexer: Lexer::new(),
             parser: Parser::new(),
+            metadata: SymbolMetadata::new(),
         }
     }
 
@@ -47,7 +57,9 @@ impl<'a> Compiler<'a> {
 
         match parser.parse_tokens(&tokens) {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
-                self.compile_ast(&result.ast.borrow())
+                let result = self.compile_ast(&result.ast.borrow());
+                trace!("Compiler"; "action" => "dump_metadata", "metadata" => format!("{}", fmt::json(&self.metadata)));
+                result
             },
             other => {
                 trace!("Parser"; "Result" => fmt::json(&other));
@@ -57,33 +69,29 @@ impl<'a> Compiler<'a> {
     }
 
     // Ast Compiler Methods
-
-    pub fn compile_ast(&self, ast: &Ast) -> CompilerResult{
-        //println!("CompileAST({:?})", ast);
+    pub fn compile_ast(&mut self, ast: &Ast) -> CompilerResult{
         let mut instructions: Vec<Instr> = vec![];
 
-        let result = match *ast {
+        let ins = match *ast {
             Ast::Module(ref module) => {
-                self.compile_module(module)
+                self.enter_scope(ModuleScope);
+                self.exit_scope(self.compile_module(module))?
             },
-            _ => Ok(Box::default())
+            _ => Box::default()
         };
 
-        instructions.append(&mut result?.to_vec());
+        instructions.append(&mut ins.to_vec());
         Ok(instructions.into_boxed_slice())
     }
 
     pub fn compile_module(&self, module: &Module) -> CompilerResult {
-        //println!("CompileModule({:?})", module);
 
         let mut instructions: Vec<Instr> = vec![];
 
         match *module {
             Module::Body(ref stmts) => {
-
                 for stmt in stmts {
-                    let ins = self.compile_stmt(&stmt);
-                    instructions.append(&mut ins?.to_vec());
+                    instructions.append(&mut self.compile_stmt(&stmt)?.to_vec());
                 }
             }
         }
@@ -97,36 +105,12 @@ impl<'a> Compiler<'a> {
 
         let ins: Box<[Instr]> = match *stmt {
             Stmt::FunctionDef {fntype: _, ref name, ref arguments, ref body } => {
-                let mut argnames: Vec<String> = Vec::new();
-                for arg in arguments {
-                    match arg {
-                        &Expr::Constant(ref owned_tk) => argnames.push(owned_tk.as_string()),
-                        _ => return Err(Error::system(&format!(
-                            "Unreachable code executed at line: {}", line!())))
-                    }
-                };
-
-                let stmt =  self.compile_stmt(body)?;
-
-                let code = native::Code {
-                    co_name: name.as_string(),
-                    co_names: argnames.iter().cloned().collect::<Vec<_>>(),
-                    co_varnames: Vec::new(),
-                    co_code: stmt.to_vec(),
-                };
-
-                let func_ins: Vec<Instr> = vec![
-                    Instr(OpCode::LoadConst, Some(Native::Code(code))),
-                    Instr(OpCode::LoadConst, Some(Native::from(name))),
-                    Instr(OpCode::MakeFunction, None),
-                    Instr(OpCode::StoreName, Some(Native::from(name)))
-                ];
-
-                func_ins.into_boxed_slice()
+                self.define_symbol(&Native::from(name))?;
+                self.enter_scope(FunctionScope);
+                self.exit_scope(self.compile_stmt_funcdef(name, arguments, body))?
             },
             Stmt::Block(ref stmts) => {
                 let mut block_ins: Vec<Instr> = vec![];
-
                 for stmt in stmts.iter().as_ref() {
                     block_ins.append(&mut self.compile_stmt(&stmt)?.to_vec());
                 }
@@ -169,7 +153,11 @@ impl<'a> Compiler<'a> {
             Stmt::Delete(_)                     => {Box::default()},
             Stmt::AugAssign {ref target, ref op, ref value} => {Box::default()},
             Stmt::ClassDef {ref name, ref bases, ref body}  => {Box::default()},
-            Stmt::Newline                       => {Box::default()},
+            Stmt::Newline(line)                 => {
+                vec![
+                    Instr(OpCode::SetLineNumber, Some(Native::Count(line)))
+                ].into_boxed_slice()
+            },
             Stmt::Import                        => {Box::default()},
             Stmt::ImportFrom                    => {Box::default()},
             Stmt::Global(_)                     => {Box::default()},
@@ -183,10 +171,41 @@ impl<'a> Compiler<'a> {
         Ok(instructions.into_boxed_slice())
     }
 
+    fn compile_stmt_funcdef(&self, name: &'a OwnedTk, arguments: &'a [Expr],
+                            body: &'a Stmt) -> CompilerResult {
+        let mut instructions: Vec<Instr> = vec![];
+
+        let mut argnames: Vec<String> = Vec::new();
+        for arg in arguments {
+            match arg {
+                &Expr::Constant(ref owned_tk) => argnames.push(owned_tk.as_string()),
+                _ => return Err(Error::system(&format!(
+                    "Unreachable code executed at line: {}", line!())))
+            }
+        };
+
+        let stmt =  self.compile_stmt(body)?;
+
+        let code = native::Code {
+            co_name: name.as_string(),
+            co_names: argnames.iter().cloned().collect::<Vec<_>>(),
+            co_varnames: Vec::new(),
+            co_code: stmt.to_vec(),
+        };
+
+        instructions.append(&mut vec![
+            Instr(OpCode::LoadConst, Some(Native::Code(code))),
+            Instr(OpCode::LoadConst, Some(Native::from(name))),
+            Instr(OpCode::MakeFunction, None),
+            Instr(OpCode::StoreName, Some(Native::from(name)))
+        ]);
+
+        Ok(instructions.into_boxed_slice())
+    }
+
     fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> CompilerResult {
         // println!("CompileAssignment(target={:?}, value={:?})", target, value);
         let mut instructions: Vec<Instr> = vec![];
-
         let ins: Box<[Instr]> = self.compile_expr(value, Context::Load)?;
         instructions.append(&mut ins.to_vec());
 
@@ -243,9 +262,8 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_expr_call(&self, func: &'a OwnedTk, arg_exprs: &'a[Expr]) -> CompilerResult {
-        let mut instructions: Vec<Instr> = vec![
-            Instr(OpCode::LoadName, Some(Native::from(func)))
-        ];
+        let mut instructions: Vec<Instr> = vec![];
+        instructions.append(&mut self.compile_expr_constant(Context::Load, func)?.to_vec());
 
         for expr in arg_exprs.iter().as_ref() {
             instructions.append(&mut self.compile_expr(&expr, Context::Load)?.to_vec());
@@ -325,14 +343,22 @@ impl<'a> Compiler<'a> {
     fn compile_expr_constant(&self, ctx: Context, tk: &'a OwnedTk) -> CompilerResult {
         let instr = match ctx {
             Context::Store => {
-                Instr(OpCode::StoreName, Some(Native::from(tk)))
+                let name = Native::from(tk);
+                self.define_symbol(&name)?;
+                Instr(OpCode::StoreName, Some(name))
             },
             Context::Load => {
+                let name = Native::from(tk);
                 let code = match tk.id() {
-                    Id::Name => OpCode::LoadName,
+
+                    Id::Name => {
+                        self.use_symbol(&name)?;
+                        OpCode::LoadName
+                    },
                     _ => OpCode::LoadConst
                 };
-                Instr(code, Some(Native::from(tk)))
+
+                Instr(code, Some(name))
             }
         };
 
@@ -376,6 +402,31 @@ impl<'a> Compiler<'a> {
     }
 }
 
+impl<'a> ManageScope for Compiler<'a> {
+    fn current_scope(&self) -> Box<ScopeNode> {
+        self.metadata.current_scope()
+    }
+
+    fn enter_scope(&self, hint: ScopeHint) {
+        self.metadata.enter_scope(hint)
+    }
+
+    fn exit_scope<T>(&self, result: T) -> T {
+        self.metadata.exit_scope(result)
+    }
+}
+
+
+impl<'a> TrackSymbol for Compiler<'a> {
+    fn define_symbol(&self, symbol: &Native) -> Result<(), Error> {
+        self.metadata.define_symbol(symbol)
+    }
+
+    fn use_symbol(&self, symbol: &Native) -> Result<(), Error> {
+        self.metadata.use_symbol(symbol)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -399,7 +450,7 @@ mod tests {
     fn assert_compile<'a>(text: &'a str) {
         println!("<Input>\n\n{}\n\n</Input>", text);
 
-        let compiler = Compiler::new();
+        let mut compiler = Compiler::new();
         let lexer = Lexer::new();
         let mut parser = Parser::new();
 
