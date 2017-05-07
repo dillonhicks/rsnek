@@ -115,6 +115,7 @@ toolchain: $(CONDITIONAL_REQUIREMENTS)
 		linux-tools-generic
 
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
+	-mkdir -p $(ARTIFACTS_DIR)
 
 
 build:
