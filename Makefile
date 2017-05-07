@@ -107,7 +107,7 @@ $(ARTIFACTS_DIR):
 	-mkdir -p $@
 
 
-toolchain: $(CONDITIONAL_REQUIREMENTS)
+toolchain: $(CONDITIONAL_REQUIREMENTS) $(ARTIFACTS_DIR)
 	apt-get update && apt-get install -y \
 		cmake \
 		curl \
