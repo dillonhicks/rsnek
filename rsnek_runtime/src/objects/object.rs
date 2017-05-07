@@ -4,8 +4,8 @@ use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use error::Error;
-use result::{ObjectResult, RtResult};
+use ::api::error::Error;
+use ::api::result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{NoneProvider, IntegerProvider};
 use api::{self, RtValue, typing};

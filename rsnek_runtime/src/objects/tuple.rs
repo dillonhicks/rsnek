@@ -7,13 +7,13 @@ use std::collections::hash_map::DefaultHasher;
 use itertools::Itertools;
 use num::{ToPrimitive, Zero};
 
-use ::error::Error;
+use ::api::error::Error;
 use ::api::method::{self, Id, Length, StringRepresentation};
 use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};
 use ::api::{self, RtValue, typing};
 use ::resources::strings;
-use ::result::{ObjectResult, RtResult};
+use ::api::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider, StringProvider,
                IteratorProvider, DefaultTupleProvider, TupleProvider};

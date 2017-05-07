@@ -5,7 +5,7 @@ use itertools::Itertools;
 use ::api::method::StringCast;
 use ::api::RtObject as ObjectRef;
 use ::resources::strings;
-use ::result::{ObjectResult};
+use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IteratorProvider, NoneProvider};
 use ::objects::builtin::Builtin;

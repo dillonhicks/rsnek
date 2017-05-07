@@ -3,12 +3,12 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 
-use ::error::Error;
+use ::api::error::Error;
 use ::api::method::{self, Hashed, StringRepresentation};
 use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};
 use ::api::{self, RtValue, typing};
-use ::result::{RtResult, ObjectResult};
+use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use ::objects::builtin::Builtin;

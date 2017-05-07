@@ -20,7 +20,9 @@
 ///!
 ///! ```
 mod rtobject;
+pub mod error;
 pub mod method;
+pub mod result;
 pub mod selfref;
 pub mod typing;
 

@@ -3,10 +3,10 @@ use std::default::Default;
 use std::ops::{Deref};
 use std::borrow::Borrow;
 
-use error::{Error, ErrorType};
+use ::api::error::{Error, ErrorType};
 use runtime::Runtime;
 use traits::IntegerProvider;
-use result::{ObjectResult, RtResult};
+use ::api::result::{ObjectResult, RtResult};
 use api::{self, RtValue, typing};
 use api::selfref::{self, SelfRef};
 use api::method::{self, GetItem, Next};

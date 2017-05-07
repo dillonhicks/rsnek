@@ -4,9 +4,9 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::Ref;
 
-use ::error::Error;
+use ::api::error::Error;
 use ::api::RtObject as ObjectRef;
-use ::result::{RtResult};
+use ::api::result::{RtResult};
 use ::objects::builtin::Builtin;
 use ::objects::native;
 

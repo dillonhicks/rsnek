@@ -4,7 +4,7 @@ use ::modules::precondition::{check_args, check_kwargs, check_args_range};
 use ::api::method::{GetItem, Iter};
 use ::api::RtObject as ObjectRef;
 use ::resources::strings;
-use ::result::ObjectResult;
+use ::api::result::ObjectResult;
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
 use ::objects::builtin::Builtin;

@@ -11,10 +11,10 @@ use std::ops::Deref;
 use num::Zero;
 use serde::ser::{Serialize, Serializer};
 
-use ::error::{Error, ErrorType};
+use ::api::error::{Error, ErrorType};
 use ::api::method::{self, Id, Next, StringCast, StringRepresentation, Equal};
 use ::api;
-use ::result::{ObjectResult, RtResult};
+use ::api::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::system::{StrongRc, WeakRc};
 use ::traits::{IntegerProvider, BooleanProvider};

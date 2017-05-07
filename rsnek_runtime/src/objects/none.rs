@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use runtime::Runtime;
 use traits::{BooleanProvider, StringProvider};
-use result::{ObjectResult, RtResult};
+use ::api::result::{ObjectResult, RtResult};
 use api::selfref::{self, SelfRef};
 use api::{RtValue, PyAPI, method, typing};
 

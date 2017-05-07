@@ -6,8 +6,8 @@ use itertools::Itertools;
 use num::ToPrimitive;
 
 use ::resources::strings;
-use error::Error;
-use result::{ObjectResult, RtResult};
+use ::api::error::Error;
+use ::api::result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider,
              IteratorProvider, DefaultListProvider, ListProvider};

@@ -6,12 +6,12 @@ use std::collections::VecDeque;
 use num::{Num, Zero};
 
 use ::modules;
-use ::error::{Error, ErrorType};
+use ::api::error::{Error, ErrorType};
 use ::api::RtObject;
 use ::api::typing::BuiltinType;
 use ::api::method::{GetItem, SetAttr, GetAttr};
 use ::resources::strings;
-use ::result::{ObjectResult};
+use ::api::result::{ObjectResult};
 use ::system::{StrongRc, WeakRc};
 use ::traits::{
     BooleanProvider,

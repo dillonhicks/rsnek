@@ -29,10 +29,8 @@ extern crate rsnek_compile;
 mod macros;
 mod api;
 mod compiler;
-mod error;
 mod modules;
 mod objects;
-mod result;
 #[macro_use]
 pub mod runtime;
 mod system;

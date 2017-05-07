@@ -21,7 +21,7 @@ use rsnek_compile::fmt;
 
 use ::modules::builtins::{logical_and, logical_or};
 use ::compiler::Compiler;
-use ::error::Error;
+use ::api::error::Error;
 use ::api::RtObject;
 use ::api::method::{
     Add,
@@ -56,7 +56,7 @@ use ::api::method::{
     SetItem,
 };
 use ::resources::strings;
-use ::result::ObjectResult;
+use ::api::result::ObjectResult;
 use ::runtime::{OpCode, Runtime};
 use ::traits::{
     NoneProvider,

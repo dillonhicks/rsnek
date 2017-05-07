@@ -4,7 +4,7 @@ use ::modules::precondition::{check_args, check_kwargs};
 use ::api::method::{GetItem, IntegerCast};
 use ::api::RtObject;
 use ::resources::strings;
-use ::result::{ObjectResult};
+use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider};
 use ::objects::builtin::Builtin;

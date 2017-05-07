@@ -8,7 +8,7 @@ use std::str::FromStr;
 use num::ToPrimitive;
 
 use ::modules::precondition::{check_args, check_kwargs};
-use ::error::Error;
+use ::api::error::Error;
 use ::api::method;
 use ::api::method::*;
 use ::api::RtObject;
@@ -16,7 +16,7 @@ use ::api::selfref::{self, SelfRef};
 use ::api::typing::{self, BuiltinType};
 use ::api::{self, RtValue};
 use ::resources::strings;
-use ::result::{RtResult, ObjectResult};
+use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
                FunctionProvider, IteratorProvider};

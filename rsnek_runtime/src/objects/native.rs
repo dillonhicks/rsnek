@@ -15,7 +15,7 @@ use rsnek_compile::{Id, Tag, Num, OwnedTk};
 use ::api::RtObject;
 use ::objects::builtin::Builtin;
 use ::objects;
-use ::result::{ObjectResult, RtResult};
+use ::api::result::{ObjectResult, RtResult};
 use ::runtime::{OpCode, Runtime};
 
 

@@ -9,7 +9,7 @@ use api::selfref::{self, SelfRef};
 
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
-use ::result::{ObjectResult, RtResult};
+use ::api::result::{ObjectResult, RtResult};
 use ::objects::builtin::Builtin;
 use ::api::RtObject;
 use ::objects::number;

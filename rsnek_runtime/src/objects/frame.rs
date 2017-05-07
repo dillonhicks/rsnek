@@ -4,11 +4,11 @@ use std::fmt;
 
 use api::{PyAPI, RtValue, typing, method};
 use api::selfref::{self, SelfRef};
-use error::Error;
+use ::api::error::Error;
 use runtime::Runtime;
 //use traits::{BooleanProvider, IntegerProvider, NoneProvider};
 
-use result::{ObjectResult};
+use ::api::result::{ObjectResult};
 use objects::builtin::Builtin;
 use objects::native;
 use ::api::RtObject;

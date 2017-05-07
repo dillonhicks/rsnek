@@ -17,7 +17,7 @@ use ::compiler::graph::{Node, Graph};
 use ::compiler::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
 use ::compiler::scope::{ScopeNode, ManageScope, Descriptor};
 use ::compiler::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
-use ::error::Error;
+use ::api::error::Error;
 use ::objects::native::{self, Instr, Native};
 use ::runtime::OpCode;
 

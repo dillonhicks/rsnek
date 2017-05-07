@@ -1,4 +1,4 @@
-use ::result::ObjectResult;
+use ::api::result::ObjectResult;
 use ::api::RtObject;
 
 

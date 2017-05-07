@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-use result::{RtResult, ObjectResult};
+use ::api::result::{RtResult, ObjectResult};
 use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
 

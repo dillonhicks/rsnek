@@ -4,8 +4,8 @@ use std::borrow::Borrow;
 
 use num::ToPrimitive;
 
-use ::error::Error;
-use ::result::RtResult;
+use ::api::error::Error;
+use ::api::result::RtResult;
 use ::resources::strings;
 use ::objects::builtin::Builtin;
 use ::objects::native;

@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 
 use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
-use result::{RtResult, ObjectResult};
+use ::api::result::{RtResult, ObjectResult};
 
 use ::api::PyAPI;
 use ::api::RtObject;

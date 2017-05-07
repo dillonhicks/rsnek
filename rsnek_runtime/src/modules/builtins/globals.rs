@@ -2,8 +2,8 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 
 use ::modules::precondition::{check_args, check_kwargs};
-use ::error::Error;
-use ::result::{ObjectResult};
+use ::api::error::Error;
+use ::api::result::{ObjectResult};
 use ::resources::strings;
 use ::runtime::Runtime;
 use ::traits::{TupleProvider, ModuleImporter};
