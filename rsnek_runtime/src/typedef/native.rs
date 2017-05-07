@@ -28,8 +28,9 @@ use ::typedef::builtin::Builtin;
 // look for exactly 1 strong ref (to the heap object itself).
 // TODO: {T3088} The added Box<> here seems like a level of indirection that is not needed
 //  and was probably because I was a rust noob at that point.
-pub type RuntimeRef = std::rc::Rc<Box<typedef::builtin::Builtin>>;
-pub type RuntimeWeakRef = std::rc::Weak<Box<typedef::builtin::Builtin>>;
+pub type RuntimeRef = std::rc::Rc<typedef::builtin::Builtin>;
+pub type RuntimeWeakRef = std::rc::Weak<typedef::builtin::Builtin>;
+
 pub type ObjectId = u64;
 pub type HashId = u64;
 

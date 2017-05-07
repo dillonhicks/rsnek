@@ -28,7 +28,7 @@ pub struct RtObject(native::RuntimeRef);
 impl RtObject {
     #[inline]
     pub fn new(value: Builtin) -> RtObject {
-        RtObject(Rc::new(Box::new(value)))
+        RtObject(Rc::new(value))
     }
 
     /// Downgrade the RtObject to a WeakRtObject
@@ -108,8 +108,7 @@ impl std::fmt::Debug for RtObject {
 impl AsRef<Builtin> for RtObject {
     #[inline]
     fn as_ref(&self) -> &Builtin {
-        let boxed: &Box<Builtin> = self.0.borrow();
-        boxed.deref()
+        self.0.borrow()
     }
 }
 
@@ -914,7 +913,7 @@ method_not_implemented!(RtObject,
 // Weak Object References
 //
 
-pub struct WeakRtObject(pub native::RuntimeWeakRef);
+pub struct WeakRtObject(native::RuntimeWeakRef);
 
 
 impl Default for WeakRtObject {
