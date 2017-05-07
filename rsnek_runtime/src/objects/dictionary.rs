@@ -10,7 +10,7 @@ use ::api::selfref::{self, SelfRef};
 use ::api::{self, RtValue, typing};
 use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
+use ::runtime::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, DictKey};
 
@@ -239,7 +239,7 @@ method_not_implemented!(PyDict,
 
 #[cfg(test)]
 mod tests {
-    use traits::{StringProvider, DictProvider};
+    use ::runtime::traits::{StringProvider, DictProvider};
     use api::method::*;
     use super::*;
 

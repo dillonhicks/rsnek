@@ -6,7 +6,7 @@ use ::api::RtObject;
 use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{IntegerProvider, BooleanProvider};
+use ::runtime::traits::{IntegerProvider, BooleanProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
@@ -59,7 +59,7 @@ pub fn iterator_any<I>(rt: &Runtime, iterator: I) -> native::Boolean
 mod tests {
     use super::*;
     use runtime::Runtime;
-    use traits::{IteratorProvider,
+    use ::runtime::traits::{IteratorProvider,
                  DefaultTupleProvider,
                  StringProvider,
                  TupleProvider,

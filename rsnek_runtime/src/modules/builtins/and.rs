@@ -5,7 +5,7 @@ use ::runtime::Runtime;
 use ::api::result::ObjectResult;
 use ::objects::builtin::Builtin;
 use ::api::RtObject as ObjectRef;
-use ::traits::BooleanProvider;
+use ::runtime::traits::BooleanProvider;
 
 
 pub fn logical_and<'a>(rt: &Runtime, lhs: &ObjectRef, rhs: &ObjectRef) -> ObjectResult {

@@ -6,7 +6,7 @@ use ::api::RtObject;
 use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{ListProvider, DefaultListProvider, IntegerProvider};
+use ::runtime::traits::{ListProvider, DefaultListProvider, IntegerProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
@@ -48,7 +48,7 @@ fn rs_builtin_list(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwarg
 
 #[cfg(test)]
 mod tests {
-    use ::traits::{
+    use ::runtime::traits::{
         TupleProvider,
         DefaultTupleProvider,
         DefaultDictProvider

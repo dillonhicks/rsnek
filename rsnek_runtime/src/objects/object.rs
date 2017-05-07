@@ -7,7 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 use ::api::result::Error;
 use ::api::result::{ObjectResult, RtResult};
 use runtime::Runtime;
-use traits::{NoneProvider, IntegerProvider};
+use ::runtime::traits::{NoneProvider, IntegerProvider};
 use api::{self, RtValue, typing};
 use api::method::{self, Id, GetItem, Hashed, SetItem, Keys};
 use api::selfref::{self, SelfRef};
@@ -214,7 +214,7 @@ method_not_implemented!(PyObject,
 
 #[cfg(test)]
 mod tests {
-    use traits::{BooleanProvider, TupleProvider, NoneProvider, DictProvider,
+    use ::runtime::traits::{BooleanProvider, TupleProvider, NoneProvider, DictProvider,
                  StringProvider, IntegerProvider, ObjectProvider};
     use api::method::*;
     use super::*;

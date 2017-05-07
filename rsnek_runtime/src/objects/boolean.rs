@@ -8,7 +8,7 @@ use api::method::{BooleanCast, IntegerCast, StringRepresentation};
 use api::selfref::{self, SelfRef};
 
 use ::runtime::Runtime;
-use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
+use ::runtime::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use ::api::result::{ObjectResult, RtResult};
 use ::objects::builtin::Builtin;
 use ::api::RtObject;

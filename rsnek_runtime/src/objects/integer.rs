@@ -15,7 +15,7 @@ use ::api::{self, RtValue, method, typing};
 use ::resources::strings;
 use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
+use ::runtime::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Native, HashId, SignatureBuilder};
 use ::objects::number::{self, FloatAdapter, IntAdapter, format_int};
@@ -560,7 +560,7 @@ method_not_implemented!(PyInteger,
 #[allow(non_snake_case)]
 mod benches {
     #[allow(unused_imports)]
-    use traits::{IteratorProvider, BooleanProvider, IntegerProvider,
+    use ::runtime::traits::{IteratorProvider, BooleanProvider, IntegerProvider,
                  StringProvider, NoneProvider, TupleProvider};
     use api::method::*;
     use test::Bencher;

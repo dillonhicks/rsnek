@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 
 use ::api::result::{Error, ErrorType};
 use runtime::Runtime;
-use traits::IntegerProvider;
+use ::runtime::traits::IntegerProvider;
 use ::api::result::{ObjectResult, RtResult};
 use api::{self, RtValue, typing};
 use api::selfref::{self, SelfRef};
@@ -166,7 +166,7 @@ method_not_implemented!(PyIterator,
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
-    use traits::{IteratorProvider, BooleanProvider, IntegerProvider,
+    use ::runtime::traits::{IteratorProvider, BooleanProvider, IntegerProvider,
                  StringProvider, NoneProvider, TupleProvider};
     use api::method::*;
     use test::Bencher;

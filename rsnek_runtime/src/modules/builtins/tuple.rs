@@ -6,7 +6,7 @@ use ::api::RtObject as ObjectRef;
 use ::resources::strings;
 use ::api::result::ObjectResult;
 use ::runtime::Runtime;
-use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
+use ::runtime::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
@@ -50,7 +50,7 @@ fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kw
 
 #[cfg(test)]
 mod tests {
-    use ::traits::{DefaultDictProvider, ListProvider};
+    use ::runtime::traits::{DefaultDictProvider, ListProvider};
     use super::*;
 
 

@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
 use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider};
+use ::runtime::traits::{IntegerProvider, BooleanProvider};
 use ::api::result::{RtResult, ObjectResult};
 
 use ::api::PyAPI;

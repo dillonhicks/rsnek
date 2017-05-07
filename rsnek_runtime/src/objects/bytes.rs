@@ -6,7 +6,7 @@ use std::collections::hash_map::DefaultHasher;
 
 use ::api::result::{RtResult, ObjectResult};
 use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider};
+use ::runtime::traits::{IntegerProvider, BooleanProvider};
 
 use api::{self, RtValue};
 use api::selfref::{self, SelfRef};

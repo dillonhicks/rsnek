@@ -6,7 +6,7 @@ use api::{PyAPI, RtValue, typing, method};
 use api::selfref::{self, SelfRef};
 use ::api::result::Error;
 use runtime::Runtime;
-//use traits::{BooleanProvider, IntegerProvider, NoneProvider};
+//use ::runtime::traits::{BooleanProvider, IntegerProvider, NoneProvider};
 
 use ::api::result::{ObjectResult};
 use objects::builtin::Builtin;

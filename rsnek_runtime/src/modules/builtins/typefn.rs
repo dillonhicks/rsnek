@@ -6,7 +6,7 @@ use ::api::RtObject as ObjectRef;
 use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{IntegerProvider, StringProvider};
+use ::runtime::traits::{IntegerProvider, StringProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Signature, Func, FuncType};
 

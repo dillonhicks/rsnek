@@ -13,7 +13,7 @@ use ::api::method::{GetItem, SetAttr, GetAttr};
 use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::system::{StrongRc, WeakRc};
-use ::traits::{
+use ::runtime::traits::{
     BooleanProvider,
     BytesProvider,
     CodeProvider,

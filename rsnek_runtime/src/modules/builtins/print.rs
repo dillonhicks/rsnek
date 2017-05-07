@@ -7,7 +7,7 @@ use ::api::RtObject as ObjectRef;
 use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{IteratorProvider, NoneProvider};
+use ::runtime::traits::{IteratorProvider, NoneProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Signature, Func, FuncType};
 

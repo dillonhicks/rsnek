@@ -32,7 +32,6 @@ mod compiler;
 mod modules;
 mod objects;
 #[macro_use]
-pub mod runtime;
 mod system;
-mod traits;
 pub mod resources;
+pub mod runtime;

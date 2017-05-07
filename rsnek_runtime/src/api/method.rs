@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use ::api::RtObject;
 use ::api::result::{Error, ObjectResult, RtResult};
 use ::runtime::Runtime;
-use ::traits::{BooleanProvider, IntegerProvider};
+use ::runtime::traits::{BooleanProvider, IntegerProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Native};
 

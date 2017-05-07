@@ -18,7 +18,7 @@ use ::api::{self, RtValue};
 use ::resources::strings;
 use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
-use ::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
+use ::runtime::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
                FunctionProvider, IteratorProvider};
 use ::objects::builtin::Builtin;
 use ::objects::collection::sequence;

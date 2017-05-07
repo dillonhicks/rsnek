@@ -6,7 +6,7 @@ use ::api::result::Error;
 use ::api::result::{ObjectResult};
 use ::resources::strings;
 use ::runtime::Runtime;
-use ::traits::{TupleProvider, ModuleImporter};
+use ::runtime::traits::{TupleProvider, ModuleImporter};
 use ::api::RtObject;
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};

@@ -15,7 +15,7 @@ use ::api::{self, RtValue, typing};
 use ::resources::strings;
 use ::api::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
-use ::traits::{BooleanProvider, IntegerProvider, StringProvider,
+use ::runtime::traits::{BooleanProvider, IntegerProvider, StringProvider,
                IteratorProvider, DefaultTupleProvider, TupleProvider};
 use ::objects::builtin::Builtin;
 use ::objects::collection::sequence;
@@ -254,7 +254,7 @@ method_not_implemented!(PyTuple,
 
 #[cfg(test)]
 mod tests {
-    use traits::{TupleProvider, BooleanProvider};
+    use ::runtime::traits::{TupleProvider, BooleanProvider};
     use api::method::*;
     use super::*;
 
@@ -277,7 +277,7 @@ mod tests {
     }
 
     mod __hash__ {
-        use traits::{StringProvider, IntegerProvider, DictProvider};
+        use ::runtime::traits::{StringProvider, IntegerProvider, DictProvider};
         use super::*;
 
         #[test]

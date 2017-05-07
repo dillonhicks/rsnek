@@ -58,7 +58,7 @@ use ::api::method::{
 use ::resources::strings;
 use ::api::result::ObjectResult;
 use ::runtime::{OpCode, Runtime};
-use ::traits::{
+use ::runtime::traits::{
     NoneProvider,
     StringProvider,
     CodeProvider,

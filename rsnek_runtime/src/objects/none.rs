@@ -3,7 +3,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use runtime::Runtime;
-use traits::{BooleanProvider, StringProvider};
+use ::runtime::traits::{BooleanProvider, StringProvider};
 use ::api::result::{ObjectResult, RtResult};
 use api::selfref::{self, SelfRef};
 use api::{RtValue, PyAPI, method, typing};

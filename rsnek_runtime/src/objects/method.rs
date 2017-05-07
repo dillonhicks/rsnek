@@ -7,7 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 use ::api::result::Error;
 use ::api::result::{ObjectResult, RtResult};
 use runtime::Runtime;
-use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
+use ::runtime::traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
 use ::modules::precondition::{check_kwargs, check_args};
 use ::api::method::*;
 use api::{self, RtValue, typing};
@@ -393,7 +393,7 @@ method_not_implemented!(PyFunction,
 
 #[cfg(test)]
 mod tests {
-    use traits::{FunctionProvider, BooleanProvider, NoneProvider, DictProvider, TupleProvider};
+    use ::runtime::traits::{FunctionProvider, BooleanProvider, NoneProvider, DictProvider, TupleProvider};
     use api::method::*;
     use super::*;
 

@@ -17,7 +17,7 @@ use ::api;
 use ::api::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::system::{StrongRc, WeakRc};
-use ::traits::{IntegerProvider, BooleanProvider};
+use ::runtime::traits::{IntegerProvider, BooleanProvider};
 use ::objects::builtin::Builtin;
 use ::objects::native::{self, Native, ObjectId};
 
@@ -1021,7 +1021,7 @@ method_not_implemented!(WeakRtObject,
 #[cfg(test)]
 mod tests {
     use ::api::method::Add;
-    use ::traits::IntegerProvider;
+    use ::runtime::traits::IntegerProvider;
     use ::runtime::Runtime;
 
     fn setup() -> (Runtime,) {

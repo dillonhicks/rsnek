@@ -9,7 +9,7 @@ use ::resources::strings;
 use ::api::result::Error;
 use ::api::result::{ObjectResult, RtResult};
 use runtime::Runtime;
-use traits::{BooleanProvider, IntegerProvider, StringProvider,
+use ::runtime::traits::{BooleanProvider, IntegerProvider, StringProvider,
              IteratorProvider, DefaultListProvider, ListProvider};
 use api::{RtValue, typing, PyAPI};
 use api::method::{self, Equal};
@@ -251,7 +251,7 @@ method_not_implemented!(PyList,
 mod tests {
     use num::Zero;
 
-    use ::traits::{
+    use ::runtime::traits::{
         DefaultListProvider,
         NoneProvider,
         TupleProvider,
