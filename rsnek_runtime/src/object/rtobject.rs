@@ -1,7 +1,7 @@
-/// Wrapper around the reference counted pointed to all
-/// runtime objects. In CPython, the StrongRc is as a field in the
-/// PyObject struct. Due to the design of rust, all access to the underlying
-/// structs must be proxied through the rc for ownership and lifetime analysis.
+///! Wrapper around the reference counted pointed to all
+///! runtime objects. In CPython, the StrongRc is as a field in the
+///! PyObject struct. Due to the design of rust, all access to the underlying
+///! structs must be proxied through the rc for ownership and lifetime analysis.
 use std;
 use std::borrow::Borrow;
 use std::fmt;
@@ -23,6 +23,7 @@ use ::typedef::native::{self, Native, ObjectId};
 
 type RuntimeRef = StrongRc<Builtin>;
 type RuntimeWeakRef = WeakRc<Builtin>;
+
 
 pub struct RtObject(RuntimeRef);
 
@@ -114,7 +115,7 @@ impl AsRef<Builtin> for RtObject {
     }
 }
 
-/// While it is cool to be able to directly iterate over an objectref
+/// While it is cool to be able to directly iterate over an `RtObject`
 /// it is impractical and likely impossible to debug if the critical
 /// case is hit.
 impl Iterator for RtObject {

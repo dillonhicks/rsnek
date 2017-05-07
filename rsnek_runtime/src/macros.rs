@@ -1,15 +1,12 @@
-
-macro_rules! try_cast {
-    ($out:ident, $objref:expr, $builtin:path) => (
-        let boxed: &Box<Builtin> = $objref.0.borrow();
-        match boxed.deref() {
-            &$builtin(ref obj) => $out = &obj,
-            _ => panic!("Not expected type")
-        }
-    )
-}
+///! macros to make working with cases where there is generic code but not generic types
+///! such as dispatching an API method on an `RtObject` or `Builtin`, creating method wrappers
+///! (e.g. `x = 1; func = x.__hash__` since `__hash__` should be an object representing
+///! `PyInteger::op_hash` for the instance ), shorthand for default implementations, etc.
 
 
+
+/// Expands the `typedef::Builtin` into its variant to dispatch the given method
+/// on that type.
 macro_rules! foreach_builtin {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (
         unary_op_foreach!($sel, $rt, $function, $receiver)
@@ -25,7 +22,18 @@ macro_rules! foreach_builtin {
     );
 }
 
-
+/// A more flexible sibling of the `foreach_builtin` and `native_foreach_builtin` macros
+/// which will allow execution an arbitrary block of code on
+/// the inner value of any variant of `Builtin`. The `$inner:ident` is
+/// identifier used to reference the match expanded value within the given code block.
+///
+///```ignore
+///  let object: RtObject = /// something that produces an RtObject;
+///
+///  expr_foreach_builtin!(object.as_ref(), value, {
+///     write!(f, "{:?}", value)
+/// })
+/// ```
 macro_rules! expr_foreach_builtin {
     ($obj:expr, $inner:ident, $e:block) => (
        match $obj {
@@ -303,10 +311,12 @@ macro_rules! native_4ary_op_foreach {
 macro_rules! api_trait {
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -314,10 +324,12 @@ macro_rules! api_trait {
     };
     (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -325,10 +337,12 @@ macro_rules! api_trait {
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel, &Builtin) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -336,10 +350,12 @@ macro_rules! api_trait {
     };
     (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel, &Builtin) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -347,10 +363,12 @@ macro_rules! api_trait {
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel, &Builtin, &Builtin) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -358,10 +376,12 @@ macro_rules! api_trait {
     };
     (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel, &Builtin, &Builtin) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -369,10 +389,12 @@ macro_rules! api_trait {
     };
     (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -380,10 +402,12 @@ macro_rules! api_trait {
     };
     (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         pub trait $tname {
+            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &Vec<RtObject>) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
+            /// Native API Method $pyname
             fn $nfname(&$sel, &Vec<Builtin>) -> RtResult<Builtin> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -404,6 +428,7 @@ macro_rules! api_test_stub {
         api_test_stub!($args, $sel, $pyname, $tname, $fname, $nfname);
     };
 }
+
 
 
 // Errors that should be in resource::strings but constant format strings are
@@ -431,6 +456,7 @@ macro_rules! rsnek_exception_index {
         Error::index(&format!("{} {}", $typ, strings::ERROR_INDEX_OUT_OF_RANGE))
     }
 }
+
 
 macro_rules! unary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
@@ -519,11 +545,26 @@ macro_rules! ternary_method_wrapper (
     });
 );
 
-
+/// Used to create default "not implemented" impls for the Objects.
+/// As an example suppose there is a new type `PyDatabaseConnector` that
+/// should not implement the context manager traits `::api::method::Enter`
+/// and `::api::method::Exit`. Since `PyDatabaseConnector` must implement all traits
+/// of `::api::PyAPI` but the default implementations already return a `Result::Err`
+/// (specifically, `Err(Error::system_not_implemented(...)).` There are many
+/// impl blocks that are empty.
+///
+///
+/// This macro allows for these cases to be short-hand with the following:
+///
+/// ```ignore
+/// use ::api::method;
+///
+/// method_not_implemented!(PyDatabaseConnector, Enter Exit);
+/// ```
 macro_rules! method_not_implemented {
-  ($i:ty, $($N:ident)+) => {
+  ($Type:ty, $($ApiTrait:ident)+) => {
     $(
-        impl method::$N for $i {}
+        impl method::$ApiTrait for $Type {}
     )+
   };
 }

@@ -1,3 +1,4 @@
+///! Union of all traits used to define the Python Object API. See: `PyAPI`.
 use std::borrow::Borrow;
 
 use ::error::Error;
@@ -9,7 +10,6 @@ use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, Native};
 
 
-/// Big index of all traits used to define builtin objects
 // ----------------------------------
 //  Types and Initialization
 // ----------------------------------
@@ -100,34 +100,13 @@ pub trait IsNot
     }
 }
 
+/// From CPython's Docs:
+/// Called by built-in function hash() and for operations on members of hashed collections including
+/// set, frozenset, and dict. __hash__() should return an integer. The only required property is
+/// that objects which compare equal have the same hash value; it is advised to mix together
+/// the hash values of the components of the object that also play a part in comparison
+/// of objects by packing them into a tuple and hashing the tuple.
 api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
-
-//pub trait Hashed {
-//    // Called by built-in function hash() and for operations on members of hashed collections including
-//    // set, frozenset, and dict. __hash__() should return an integer. The only required property is
-//    // that objects which compare equal have the same hash value; it is advised to mix together
-//    // the hash values of the components of the object that also play a part in comparison
-//    // of objects by packing them into a tuple and hashing the tuple. Example:
-//    // api_method!(unary, self, __hash__, Hashable, op_hash, native_hash);
-//    fn op_hash(&self, rt: &Runtime) -> RuntimeResult {
-//        match self.native_hash() {
-//            Ok(value) => Ok(rt.int(native::Integer::from_u64(value).unwrap())),
-//            Err(err) => Err(err),
-//        }
-//    }
-//
-//    /// Default implementation of the native hash is to
-//    /// use the ptr identity and hash that.
-//    /// Numerical types especially should override
-//    fn native_hash(&self) -> NativeResult<native::HashId> {
-//        let mut s = DefaultHasher::new();
-//        self.native_id().hash(&mut s);
-//        Ok(s.finish())
-//    }
-//}
-
-//api_trait!(binary, self, is_, Is, op_is, native_is, native::Boolean);
-//api_trait!(binary, self, is_not, IsNot, op_is_not, native_is_not, native::Boolean);
 
 // ----------------------------------
 //  String Formatting
