@@ -4,6 +4,9 @@ version = "0.7.2"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 build = "build.rs"
 
+[features]
+default = ["rsnek_multithreaded"]
+rsnek_multithreaded = []
 
 [dependencies]
 slog = {version = "2", features=["max_level_trace", "release_max_level_info"]}
@@ -15,8 +18,11 @@ slog-bunyan = { git = "https://github.com/slog-rs/bunyan.git", branch = "master"
 
 
 clap = "*"
-rsnek_runtime =  { version = "*", path = "../rsnek_runtime" }
 rsnek_compile = { version = "*", path = "../rsnek_compile" }
 
 [build-dependencies]
 rustc_version = "*"
+
+[dependencies.rsnek_runtime]
+version = "*"
+path = "../rsnek_runtime"

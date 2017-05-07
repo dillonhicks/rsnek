@@ -6,7 +6,7 @@ use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider};
 use ::typedef::builtin::Builtin;
-use ::typedef::native;
+use ::typedef::native::{self, Native};
 
 
 /// Big index of all traits used to define builtin objects
@@ -194,7 +194,7 @@ api_trait!(unary, self, __invert__, InvertValue, op_invert, native_invert, nativ
 //  Operators
 // -----------------------------------
 
-api_trait!(binary, self, __add__, Add, op_add, native_add);
+api_trait!(binary, self, __add__, Add, op_add, native_add, Native);
 api_trait!(binary, self, __and__, BitwiseAnd, op_and, native_and);
 api_trait!(binary, self, __divmod__, DivMod, op_divmod, native_divmod);
 api_trait!(binary, self, __floordiv__, FloorDivision, op_floordiv, native_floordiv);

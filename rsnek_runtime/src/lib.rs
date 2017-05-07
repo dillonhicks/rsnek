@@ -44,5 +44,6 @@ mod opcode;
 mod graph;
 mod scope;
 mod symbol;
+mod system;
 
 pub mod resource;

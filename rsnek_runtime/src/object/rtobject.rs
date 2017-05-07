@@ -1,5 +1,5 @@
 /// Wrapper around the reference counted pointed to all
-/// runtime objects. In CPython, the refcount is as a field in the
+/// runtime objects. In CPython, the StrongRc is as a field in the
 /// PyObject struct. Due to the design of rust, all access to the underlying
 /// structs must be proxied through the rc for ownership and lifetime analysis.
 use std;
@@ -7,7 +7,6 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::rc::{Rc, Weak};
 
 use num::Zero;
 use serde::ser::{Serialize, Serializer};
@@ -17,31 +16,34 @@ use ::object::method::{self, Id, Next, StringCast, StringRepresentation, Equal};
 use ::object;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
+use ::system::{StrongRc, WeakRc};
 use ::traits::{IntegerProvider, BooleanProvider};
 use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, ObjectId};
+use ::typedef::native::{self, Native, ObjectId};
 
+type RuntimeRef = StrongRc<Builtin>;
+type RuntimeWeakRef = WeakRc<Builtin>;
 
-pub struct RtObject(native::RuntimeRef);
+pub struct RtObject(RuntimeRef);
 
 
 impl RtObject {
     #[inline]
     pub fn new(value: Builtin) -> RtObject {
-        RtObject(Rc::new(value))
+        RtObject(StrongRc::new(value))
     }
 
     /// Downgrade the RtObject to a WeakRtObject
     pub fn downgrade(&self) -> WeakRtObject {
-        WeakRtObject(Rc::downgrade(&self.0))
+        WeakRtObject(StrongRc::downgrade(&self.0))
     }
 
     pub fn strong_count(&self) -> native::Integer {
-        native::Integer::from(Rc::strong_count(&self.0))
+        native::Integer::from(StrongRc::strong_count(&self.0))
     }
 
     pub fn weak_count(&self) -> native::Integer {
-        native::Integer::from(Rc::weak_count(&self.0))
+        native::Integer::from(StrongRc::weak_count(&self.0))
     }
 
     pub fn id(&self) -> ObjectId {
@@ -421,7 +423,7 @@ impl method::Add for RtObject {
         foreach_builtin!(self.as_ref(), rt, op_add, lhs, rhs)
     }
 
-    fn native_add(&self, rhs: &Builtin) -> RtResult<Builtin> {
+    fn native_add(&self, rhs: &Builtin) -> RtResult<Native> {
         native_foreach_builtin!(self.as_ref(), native_add, lhs, rhs)
     }
 }
@@ -915,12 +917,12 @@ method_not_implemented!(RtObject,
 // Weak Object References
 //
 
-pub struct WeakRtObject(native::RuntimeWeakRef);
+pub struct WeakRtObject(RuntimeWeakRef);
 
 
 impl Default for WeakRtObject {
     fn default() -> WeakRtObject {
-        WeakRtObject(Weak::default())
+        WeakRtObject(WeakRc::default())
     }
 }
 
@@ -957,7 +959,7 @@ impl WeakRtObject {
     }
 
     pub fn upgrade(&self) -> ObjectResult {
-        match Weak::upgrade(&self.0) {
+        match WeakRc::upgrade(&self.0) {
             None => Err(Error::system(
                 &format!("{} {}; file: {} line: {}",
                          "Attempted to create a strong ref to an object with no existing refs, ",

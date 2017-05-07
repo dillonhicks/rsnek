@@ -17,7 +17,7 @@ use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
 use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, HashId, SignatureBuilder};
+use ::typedef::native::{self, Native, HashId, SignatureBuilder};
 use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
 
 
@@ -396,12 +396,19 @@ impl method::NegateValue for PyInteger {
 /// `self + rhs`
 impl method::Add for PyInteger {
     fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
+        match self.native_add(rhs.as_ref())? {
+            Native::Int(int) => Ok(rt.int(int)),
+            Native::Float(float) => Ok(rt.float(float)),
+            _ => unreachable!()
+        }
+    }
 
-        match rhs.as_ref() {
-            &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 + &rhs.value.0)),
+    fn native_add(&self, rhs: &Builtin) -> RtResult<Native> {
+        match rhs {
+            &Builtin::Int(ref rhs) =>  Ok(Native::Int(&self.value.0 + &rhs.value.0)),
             &Builtin::Float(ref rhs) => {
                 match self.value.0.to_f64() {
-                    Some(lhs) => Ok(rt.float(lhs + rhs.value.0)),
+                    Some(lhs) => Ok(Native::Float(lhs + rhs.value.0)),
                     None => Err(Error::overflow(
                         &format!("{:?} + {} overflows float", self.value.0, rhs.value.0))),
                 }
@@ -547,3 +554,103 @@ method_not_implemented!(PyInteger,
     Exit   Enter   DescriptorGet   DescriptorSet   
     DescriptorSetName
 );
+
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod benches {
+    #[allow(unused_imports)]
+    use traits::{IteratorProvider, BooleanProvider, IntegerProvider,
+                 StringProvider, NoneProvider, TupleProvider};
+    use object::method::*;
+    use test::Bencher;
+    use super::*;
+
+    fn setup_test() -> (Runtime) {
+        Runtime::new()
+    }
+
+    mod __add__ {
+        use super::*;
+
+        #[bench]
+        fn static_static(b: &mut Bencher) {
+            let rt = setup_test();
+
+            let one = rt.int(1);
+            let two = rt.int(2);
+
+            b.iter(|| {
+                one.op_add(&rt, &two).unwrap();
+            });
+        }
+
+        #[bench]
+        fn dynamic_static(b: &mut Bencher) {
+            let rt = setup_test();
+
+            let big_dynamic = rt.int(1000000);
+            let two = rt.int(2);
+
+            b.iter(|| {
+                big_dynamic.op_add(&rt, &two).unwrap();
+            });
+        }
+
+        #[bench]
+        fn dynamic_dynamic(b: &mut Bencher) {
+            let rt = setup_test();
+
+            let lhs = rt.int(12345);
+            let rhs = rt.int(67890);
+
+            b.iter(|| {
+                lhs.op_add(&rt, &rhs).unwrap();
+            });
+        }
+    }
+
+    mod native__add__ {
+        use super::*;
+
+        #[bench]
+        fn static_static(b: &mut Bencher) {
+            let rt = setup_test();
+
+            let one = rt.int(1);
+            let two = rt.int(2);
+
+            let rhs = two.as_ref();
+            b.iter(|| {
+                one.native_add(rhs).unwrap();
+            });
+        }
+
+        #[bench]
+        fn dynamic_static(b: &mut Bencher) {
+            let rt = setup_test();
+
+            let big_dynamic = rt.int(1000000);
+            let two = rt.int(2);
+            let rhs = two.as_ref();
+
+            b.iter(|| {
+                big_dynamic.native_add(rhs).unwrap();
+            });
+        }
+
+        #[bench]
+        fn dynamic_dynamic(b: &mut Bencher) {
+            let rt = setup_test();
+
+            let lhs = rt.int(12345);
+            let big = rt.int(67890);
+            let rhs = big.as_ref();
+
+            b.iter(|| {
+                lhs.native_add(rhs).unwrap();
+            });
+        }
+
+    }
+}

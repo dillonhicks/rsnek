@@ -13,7 +13,7 @@ use ::object::WeakRtObject as WeakRtObject;
 use ::object::method::{self, Id, StringRepresentation, Equal, Hashed};
 use ::object::selfref::SelfRef;
 
-use ::typedef::native;
+use ::typedef::native::{self, Native};
 use ::typedef::dictionary::PyDict;
 use ::typedef::object::PyObject;
 use ::typedef::boolean::PyBoolean;
@@ -428,7 +428,7 @@ impl method::Add for Builtin {
         foreach_builtin!(self, rt, op_add, lhs, rhs)
     }
 
-    fn native_add(&self, rhs: &Builtin) -> RtResult<Builtin> {
+    fn native_add(&self, rhs: &Builtin) -> RtResult<Native> {
         native_foreach_builtin!(self, native_add, lhs, rhs)
     }
 }

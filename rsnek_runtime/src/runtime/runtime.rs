@@ -1,7 +1,6 @@
 use std;
 use std::borrow::Borrow;
 use std::cell::{Ref, RefCell, RefMut};
-use std::rc::{Rc, Weak};
 use std::collections::VecDeque;
 
 use num::{Num, Zero};
@@ -13,6 +12,7 @@ use ::object::typing::BuiltinType;
 use ::object::method::{GetItem, SetAttr, GetAttr};
 use ::resource::strings;
 use ::result::{ObjectResult};
+use ::system::{StrongRc, WeakRc};
 use ::traits::{
     BooleanProvider,
     BytesProvider,
@@ -98,8 +98,8 @@ struct RuntimeInternal {
 ///
 /// Patterns about References Taken from:
 ///  https://ricardomartins.cc/2016/06/08/interior-mutability
-type RuntimeRef = Rc<Box<RuntimeInternal>>;
-type RuntimeWeakRef = Weak<Box<RuntimeInternal>>;
+type RuntimeRef = StrongRc<RuntimeInternal>;
+type RuntimeWeakRef = WeakRc<RuntimeInternal>;
 
 
 /// Cloning a runtime just increases the strong reference count and gives
@@ -113,7 +113,7 @@ impl Clone for Runtime {
 
 impl Default for WeakRuntime {
     fn default() -> Self {
-        WeakRuntime(Weak::new())
+        WeakRuntime(WeakRc::new())
     }
 }
 
@@ -152,7 +152,7 @@ impl Runtime {
             mod_builtins: RefCell::new(placeholder.clone()),
         };
 
-        let rt = Runtime(Rc::new(Box::new(internal)));
+        let rt = Runtime(StrongRc::new(internal));
         {
             let mut _mod: RefMut<RtObject> = rt.0.mod_builtins.borrow_mut();
             *_mod = rt.module(native::None());
@@ -177,7 +177,7 @@ impl Runtime {
     }
 
     pub fn downgrade(&self) -> WeakRuntime {
-        WeakRuntime(Rc::downgrade(&self.0.clone()))
+        WeakRuntime(StrongRc::downgrade(&self.0.clone()))
     }
 
     pub fn register_builtin(&self, func: native::Func) {
@@ -626,34 +626,34 @@ mod tests {
         Runtime::new()
     }
 
-    #[bench]
-    fn builtin_len_tuple_3_elems(b: &mut Bencher) {
-        let rt = setup_test();
-        let tuple = rt.tuple(vec![rt.none(), rt.none(), rt.none()]);
+    macro_rules! len_bench (
+        ($name:ident, $N:expr) => (
+            #[bench]
+            fn $name(b: &mut Bencher) {
+                let rt = setup_test();
+                let tuple = rt.tuple((0..$N).map(|_| rt.none()).collect::<Vec<_>>());
 
-        let args = rt.tuple(vec![tuple.clone()]);
-        let starargs = rt.tuple(vec![]);
-        let kwargs = rt.dict(native::Dict::new());
+                let args = rt.tuple(vec![tuple.clone()]);
+                let starargs = rt.tuple(vec![]);
+                let kwargs = rt.dict(native::Dict::new());
 
-        let len = rt.get_builtin("len");
+                let len = rt.get_builtin("len");
 
-        b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
-    }
+                b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
+            }
+        );
+    );
 
-    #[bench]
-    fn builtin_len_tuple_4k_elems(b: &mut Bencher) {
-        let rt = setup_test();
-        let tuple = rt.tuple((0..4096).map(|_| rt.none()).collect::<Vec<_>>());
+    len_bench!(builtin_len_tuple_elems_0,      0);
+    len_bench!(builtin_len_tuple_elems_1,      1);
+    len_bench!(builtin_len_tuple_elems_4,      4);
+    len_bench!(builtin_len_tuple_elems_16,     16);
+    len_bench!(builtin_len_tuple_elems_64,     64);
+    len_bench!(builtin_len_tuple_elems_256,    256);
+    len_bench!(builtin_len_tuple_elems_1024,   1024);
+    len_bench!(builtin_len_tuple_elems_4096,   4095);
+    len_bench!(builtin_len_tuple_elems_16384,  16384);
 
-        let args = rt.tuple(vec![tuple.clone()]);
-        let starargs = rt.tuple(vec![]);
-        let kwargs = rt.dict(native::Dict::new());
-
-        let len = rt.get_builtin("len");
-
-        b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
-
-    }
 
     #[bench]
     fn int_getattr_hash_method_wrapper(b: &mut Bencher) {

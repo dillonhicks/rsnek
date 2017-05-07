@@ -217,12 +217,12 @@ mod tests {
             assert_eq!(result, rt.bool(true));
         }
 
-        /// See the time it takes to fully consume an iterator backed by a reasonably sized
-        /// tuple.
+        macro_rules! iter_bench (
+        ($name:ident, $N:expr) => (
         #[bench]
-        fn iter_4k_list(b: &mut Bencher) {
+        fn $name(b: &mut Bencher) {
             let rt = setup_test();
-            let elems = (0..4092).map(|i|
+            let elems = (0..$N).map(|i|
                 {
                     match i % 5 {
                         0 => rt.bool(false),
@@ -240,31 +240,28 @@ mod tests {
 
             b.iter(|| {
                 let iter = rt.iter(native::Iterator::new(&tuple).unwrap());
-                match iter.as_ref() {
-                    &Builtin::Iter(ref iterator) => {
-                        loop {
-                            match iterator.native_next() {
-                                Ok(_) => continue,
-                                Err(Error(ErrorType::StopIteration, _)) => break,
-                                Err(_) => panic!("Iterator logic fault")
-                            };
-                        }
-
-                    },
-                    _ => {}
+                loop {
+                    match iter.op_next(&rt) {
+                        Ok(_) => continue,
+                        Err(Error(ErrorType::StopIteration, _)) => break,
+                        Err(_) => panic!("Iterator logic fault")
+                    };
                 }
             });
-
-            let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
-
-            let mut results: Vec<RtObject> = vec![];
-            for i in iterator {
-                results.push(i)
-            }
-
-            info!("Total: {}", results.len());
         }
 
+        );
+    );
+
+        iter_bench!(iter_list_elems_0,      0);
+        iter_bench!(iter_list_elems_1,      1);
+        iter_bench!(iter_list_elems_4,      4);
+        iter_bench!(iter_list_elems_16,     16);
+        iter_bench!(iter_list_elems_64,     64);
+        iter_bench!(iter_list_elems_256,    256);
+        iter_bench!(iter_list_elems_1024,   1024);
+        iter_bench!(iter_list_elems_4096,   4095);
+        iter_bench!(iter_list_elems_16384,  16384);
     }
 
 }
