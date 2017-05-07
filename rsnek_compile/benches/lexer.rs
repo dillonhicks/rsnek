@@ -25,7 +25,7 @@ fn text(path: &str) -> String {
 
 #[bench]
 fn lex_warnings(b: &mut Bencher) {
-    let txt = text("/usr/lib/python3.6/warnings.py");
+    let txt = text("./benches/python3.6/warnings.py");
     println!("Text Size: {}", txt.len());
 
     let lexer = Lexer::new();
@@ -39,7 +39,7 @@ fn lex_warnings(b: &mut Bencher) {
 
 #[bench]
 fn lex_topics(b: &mut Bencher) {
-    let mut txt = text("/usr/lib/python3.6/pydoc_data/topics.py");
+    let mut txt = text("./benches/python3.6/topics.py");
     txt = (1..5).map(|_| txt.clone()).collect();
     println!("Text Size: {}", txt.len());
 

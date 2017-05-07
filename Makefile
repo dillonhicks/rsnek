@@ -91,8 +91,9 @@ all:
 
 ec2-requirements:
 	-apt-get update && apt-get install -y \
-		linux-tools \
-		linux-aws-cloud-tools
+		linux-headers-aws \
+		linux-tools-aws \
+		linux-cloud-tools-4.4.0-1016-aws
 
 
 toolchain: $(CONDITIONAL_REQUIREMENTS)
