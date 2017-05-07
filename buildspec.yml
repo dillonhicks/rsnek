@@ -8,6 +8,8 @@ phases:
       - make toolchain
   build:
     commands:
+      - echo Sysinfo started on `date`
+      - make sysinfo
       - echo Build started on `date`
       - make build
       - echo Test started on `date`
