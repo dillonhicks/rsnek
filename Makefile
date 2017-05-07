@@ -67,17 +67,23 @@ BUILD_DATETIME := $(shell date -u +%FT%TZ)
 
 VERSION ?= $(CODEBUILD_SOURCE_VERSION)
 LOG_FORMAT ?= human
-CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
-
+ARTIFACTS_DIR=target
 
 # When building in CODEBUILD and running on EC2 special packages
 # are needed to run things like oprofile and perf.
 #
 ifeq ($(CODEBUILD_BUILD_ID), NotSet)
 CONDITIONAL_REQUIREMENTS=
+CARGO_ARGS=--color=always --message-format=human
+CARGO=cargo
+LOG_SUFFIX=$(BUILD_DATETIME).txt
 else
+CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
+CARGO_ARGS=--message-format=json
 CONDITIONAL_REQUIREMENTS=ec2-requirements
+LOG_SUFFIX=$(CODEBUILD_BUILD_ID).txt
 endif
+
 
 
 .PHONY: all toolchain build release test \
@@ -112,23 +118,25 @@ toolchain: $(CONDITIONAL_REQUIREMENTS)
 
 
 build:
-	$(CARGO) build --message-format=$(LOG_FORMAT) -p rsnek
+	$(CARGO) build $(CARGO_ARGS) -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
 
 
 release:
-	$(CARGO) build --message-format=$(LOG_FORMAT) --release -p rsnek
+	$(CARGO) build $(CARGO_ARGS)  --release -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
 
 
 test:
-	$(CARGO) test --message-format=$(LOG_FORMAT) --all
+	$(CARGO) test $(CARGO_ARGS) --all 2>&1 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
 
 
 test-release:
-	$(CARGO) test --release --message-format=$(LOG_FORMAT) --all
+	$(CARGO) test $(CARGO_ARGS) --release --all 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
+
 
 
 bench-%:
-	-$(CARGO) bench --message-format=$(LOG_FORMAT) -p $*
+	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
+
 
 
 bench: bench-rsnek_compile bench-rsnek_runtime bench-rsnek
@@ -139,12 +147,12 @@ bench: bench-rsnek_compile bench-rsnek_runtime bench-rsnek
 #  - If the cyclical ObjectRefs cause issues
 #  - Detect any hot code areas not obvious by rust benching
 #
-RSNEK_BINARY=target/release/rsnek
+RSNEK_BINARY=$(ARTIFACTS_DIR)/release/rsnek
 VALGRIND_PYTHON_SRCFILE=rsnek/tests/test.py
-VALGRIND_MEMCHECK_XMLFILE=target/release/valgrind.memcheck.xml
-VALGRIND_CACHEGRIND_FILE=target/release/valgrind.cachegrind.txt
-OPROF_OUTDIR=target/release/oprofile_data
-PERF_STATS_FILE=target/release/perf.stats.txt
+VALGRIND_MEMCHECK_XMLFILE=$(ARTIFACTS_DIR)/valgrind.memcheck.xml
+VALGRIND_CACHEGRIND_FILE=$(ARTIFACTS_DIR)/valgrind.cachegrind.txt
+OPROF_OUTDIR=$(ARTIFACTS_DIR)/oprofile_data
+PERF_STATS_FILE=$(ARTIFACTS_DIR)/perf.stats.txt
 
 perf:
 	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
