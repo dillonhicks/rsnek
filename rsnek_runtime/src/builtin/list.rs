@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 
 use ::builtin::precondition::{check_args, check_kwargs, check_args_range};
-use ::object::method::{GetItem,Iter};
-use ::object::RtObject;
+use ::api::method::{GetItem,Iter};
+use ::api::RtObject;
 use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;

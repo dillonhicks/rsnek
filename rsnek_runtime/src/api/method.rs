@@ -2,7 +2,7 @@
 use std::borrow::Borrow;
 
 use ::error::Error;
-use ::object::RtObject;
+use ::api::RtObject;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider};

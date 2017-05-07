@@ -35,7 +35,7 @@ pub mod runtime;
 
 mod builtin;
 mod traits;
-mod object;
+mod api;
 mod result;
 mod error;
 mod typedef;

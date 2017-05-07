@@ -4,13 +4,13 @@ use std::ops::Deref;
 
 use runtime::{Runtime};
 
-use object::{self, RtValue};
-use object::selfref::{self, SelfRef};
-use object::typing;
-use object::method;
+use api::{self, RtValue};
+use api::selfref::{self, SelfRef};
+use api::typing;
+use api::method;
 
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 use typedef::builtin::Builtin;
 
 
@@ -57,7 +57,7 @@ pub struct CodeValue(pub native::Code);
 pub type PyCode = RtValue<CodeValue>;
 
 
-impl object::PyAPI for PyCode {}
+impl api::PyAPI for PyCode {}
 
 impl fmt::Debug for PyCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

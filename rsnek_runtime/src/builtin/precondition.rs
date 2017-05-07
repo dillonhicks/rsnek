@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use std::cell::Ref;
 
 use ::error::Error;
-use ::object::RtObject as ObjectRef;
+use ::api::RtObject as ObjectRef;
 use ::result::{RtResult};
 use ::typedef::builtin::Builtin;
 use ::typedef::native;

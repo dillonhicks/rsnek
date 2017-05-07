@@ -11,14 +11,14 @@ use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider,
              IteratorProvider, DefaultListProvider, ListProvider};
-use object::{RtValue, typing, PyAPI};
-use object::method::{self, Equal};
-use object::selfref::{self, SelfRef};
+use api::{RtValue, typing, PyAPI};
+use api::method::{self, Equal};
+use api::selfref::{self, SelfRef};
 
 use ::typedef::collection::sequence;
 use ::typedef::builtin::Builtin;
 use ::typedef::native::{self, List};
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 pub struct PyListType {
@@ -257,7 +257,7 @@ mod tests {
         TupleProvider,
         FloatProvider
     };
-    use ::object::method::{BooleanCast, GetItem, Multiply, NotEqual, Length, StringCast, Iter};
+    use ::api::method::{BooleanCast, GetItem, Multiply, NotEqual, Length, StringCast, Iter};
     use super::*;
 
     fn setup() -> (Runtime,) {

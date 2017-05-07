@@ -9,7 +9,7 @@ use ::result::RtResult;
 use ::resource::strings;
 use ::typedef::builtin::Builtin;
 use ::typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> native::Boolean {

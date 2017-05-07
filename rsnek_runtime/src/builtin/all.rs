@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
-use ::object::method::{GetItem, Iter, BooleanCast};
-use ::object::RtObject;
+use ::api::method::{GetItem, Iter, BooleanCast};
+use ::api::RtObject;
 use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;

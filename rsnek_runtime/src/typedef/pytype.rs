@@ -5,11 +5,11 @@ use std::ops::Deref;
 
 use ::resource::strings;
 use runtime::Runtime;
-use object::{self, RtValue, method, typing};
-use object::selfref::{self, SelfRef};
+use api::{self, RtValue, method, typing};
+use api::selfref::{self, SelfRef};
 
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 use typedef::builtin::Builtin;
 
 
@@ -78,7 +78,7 @@ impl fmt::Debug for PyType {
 }
 
 
-impl object::PyAPI for PyType {}
+impl api::PyAPI for PyType {}
 
 
 method_not_implemented!(PyType,

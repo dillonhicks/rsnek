@@ -2,12 +2,12 @@ use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
 use runtime::Runtime;
-use object::{RtValue, PyAPI, method, typing};
-use object::selfref::{self, SelfRef};
+use api::{RtValue, PyAPI, method, typing};
+use api::selfref::{self, SelfRef};
 
 use typedef::native;
 use typedef::builtin::Builtin;
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 #[derive(Clone)]

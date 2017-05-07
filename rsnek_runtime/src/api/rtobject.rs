@@ -12,8 +12,8 @@ use num::Zero;
 use serde::ser::{Serialize, Serializer};
 
 use ::error::{Error, ErrorType};
-use ::object::method::{self, Id, Next, StringCast, StringRepresentation, Equal};
-use ::object;
+use ::api::method::{self, Id, Next, StringCast, StringRepresentation, Equal};
+use ::api;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::system::{StrongRc, WeakRc};
@@ -140,7 +140,7 @@ impl Iterator for RtObject {
 }
 
 
-impl object::PyAPI for RtObject {}
+impl api::PyAPI for RtObject {}
 
 impl method::GetAttr for RtObject {
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
@@ -1020,7 +1020,7 @@ method_not_implemented!(WeakRtObject,
 
 #[cfg(test)]
 mod tests {
-    use ::object::method::Add;
+    use ::api::method::Add;
     use ::traits::IntegerProvider;
     use ::runtime::Runtime;
 

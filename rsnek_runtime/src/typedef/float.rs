@@ -9,11 +9,11 @@ use runtime::Runtime;
 use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use error::Error;
 use result::{RtResult, ObjectResult};
-use object::{self, RtValue, method, typing};
-use object::selfref::{self, SelfRef};
+use api::{self, RtValue, method, typing};
+use api::selfref::{self, SelfRef};
 
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 use typedef::builtin::Builtin;
 use typedef::number::{self, FloatAdapter, IntAdapter};
 
@@ -76,7 +76,7 @@ impl fmt::Debug for PyFloat {
 }
 
 
-impl object::PyAPI for PyFloat {}
+impl api::PyAPI for PyFloat {}
 
 
 impl method::Hashed for PyFloat {

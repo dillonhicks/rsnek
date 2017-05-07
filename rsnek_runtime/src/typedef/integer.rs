@@ -7,11 +7,11 @@ use num::{self, Zero, ToPrimitive};
 
 use ::builtin::precondition::{check_args, check_kwargs};
 use ::error::Error;
-use ::object::method::*;
-use ::object::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};
-use ::object::RtObject;
-use ::object::selfref::{self, SelfRef};
-use ::object::{self, RtValue, method, typing};
+use ::api::method::*;
+use ::api::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};
+use ::api::RtObject;
+use ::api::selfref::{self, SelfRef};
+use ::api::{self, RtValue, method, typing};
 use ::resource::strings;
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
@@ -261,7 +261,7 @@ impl fmt::Debug for PyInteger {
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
 //    Python Object Traits
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+
-impl object::PyAPI for PyInteger {}
+impl api::PyAPI for PyInteger {}
 
 
 /// `self.rhs`
@@ -562,7 +562,7 @@ mod benches {
     #[allow(unused_imports)]
     use traits::{IteratorProvider, BooleanProvider, IntegerProvider,
                  StringProvider, NoneProvider, TupleProvider};
-    use object::method::*;
+    use api::method::*;
     use test::Bencher;
     use super::*;
 

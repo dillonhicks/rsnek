@@ -5,7 +5,7 @@ use std::ops::Deref;
 use num::Zero;
 
 use ::error::Error;
-use ::object::{RtObject, WeakRtObject};
+use ::api::{RtObject, WeakRtObject};
 use ::result::ObjectResult;
 use ::typedef::native;
 

@@ -16,7 +16,7 @@ use ::opcode::OpCode;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::typedef;
-use ::object::RtObject;
+use ::api::RtObject;
 use ::typedef::builtin::Builtin;
 
 

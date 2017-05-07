@@ -22,8 +22,8 @@ use rsnek_compile::fmt;
 use ::builtin::{logical_and, logical_or};
 use ::compiler::Compiler;
 use ::error::Error;
-use ::object::RtObject;
-use ::object::method::{
+use ::api::RtObject;
+use ::api::method::{
     Add,
     Subtract,
     Multiply,

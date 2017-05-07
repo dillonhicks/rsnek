@@ -7,11 +7,11 @@ use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
 use result::{RtResult, ObjectResult};
 
-use ::object::PyAPI;
-use ::object::RtObject;
-use ::object::WeakRtObject as WeakRtObject;
-use ::object::method::{self, Id, StringRepresentation, Equal, Hashed};
-use ::object::selfref::SelfRef;
+use ::api::PyAPI;
+use ::api::RtObject;
+use ::api::WeakRtObject as WeakRtObject;
+use ::api::method::{self, Id, StringRepresentation, Equal, Hashed};
+use ::api::selfref::SelfRef;
 
 use ::typedef::native::{self, Native};
 use ::typedef::dictionary::PyDict;

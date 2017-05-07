@@ -3,15 +3,15 @@ use std::ops::{Deref, Neg};
 use std::borrow::Borrow;
 use num::{Signed, Zero, FromPrimitive, ToPrimitive};
 
-use object::{self, RtValue, typing, method};
-use object::method::{BooleanCast, IntegerCast, StringRepresentation};
-use object::selfref::{self, SelfRef};
+use api::{self, RtValue, typing, method};
+use api::method::{BooleanCast, IntegerCast, StringRepresentation};
+use api::selfref::{self, SelfRef};
 
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use ::result::{ObjectResult, RtResult};
 use ::typedef::builtin::Builtin;
-use ::object::RtObject;
+use ::api::RtObject;
 use ::typedef::number;
 use ::typedef::native::{self, Number, HashId};
 
@@ -93,7 +93,7 @@ impl std::fmt::Debug for PyBoolean {
 }
 
 
-impl object::PyAPI for PyBoolean {}
+impl api::PyAPI for PyBoolean {}
 
 
 impl method::Hashed for PyBoolean {
@@ -332,7 +332,7 @@ method_not_implemented!(PyBoolean,
 
 #[cfg(test)]
 mod tests {
-    use object::method::*;
+    use api::method::*;
     use super::*;
 
     fn setup_test() -> (Runtime) {

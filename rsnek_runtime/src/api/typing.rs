@@ -1,5 +1,5 @@
-use ::object::method;
-use ::object::RtObject as ObjectRef;
+use ::api::method;
+use ::api::RtObject as ObjectRef;
 use ::runtime::Runtime;
 use ::typedef::native;
 

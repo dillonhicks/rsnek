@@ -2,8 +2,8 @@ use std::borrow::Borrow;
 
 use itertools::Itertools;
 
-use ::object::method::StringCast;
-use ::object::RtObject as ObjectRef;
+use ::api::method::StringCast;
+use ::api::RtObject as ObjectRef;
 use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;

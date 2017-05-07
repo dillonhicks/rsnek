@@ -9,11 +9,11 @@ use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
 use builtin::precondition::{check_kwargs, check_args};
-use ::object::method::*;
-use object::{self, RtValue, typing};
-use object::method::{self, Id, Hashed};
-use object::selfref::{self, SelfRef};
-use object::typing::BuiltinType;
+use ::api::method::*;
+use api::{self, RtValue, typing};
+use api::method::{self, Id, Hashed};
+use api::selfref::{self, SelfRef};
+use api::typing::BuiltinType;
 
 use ::resource::strings;
 use typedef::dictionary::PyDictType;
@@ -21,7 +21,7 @@ use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
 use typedef::object::PyObjectType;
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 const TYPE_NAME: &'static str = "builtin_function_or_method";
@@ -275,7 +275,7 @@ impl fmt::Debug for PyFunction {
 }
 
 
-impl object::PyAPI for PyFunction {}
+impl api::PyAPI for PyFunction {}
 
 
 /// `self.rhs`
@@ -394,7 +394,7 @@ method_not_implemented!(PyFunction,
 #[cfg(test)]
 mod tests {
     use traits::{FunctionProvider, BooleanProvider, NoneProvider, DictProvider, TupleProvider};
-    use object::method::*;
+    use api::method::*;
     use super::*;
 
     fn setup_test() -> (Runtime) {

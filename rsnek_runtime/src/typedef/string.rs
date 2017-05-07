@@ -9,12 +9,12 @@ use num::ToPrimitive;
 
 use ::builtin::precondition::{check_args, check_kwargs};
 use ::error::Error;
-use ::object::method;
-use ::object::method::*;
-use ::object::RtObject;
-use ::object::selfref::{self, SelfRef};
-use ::object::typing::{self, BuiltinType};
-use ::object::{self, RtValue};
+use ::api::method;
+use ::api::method::*;
+use ::api::RtObject;
+use ::api::selfref::{self, SelfRef};
+use ::api::typing::{self, BuiltinType};
+use ::api::{self, RtValue};
 use ::resource::strings;
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
@@ -243,7 +243,7 @@ impl fmt::Debug for PyString {
 }
 
 
-impl object::PyAPI for PyString {}
+impl api::PyAPI for PyString {}
 
 /// `self.rhs`
 impl method::GetAttr for PyString {

@@ -4,10 +4,10 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 
 use ::error::Error;
-use ::object::method::{self, Hashed, StringRepresentation};
-use ::object::RtObject;
-use ::object::selfref::{self, SelfRef};
-use ::object::{self, RtValue, typing};
+use ::api::method::{self, Hashed, StringRepresentation};
+use ::api::RtObject;
+use ::api::selfref::{self, SelfRef};
+use ::api::{self, RtValue, typing};
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
@@ -67,7 +67,7 @@ impl fmt::Debug for PyDict {
 }
 
 
-impl object::PyAPI for PyDict {}
+impl api::PyAPI for PyDict {}
 
 
 impl method::Hashed for PyDict {
@@ -240,7 +240,7 @@ method_not_implemented!(PyDict,
 #[cfg(test)]
 mod tests {
     use traits::{StringProvider, DictProvider};
-    use object::method::*;
+    use api::method::*;
     use super::*;
 
     fn setup_test() -> (Runtime) {

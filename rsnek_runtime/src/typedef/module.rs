@@ -2,16 +2,16 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 
 use runtime::Runtime;
-use object::typing;
-use object::selfref::{self, SelfRef};
-use object::typing::BuiltinType;
+use api::typing;
+use api::selfref::{self, SelfRef};
+use api::typing::BuiltinType;
 
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native;
 use typedef::object::{PyObject, ObjectValue};
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 // TODO: {T49} pretty Obvious need to have classobjs since PyModule is just an object with

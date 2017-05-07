@@ -7,14 +7,14 @@ use error::{Error, ErrorType};
 use runtime::Runtime;
 use traits::IntegerProvider;
 use result::{ObjectResult, RtResult};
-use object::{self, RtValue, typing};
-use object::selfref::{self, SelfRef};
-use object::method::{self, GetItem, Next};
-use object::typing::BuiltinType;
+use api::{self, RtValue, typing};
+use api::selfref::{self, SelfRef};
+use api::method::{self, GetItem, Next};
+use api::typing::BuiltinType;
 
 use typedef::builtin::Builtin;
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 const TYPE_NAME: &'static str = "iter";
@@ -97,7 +97,7 @@ impl Iterator for PyIterator {
 }
 
 
-impl object::PyAPI for PyIterator {}
+impl api::PyAPI for PyIterator {}
 
 impl method::Next for PyIterator {
 
@@ -168,7 +168,7 @@ mod tests {
     #[allow(unused_imports)]
     use traits::{IteratorProvider, BooleanProvider, IntegerProvider,
                  StringProvider, NoneProvider, TupleProvider};
-    use object::method::*;
+    use api::method::*;
     use test::Bencher;
     use super::*;
 

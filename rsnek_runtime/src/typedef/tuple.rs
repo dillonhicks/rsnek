@@ -8,10 +8,10 @@ use itertools::Itertools;
 use num::{ToPrimitive, Zero};
 
 use ::error::Error;
-use ::object::method::{self, Id, Length, StringRepresentation};
-use ::object::RtObject;
-use ::object::selfref::{self, SelfRef};
-use ::object::{self, RtValue, typing};
+use ::api::method::{self, Id, Length, StringRepresentation};
+use ::api::RtObject;
+use ::api::selfref::{self, SelfRef};
+use ::api::{self, RtValue, typing};
 use ::resource::strings;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
@@ -80,7 +80,7 @@ impl fmt::Debug for PyTuple {
 }
 
 
-impl object::PyAPI for PyTuple {}
+impl api::PyAPI for PyTuple {}
 
 impl method::Hashed for PyTuple {
     fn op_hash(&self, rt: &Runtime) -> ObjectResult {
@@ -255,7 +255,7 @@ method_not_implemented!(PyTuple,
 #[cfg(test)]
 mod tests {
     use traits::{TupleProvider, BooleanProvider};
-    use object::method::*;
+    use api::method::*;
     use super::*;
 
     fn setup_test() -> (Runtime) {

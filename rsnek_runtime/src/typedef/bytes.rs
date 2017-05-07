@@ -8,13 +8,13 @@ use result::{RtResult, ObjectResult};
 use runtime::Runtime;
 use traits::{IntegerProvider, BooleanProvider};
 
-use object::{self, RtValue};
-use object::selfref::{self, SelfRef};
-use object::typing;
-use object::method;
+use api::{self, RtValue};
+use api::selfref::{self, SelfRef};
+use api::typing;
+use api::method;
 
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 use typedef::builtin::Builtin;
 
 
@@ -71,7 +71,7 @@ impl fmt::Debug for PyBytes {
 }
 
 
-impl object::PyAPI for PyBytes {}
+impl api::PyAPI for PyBytes {}
 
 
 impl method::Hashed for PyBytes {

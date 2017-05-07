@@ -8,16 +8,16 @@ use error::Error;
 use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{NoneProvider, IntegerProvider};
-use object::{self, RtValue, typing};
-use object::method::{self, Id, GetItem, Hashed, SetItem, Keys};
-use object::selfref::{self, SelfRef};
-use object::typing::BuiltinType;
+use api::{self, RtValue, typing};
+use api::method::{self, Id, GetItem, Hashed, SetItem, Keys};
+use api::selfref::{self, SelfRef};
+use api::typing::BuiltinType;
 
 use typedef::dictionary::PyDictType;
 use typedef::tuple::PyTupleType;
 use typedef::builtin::Builtin;
 use typedef::native::{self, DictKey};
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 pub struct PyObjectType {
@@ -108,7 +108,7 @@ impl fmt::Debug for PyObject {
 
 
 
-impl object::PyAPI for PyObject {}
+impl api::PyAPI for PyObject {}
 
 impl method::GetAttr for PyObject {
     // TODO: {T63} Need to search the base classes dicts as well, maybe need MRO
@@ -216,7 +216,7 @@ method_not_implemented!(PyObject,
 mod tests {
     use traits::{BooleanProvider, TupleProvider, NoneProvider, DictProvider,
                  StringProvider, IntegerProvider, ObjectProvider};
-    use object::method::*;
+    use api::method::*;
     use super::*;
 
 

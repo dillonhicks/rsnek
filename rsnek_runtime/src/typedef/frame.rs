@@ -2,8 +2,8 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::fmt;
 
-use object::{PyAPI, RtValue, typing, method};
-use object::selfref::{self, SelfRef};
+use api::{PyAPI, RtValue, typing, method};
+use api::selfref::{self, SelfRef};
 use error::Error;
 use runtime::Runtime;
 //use traits::{BooleanProvider, IntegerProvider, NoneProvider};
@@ -11,7 +11,7 @@ use runtime::Runtime;
 use result::{ObjectResult};
 use typedef::builtin::Builtin;
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 
 //pub const FRAME_MAX_BLOCKS: usize = 20;
 

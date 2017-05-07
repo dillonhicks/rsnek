@@ -1,5 +1,5 @@
 use ::result::ObjectResult;
-use ::object::RtObject;
+use ::api::RtObject;
 
 
 pub trait New<T> {

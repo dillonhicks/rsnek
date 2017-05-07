@@ -5,11 +5,11 @@ use std::ops::Deref;
 use runtime::Runtime;
 use traits::{BooleanProvider, StringProvider};
 use result::{ObjectResult, RtResult};
-use object::selfref::{self, SelfRef};
-use object::{RtValue, PyAPI, method, typing};
+use api::selfref::{self, SelfRef};
+use api::{RtValue, PyAPI, method, typing};
 
 use typedef::native;
-use ::object::RtObject;
+use ::api::RtObject;
 use typedef::builtin::Builtin;
 
 

@@ -7,9 +7,9 @@ use num::{Num, Zero};
 
 use ::builtin;
 use ::error::{Error, ErrorType};
-use ::object::RtObject;
-use ::object::typing::BuiltinType;
-use ::object::method::{GetItem, SetAttr, GetAttr};
+use ::api::RtObject;
+use ::api::typing::BuiltinType;
+use ::api::method::{GetItem, SetAttr, GetAttr};
 use ::resource::strings;
 use ::result::{ObjectResult};
 use ::system::{StrongRc, WeakRc};
@@ -619,7 +619,7 @@ impl std::fmt::Debug for Runtime {
 mod tests {
 
     use super::*;
-    use object::method::Call;
+    use api::method::Call;
     use test::Bencher;
 
     fn setup_test() -> (Runtime) {

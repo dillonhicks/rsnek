@@ -1,10 +1,10 @@
 use std::borrow::Borrow;
 
-use ::object::method::BooleanCast;
+use ::api::method::BooleanCast;
 use ::runtime::Runtime;
 use ::result::ObjectResult;
 use ::typedef::builtin::Builtin;
-use ::object::RtObject as ObjectRef;
+use ::api::RtObject as ObjectRef;
 use ::traits::BooleanProvider;
 
 

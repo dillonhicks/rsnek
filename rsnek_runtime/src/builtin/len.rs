@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 
 use ::builtin::precondition::{check_args, check_kwargs};
-use ::object::method::{GetItem, Length};
-use ::object::RtObject;
+use ::api::method::{GetItem, Length};
+use ::api::RtObject;
 use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;
