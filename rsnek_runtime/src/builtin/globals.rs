@@ -8,8 +8,8 @@ use ::resource::strings;
 use ::runtime::Runtime;
 use ::traits::{TupleProvider, ModuleImporter};
 use ::api::RtObject;
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
 
 const FUNC_NAME: &'static str = "globals";

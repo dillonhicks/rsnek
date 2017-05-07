@@ -5,8 +5,8 @@ use runtime::Runtime;
 use api::{RtValue, PyAPI, method, typing};
 use api::selfref::{self, SelfRef};
 
-use typedef::native;
-use typedef::builtin::Builtin;
+use objects::native;
+use objects::builtin::Builtin;
 use ::api::RtObject;
 
 

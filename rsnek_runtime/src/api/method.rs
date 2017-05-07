@@ -6,8 +6,8 @@ use ::api::RtObject;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Native};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Native};
 
 
 // ----------------------------------

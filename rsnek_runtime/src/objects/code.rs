@@ -9,9 +9,9 @@ use api::selfref::{self, SelfRef};
 use api::typing;
 use api::method;
 
-use typedef::native;
+use objects::native;
 use ::api::RtObject;
-use typedef::builtin::Builtin;
+use objects::builtin::Builtin;
 
 
 pub struct PyCodeType {}

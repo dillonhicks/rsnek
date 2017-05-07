@@ -11,8 +11,8 @@ use ::api::{self, RtValue, typing};
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, DictKey};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, DictKey};
 
 
 const TYPE_NAME: &'static str = "dict";

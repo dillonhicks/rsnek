@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use ::api::method::BooleanCast;
 use ::runtime::Runtime;
 use ::result::ObjectResult;
-use ::typedef::builtin::Builtin;
+use ::objects::builtin::Builtin;
 use ::api::RtObject as ObjectRef;
 use ::traits::BooleanProvider;
 

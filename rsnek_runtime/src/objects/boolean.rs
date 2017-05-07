@@ -10,10 +10,10 @@ use api::selfref::{self, SelfRef};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use ::result::{ObjectResult, RtResult};
-use ::typedef::builtin::Builtin;
+use ::objects::builtin::Builtin;
 use ::api::RtObject;
-use ::typedef::number;
-use ::typedef::native::{self, Number, HashId};
+use ::objects::number;
+use ::objects::native::{self, Number, HashId};
 
 
 pub const TRUE_STR: &'static str = "True";

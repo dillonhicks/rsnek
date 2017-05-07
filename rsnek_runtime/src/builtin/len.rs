@@ -7,8 +7,8 @@ use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::IntegerProvider;
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, SignatureBuilder, Func, FuncType};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, SignatureBuilder, Func, FuncType};
 
 
 pub struct LenFn;

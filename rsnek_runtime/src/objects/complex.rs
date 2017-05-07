@@ -1,117 +1,87 @@
-use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
-
-use result::{RtResult, ObjectResult};
+use std::borrow::Borrow;
 use runtime::Runtime;
-use traits::{IntegerProvider, BooleanProvider};
-
-use api::{self, RtValue};
+use api::{RtValue, PyAPI, method, typing};
 use api::selfref::{self, SelfRef};
-use api::typing;
-use api::method;
 
-use typedef::native;
+use objects::native;
+use objects::builtin::Builtin;
 use ::api::RtObject;
-use typedef::builtin::Builtin;
 
 
-pub struct PyBytesType {
-    pub empty: RtObject,
-}
+#[derive(Clone)]
+pub struct PyComplexType {}
 
 
-impl typing::BuiltinType for PyBytesType {
-    type T = PyBytes;
-    type V = native::Bytes;
+impl typing::BuiltinType for PyComplexType {
+    type T = PyComplex;
+    type V = native::Complex;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
-        PyBytesType::inject_selfref(PyBytesType::alloc(value))
+        PyComplexType::inject_selfref(PyComplexType::alloc(value))
     }
 
     fn init_type() -> Self {
-        PyBytesType { empty: PyBytesType::inject_selfref(PyBytesType::alloc(native::Bytes::new())) }
+        PyComplexType {}
     }
 
-
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Bytes(value));
+        let object = RtObject::new(Builtin::Complex(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Bytes(ref string) => {
-                string.rc.set(&object.clone());
+            &Builtin::Complex(ref complex) => {
+                complex.rc.set(&object.clone());
             }
             _ => unreachable!(),
         }
         new
     }
 
-
     fn alloc(value: Self::V) -> Self::T {
-        PyBytes {
-            value: StringValue(value),
+        PyComplex {
+            value: ComplexValue(value),
             rc: selfref::RefCount::default(),
         }
     }
 }
 
 
-pub struct StringValue(pub native::Bytes);
-pub type PyBytes = RtValue<StringValue>;
+
+#[derive(Clone)]
+pub struct ComplexValue(native::Complex);
+pub type PyComplex = RtValue<ComplexValue>;
 
 
-impl fmt::Debug for PyBytes {
+impl fmt::Display for PyComplex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Bytes {{ {:?} }}", self.value.0)
+        write!(f, "{}", self.value.0)
     }
 }
 
 
-impl api::PyAPI for PyBytes {}
-
-
-impl method::Hashed for PyBytes {
-    fn op_hash(&self, rt: &Runtime) -> ObjectResult {
-        let value = self.native_hash()?;
-        Ok(rt.int(value))
-    }
-
-    fn native_hash(&self) -> RtResult<native::HashId> {
-        let mut s = DefaultHasher::new();
-        self.value.0.hash(&mut s);
-        Ok(s.finish())
-    }
-}
-
-impl method::Equal for PyBytes {
-    fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
-        let value = self.native_eq(rhs.as_ref())?;
-        Ok(rt.bool(value))
-    }
-
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
-        match rhs {
-            &Builtin::Bytes(ref bytes) => Ok(self.value.0 == bytes.value.0),
-            _ => Ok(false),
-        }
+impl fmt::Debug for PyComplex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.value.0)
     }
 }
 
 
-method_not_implemented!(PyBytes,
+impl PyAPI for PyComplex {}
+
+
+method_not_implemented!(PyComplex,
     AbsValue   Add   AddItem   Append
     Await   BitwiseAnd   BitwiseOr   BooleanCast
     BytesCast   Call   Clear   Close
     ComplexCast   Contains   Count   DelAttr
     Delete   DeleteItem   DescriptorGet   DescriptorSet
     DescriptorSetName   Discard   DivMod   Enter
-    Exit   Extend   FloatCast
+    Equal   Exit   Extend   FloatCast
     FloorDivision   Get   GetAttr   GetAttribute
-    GetItem   GreaterOrEqual   GreaterThan
+    GetItem   GreaterOrEqual   GreaterThan   Hashed
     Id   InPlaceAdd   InPlaceBitwiseAnd   InPlaceBitwiseOr
     InPlaceDivMod   InPlaceFloorDivision   InPlaceLeftShift   InPlaceMatrixMultiply
     InPlaceModulus   InPlaceMultiply   InPlacePow   InPlaceRightShift

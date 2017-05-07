@@ -8,9 +8,9 @@ use result::{ObjectResult, RtResult};
 use api::selfref::{self, SelfRef};
 use api::{RtValue, PyAPI, method, typing};
 
-use typedef::native;
+use objects::native;
 use ::api::RtObject;
-use typedef::builtin::Builtin;
+use objects::builtin::Builtin;
 
 
 pub const NONE: &'static native::None = &native::None();

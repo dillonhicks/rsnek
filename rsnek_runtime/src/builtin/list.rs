@@ -7,8 +7,8 @@ use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{ListProvider, DefaultListProvider, IntegerProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
 
 pub struct ListFn;

@@ -17,9 +17,9 @@ use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider, StringProvider,
                IteratorProvider, DefaultTupleProvider, TupleProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::collection::sequence;
-use ::typedef::native::{self, Tuple};
+use ::objects::builtin::Builtin;
+use ::objects::collection::sequence;
+use ::objects::native::{self, Tuple};
 
 
 pub struct PyTupleType {

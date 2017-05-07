@@ -7,8 +7,8 @@ use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, StringProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Signature, Func, FuncType};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Signature, Func, FuncType};
 
 
 pub struct TypeFn;

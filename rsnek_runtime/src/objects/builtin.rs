@@ -13,25 +13,25 @@ use ::api::WeakRtObject as WeakRtObject;
 use ::api::method::{self, Id, StringRepresentation, Equal, Hashed};
 use ::api::selfref::SelfRef;
 
-use ::typedef::native::{self, Native};
-use ::typedef::dictionary::PyDict;
-use ::typedef::object::PyObject;
-use ::typedef::boolean::PyBoolean;
-use ::typedef::integer::PyInteger;
-use ::typedef::float::PyFloat;
-use ::typedef::iterator::PyIterator;
-use ::typedef::string::PyString;
-use ::typedef::bytes::PyBytes;
-use ::typedef::complex::PyComplex;
-use ::typedef::none::PyNone;
-use ::typedef::tuple::PyTuple;
-use ::typedef::list::PyList;
-use ::typedef::pytype::PyType;
-use ::typedef::method::PyFunction;
-use ::typedef::code::PyCode;
-use ::typedef::frame::PyFrame;
-use ::typedef::set::PySet;
-use ::typedef::frozenset::PyFrozenSet;
+use ::objects::native::{self, Native};
+use ::objects::dictionary::PyDict;
+use ::objects::object::PyObject;
+use ::objects::boolean::PyBoolean;
+use ::objects::integer::PyInteger;
+use ::objects::float::PyFloat;
+use ::objects::iterator::PyIterator;
+use ::objects::string::PyString;
+use ::objects::bytes::PyBytes;
+use ::objects::complex::PyComplex;
+use ::objects::none::PyNone;
+use ::objects::tuple::PyTuple;
+use ::objects::list::PyList;
+use ::objects::pytype::PyType;
+use ::objects::method::PyFunction;
+use ::objects::code::PyCode;
+use ::objects::frame::PyFrame;
+use ::objects::set::PySet;
+use ::objects::frozenset::PyFrozenSet;
 
 
 #[allow(dead_code)]

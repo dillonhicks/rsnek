@@ -6,8 +6,8 @@ use ::resource::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, BooleanProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Func, FuncType, SignatureBuilder};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
 use builtin::precondition::{check_args, check_kwargs};
 

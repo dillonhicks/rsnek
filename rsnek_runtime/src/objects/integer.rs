@@ -16,9 +16,9 @@ use ::resource::strings;
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Native, HashId, SignatureBuilder};
-use ::typedef::number::{self, FloatAdapter, IntAdapter, format_int};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Native, HashId, SignatureBuilder};
+use ::objects::number::{self, FloatAdapter, IntAdapter, format_int};
 
 
 const STATIC_INT_RANGE: std::ops::Range<isize> = -5..1024;

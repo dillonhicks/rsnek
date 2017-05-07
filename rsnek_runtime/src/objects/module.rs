@@ -6,11 +6,11 @@ use api::typing;
 use api::selfref::{self, SelfRef};
 use api::typing::BuiltinType;
 
-use typedef::dictionary::PyDictType;
-use typedef::tuple::PyTupleType;
-use typedef::builtin::Builtin;
-use typedef::native;
-use typedef::object::{PyObject, ObjectValue};
+use objects::dictionary::PyDictType;
+use objects::tuple::PyTupleType;
+use objects::builtin::Builtin;
+use objects::native;
+use objects::object::{PyObject, ObjectValue};
 use ::api::RtObject;
 
 

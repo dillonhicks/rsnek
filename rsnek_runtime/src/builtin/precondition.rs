@@ -7,8 +7,8 @@ use std::cell::Ref;
 use ::error::Error;
 use ::api::RtObject as ObjectRef;
 use ::result::{RtResult};
-use ::typedef::builtin::Builtin;
-use ::typedef::native;
+use ::objects::builtin::Builtin;
+use ::objects::native;
 
 
 pub fn check_args(count: usize, pos_args: &ObjectRef) -> RtResult<native::None> {

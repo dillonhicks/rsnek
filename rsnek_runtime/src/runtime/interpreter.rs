@@ -73,9 +73,9 @@ use ::traits::{
     FunctionProvider,
     DefaultDictProvider
 };
-use ::typedef::native::{self, Native, Instr, FuncType};
-use ::typedef::native::SignatureBuilder;
-use ::typedef::builtin::Builtin;
+use ::objects::native::{self, Native, Instr, FuncType};
+use ::objects::native::SignatureBuilder;
+use ::objects::builtin::Builtin;
 
 
 const RECURSION_LIMIT: usize = 256;

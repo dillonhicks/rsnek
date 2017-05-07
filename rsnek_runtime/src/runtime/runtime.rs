@@ -39,24 +39,24 @@ use ::traits::{
     DefaultStringProvider,
     DefaultTupleProvider,
 };
-use ::typedef::boolean::PyBooleanType;
-use ::typedef::builtin::Builtin;
-use ::typedef::bytes::PyBytesType;
-use ::typedef::code::PyCodeType;
-use ::typedef::dictionary::PyDictType;
-use ::typedef::float::PyFloatType;
-use ::typedef::frame::PyFrameType;
-use ::typedef::integer::PyIntegerType;
-use ::typedef::iterator::{PyIteratorType, IteratorValue};
-use ::typedef::list::PyListType;
-use ::typedef::method::PyFunctionType;
-use ::typedef::module::PyModuleType;
-use ::typedef::native::{self, SignatureBuilder};
-use ::typedef::none::{PyNoneType, NONE};
-use ::typedef::object::PyObjectType;
-use ::typedef::pytype::PyMeta;
-use ::typedef::string::PyStringType;
-use ::typedef::tuple::PyTupleType;
+use ::objects::boolean::PyBooleanType;
+use ::objects::builtin::Builtin;
+use ::objects::bytes::PyBytesType;
+use ::objects::code::PyCodeType;
+use ::objects::dictionary::PyDictType;
+use ::objects::float::PyFloatType;
+use ::objects::frame::PyFrameType;
+use ::objects::integer::PyIntegerType;
+use ::objects::iterator::{PyIteratorType, IteratorValue};
+use ::objects::list::PyListType;
+use ::objects::method::PyFunctionType;
+use ::objects::module::PyModuleType;
+use ::objects::native::{self, SignatureBuilder};
+use ::objects::none::{PyNoneType, NONE};
+use ::objects::object::PyObjectType;
+use ::objects::pytype::PyMeta;
+use ::objects::string::PyStringType;
+use ::objects::tuple::PyTupleType;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.

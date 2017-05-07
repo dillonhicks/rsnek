@@ -7,7 +7,7 @@ use num::Zero;
 use ::error::Error;
 use ::api::{RtObject, WeakRtObject};
 use ::result::ObjectResult;
-use ::typedef::native;
+use ::objects::native;
 
 
 /// A trait that must be implemented on a refcount wrapper type

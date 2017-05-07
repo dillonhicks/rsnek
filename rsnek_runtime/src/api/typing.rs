@@ -1,7 +1,7 @@
 use ::api::method;
 use ::api::RtObject as ObjectRef;
 use ::runtime::Runtime;
-use ::typedef::native;
+use ::objects::native;
 
 
 pub trait HasName {

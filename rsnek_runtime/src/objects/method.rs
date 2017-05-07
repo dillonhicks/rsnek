@@ -16,11 +16,11 @@ use api::selfref::{self, SelfRef};
 use api::typing::BuiltinType;
 
 use ::resource::strings;
-use typedef::dictionary::PyDictType;
-use typedef::tuple::PyTupleType;
-use typedef::builtin::Builtin;
-use typedef::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
-use typedef::object::PyObjectType;
+use objects::dictionary::PyDictType;
+use objects::tuple::PyTupleType;
+use objects::builtin::Builtin;
+use objects::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
+use objects::object::PyObjectType;
 use ::api::RtObject;
 
 

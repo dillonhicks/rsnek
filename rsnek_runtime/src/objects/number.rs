@@ -5,7 +5,7 @@ use std::collections::hash_map::DefaultHasher;
 
 use num::{ToPrimitive};
 
-use typedef::native::{self, HashId};
+use objects::native::{self, HashId};
 
 
 pub fn format_float(float: &native::Float) -> native::String {

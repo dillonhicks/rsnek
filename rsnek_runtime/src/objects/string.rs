@@ -20,9 +20,9 @@ use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
                FunctionProvider, IteratorProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::collection::sequence;
-use ::typedef::native::{self, SignatureBuilder};
+use ::objects::builtin::Builtin;
+use ::objects::collection::sequence;
+use ::objects::native::{self, SignatureBuilder};
 
 
 const TYPE_NAME: &'static str = "str";

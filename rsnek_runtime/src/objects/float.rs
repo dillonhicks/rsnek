@@ -12,10 +12,10 @@ use result::{RtResult, ObjectResult};
 use api::{self, RtValue, method, typing};
 use api::selfref::{self, SelfRef};
 
-use typedef::native;
+use objects::native;
 use ::api::RtObject;
-use typedef::builtin::Builtin;
-use typedef::number::{self, FloatAdapter, IntAdapter};
+use objects::builtin::Builtin;
+use objects::number::{self, FloatAdapter, IntAdapter};
 
 
 #[derive(Clone)]

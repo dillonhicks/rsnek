@@ -12,8 +12,8 @@ use api::selfref::{self, SelfRef};
 use api::method::{self, GetItem, Next};
 use api::typing::BuiltinType;
 
-use typedef::builtin::Builtin;
-use typedef::native;
+use objects::builtin::Builtin;
+use objects::native;
 use ::api::RtObject;
 
 

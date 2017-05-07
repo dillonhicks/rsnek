@@ -7,8 +7,8 @@ use num::ToPrimitive;
 use ::error::Error;
 use ::result::RtResult;
 use ::resource::strings;
-use ::typedef::builtin::Builtin;
-use ::typedef::native;
+use ::objects::builtin::Builtin;
+use ::objects::native;
 use ::api::RtObject;
 
 

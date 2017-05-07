@@ -15,9 +15,9 @@ use api::{RtValue, typing, PyAPI};
 use api::method::{self, Equal};
 use api::selfref::{self, SelfRef};
 
-use ::typedef::collection::sequence;
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, List};
+use ::objects::collection::sequence;
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, List};
 use ::api::RtObject;
 
 

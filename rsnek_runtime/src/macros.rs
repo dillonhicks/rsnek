@@ -5,7 +5,7 @@
 
 
 
-/// Expands the `typedef::Builtin` into its variant to dispatch the given method
+/// Expands the `objects::Builtin` into its variant to dispatch the given method
 /// on that type.
 macro_rules! foreach_builtin {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (

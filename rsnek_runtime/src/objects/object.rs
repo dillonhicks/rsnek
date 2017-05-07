@@ -13,10 +13,10 @@ use api::method::{self, Id, GetItem, Hashed, SetItem, Keys};
 use api::selfref::{self, SelfRef};
 use api::typing::BuiltinType;
 
-use typedef::dictionary::PyDictType;
-use typedef::tuple::PyTupleType;
-use typedef::builtin::Builtin;
-use typedef::native::{self, DictKey};
+use objects::dictionary::PyDictType;
+use objects::tuple::PyTupleType;
+use objects::builtin::Builtin;
+use objects::native::{self, DictKey};
 use ::api::RtObject;
 
 

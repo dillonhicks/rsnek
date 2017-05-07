@@ -15,7 +15,7 @@ use ::graph::{DiGraph, Graph, Node};
 use ::opcode::OpCode;
 use ::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};
 use ::scope::{ScopeNode, ScopeHint, ManageScope};
-use ::typedef::native::{self, Instr, Native};
+use ::objects::native::{self, Instr, Native};
 
 
 pub trait TrackSymbol {

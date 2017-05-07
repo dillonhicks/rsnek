@@ -15,7 +15,7 @@ use rsnek_compile::fmt;
 
 use ::error::Error;
 use ::opcode::OpCode;
-use ::typedef::native::{self, Instr, Native};
+use ::objects::native::{self, Instr, Native};
 use ::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
 use ::scope::{ScopeNode, ManageScope, Descriptor};
 use ::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};

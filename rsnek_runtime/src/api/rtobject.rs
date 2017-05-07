@@ -18,8 +18,8 @@ use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::system::{StrongRc, WeakRc};
 use ::traits::{IntegerProvider, BooleanProvider};
-use ::typedef::builtin::Builtin;
-use ::typedef::native::{self, Native, ObjectId};
+use ::objects::builtin::Builtin;
+use ::objects::native::{self, Native, ObjectId};
 
 type RuntimeRef = StrongRc<Builtin>;
 type RuntimeWeakRef = WeakRc<Builtin>;

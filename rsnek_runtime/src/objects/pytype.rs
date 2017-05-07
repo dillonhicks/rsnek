@@ -8,9 +8,9 @@ use runtime::Runtime;
 use api::{self, RtValue, method, typing};
 use api::selfref::{self, SelfRef};
 
-use typedef::native;
+use objects::native;
 use ::api::RtObject;
-use typedef::builtin::Builtin;
+use objects::builtin::Builtin;
 
 
 pub struct PyMeta {
