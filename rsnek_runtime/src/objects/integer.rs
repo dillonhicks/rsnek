@@ -5,7 +5,7 @@ use std::ops::Deref;
 
 use num::{self, Zero, ToPrimitive};
 
-use ::builtin::precondition::{check_args, check_kwargs};
+use ::modules::precondition::{check_args, check_kwargs};
 use ::error::Error;
 use ::api::method::*;
 use ::api::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};

@@ -11,7 +11,6 @@ mod list;
 mod globals;
 mod tuple;
 
-pub mod precondition;
 
 pub use self::and::logical_and;
 pub use self::or::logical_or;

@@ -12,18 +12,15 @@ use serde::ser::{Serializer};
 
 use rsnek_compile::{Id, Tag, Num, OwnedTk};
 
-use ::opcode::OpCode;
-use ::result::{ObjectResult, RtResult};
-use ::runtime::Runtime;
-use ::objects;
 use ::api::RtObject;
 use ::objects::builtin::Builtin;
-
+use ::objects;
+use ::result::{ObjectResult, RtResult};
+use ::runtime::{OpCode, Runtime};
 
 
 // Implementation specific types
 //
-
 pub type ObjectId = u64;
 pub type HashId = u64;
 

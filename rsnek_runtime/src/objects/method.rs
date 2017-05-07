@@ -8,7 +8,7 @@ use error::Error;
 use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
-use builtin::precondition::{check_kwargs, check_args};
+use ::modules::precondition::{check_kwargs, check_args};
 use ::api::method::*;
 use api::{self, RtValue, typing};
 use api::method::{self, Id, Hashed};

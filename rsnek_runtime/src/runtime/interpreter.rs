@@ -19,7 +19,7 @@ use rustyline;
 
 use rsnek_compile::fmt;
 
-use ::builtin::{logical_and, logical_or};
+use ::modules::builtins::{logical_and, logical_or};
 use ::compiler::Compiler;
 use ::error::Error;
 use ::api::RtObject;
@@ -55,10 +55,9 @@ use ::api::method::{
     GetAttr,
     SetItem,
 };
-use ::opcode::OpCode;
 use ::resource;
 use ::result::ObjectResult;
-use ::runtime::Runtime;
+use ::runtime::{OpCode, Runtime};
 use ::traits::{
     NoneProvider,
     StringProvider,

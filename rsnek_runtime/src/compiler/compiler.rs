@@ -13,13 +13,13 @@ use rsnek_compile::{
     OwnedTk, Id};
 use rsnek_compile::fmt;
 
+use ::compiler::graph::{Node, Graph};
+use ::compiler::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
+use ::compiler::scope::{ScopeNode, ManageScope, Descriptor};
+use ::compiler::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
 use ::error::Error;
-use ::opcode::OpCode;
 use ::objects::native::{self, Instr, Native};
-use ::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
-use ::scope::{ScopeNode, ManageScope, Descriptor};
-use ::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
-use ::graph::{Node, Graph};
+use ::runtime::OpCode;
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 
@@ -82,11 +82,11 @@ impl<'a> Compiler<'a> {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
                 let result = self.compile_ast(&result.ast.borrow());
                 trace!("Compiler";
-                    "action" => "dump_metadata",
-                    "metadata" => format!("{}", fmt::json(&self.metadata)));
+                "action" => "dump_metadata",
+                "metadata" => format!("{}", fmt::json(&self.metadata)));
                 trace!("Compiler";
-                    "action" => "dump_module",
-                    "module" => format!("{}", fmt::json(&self.module)));
+                "action" => "dump_module",
+                "module" => format!("{}", fmt::json(&self.module)));
                 result
             },
             other => {
@@ -312,7 +312,7 @@ impl<'a> Compiler<'a> {
         }
 
         instructions.push(
-                Instr(OpCode::CallFunction, Some(Native::Count(arg_exprs.len())))
+            Instr(OpCode::CallFunction, Some(Native::Count(arg_exprs.len())))
         );
 
         Ok(instructions.into_boxed_slice())
@@ -502,7 +502,7 @@ mod tests {
         };
 
         info!("Tokens({}):\n----------------------------------------\n{}\n",
-                 tokens.len(), fmt::tokens(&tokens, true));
+        tokens.len(), fmt::tokens(&tokens, true));
 
         match parser.parse_tokens(&tokens) {
             ParserResult::Ok(ref result) if result.remaining_tokens.len() == 0 => {
@@ -522,7 +522,7 @@ mod tests {
     #[test]
     fn compile_multiple_simple_expr() {
         assert_compile(
-r#"
+            r#"
 x = 123
 y = 45
 z = x + y

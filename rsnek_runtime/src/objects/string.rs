@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use num::ToPrimitive;
 
-use ::builtin::precondition::{check_args, check_kwargs};
+use ::modules::precondition::{check_args, check_kwargs};
 use ::error::Error;
 use ::api::method;
 use ::api::method::*;

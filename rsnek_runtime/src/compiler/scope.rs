@@ -1,4 +1,4 @@
-use ::graph::Node;
+use ::compiler::graph::Node;
 
 
 pub trait ManageScope {

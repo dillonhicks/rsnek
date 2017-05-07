@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use ::builtin::precondition::{check_args, check_kwargs, check_args_range};
+use ::modules::precondition::{check_args, check_kwargs, check_args_range};
 use ::api::method::{GetItem, Iter};
 use ::api::RtObject as ObjectRef;
 use ::resource::strings;

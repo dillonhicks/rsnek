@@ -10,12 +10,12 @@ use serde::ser::{SerializeSeq};
 
 use rsnek_compile::fmt;
 
+use ::compiler::graph::{DiGraph, Graph, Node};
+use ::compiler::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};
+use ::compiler::scope::{ScopeNode, ScopeHint, ManageScope};
 use ::error::Error;
-use ::graph::{DiGraph, Graph, Node};
-use ::opcode::OpCode;
-use ::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};
-use ::scope::{ScopeNode, ScopeHint, ManageScope};
 use ::objects::native::{self, Instr, Native};
+use ::runtime::OpCode;
 
 
 pub trait TrackSymbol {

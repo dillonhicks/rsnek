@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::borrow::Borrow;
 
-use ::builtin::precondition::{check_args, check_kwargs};
+use ::modules::precondition::{check_args, check_kwargs};
 use ::error::Error;
 use ::result::{ObjectResult};
 use ::resource::strings;

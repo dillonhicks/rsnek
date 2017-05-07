@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 
 use num::{Num, Zero};
 
-use ::builtin;
+use ::modules;
 use ::error::{Error, ErrorType};
 use ::api::RtObject;
 use ::api::typing::BuiltinType;
@@ -163,16 +163,16 @@ impl Runtime {
         }
 
 
-        rt.register_builtin(builtin::LenFn::create());
-        rt.register_builtin(builtin::PrintFn::create());
-        rt.register_builtin(builtin::TypeFn::create());
-        rt.register_builtin(builtin::StrFn::create());
-        rt.register_builtin(builtin::IntFn::create());
-        rt.register_builtin(builtin::AllFn::create());
-        rt.register_builtin(builtin::AnyFn::create());
-        rt.register_builtin(builtin::ListFn::create());
-        rt.register_builtin(builtin::GlobalsFn::create());
-        rt.register_builtin(builtin::TupleFn::create());
+        rt.register_builtin(modules::builtins::LenFn::create());
+        rt.register_builtin(modules::builtins::PrintFn::create());
+        rt.register_builtin(modules::builtins::TypeFn::create());
+        rt.register_builtin(modules::builtins::StrFn::create());
+        rt.register_builtin(modules::builtins::IntFn::create());
+        rt.register_builtin(modules::builtins::AllFn::create());
+        rt.register_builtin(modules::builtins::AnyFn::create());
+        rt.register_builtin(modules::builtins::ListFn::create());
+        rt.register_builtin(modules::builtins::GlobalsFn::create());
+        rt.register_builtin(modules::builtins::TupleFn::create());
         rt
     }
 
