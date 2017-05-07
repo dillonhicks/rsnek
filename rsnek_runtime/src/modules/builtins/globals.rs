@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 
 use ::modules::precondition::{check_args, check_kwargs};
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::result::{ObjectResult};
 use ::resources::strings;
 use ::runtime::Runtime;

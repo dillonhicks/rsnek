@@ -11,7 +11,7 @@ use std::ops::Deref;
 use num::Zero;
 use serde::ser::{Serialize, Serializer};
 
-use ::api::error::{Error, ErrorType};
+use ::api::result::{Error, ErrorType};
 use ::api::method::{self, Id, Next, StringCast, StringRepresentation, Equal};
 use ::api;
 use ::api::result::{ObjectResult, RtResult};

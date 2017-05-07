@@ -6,7 +6,7 @@ use std::ops::Deref;
 use num::{self, Zero, ToPrimitive};
 
 use ::modules::precondition::{check_args, check_kwargs};
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::method::*;
 use ::api::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateValue};
 use ::api::RtObject;

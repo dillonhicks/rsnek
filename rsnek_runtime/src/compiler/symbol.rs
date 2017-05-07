@@ -13,7 +13,7 @@ use rsnek_compile::fmt;
 use ::compiler::graph::{DiGraph, Graph, Node};
 use ::compiler::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};
 use ::compiler::scope::{ScopeNode, ScopeHint, ManageScope};
-use ::api::error::Error;
+use ::api::result::Error;
 use ::objects::native::{self, Instr, Native};
 use ::runtime::OpCode;
 

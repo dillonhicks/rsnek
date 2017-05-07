@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use num::Zero;
 
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::{RtObject, WeakRtObject};
 use ::api::result::ObjectResult;
 use ::objects::native;

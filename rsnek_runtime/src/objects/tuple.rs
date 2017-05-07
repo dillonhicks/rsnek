@@ -7,7 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 use itertools::Itertools;
 use num::{ToPrimitive, Zero};
 
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::method::{self, Id, Length, StringRepresentation};
 use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};

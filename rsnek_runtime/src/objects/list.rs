@@ -6,7 +6,7 @@ use itertools::Itertools;
 use num::ToPrimitive;
 
 use ::resources::strings;
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{BooleanProvider, IntegerProvider, StringProvider,

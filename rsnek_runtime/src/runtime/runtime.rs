@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use num::{Num, Zero};
 
 use ::modules;
-use ::api::error::{Error, ErrorType};
+use ::api::result::{Error, ErrorType};
 use ::api::RtObject;
 use ::api::typing::BuiltinType;
 use ::api::method::{GetItem, SetAttr, GetAttr};

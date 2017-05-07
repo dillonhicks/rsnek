@@ -8,7 +8,7 @@ use std::str::FromStr;
 use num::ToPrimitive;
 
 use ::modules::precondition::{check_args, check_kwargs};
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::method;
 use ::api::method::*;
 use ::api::RtObject;

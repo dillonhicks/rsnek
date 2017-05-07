@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::method::{self, Hashed, StringRepresentation};
 use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};

@@ -21,7 +21,7 @@ use rsnek_compile::fmt;
 
 use ::modules::builtins::{logical_and, logical_or};
 use ::compiler::Compiler;
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::RtObject;
 use ::api::method::{
     Add,

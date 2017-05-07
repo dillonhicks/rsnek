@@ -3,7 +3,7 @@ use std::default::Default;
 use std::ops::{Deref};
 use std::borrow::Borrow;
 
-use ::api::error::{Error, ErrorType};
+use ::api::result::{Error, ErrorType};
 use runtime::Runtime;
 use traits::IntegerProvider;
 use ::api::result::{ObjectResult, RtResult};

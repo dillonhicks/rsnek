@@ -4,7 +4,7 @@ use std::fmt;
 
 use api::{PyAPI, RtValue, typing, method};
 use api::selfref::{self, SelfRef};
-use ::api::error::Error;
+use ::api::result::Error;
 use runtime::Runtime;
 //use traits::{BooleanProvider, IntegerProvider, NoneProvider};
 

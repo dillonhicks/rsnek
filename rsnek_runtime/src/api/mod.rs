@@ -20,12 +20,13 @@
 ///!
 ///! ```
 mod rtobject;
-pub mod error;
 pub mod method;
 pub mod result;
 pub mod selfref;
 pub mod typing;
 
+
+pub use self::result::{RtResult, ObjectResult};
 pub use self::rtobject::{RtObject, WeakRtObject};
 
 /// Runtime Value delegate that holds its own self reference

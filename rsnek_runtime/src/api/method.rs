@@ -1,9 +1,8 @@
 ///! Union of all traits used to define the Python Object API. See: `PyAPI`.
 use std::borrow::Borrow;
 
-use ::api::error::Error;
 use ::api::RtObject;
-use ::api::result::{ObjectResult, RtResult};
+use ::api::result::{Error, ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider};
 use ::objects::builtin::Builtin;

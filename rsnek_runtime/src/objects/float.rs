@@ -7,7 +7,7 @@ use num::ToPrimitive;
 
 use runtime::Runtime;
 use traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
-use ::api::error::Error;
+use ::api::result::Error;
 use ::api::result::{RtResult, ObjectResult};
 use api::{self, RtValue, method, typing};
 use api::selfref::{self, SelfRef};
