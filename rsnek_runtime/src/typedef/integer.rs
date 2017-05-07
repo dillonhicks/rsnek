@@ -27,7 +27,7 @@ const TYPE_NAME: &'static str = "int";
 
 #[derive(Clone)]
 pub struct PyIntegerType {
-    pub static_integers: Vec<RtObject>,
+    static_integers: Vec<RtObject>,
 }
 
 
@@ -51,7 +51,9 @@ impl typing::BuiltinType for PyIntegerType {
             .map(PyIntegerType::alloc)
             .map(PyIntegerType::inject_selfref)
             .collect();
-        PyIntegerType { static_integers: range }
+        PyIntegerType {
+            static_integers: range,
+        }
     }
 
     fn inject_selfref(value: PyInteger) -> RtObject {

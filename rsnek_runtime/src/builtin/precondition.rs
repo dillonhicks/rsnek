@@ -11,7 +11,6 @@ use ::typedef::builtin::Builtin;
 use ::typedef::native;
 
 
-#[inline(always)]
 pub fn check_args(count: usize, pos_args: &ObjectRef) -> RtResult<native::None> {
     match pos_args.as_ref() {
         &Builtin::Tuple(ref tuple) => {
@@ -38,7 +37,7 @@ pub fn check_args_range(range: Range<usize>, pos_args: &ObjectRef) -> RtResult<u
     }
 }
 
-#[inline(always)]
+
 pub fn check_kwargs(count: usize, kwargs: &ObjectRef) -> RtResult<native::None> {
     match kwargs.as_ref() {
 
@@ -54,43 +53,4 @@ pub fn check_kwargs(count: usize, kwargs: &ObjectRef) -> RtResult<native::None> 
         _ => Err(Error::typerr("Expected type tuple for pos_args")),
     }
 
-}
-
-
-/// Check and copy args as part of the native method calling conventions
-#[inline(always)]
-pub fn check_fnargs_rt(fnargs: &native::FnArgs) -> RtResult<native::NativeFnArgs> {
-    let &(ref pos_args, ref starargs, ref kwargs) = fnargs;
-
-    let arg0: native::Tuple = match pos_args.as_ref() {
-        &Builtin::Tuple(ref tuple) => {
-            tuple.value
-                .0
-                .iter()
-                .map(|objref| objref.clone())
-                .collect()
-        }
-        _ => return Err(Error::typerr("Expected type tuple for pos_args")),
-    };
-
-    let arg1: native::Tuple = match starargs.as_ref() {
-        &Builtin::Tuple(ref tuple) => {
-            tuple.value
-                .0
-                .iter()
-                .map(|objref| objref.clone())
-                .collect()
-        }
-        _ => return Err(Error::typerr("Expected type tuple for *args")),
-    };
-
-    let arg2: native::Dict = match kwargs.as_ref() {
-        &Builtin::Dict(ref dict) => {
-            let borrowed: Ref<native::Dict> = dict.value.0.borrow();
-            borrowed.iter().map(|(key, value)| (key.clone(), value.clone())).collect()
-        }
-        _ => return Err(Error::typerr("Expected type tuple for **args")),
-    };
-
-    Ok((arg0, arg1, arg2))
 }

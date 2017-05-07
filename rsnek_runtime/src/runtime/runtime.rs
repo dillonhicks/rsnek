@@ -191,6 +191,7 @@ impl Runtime {
         let key = self.str(name);
         module.op_getattr(&self, &key).unwrap()
     }
+
 }
 
 
@@ -626,7 +627,7 @@ mod tests {
     }
 
     #[bench]
-    fn test_builtin_len(b: &mut Bencher) {
+    fn builtin_len_tuple_3_elems(b: &mut Bencher) {
         let rt = setup_test();
         let tuple = rt.tuple(vec![rt.none(), rt.none(), rt.none()]);
 
@@ -637,8 +638,29 @@ mod tests {
         let len = rt.get_builtin("len");
 
         b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
+    }
 
-        let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
-        assert_eq!(result, rt.int(3));
+    #[bench]
+    fn builtin_len_tuple_4k_elems(b: &mut Bencher) {
+        let rt = setup_test();
+        let tuple = rt.tuple((0..4096).map(|_| rt.none()).collect::<Vec<_>>());
+
+        let args = rt.tuple(vec![tuple.clone()]);
+        let starargs = rt.tuple(vec![]);
+        let kwargs = rt.dict(native::Dict::new());
+
+        let len = rt.get_builtin("len");
+
+        b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
+
+    }
+
+    #[bench]
+    fn int_getattr_hash_method_wrapper(b: &mut Bencher) {
+        let rt = setup_test();
+        let one = rt.int(1);
+        let name = rt.str("__hash__");
+
+        b.iter(|| { one.op_getattr(&rt, &name).unwrap() });
     }
 }

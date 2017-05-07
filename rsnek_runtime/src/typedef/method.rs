@@ -8,7 +8,7 @@ use error::Error;
 use result::{ObjectResult, RtResult};
 use runtime::Runtime;
 use traits::{StringProvider, NoneProvider, IntegerProvider, FunctionProvider};
-use builtin::precondition::{check_kwargs, check_args, check_fnargs_rt};
+use builtin::precondition::{check_kwargs, check_args};
 use ::object::method::*;
 use object::{self, RtValue, typing};
 use object::method::{self, Id, Hashed};
@@ -99,34 +99,6 @@ impl PyFunction {
             FuncType::Wrapper(_) => TYPE_NAME,
             FuncType::Code(_) => "function"
         }
-    }
-
-    #[allow(unused_variables)]
-    fn call_wrapper(&self,
-                    rt: &Runtime,
-                    callable: &Box<WrapperFn>,
-                    signature: &Signature,
-                    pos_args: &RtObject,
-                    star_args: &RtObject,
-                    kwargs: &RtObject)
-                    -> ObjectResult {
-
-        match pos_args.as_ref() {
-            &Builtin::Tuple(_) => {}
-            _ => return Err(Error::typerr("Expected type tuple for pos_args")),
-        };
-
-        match star_args.as_ref() {
-            &Builtin::Tuple(_) => {}
-            _ => return Err(Error::typerr("Expected type tuple for *args")),
-        };
-
-        match kwargs.as_ref() {
-            &Builtin::Dict(_) => {}
-            _ => return Err(Error::typerr("Expected type dict for **args")),
-        };
-
-        callable(&rt, &pos_args, &star_args, &kwargs)
     }
 
     /* Missing
@@ -378,9 +350,8 @@ impl method::Equal for PyFunction {
 impl method::Call for PyFunction {
     fn op_call(&self, rt: &Runtime, pos_args: &RtObject, star_args: &RtObject, kwargs: &RtObject) -> ObjectResult {
         match self.value.0.callable {
-            FuncType::MethodWrapper(_, ref func) |
-            FuncType::Wrapper(ref func) => self.call_wrapper(
-                &rt, func, &self.value.0.signature, &pos_args, &star_args, &kwargs),
+            FuncType::MethodWrapper(_, ref func) => func(&rt, &pos_args, &star_args, &kwargs),
+            FuncType::Wrapper(ref func) => func(&rt, &pos_args, &star_args, &kwargs),
             FuncType::Code(_) => {
                 Err(Error::typerr("'code' object is not callable"))
             }

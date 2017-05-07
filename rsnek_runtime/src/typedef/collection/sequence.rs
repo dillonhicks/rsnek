@@ -26,7 +26,7 @@ pub fn contains<'a>(seq: &'a [RtObject], item: &Builtin) -> native::Boolean {
         })
 }
 
-/// Create a new sequnces which is slice repeated `factor` times.
+/// Create a new sequences which is slice repeated `factor` times.
 /// ```ignore
 /// let rt = Runtime::new();
 /// let objects = vec![rt.int(1), rt.int(2), rt.int(3)];
@@ -43,28 +43,28 @@ pub fn multiply<'a, T>(seq: &'a [RtObject], factor: usize) -> T
 }
 
 /// Get index using the normal +/- indexing rules
+///
+/// Note: This is a particularly hot path. Any changes should compare against the most
+/// recent benchmarks to ensure that it does not cause a regression in unforeseen ways.
+#[inline(always)]
 pub fn get_index<'a, T>(seq: &'a [T], index: &ToPrimitive) -> RtResult<T>
     where T: Clone, { //V: Index<usize, Output=T>
     // TODO: {T3091} update "sequence" to be the type name
-    let index_err = Err(rsnek_exception_index!("sequence"));
-    let idx = match index.to_i64() {
+    let idx = match index.to_isize() {
         Some(idx) => idx,
-        _ => return index_err,
+        _ => return Err(rsnek_exception_index!("sequence")),
     };
 
-    let len = seq.len() as i64;
-    let pos_range = (0 <= idx) && (idx < len);
-    let neg_range = (-len <= idx) && (idx < 0);
+    let len = seq.len() as isize;
 
-    match (pos_range, neg_range) {
-        (true, false) => {
-            let i = idx as usize;
-            Ok(seq.get(i).unwrap().clone())
-        },
-        (false, true) => {
-            let i = (idx  + len) as usize;
-            Ok(seq.get(i).unwrap().clone())
-        },
-        _ => index_err
+    if 0 <= idx {
+        if idx < len {
+            return Ok(seq[idx as usize].clone())
+        }
+    } else if -len <= idx {
+        return Ok(seq[(len + idx) as usize].clone())
     }
+
+    Err(rsnek_exception_index!("sequence"))
+
 }

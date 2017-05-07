@@ -215,10 +215,12 @@ impl method::Length for PyTuple {
 
 impl method::GetItem for PyTuple {
     #[allow(unused_variables)]
+    #[inline(always)]
     fn op_getitem(&self, rt: &Runtime, index: &RtObject) -> ObjectResult {
         self.native_getitem(index.as_ref())
     }
 
+    #[inline(always)]
     fn native_getitem(&self, index: &Builtin) -> ObjectResult {
         match index {
             &Builtin::Int(ref int) => {

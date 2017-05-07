@@ -780,10 +780,12 @@ impl method::Next for RtObject {
 
 
 impl method::GetItem for RtObject {
+    #[inline]
     fn op_getitem(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
         foreach_builtin!(self.as_ref(), rt, op_getitem, object, name)
     }
 
+    #[inline(always)]
     fn native_getitem(&self, name: &Builtin) -> ObjectResult {
         native_foreach_builtin!(self.as_ref(), native_getitem, object, name)
     }

@@ -31,7 +31,6 @@ impl LenFn {
 
 fn rs_builtin_len(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs: &RtObject) -> ObjectResult {
     trace!("call builtin"; "native" => "len");
-
     check_args(1, &pos_args)?;
     check_args(0, &starargs)?;
     check_kwargs(0, &kwargs)?;

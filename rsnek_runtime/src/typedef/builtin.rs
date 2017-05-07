@@ -724,10 +724,12 @@ impl method::Next for Builtin {
 }
 
 impl method::GetItem for Builtin {
+    #[inline]
     fn op_getitem(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
         foreach_builtin!(self, rt, op_getitem, object, name)
     }
 
+    #[inline]
     fn native_getitem(&self, name: &Builtin) -> RtResult<RtObject> {
         native_foreach_builtin!(self, native_getitem, object, name)
     }
