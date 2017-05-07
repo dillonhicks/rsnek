@@ -49,7 +49,7 @@ CODEBUILD_SOURCE_REPO_URL ?= NotSet
 # with the version of the source code to be built. For GitHub, the
 # commit ID, branch name, or tag name associated with the version of the
 # source code to be built.
-CODEBUILD_SOURCE_VERSION ?= NotSet
+CODEBUILD_SOURCE_VERSION ?= "$(shell git rev-parse HEAD | head -c7)"
 
 # The directory path that AWS CodeBuild uses for the build (for
 # example, /tmp/src123456789/src).
@@ -57,14 +57,11 @@ CODEBUILD_SRC_DIR ?= NotSet
 
 
 AWS_ACCOUNT_ID = 043206986030
-AWS_REGION = us-west-2
-IMAGE_NAME = rust-toolchain
-IMAGE_REPO = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE_NAME)
-ECR_LOGIN := $(shell aws ecr get-login --region=$(AWS_REGION) 2>/dev/null || echo 'echo "NO AWSCLI INSTALLED!" && false')
+#IMAGE_NAME = rust-toolchain
+#IMAGE_REPO = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE_NAME)
+#ECR_LOGIN := $(shell aws ecr get-login --region=$(AWS_REGION) 2>/dev/null || echo 'echo "NO AWSCLI INSTALLED!" && false')
 
 BUILD_DATETIME := $(shell date -u +%FT%TZ)
-
-
 VERSION ?= $(CODEBUILD_SOURCE_VERSION)
 LOG_FORMAT ?= human
 ARTIFACTS_DIR=target
@@ -76,23 +73,27 @@ ifeq ($(CODEBUILD_BUILD_ID), NotSet)
 CONDITIONAL_REQUIREMENTS=
 CARGO_ARGS=--color=always --message-format=human
 CARGO=cargo
-LOG_SUFFIX=$(BUILD_DATETIME).txt
+LOG_SUFFIX=local.$(CODEBUILD_SOURCE_VERSION).$(BUILD_DATETIME)
 else
 CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
 CARGO_ARGS=--message-format=json
 CONDITIONAL_REQUIREMENTS=ec2-requirements
-LOG_SUFFIX=$(CODEBUILD_BUILD_ID).txt
+LOG_SUFFIX=$(CODEBUILD_BUILD_ID).$(CODEBUILD_SOURCE_VERSION).$(BUILD_DATETIME)
 endif
 
 
 
 .PHONY: all toolchain build release test \
 	test-release bench perf docs clean \
-	pipeline-status
+	pipeline-status sysinfo lshw lscpu
 
 
 all:
 	exit 1
+
+
+# Run the steps for buildspec.yml locally with the exception of toolchain
+codebuild-local: | clean $(ARTIFACTS_DIR) sysinfo build test release test-release bench perf docs
 
 
 ec2-requirements:
@@ -100,6 +101,10 @@ ec2-requirements:
 		linux-headers-aws \
 		linux-tools-aws \
 		linux-cloud-tools-4.4.0-1016-aws
+
+
+$(ARTIFACTS_DIR):
+	-mkdir -p $@
 
 
 toolchain: $(CONDITIONAL_REQUIREMENTS)
@@ -112,36 +117,45 @@ toolchain: $(CONDITIONAL_REQUIREMENTS)
 		make \
 		valgrind \
 		oprofile \
+		lshw \
 		linux-tools-generic
 
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
-	-mkdir -p $(ARTIFACTS_DIR)
 
 
 build:
-	$(CARGO) build $(CARGO_ARGS) -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
+	$(CARGO) build $(CARGO_ARGS) -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
 release:
-	$(CARGO) build $(CARGO_ARGS)  --release -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
+	$(CARGO) build $(CARGO_ARGS)  --release -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
 test:
-	$(CARGO) test $(CARGO_ARGS) --all 2>&1 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
+	$(CARGO) test $(CARGO_ARGS) --all 2>&1 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
 test-release:
-	$(CARGO) test $(CARGO_ARGS) --release --all 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
-
-
-
-bench-%:
-	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX)
+	$(CARGO) test $(CARGO_ARGS) --release --all 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
 
 bench: bench-rsnek_compile bench-rsnek_runtime bench-rsnek
 
+
+bench-%:
+	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
+
+
+sysinfo: lshw lscpu
+
+
+lshw:
+	-lshw -sanitize -xml 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).xml
+
+
+lscpu:
+	-lscpu 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 # I do not expect there to be random memory leaks because Rust handles a lot of that.
 # This is more of a curiosity and an experiment to see:
@@ -150,10 +164,10 @@ bench: bench-rsnek_compile bench-rsnek_runtime bench-rsnek
 #
 RSNEK_BINARY=$(ARTIFACTS_DIR)/release/rsnek
 VALGRIND_PYTHON_SRCFILE=rsnek/tests/test.py
-VALGRIND_MEMCHECK_XMLFILE=$(ARTIFACTS_DIR)/valgrind.memcheck.xml
-VALGRIND_CACHEGRIND_FILE=$(ARTIFACTS_DIR)/valgrind.cachegrind.txt
-OPROF_OUTDIR=$(ARTIFACTS_DIR)/oprofile_data
-PERF_STATS_FILE=$(ARTIFACTS_DIR)/perf.stats.txt
+VALGRIND_MEMCHECK_XMLFILE=$(ARTIFACTS_DIR)/valgrind.memcheck.$(LOG_SUFFIX).xml
+VALGRIND_CACHEGRIND_FILE=$(ARTIFACTS_DIR)/valgrind.cachegrind.$(LOG_SUFFIX).txt
+OPROF_OUTDIR=$(ARTIFACTS_DIR)/oprofile_data.$(LOG_SUFFIX)
+PERF_STATS_FILE=$(ARTIFACTS_DIR)/perf.stats.$(LOG_SUFFIX).txt
 
 perf:
 	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
@@ -173,7 +187,8 @@ perf:
 	-cat $(VALGRIND_MEMCHECK_XMLFILE)
 	-valgrind \
 		--tool=cachegrind \
-		--log-file=$(VALGRIND_CACHEGRIND_FILE) \
+		--branch-sim=yes \
+		--cachegrind-out-file=$(VALGRIND_CACHEGRIND_FILE) \
 		-v $(RSNEK_BINARY) \
 		$(VALGRIND_PYTHON_SRCFILE)
 	-cat $(VALGRIND_CACHEGRIND_FILE)
@@ -182,7 +197,7 @@ perf:
 	-opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
 
 	-perf stat -r 25 -ddd $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE) 2>&1 | tee -a $(PERF_STATS_FILE)
-	-perf stat -r 25 -ddd python -B $(VALGRIND_PYTHON_SRCFILE) | tee -a $(PERF_STATS_FILE)
+	-perf stat -r 25 -ddd python -B $(VALGRIND_PYTHON_SRCFILE) 2>&1 | tee -a $(PERF_STATS_FILE)
 
 
 
@@ -191,15 +206,6 @@ perf:
 #
 pipeline-status:
 	./tools/aws-cli-sugar/pipeline-status.sh
-
-#
-docs-%:
-	$(CARGO) rustdoc --lib -p $* -- \
-	    --no-defaults \
-	    --passes strip-hidden \
-	    --passes collapse-docs \
-	    --passes unindent-comments \
-	    --passes strip-priv-imports
 
 
 # Generate the docs for all of dependencies and libraries Note that
@@ -211,6 +217,15 @@ docs:
 	$(CARGO) doc --all
 	$(MAKE) docs-rsnek_compile
 	$(MAKE) docs-rsnek_runtime
+
+
+docs-%:
+	$(CARGO) rustdoc --lib -p $* -- \
+	    --no-defaults \
+	    --passes strip-hidden \
+	    --passes collapse-docs \
+	    --passes unindent-comments \
+	    --passes strip-priv-imports
 
 
 clean:
