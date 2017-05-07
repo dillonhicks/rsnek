@@ -123,19 +123,19 @@ toolchain: $(CONDITIONAL_REQUIREMENTS) $(ARTIFACTS_DIR)
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
 
 
-build:
+build: $(ARTIFACTS_DIR)
 	$(CARGO) build $(CARGO_ARGS) -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-release:
+release: $(ARTIFACTS_DIR)
 	$(CARGO) build $(CARGO_ARGS)  --release -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-test:
+test: $(ARTIFACTS_DIR)
 	$(CARGO) test $(CARGO_ARGS) --all 2>&1 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-test-release:
+test-release: $(ARTIFACTS_DIR)
 	$(CARGO) test $(CARGO_ARGS) --release --all 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
@@ -143,18 +143,18 @@ test-release:
 bench: bench-rsnek_compile bench-rsnek_runtime bench-rsnek
 
 
-bench-%:
+bench-%: $(ARTIFACTS_DIR)
 	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
 sysinfo: lshw lscpu
 
 
-lshw:
+lshw: $(ARTIFACTS_DIR)
 	-lshw -sanitize -xml 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).xml
 
 
-lscpu:
+lscpu: $(ARTIFACTS_DIR)
 	-lscpu 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 # I do not expect there to be random memory leaks because Rust handles a lot of that.
@@ -169,7 +169,7 @@ VALGRIND_CACHEGRIND_FILE=$(ARTIFACTS_DIR)/valgrind.cachegrind.$(LOG_SUFFIX).txt
 OPROF_OUTDIR=$(ARTIFACTS_DIR)/oprofile_data.$(LOG_SUFFIX)
 PERF_STATS_FILE=$(ARTIFACTS_DIR)/perf.stats.$(LOG_SUFFIX).txt
 
-perf:
+perf: $(ARTIFACTS_DIR)
 	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
 	cat rsnek/src/main.rs >> rsnek/maingrind.rs
 	mv rsnek/src/main.rs rsnek/src/main.rs.bak
@@ -219,7 +219,7 @@ docs:
 	$(MAKE) docs-rsnek_runtime
 
 
-docs-%:
+docs-%: $(ARTIFACTS_DIR)
 	$(CARGO) rustdoc --lib -p $* -- \
 	    --no-defaults \
 	    --passes strip-hidden \
