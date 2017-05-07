@@ -14,7 +14,7 @@ use api::selfref::{self, SelfRef};
 
 use objects::native;
 use ::api::RtObject;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use objects::number::{self, FloatAdapter, IntAdapter};
 
 
@@ -38,11 +38,11 @@ impl typing::BuiltinType for PyFloatType {
     }
 
     fn inject_selfref(value: PyFloat) -> RtObject {
-        let object = RtObject::new(Builtin::Float(value));
+        let object = RtObject::new(Type::Float(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Float(ref int) => {
+            &Type::Float(ref int) => {
                 int.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -118,10 +118,10 @@ impl method::Equal for PyFloat {
         }
     }
 
-    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
         match *other {
-            Builtin::Float(ref float) => Ok(self.value.0 == float.value.0),
-            Builtin::Int(ref int) => Ok(FloatAdapter(&self.value.0) == IntAdapter(&int.value.0)),
+            Type::Float(ref float) => Ok(self.value.0 == float.value.0),
+            Type::Int(ref int) => Ok(FloatAdapter(&self.value.0) == IntAdapter(&int.value.0)),
             _ => Ok(false),
         }
     }
@@ -170,13 +170,13 @@ impl method::FloatCast for PyFloat {
 impl method::Add for PyFloat {
     fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref(){
-            &Builtin::Float(ref rhs) => {
+            &Type::Float(ref rhs) => {
                 // TODO: {T103} Use checked arithmetic where appropriate... this is not the only
                 // example. But the float (and some int) methods are likely to be the highest
                 // frequency.
                 Ok(rt.float(self.value.0 + rhs.value.0))
             }
-            &Builtin::Int(ref rhs) => {
+            &Type::Int(ref rhs) => {
                 match rhs.value.0.to_f64() {
                     Some(float) => Ok(rt.float(self.value.0 + float)),
                     None => Err(Error::overflow(&format!("{:?} + {} overflows", self.value.0, rhs.value.0))),

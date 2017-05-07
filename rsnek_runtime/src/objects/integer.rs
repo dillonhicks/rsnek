@@ -16,7 +16,7 @@ use ::resources::strings;
 use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, Native, HashId, SignatureBuilder};
 use ::objects::number::{self, FloatAdapter, IntAdapter, format_int};
 
@@ -57,11 +57,11 @@ impl typing::BuiltinType for PyIntegerType {
     }
 
     fn inject_selfref(value: PyInteger) -> RtObject {
-        let object = RtObject::new(Builtin::Int(value));
+        let object = RtObject::new(Type::Int(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 int.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -186,7 +186,7 @@ impl PyInteger {
                 &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        unary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
+        unary_method_wrapper!(self, TYPE_NAME, name, rt, Type::Int, func)
     }
 
     fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
@@ -227,7 +227,7 @@ impl PyInteger {
                 &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        binary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
+        binary_method_wrapper!(self, TYPE_NAME, name, rt, Type::Int, func)
     }
 
     fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
@@ -239,7 +239,7 @@ impl PyInteger {
                 &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        ternary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Int, func)
+        ternary_method_wrapper!(self, TYPE_NAME, name, rt, Type::Int, func)
     }
 
 }
@@ -269,7 +269,7 @@ impl method::GetAttr for PyInteger {
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
         match name.as_ref() {
-            &Builtin::Str(ref pystring) => {
+            &Type::Str(ref pystring) => {
                 let string = pystring.value.0.clone();
                 self.get_attribute(&rt, &string)
             }
@@ -328,13 +328,13 @@ impl method::Equal for PyInteger {
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
         let lhs = IntAdapter(&self.value.0);
 
         match *other {
-            Builtin::Bool(ref obj) => Ok(self.value.0 == obj.value.0),
-            Builtin::Int(ref obj) => Ok(self.value.0 == obj.value.0),
-            Builtin::Float(ref obj) => Ok(lhs == FloatAdapter(&obj.value.0)),
+            Type::Bool(ref obj) => Ok(self.value.0 == obj.value.0),
+            Type::Int(ref obj) => Ok(self.value.0 == obj.value.0),
+            Type::Float(ref obj) => Ok(lhs == FloatAdapter(&obj.value.0)),
             _ => Ok(false),
         }
     }
@@ -348,7 +348,7 @@ impl method::NotEqual for PyInteger {
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
         let truth = !self.native_eq(rhs)?;
         Ok(truth)
     }
@@ -403,10 +403,10 @@ impl method::Add for PyInteger {
         }
     }
 
-    fn native_add(&self, rhs: &Builtin) -> RtResult<Native> {
+    fn native_add(&self, rhs: &Type) -> RtResult<Native> {
         match rhs {
-            &Builtin::Int(ref rhs) =>  Ok(Native::Int(&self.value.0 + &rhs.value.0)),
-            &Builtin::Float(ref rhs) => {
+            &Type::Int(ref rhs) =>  Ok(Native::Int(&self.value.0 + &rhs.value.0)),
+            &Type::Float(ref rhs) => {
                 match self.value.0.to_f64() {
                     Some(lhs) => Ok(Native::Float(lhs + rhs.value.0)),
                     None => Err(Error::overflow(
@@ -425,7 +425,7 @@ impl method::LeftShift for PyInteger {
     fn op_lshift(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
         match rhs.as_ref() {
-            &Builtin::Int(ref rhs) =>  {
+            &Type::Int(ref rhs) =>  {
                 #[allow(unused_comparisons)]
                 match rhs.value.0.to_usize() {
                     Some(int) if int < 0    => Err(Error::value(strings::ERROR_NEG_BIT_SHIFT)),
@@ -447,8 +447,8 @@ impl method::LeftShift for PyInteger {
 impl method::Multiply for PyInteger {
     fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
-            &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 * &rhs.value.0)),
-            &Builtin::Float(ref rhs) => {
+            &Type::Int(ref rhs) =>  Ok(rt.int(&self.value.0 * &rhs.value.0)),
+            &Type::Float(ref rhs) => {
                 match self.value.0.to_f64() {
                     Some(lhs) => Ok(rt.float(lhs * rhs.value.0)),
                     None => Err(Error::overflow(
@@ -469,7 +469,7 @@ impl method::Pow for PyInteger {
     #[allow(unused_variables)]
     fn op_pow(&self, rt: &Runtime, exponent: &RtObject, modulus: &RtObject) -> ObjectResult {
         match exponent.as_ref() {
-            &Builtin::Int(ref power) =>  {
+            &Type::Int(ref power) =>  {
                 let base = self.value.0.clone();
 
                 match power.value.0.to_usize() {
@@ -491,7 +491,7 @@ impl method::RightShift for PyInteger {
     fn op_rshift(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
         match rhs.as_ref() {
-            &Builtin::Int(ref rhs) =>  {
+            &Type::Int(ref rhs) =>  {
                 #[allow(unused_comparisons)]
                 match rhs.value.0.to_usize() {
                     Some(int) if int > 0    => Ok(rt.int(&self.value.0 >> int)),
@@ -513,8 +513,8 @@ impl method::RightShift for PyInteger {
 impl method::Subtract for PyInteger {
     fn op_sub(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
-            &Builtin::Int(ref rhs) =>  Ok(rt.int(&self.value.0 - &rhs.value.0)),
-            &Builtin::Float(ref rhs) => {
+            &Type::Int(ref rhs) =>  Ok(rt.int(&self.value.0 - &rhs.value.0)),
+            &Type::Float(ref rhs) => {
                 match self.value.0.to_f64() {
                     Some(lhs) => Ok(rt.float(lhs - rhs.value.0)),
                     None => Err(Error::overflow(&format!(

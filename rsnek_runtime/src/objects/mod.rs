@@ -1,4 +1,3 @@
-pub mod builtin;
 pub mod integer;
 pub mod iterator;
 pub mod float;

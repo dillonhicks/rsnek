@@ -10,7 +10,7 @@ use api::selfref::{self, SelfRef};
 use ::runtime::Runtime;
 use ::runtime::traits::{BooleanProvider, StringProvider, IntegerProvider, FloatProvider};
 use ::api::result::{ObjectResult, RtResult};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::api::RtObject;
 use ::objects::number;
 use ::objects::native::{self, Number, HashId};
@@ -51,11 +51,11 @@ impl typing::BuiltinType for PyBooleanType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Bool(value));
+        let object = RtObject::new(Type::Bool(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Bool(ref boolean) => {
+            &Type::Bool(ref boolean) => {
                 boolean.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -162,7 +162,7 @@ impl method::Equal for PyBoolean {
         }
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs.native_bool() {
             Ok(value) => Ok(self.native_bool().unwrap() == value),
             Err(err) => Err(err),
@@ -184,7 +184,7 @@ impl method::NotEqual for PyBoolean {
         }
     }
 
-    fn native_ne(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs.native_bool() {
             Ok(value) => Ok(self.native_bool()? != value),
             Err(err) => Err(err),

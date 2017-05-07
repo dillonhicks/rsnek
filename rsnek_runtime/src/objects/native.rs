@@ -13,7 +13,7 @@ use serde::ser::{Serializer};
 use rsnek_compile::{Id, Tag, Num, OwnedTk};
 
 use ::api::RtObject;
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type as BuiltinType;
 use ::objects;
 use ::api::result::{ObjectResult, RtResult};
 use ::runtime::{OpCode, Runtime};
@@ -68,7 +68,7 @@ pub type Set = std::collections::HashSet<SetElement>;
 pub type NativeFnArgs = (Tuple, Tuple, Dict);
 pub type FnArgs = (RtObject, RtObject, RtObject);
 
-pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> RtResult<Builtin>;
+pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> RtResult<BuiltinType>;
 pub type WrapperFn = Fn(&Runtime, &RtObject, &RtObject, &RtObject) -> ObjectResult;
 
 #[derive(Debug, Serialize)]

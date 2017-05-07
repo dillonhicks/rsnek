@@ -8,7 +8,7 @@ use api::typing::BuiltinType;
 
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use objects::native;
 use objects::object::{PyObject, ObjectValue};
 use ::api::RtObject;
@@ -59,11 +59,11 @@ impl typing::BuiltinType for PyModuleType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Module(value));
+        let object = RtObject::new(Type::Module(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Module(ref module) => {
+            &Type::Module(ref module) => {
                 module.rc.set(&object.clone());
             }
             _ => unreachable!(),

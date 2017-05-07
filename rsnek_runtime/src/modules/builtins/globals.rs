@@ -8,7 +8,7 @@ use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{TupleProvider, ModuleImporter};
 use ::api::RtObject;
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
 
@@ -41,7 +41,7 @@ fn rs_builtin_globals(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kw
     let builtins = rt.import_module(strings::BUILTINS_MODULE)?;
 
     let attrs = match builtins.as_ref() {
-        &Builtin::Module(ref object) => object.dir()?,
+        &Type::Module(ref object) => object.dir()?,
         _ => return Err(Error::system(
                 &format!("Module was not an object; file: {}, line: {}", file!(), line!())))
     };

@@ -20,7 +20,7 @@ use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,
                FunctionProvider, IteratorProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::collection::sequence;
 use ::objects::native::{self, SignatureBuilder};
 
@@ -48,11 +48,11 @@ impl typing::BuiltinType for PyStringType {
 
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Str(value));
+        let object = RtObject::new(Type::Str(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Str(ref string) => {
+            &Type::Str(ref string) => {
                 string.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -178,7 +178,7 @@ impl PyString {
                 &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        unary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
+        unary_method_wrapper!(self, TYPE_NAME, name, rt, Type::Str, func)
     }
 
     fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
@@ -219,7 +219,7 @@ impl PyString {
                 &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        binary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
+        binary_method_wrapper!(self, TYPE_NAME, name, rt, Type::Str, func)
     }
 
     fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
@@ -231,7 +231,7 @@ impl PyString {
                 &strings_error_no_attribute!(TYPE_NAME, missing)))
         };
 
-        ternary_method_wrapper!(self, TYPE_NAME, name, rt, Builtin::Str, func)
+        ternary_method_wrapper!(self, TYPE_NAME, name, rt, Type::Str, func)
     }
 
 }
@@ -250,7 +250,7 @@ impl method::GetAttr for PyString {
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
         match name.as_ref() {
-            &Builtin::Str(ref pystring) => {
+            &Type::Str(ref pystring) => {
                 let string = pystring.value.0.clone();
                 self.get_attribute(&rt, &string)
             }
@@ -299,9 +299,9 @@ impl method::Equal for PyString {
         }
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs {
-            &Builtin::Str(ref string) => Ok(self.value.0.eq(&string.value.0)),
+            &Type::Str(ref string) => Ok(self.value.0.eq(&string.value.0)),
             _ => Ok(false),
         }
     }
@@ -345,7 +345,7 @@ impl method::Add for PyString {
 
     fn op_add(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
-            &Builtin::Str(ref other) => Ok(rt.str([&self.value.0[..], &other.value.0[..]].concat())),
+            &Type::Str(ref other) => Ok(rt.str([&self.value.0[..], &other.value.0[..]].concat())),
             other => Err(Error::typerr(
                 &strings_error_bad_operand!("+", "str", other.debug_name()))),
         }
@@ -357,7 +357,7 @@ impl method::Multiply for PyString {
     fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
 
         match rhs.as_ref() {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 match int.value.0.to_usize() {
                     Some(int) if int <= 0   => Ok(rt.default_str()),
                     Some(int) if int == 1   => self.rc.upgrade(),
@@ -387,9 +387,9 @@ impl method::Contains for PyString {
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Builtin) -> RtResult<native::Boolean> {
+    fn native_contains(&self, item: &Type) -> RtResult<native::Boolean> {
         match item {
-            &Builtin::Str(ref string) => {
+            &Type::Str(ref string) => {
                 Ok(self.value.0.contains(&string.value.0))
             },
             other => Err(Error::typerr(&format!(
@@ -429,9 +429,9 @@ impl method::GetItem for PyString {
         self.native_getitem(item.as_ref())
     }
 
-    fn native_getitem(&self, index: &Builtin) -> ObjectResult {
+    fn native_getitem(&self, index: &Type) -> ObjectResult {
         let substr = match index {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 let byte = sequence::get_index(&self.value.0.as_bytes(), &int.value.0)?;
                 // TODO: {T3093} Determine the best policy for strings as a sequence since any kind
                 // of encoding ruins the uniform treatment of bytes as a singular index of a

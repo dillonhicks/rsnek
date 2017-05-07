@@ -12,7 +12,7 @@ use api::selfref::{self, SelfRef};
 use api::method::{self, GetItem, Next};
 use api::typing::BuiltinType;
 
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use objects::native;
 use ::api::RtObject;
 
@@ -46,11 +46,11 @@ impl typing::BuiltinType for PyIteratorType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Iter(value));
+        let object = RtObject::new(Type::Iter(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Iter(ref tuple) => {
+            &Type::Iter(ref tuple) => {
                 tuple.rc.set(&object.clone());
             }
             _ => unreachable!(),

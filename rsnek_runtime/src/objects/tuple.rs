@@ -17,7 +17,7 @@ use ::api::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{BooleanProvider, IntegerProvider, StringProvider,
                IteratorProvider, DefaultTupleProvider, TupleProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::collection::sequence;
 use ::objects::native::{self, Tuple};
 
@@ -42,11 +42,11 @@ impl typing::BuiltinType for PyTupleType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Tuple(value));
+        let object = RtObject::new(Type::Tuple(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Tuple(ref tuple) => {
+            &Type::Tuple(ref tuple) => {
                 tuple.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -128,9 +128,9 @@ impl method::Equal for PyTuple {
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs {
-            &Builtin::Tuple(ref other) => {
+            &Type::Tuple(ref other) => {
                 let left = &self.value.0;
                 let right = &other.value.0;
                 Ok(sequence::equals(left, right))
@@ -156,7 +156,7 @@ impl method::BooleanCast for PyTuple {
 impl method::Multiply for PyTuple {
     fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 match int.value.0.to_usize() {
                     Some(int) if int <= 0   => Ok(rt.default_tuple()),
                     Some(int) if int == 1   => self.rc.upgrade(),
@@ -182,7 +182,7 @@ impl method::Contains for PyTuple {
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Builtin) -> RtResult<native::Boolean> {
+    fn native_contains(&self, item: &Type) -> RtResult<native::Boolean> {
         Ok(sequence::contains(&self.value.0, item))
     }
 }
@@ -221,9 +221,9 @@ impl method::GetItem for PyTuple {
     }
 
     #[inline(always)]
-    fn native_getitem(&self, index: &Builtin) -> ObjectResult {
+    fn native_getitem(&self, index: &Type) -> ObjectResult {
         match index {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 sequence::get_index(&self.value.0, &int.value.0)
             }
             _ => Err(Error::typerr("list index was not int")),

@@ -40,7 +40,7 @@ use ::runtime::traits::{
     DefaultTupleProvider,
 };
 use ::objects::boolean::PyBooleanType;
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::bytes::PyBytesType;
 use ::objects::code::PyCodeType;
 use ::objects::dictionary::PyDictType;

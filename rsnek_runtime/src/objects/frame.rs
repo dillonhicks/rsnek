@@ -9,7 +9,7 @@ use runtime::Runtime;
 //use ::runtime::traits::{BooleanProvider, IntegerProvider, NoneProvider};
 
 use ::api::result::{ObjectResult};
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use objects::native;
 use ::api::RtObject;
 
@@ -36,11 +36,11 @@ impl typing::BuiltinType for PyFrameType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Frame(value));
+        let object = RtObject::new(Type::Frame(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Frame(ref boolean) => {
+            &Type::Frame(ref boolean) => {
                 boolean.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -82,7 +82,7 @@ impl method::GetAttr for PyFrame {
     #[allow(unused_variables)]
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
         let attr: &str = match name.as_ref() {
-            &Builtin::Str(ref string) => &string.value.0,
+            &Type::Str(ref string) => &string.value.0,
             other => return Err(Error::typerr(
                 &string_error_bad_attr_type!("str", other.debug_name()))),
         };

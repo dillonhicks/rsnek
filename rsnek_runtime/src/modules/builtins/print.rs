@@ -8,7 +8,7 @@ use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IteratorProvider, NoneProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, Signature, Func, FuncType};
 
 

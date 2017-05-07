@@ -7,7 +7,7 @@ use num::ToPrimitive;
 use ::api::result::Error;
 use ::api::result::RtResult;
 use ::resources::strings;
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native;
 use ::api::RtObject;
 
@@ -18,10 +18,10 @@ pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> native::Boolea
             .all(|(l, r)| l == r))
 }
 
-pub fn contains<'a>(seq: &'a [RtObject], item: &Builtin) -> native::Boolean {
+pub fn contains<'a>(seq: &'a [RtObject], item: &Type) -> native::Boolean {
     seq.iter()
         .map(|objref| objref.as_ref())
-        .any(|value: &Builtin| {
+        .any(|value: &Type| {
             *(value.deref()) == *item
         })
 }

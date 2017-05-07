@@ -6,7 +6,7 @@ use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, BooleanProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
 use ::modules::precondition::{check_args, check_kwargs};

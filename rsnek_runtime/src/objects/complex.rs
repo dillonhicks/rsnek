@@ -6,7 +6,7 @@ use api::{RtValue, PyAPI, method, typing};
 use api::selfref::{self, SelfRef};
 
 use objects::native;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::api::RtObject;
 
 
@@ -28,11 +28,11 @@ impl typing::BuiltinType for PyComplexType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Complex(value));
+        let object = RtObject::new(Type::Complex(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Complex(ref complex) => {
+            &Type::Complex(ref complex) => {
                 complex.rc.set(&object.clone());
             }
             _ => unreachable!(),

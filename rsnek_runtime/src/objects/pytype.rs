@@ -10,7 +10,7 @@ use api::selfref::{self, SelfRef};
 
 use objects::native;
 use ::api::RtObject;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 
 
 pub struct PyMeta {
@@ -40,11 +40,11 @@ impl typing::BuiltinType for PyMeta {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Type(value));
+        let object = RtObject::new(Type::Type(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Type(ref pytype) => {
+            &Type::Type(ref pytype) => {
                 pytype.rc.set(&object.clone());
             }
             _ => unreachable!(),

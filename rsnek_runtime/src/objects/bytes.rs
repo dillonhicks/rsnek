@@ -15,7 +15,7 @@ use api::method;
 
 use objects::native;
 use ::api::RtObject;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 
 
 pub struct PyBytesType {
@@ -38,11 +38,11 @@ impl typing::BuiltinType for PyBytesType {
 
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Bytes(value));
+        let object = RtObject::new(Type::Bytes(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Bytes(ref string) => {
+            &Type::Bytes(ref string) => {
                 string.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -93,9 +93,9 @@ impl method::Equal for PyBytes {
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs {
-            &Builtin::Bytes(ref bytes) => Ok(self.value.0 == bytes.value.0),
+            &Type::Bytes(ref bytes) => Ok(self.value.0 == bytes.value.0),
             _ => Ok(false),
         }
     }

@@ -5,7 +5,7 @@ use ::api::RtObject;
 use ::api::result::{Error, ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{BooleanProvider, IntegerProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, Native};
 
 
@@ -21,7 +21,7 @@ pub trait Init {
     fn op_init(&mut self, rt: &Runtime, named_args: &RtObject, args: &RtObject, kwargs: &RtObject) -> ObjectResult {
         Err(Error::not_implemented())
     }
-    fn native_init(&mut self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> RtResult<native::None> {
+    fn native_init(&mut self, named_args: &Type, args: &Type, kwargs: &Type) -> RtResult<native::None> {
         Err(Error::not_implemented())
     }
 }
@@ -80,7 +80,7 @@ pub trait Is
         Ok(rt.bool(truth))
     }
 
-    fn native_is(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_is(&self, other: &Type) -> RtResult<native::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
@@ -94,7 +94,7 @@ pub trait IsNot
     }
 
 
-    fn native_is_not(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_is_not(&self, other: &Type) -> RtResult<native::Boolean> {
         Ok(self.native_id() != other.native_id())
     }
 }
@@ -127,7 +127,7 @@ pub trait Equal {
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
         Ok(memory_address(&self) == other.native_id())
     }
 }
@@ -141,7 +141,7 @@ pub trait NotEqual {
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_ne(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_ne(&self, other: &Type) -> RtResult<native::Boolean> {
         Ok(memory_address(&self) != other.native_id())
     }
 }

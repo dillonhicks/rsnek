@@ -10,7 +10,7 @@ use api::{RtValue, PyAPI, method, typing};
 
 use objects::native;
 use ::api::RtObject;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 
 
 pub const NONE: &'static native::None = &native::None();
@@ -37,11 +37,11 @@ impl typing::BuiltinType for PyNoneType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::None(value));
+        let object = RtObject::new(Type::None(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::None(ref none) => {
+            &Type::None(ref none) => {
                 none.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -96,9 +96,9 @@ impl method::Equal for PyNone {
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs {
-            &Builtin::None(_) => Ok(true),
+            &Type::None(_) => Ok(true),
             _ => Ok(false),
         }
     }

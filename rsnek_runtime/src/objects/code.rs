@@ -11,7 +11,7 @@ use api::method;
 
 use objects::native;
 use ::api::RtObject;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 
 
 pub struct PyCodeType {}
@@ -31,11 +31,11 @@ impl typing::BuiltinType for PyCodeType {
 
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Code(value));
+        let object = RtObject::new(Type::Code(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Code(ref code) => {
+            &Type::Code(ref code) => {
                 code.rc.set(&object.clone());
             }
             _ => unreachable!(),

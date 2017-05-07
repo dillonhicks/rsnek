@@ -18,7 +18,7 @@ use api::typing::BuiltinType;
 use ::resources::strings;
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use objects::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
 use objects::object::PyObjectType;
 use ::api::RtObject;
@@ -60,11 +60,11 @@ impl typing::BuiltinType for PyFunctionType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Function(value));
+        let object = RtObject::new(Type::Function(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Function(ref func) => {
+            &Type::Function(ref func) => {
                 func.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -204,7 +204,7 @@ impl PyFunction {
                 &strings_error_no_attribute!(self.type_name(), missing)))
         };
 
-        unary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
+        unary_method_wrapper!(self, self.type_name(), name, rt, Type::Function, func)
     }
 
     fn try_get_binary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
@@ -245,7 +245,7 @@ impl PyFunction {
                 &strings_error_no_attribute!(self.type_name(), missing)))
         };
 
-        binary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
+        binary_method_wrapper!(self, self.type_name(), name, rt, Type::Function, func)
     }
 
     fn try_get_ternary_method(&self, rt: &Runtime, name: &str) -> ObjectResult {
@@ -257,7 +257,7 @@ impl PyFunction {
                 &strings_error_no_attribute!(self.type_name(), missing)))
         };
 
-        ternary_method_wrapper!(self, self.type_name(), name, rt, Builtin::Function, func)
+        ternary_method_wrapper!(self, self.type_name(), name, rt, Type::Function, func)
     }
 
 }
@@ -283,7 +283,7 @@ impl method::GetAttr for PyFunction {
     fn op_getattr(&self, rt: &Runtime, name: &RtObject) -> ObjectResult {
 
         match name.as_ref() {
-            &Builtin::Str(ref pystring) => {
+            &Type::Str(ref pystring) => {
                 let string = pystring.value.0.clone();
                 self.get_attribute(&rt, &string)
             }
@@ -342,7 +342,7 @@ impl method::StringCast for PyFunction {
 }
 
 impl method::Equal for PyFunction {
-    fn native_eq(&self, other: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
@@ -359,7 +359,7 @@ impl method::Call for PyFunction {
     }
 
     #[allow(unused_variables)]
-    fn native_call(&self, named_args: &Builtin, args: &Builtin, kwargs: &Builtin) -> RtResult<Builtin> {
+    fn native_call(&self, named_args: &Type, args: &Type, kwargs: &Type) -> RtResult<Type> {
         Err(Error::system_not_implemented("PyFunction::native_call()",
                                           &format!("file: {}, line: {}", file!(), line!())))
     }

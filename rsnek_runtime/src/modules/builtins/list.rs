@@ -7,7 +7,7 @@ use ::resources::strings;
 use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{ListProvider, DefaultListProvider, IntegerProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, Func, FuncType, SignatureBuilder};
 
 

@@ -11,7 +11,7 @@ use ::api::{self, RtValue, typing};
 use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, DictKey};
 
 
@@ -36,11 +36,11 @@ impl typing::BuiltinType for PyDictType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Dict(value));
+        let object = RtObject::new(Type::Dict(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Dict(ref dict) => {
+            &Type::Dict(ref dict) => {
                 dict.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -150,9 +150,9 @@ impl method::GetItem for PyDict {
         }
     }
 
-    fn native_getitem(&self, key: &Builtin) -> ObjectResult {
+    fn native_getitem(&self, key: &Type) -> ObjectResult {
         match key {
-            &Builtin::DictKey(ref key) => {
+            &Type::DictKey(ref key) => {
                 match self.value.0.borrow().get(key) {
                     Some(value) => Ok(value.clone()),
                     None =>  Err(Error::key(&format!("KeyError: {:?}", key))),
@@ -167,7 +167,7 @@ impl method::SetItem for PyDict {
     fn op_setitem(&self, rt: &Runtime, key: &RtObject, value: &RtObject) -> ObjectResult {
         match key.native_hash() {
             Ok(hash) => {
-                let key_wrapper = Builtin::DictKey(DictKey(hash, key.clone()));
+                let key_wrapper = Type::DictKey(DictKey(hash, key.clone()));
 
                 match self.native_setitem(&key_wrapper, value.as_ref()) {
                     Ok(_) => Ok(rt.none()),
@@ -179,9 +179,9 @@ impl method::SetItem for PyDict {
     }
 
     #[allow(unused_variables)]
-    fn native_setitem(&self, key: &Builtin, value: &Builtin) -> RtResult<native::None> {
+    fn native_setitem(&self, key: &Type, value: &Type) -> RtResult<native::None> {
         match key {
-            &Builtin::DictKey(ref key) => {
+            &Type::DictKey(ref key) => {
                 self.value.0.borrow_mut().insert(key.clone(), value.upgrade()?);
                 Ok(native::None())
             }

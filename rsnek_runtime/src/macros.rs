@@ -1,13 +1,13 @@
 ///! macros to make working with cases where there is generic code but not generic types
-///! such as dispatching an API method on an `RtObject` or `Builtin`, creating method wrappers
+///! such as dispatching an API method on an `RtObject` or `Type`, creating method wrappers
 ///! (e.g. `x = 1; func = x.__hash__` since `__hash__` should be an object representing
 ///! `PyInteger::op_hash` for the instance ), shorthand for default implementations, etc.
 
 
 
-/// Expands the `objects::Builtin` into its variant to dispatch the given method
+/// Expands the `builtins::types::Type` into its variant to dispatch the given method
 /// on that type.
-macro_rules! foreach_builtin {
+macro_rules! foreach_type {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (
         unary_op_foreach!($sel, $rt, $function, $receiver)
     );
@@ -22,39 +22,39 @@ macro_rules! foreach_builtin {
     );
 }
 
-/// A more flexible sibling of the `foreach_builtin` and `native_foreach_builtin` macros
+/// A more flexible sibling of the `foreach_type` and `native_foreach_type` macros
 /// which will allow execution an arbitrary block of code on
-/// the inner value of any variant of `Builtin`. The `$inner:ident` is
+/// the inner value of any variant of `Type`. The `$inner:ident` is
 /// identifier used to reference the match expanded value within the given code block.
 ///
 ///```ignore
 ///  let object: RtObject = /// something that produces an RtObject;
 ///
-///  expr_foreach_builtin!(object.as_ref(), value, {
+///  expr_foreach_type!(object.as_ref(), value, {
 ///     write!(f, "{:?}", value)
 /// })
 /// ```
-macro_rules! expr_foreach_builtin {
+macro_rules! expr_foreach_type {
     ($obj:expr, $inner:ident, $e:block) => (
        match $obj {
-            &Builtin::Bool(ref $inner) => $e,
-            &Builtin::None(ref $inner) => $e,
-            &Builtin::Int(ref $inner) => $e,
-            &Builtin::Float(ref $inner) => $e,
-            &Builtin::Iter(ref $inner) => $e,
-            &Builtin::Dict(ref $inner) => $e,
-            &Builtin::Str(ref $inner) => $e,
-            &Builtin::Bytes(ref $inner) => $e,
-            &Builtin::Tuple(ref $inner) =>$e,
-            &Builtin::List(ref $inner) =>$e,
-            &Builtin::Function(ref $inner) => $e,
-            &Builtin::Object(ref $inner) => $e,
-            &Builtin::Type(ref $inner) => $e,
-            &Builtin::Module(ref $inner) => $e,
-            &Builtin::Code(ref $inner) => $e,
-            &Builtin::Frame(ref $inner) => $e,
-            &Builtin::Set(ref $inner) => $e,
-            &Builtin::FrozenSet(ref $inner) => $e,
+            &Type::Bool(ref $inner) => $e,
+            &Type::None(ref $inner) => $e,
+            &Type::Int(ref $inner) => $e,
+            &Type::Float(ref $inner) => $e,
+            &Type::Iter(ref $inner) => $e,
+            &Type::Dict(ref $inner) => $e,
+            &Type::Str(ref $inner) => $e,
+            &Type::Bytes(ref $inner) => $e,
+            &Type::Tuple(ref $inner) =>$e,
+            &Type::List(ref $inner) =>$e,
+            &Type::Function(ref $inner) => $e,
+            &Type::Object(ref $inner) => $e,
+            &Type::Type(ref $inner) => $e,
+            &Type::Module(ref $inner) => $e,
+            &Type::Code(ref $inner) => $e,
+            &Type::Frame(ref $inner) => $e,
+            &Type::Set(ref $inner) => $e,
+            &Type::FrozenSet(ref $inner) => $e,
 
             _ => unreachable!()
         }
@@ -65,24 +65,24 @@ macro_rules! expr_foreach_builtin {
 macro_rules! unary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($rt),
-            &Builtin::None(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Int(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Float(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Str(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt),
-            &Builtin::List(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Function(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Object(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Type(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Module(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Code(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($rt),
-            &Builtin::Set(ref $lhs) => $lhs.$op($rt),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt),
+            &Type::Bool(ref $lhs) => $lhs.$op($rt),
+            &Type::None(ref $lhs) => $lhs.$op($rt),
+            &Type::Int(ref $lhs) => $lhs.$op($rt),
+            &Type::Float(ref $lhs) => $lhs.$op($rt),
+            &Type::Iter(ref $lhs) => $lhs.$op($rt),
+            &Type::Dict(ref $lhs) => $lhs.$op($rt),
+            &Type::Str(ref $lhs) => $lhs.$op($rt),
+            &Type::Bytes(ref $lhs) => $lhs.$op($rt),
+            &Type::Tuple(ref $lhs) => $lhs.$op($rt),
+            &Type::List(ref $lhs) => $lhs.$op($rt),
+            &Type::Function(ref $lhs) => $lhs.$op($rt),
+            &Type::Object(ref $lhs) => $lhs.$op($rt),
+            &Type::Type(ref $lhs) => $lhs.$op($rt),
+            &Type::Module(ref $lhs) => $lhs.$op($rt),
+            &Type::Code(ref $lhs) => $lhs.$op($rt),
+            &Type::Frame(ref $lhs) => $lhs.$op($rt),
+            &Type::Set(ref $lhs) => $lhs.$op($rt),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($rt),
 
             _ => unreachable!()
         }
@@ -93,24 +93,24 @@ macro_rules! unary_op_foreach{
 macro_rules! binary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::None(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Int(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Float(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Str(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::List(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Function(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Object(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Type(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Module(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Code(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $rhs),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Bool(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::None(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Int(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Float(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Iter(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Dict(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Str(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Bytes(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Tuple(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::List(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Function(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Object(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Type(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Module(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Code(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Frame(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::Set(ref $lhs) => $lhs.$op($rt, $rhs),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($rt, $rhs),
 
             _ => unreachable!()
         }
@@ -121,24 +121,24 @@ macro_rules! binary_op_foreach{
 macro_rules! ternary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::None(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Int(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Float(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::List(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Function(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Object(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Module(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Code(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Bool(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::None(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Int(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Float(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Iter(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Dict(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Str(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Bytes(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Tuple(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::List(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Function(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Object(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Type(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Module(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Code(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Frame(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::Set(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($rt, $mid, $rhs),
 
             _ => unreachable!()
         }
@@ -149,24 +149,24 @@ macro_rules! ternary_op_foreach{
 macro_rules! _4ary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::None(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Int(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Float(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Str(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::List(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Function(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Object(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Type(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Module(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Code(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::Set(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Bool(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::None(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Int(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Float(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Iter(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Dict(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Str(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Bytes(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Tuple(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::List(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Function(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Object(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Type(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Module(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Code(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Frame(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::Set(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($rt, $arg0, $arg1, $arg2),
 
             _ => unreachable!()
         }
@@ -174,7 +174,7 @@ macro_rules! _4ary_op_foreach{
 }
 
 
-macro_rules! native_foreach_builtin {
+macro_rules! native_foreach_type {
     ($sel:expr, $function:ident, $receiver:ident) => (
         native_unary_op_foreach!($sel, $function, $receiver)
     );
@@ -193,24 +193,24 @@ macro_rules! native_foreach_builtin {
 macro_rules! native_unary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op(),
-            &Builtin::None(ref $lhs) => $lhs.$op(),
-            &Builtin::Int(ref $lhs) => $lhs.$op(),
-            &Builtin::Float(ref $lhs) => $lhs.$op(),
-            &Builtin::Iter(ref $lhs) => $lhs.$op(),
-            &Builtin::Dict(ref $lhs) => $lhs.$op(),
-            &Builtin::Str(ref $lhs) => $lhs.$op(),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op(),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op(),
-            &Builtin::List(ref $lhs) => $lhs.$op(),
-            &Builtin::Function(ref $lhs) => $lhs.$op(),
-            &Builtin::Object(ref $lhs) => $lhs.$op(),
-            &Builtin::Type(ref $lhs) => $lhs.$op(),
-            &Builtin::Module(ref $lhs) => $lhs.$op(),
-            &Builtin::Code(ref $lhs) => $lhs.$op(),
-            &Builtin::Frame(ref $lhs) => $lhs.$op(),
-            &Builtin::Set(ref $lhs) => $lhs.$op(),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op(),
+            &Type::Bool(ref $lhs) => $lhs.$op(),
+            &Type::None(ref $lhs) => $lhs.$op(),
+            &Type::Int(ref $lhs) => $lhs.$op(),
+            &Type::Float(ref $lhs) => $lhs.$op(),
+            &Type::Iter(ref $lhs) => $lhs.$op(),
+            &Type::Dict(ref $lhs) => $lhs.$op(),
+            &Type::Str(ref $lhs) => $lhs.$op(),
+            &Type::Bytes(ref $lhs) => $lhs.$op(),
+            &Type::Tuple(ref $lhs) => $lhs.$op(),
+            &Type::List(ref $lhs) => $lhs.$op(),
+            &Type::Function(ref $lhs) => $lhs.$op(),
+            &Type::Object(ref $lhs) => $lhs.$op(),
+            &Type::Type(ref $lhs) => $lhs.$op(),
+            &Type::Module(ref $lhs) => $lhs.$op(),
+            &Type::Code(ref $lhs) => $lhs.$op(),
+            &Type::Frame(ref $lhs) => $lhs.$op(),
+            &Type::Set(ref $lhs) => $lhs.$op(),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op(),
 
             _ => unreachable!()
         }
@@ -221,24 +221,24 @@ macro_rules! native_unary_op_foreach{
 macro_rules! native_binary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::None(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Int(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Float(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Str(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::List(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Function(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Object(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Type(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Module(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Code(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::Set(ref $lhs) => $lhs.$op($rhs),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($rhs),
+            &Type::Bool(ref $lhs) => $lhs.$op($rhs),
+            &Type::None(ref $lhs) => $lhs.$op($rhs),
+            &Type::Int(ref $lhs) => $lhs.$op($rhs),
+            &Type::Float(ref $lhs) => $lhs.$op($rhs),
+            &Type::Iter(ref $lhs) => $lhs.$op($rhs),
+            &Type::Dict(ref $lhs) => $lhs.$op($rhs),
+            &Type::Str(ref $lhs) => $lhs.$op($rhs),
+            &Type::Bytes(ref $lhs) => $lhs.$op($rhs),
+            &Type::Tuple(ref $lhs) => $lhs.$op($rhs),
+            &Type::List(ref $lhs) => $lhs.$op($rhs),
+            &Type::Function(ref $lhs) => $lhs.$op($rhs),
+            &Type::Object(ref $lhs) => $lhs.$op($rhs),
+            &Type::Type(ref $lhs) => $lhs.$op($rhs),
+            &Type::Module(ref $lhs) => $lhs.$op($rhs),
+            &Type::Code(ref $lhs) => $lhs.$op($rhs),
+            &Type::Frame(ref $lhs) => $lhs.$op($rhs),
+            &Type::Set(ref $lhs) => $lhs.$op($rhs),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($rhs),
 
             _ => unreachable!()
         }
@@ -249,24 +249,24 @@ macro_rules! native_binary_op_foreach{
 macro_rules! native_ternary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::None(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Int(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Float(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Str(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::List(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Function(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Object(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Type(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Module(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Code(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::Set(ref $lhs) => $lhs.$op($mid, $rhs),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Bool(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::None(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Int(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Float(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Iter(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Dict(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Str(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Bytes(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Tuple(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::List(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Function(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Object(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Type(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Module(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Code(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Frame(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::Set(ref $lhs) => $lhs.$op($mid, $rhs),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($mid, $rhs),
 
             _ => unreachable!()
         }
@@ -277,24 +277,24 @@ macro_rules! native_ternary_op_foreach{
 macro_rules! native_4ary_op_foreach {
     ($obj:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
         match $obj {
-            &Builtin::Bool(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::None(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Int(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Float(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Iter(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Dict(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Str(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Bytes(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Tuple(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::List(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Function(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Object(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Type(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Module(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Code(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Frame(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::Set(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
-            &Builtin::FrozenSet(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Bool(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::None(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Int(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Float(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Iter(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Dict(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Str(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Bytes(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Tuple(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::List(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Function(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Object(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Type(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Module(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Code(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Frame(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::Set(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
+            &Type::FrozenSet(ref $lhs) => $lhs.$op($arg0, $arg1, $arg2),
 
             _ => unreachable!()
         }
@@ -330,7 +330,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel) -> RtResult<Builtin> {
+            fn $nfname(&$sel) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -343,7 +343,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel, &Builtin) -> RtResult<$nativety> {
+            fn $nfname(&$sel, &Type) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -356,7 +356,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel, &Builtin) -> RtResult<Builtin> {
+            fn $nfname(&$sel, &Type) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -369,7 +369,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel, &Builtin, &Builtin) -> RtResult<$nativety> {
+            fn $nfname(&$sel, &Type, &Type) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -382,7 +382,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel, &Builtin, &Builtin) -> RtResult<Builtin> {
+            fn $nfname(&$sel, &Type, &Type) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -395,7 +395,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel, &Builtin, &Builtin, &Builtin) -> RtResult<Builtin> {
+            fn $nfname(&$sel, &Type, &Type, &Type) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
@@ -408,7 +408,7 @@ macro_rules! api_trait {
             }
 
             /// Native API Method $pyname
-            fn $nfname(&$sel, &Vec<Builtin>) -> RtResult<Builtin> {
+            fn $nfname(&$sel, &Vec<Type>) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }

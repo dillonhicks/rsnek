@@ -15,7 +15,7 @@ use api::typing::BuiltinType;
 
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
-use objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use objects::native::{self, DictKey};
 use ::api::RtObject;
 
@@ -63,11 +63,11 @@ impl typing::BuiltinType for PyObjectType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::Object(value));
+        let object = RtObject::new(Type::Object(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::Object(ref value) => {
+            &Type::Object(ref value) => {
                 value.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -117,21 +117,21 @@ impl method::GetAttr for PyObject {
         self.native_getattr(name.as_ref())
     }
 
-    fn native_getattr(&self, name: &Builtin) -> RtResult<RtObject> {
+    fn native_getattr(&self, name: &Type) -> RtResult<RtObject> {
         match name {
-            &Builtin::Str(ref string) => {
+            &Type::Str(ref string) => {
                 let string_obj = string.rc.upgrade()?;
 
                 let key = DictKey(string.native_hash()?, string_obj);
                 let dict = &self.value.0.dict;
 
-                match dict.native_getitem(&Builtin::DictKey(key)) {
+                match dict.native_getitem(&Type::DictKey(key)) {
                     Ok(objref) => Ok(objref),
                     Err(err) => {
                         let bases = &self.value.0.bases;
 
                         match bases.as_ref() {
-                            &Builtin::Tuple(ref tuple) => {
+                            &Type::Tuple(ref tuple) => {
                                 for base in &tuple.value.0 {
                                     info!("{:?}", base);
                                 }
@@ -154,7 +154,7 @@ impl method::SetAttr for PyObject {
         Ok(rt.none())
     }
 
-    fn native_setattr(&self, name: &Builtin, value: &Builtin) -> RtResult<native::None> {
+    fn native_setattr(&self, name: &Type, value: &Type) -> RtResult<native::None> {
 
         let hashid = name.native_hash()?;
         let key_ref = name.upgrade()?;
@@ -162,7 +162,7 @@ impl method::SetAttr for PyObject {
         let key = DictKey(hashid, key_ref);
         let dict = &self.value.0.dict;
 
-        match dict.native_setitem(&Builtin::DictKey(key), &value) {
+        match dict.native_setitem(&Type::DictKey(key), &value) {
             Ok(_) => Ok(native::None()),
             Err(_) => Err(Error::attribute("Could not set attribute")),
         }

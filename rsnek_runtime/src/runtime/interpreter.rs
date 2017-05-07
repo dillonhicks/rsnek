@@ -74,7 +74,7 @@ use ::runtime::traits::{
 };
 use ::objects::native::{self, Native, Instr, FuncType};
 use ::objects::native::SignatureBuilder;
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 
 
 const RECURSION_LIMIT: usize = 256;
@@ -602,7 +602,7 @@ impl InterpreterState {
                 };
 
                 let result = match func.as_ref(){
-                    &Builtin::Function(ref pyfunc) => {
+                    &Type::Function(ref pyfunc) => {
                         match pyfunc.value.0.callable {
                             FuncType::Wrapper(_)        |
                             FuncType::MethodWrapper(_, _)  => {
@@ -817,7 +817,7 @@ impl InterpreterState {
             .map(|ref tbframe| {
 
                 match tbframe.object().as_ref() {
-                    &Builtin::Frame(ref pyframe) => {
+                    &Type::Frame(ref pyframe) => {
                         let fcode = pyframe.value.0.f_code.clone();
 
                         Ok((fcode, tbframe.line()))
@@ -828,13 +828,13 @@ impl InterpreterState {
             }).map_results(|(ref code, line)| {
 
                 match code.as_ref() {
-                    &Builtin::Code(ref pycode) => {
+                    &Type::Code(ref pycode) => {
                         Ok(format!(
                             "<{} at {:?}>",
                             pycode.value.0.co_name.clone(),
                             (pycode as *const _)))
                     },
-                    &Builtin::Function(ref pyfunc) => {
+                    &Type::Function(ref pyfunc) => {
                         Ok(format!("<{} at {:?} in {} line ~{}>",
                                    pyfunc.name(),
                                    (pyfunc as *const _),

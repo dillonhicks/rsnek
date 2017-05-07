@@ -16,7 +16,7 @@ use api::method::{self, Equal};
 use api::selfref::{self, SelfRef};
 
 use ::objects::collection::sequence;
-use ::objects::builtin::Builtin;
+use ::modules::builtins::Type;
 use ::objects::native::{self, List};
 use ::api::RtObject;
 
@@ -41,11 +41,11 @@ impl typing::BuiltinType for PyListType {
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
-        let object = RtObject::new(Builtin::List(value));
+        let object = RtObject::new(Type::List(value));
         let new = object.clone();
 
         match object.as_ref() {
-            &Builtin::List(ref list) => {
+            &Type::List(ref list) => {
                 list.rc.set(&object.clone());
             }
             _ => unreachable!(),
@@ -104,9 +104,9 @@ impl method::Equal for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
         match rhs {
-            &Builtin::List(ref other) => {
+            &Type::List(ref other) => {
                 let left = &self.value.0;
                 let right = &other.value.0;
                 Ok(sequence::equals(left, right))
@@ -122,7 +122,7 @@ impl method::NotEqual for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Builtin) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
         let truth = self.native_eq(rhs)?;
         Ok(!truth)
     } 
@@ -145,7 +145,7 @@ impl method::Multiply for PyList {
 
     fn op_mul(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
         match rhs.as_ref() {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 match int.value.0.to_usize() {
                     Some(int) if int <= 0   => Ok(rt.default_list()),
                     Some(int) if int == 1   => self.rc.upgrade(),
@@ -171,7 +171,7 @@ impl method::Contains for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Builtin) -> RtResult<native::Boolean> {
+    fn native_contains(&self, item: &Type) -> RtResult<native::Boolean> {
         Ok(sequence::contains(&self.value.0, item))
     }
 }
@@ -209,9 +209,9 @@ impl method::GetItem for PyList {
         self.native_getitem(index.as_ref())
     }
 
-    fn native_getitem(&self, index: &Builtin) -> ObjectResult {
+    fn native_getitem(&self, index: &Type) -> ObjectResult {
         match index {
-            &Builtin::Int(ref int) => {
+            &Type::Int(ref int) => {
                 sequence::get_index(&self.value.0, &int.value.0)
             }
             _ => Err(Error::typerr("list indices must be integers")),
