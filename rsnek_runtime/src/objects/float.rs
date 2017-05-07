@@ -12,7 +12,7 @@ use ::api::result::{RtResult, ObjectResult};
 use api::{self, RtValue, method, typing};
 use api::selfref::{self, SelfRef};
 
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 use ::modules::builtins::Type;
 use objects::number::{self, FloatAdapter, IntAdapter};
@@ -24,10 +24,10 @@ pub struct PyFloatType {}
 
 impl typing::BuiltinType for PyFloatType {
     type T = PyFloat;
-    type V = native::Float;
+    type V = rs::Float;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: native::Float) -> RtObject {
+    fn new(&self, rt: &Runtime, value: rs::Float) -> RtObject {
         // TODO: {T99} Investigate object interning, see the methodology in integer.rs.
         // Can that be generalized?
         PyFloatType::inject_selfref(PyFloatType::alloc(value))
@@ -59,7 +59,7 @@ impl typing::BuiltinType for PyFloatType {
 }
 
 
-pub struct FloatValue(pub native::Float);
+pub struct FloatValue(pub rs::Float);
 pub type PyFloat = RtValue<FloatValue>;
 
 
@@ -91,7 +91,7 @@ impl method::StringCast for PyFloat {
         }
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         Ok(number::format_float(&self.value.0))
     }
 }
@@ -105,7 +105,7 @@ impl method::StringRepresentation for PyFloat {
         }
     }
 
-    fn native_repr(&self) -> RtResult<native::String> {
+    fn native_repr(&self) -> RtResult<rs::String> {
         Ok(number::format_float(&self.value.0))
     }
 }
@@ -118,7 +118,7 @@ impl method::Equal for PyFloat {
         }
     }
 
-    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<rs::Boolean> {
         match *other {
             Type::Float(ref float) => Ok(self.value.0 == float.value.0),
             Type::Int(ref int) => Ok(FloatAdapter(&self.value.0) == IntAdapter(&int.value.0)),
@@ -137,7 +137,7 @@ impl method::BooleanCast for PyFloat {
         }
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         return Ok(!self.value.0.is_zero());
     }
 }
@@ -150,8 +150,8 @@ impl method::IntegerCast for PyFloat {
         }
     }
 
-    fn native_int(&self) -> RtResult<native::Integer> {
-        return Ok(native::Integer::from(self.value.0 as i64));
+    fn native_int(&self) -> RtResult<rs::Integer> {
+        return Ok(rs::Integer::from(self.value.0 as i64));
     }
 }
 
@@ -161,7 +161,7 @@ impl method::FloatCast for PyFloat {
         self.rc.upgrade()
     }
 
-    fn native_float(&self) -> RtResult<native::Float> {
+    fn native_float(&self) -> RtResult<rs::Float> {
         return Ok(self.value.0);
     }
 }

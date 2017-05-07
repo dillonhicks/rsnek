@@ -72,8 +72,9 @@ use ::runtime::traits::{
     FunctionProvider,
     DefaultDictProvider
 };
-use ::objects::native::{self, Native, Instr, FuncType};
-use ::objects::native::SignatureBuilder;
+use ::system::primitives::{Native, Instr, FuncType};
+use ::system::primitives as rs;
+use ::system::primitives::SignatureBuilder;
 use ::modules::builtins::Type;
 
 
@@ -153,7 +154,7 @@ impl Interpreter {
 #[derive(Clone, Debug, Serialize)]
 struct InterpreterFrame {
     frame: RtObject,
-    stack: RefCell<native::List>,
+    stack: RefCell<rs::List>,
     lineno: Cell<usize>
 }
 
@@ -162,7 +163,7 @@ impl InterpreterFrame {
     pub fn new(frame: RtObject) -> Self {
         InterpreterFrame {
             frame: frame,
-            stack: RefCell::new(native::List::new()),
+            stack: RefCell::new(rs::List::new()),
             lineno: Cell::new(0)
         }
     }
@@ -171,7 +172,7 @@ impl InterpreterFrame {
         &self.frame
     }
 
-    pub fn stack(&self) -> Ref<native::List> {
+    pub fn stack(&self) -> Ref<rs::List> {
         self.stack.borrow()
     }
 
@@ -230,7 +231,7 @@ impl<'a> From<&'a InterpreterFrame> for TracebackFrame {
 struct InterpreterState {
     rt: Runtime,
     // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
-    ns: HashMap<native::String, RtObject>,
+    ns: HashMap<rs::String, RtObject>,
     // (frame, stack)
     frames: VecDeque<InterpreterFrame>,
 }
@@ -266,7 +267,7 @@ impl InterpreterState {
 
         // Create the initial frame objects that
         // represent the __main__ entry point.
-        let main_code = native::Code {
+        let main_code = rs::Code {
             co_name: String::from("__main__"),
             co_names: Vec::new(),
             co_varnames: Vec::new(),
@@ -274,11 +275,11 @@ impl InterpreterState {
             co_consts: Vec::new()
         };
 
-        let main_frame = native::Frame {
+        let main_frame = rs::Frame {
             f_back: rt.none(),
             f_code: rt.code(main_code),
             f_builtins: rt.none(),
-            f_lasti: native::Integer::zero(),
+            f_lasti: rs::Integer::zero(),
             blocks: VecDeque::new()
         };
 
@@ -336,11 +337,11 @@ impl InterpreterState {
         });
 
         let new_frame = self.rt.frame(
-            native::Frame {
+            rs::Frame {
                 f_back: f_back,
                 f_code: func.clone(),
                 f_builtins: self.rt.none(),
-                f_lasti: native::Integer::zero(),
+                f_lasti: rs::Integer::zero(),
                 blocks: VecDeque::new()
             }
         );
@@ -363,7 +364,7 @@ impl InterpreterState {
         })
     }
 
-    fn stack_view(&self) -> Ref<native::List> {
+    fn stack_view(&self) -> Ref<rs::List> {
         with_current_frame!(self |frame| {
             frame.stack()
         })
@@ -456,11 +457,11 @@ impl InterpreterState {
                     },
                     Native::Code(code) => {
 
-                        let func = native::Func {
+                        let func = rs::Func {
                             name: code.co_name.clone(),
                             module: String::from("<compiled-module>"),
                             signature: code.co_varnames.as_slice().as_args(),
-                            callable: native::FuncType::Code(code),
+                            callable: rs::FuncType::Code(code),
                         };
 
                         rt.function(func)
@@ -614,7 +615,7 @@ impl InterpreterState {
                                         match pyfunc.op_call(&rt,
                                                             &rt.tuple(pos_args),
                                                             &rt.tuple(vec![]),
-                                                            &rt.dict(native::None())) {
+                                                            &rt.dict(rs::None())) {
 
                                             Ok(next_tos) => {
                                                 self.pop_frame();
@@ -699,7 +700,7 @@ impl InterpreterState {
                 None
             },
             (OpCode::BuildList, Some(Native::Count(count))) => {
-                let mut elems = native::List::new();
+                let mut elems = rs::List::new();
                 for _ in 0..count {
                     if self.stack_view().is_empty() {
                         return Some(Err(Error::system(

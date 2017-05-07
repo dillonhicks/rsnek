@@ -22,7 +22,8 @@ use ::runtime::traits::{IntegerProvider, BooleanProvider, StringProvider, Defaul
                FunctionProvider, IteratorProvider};
 use ::modules::builtins::Type;
 use ::objects::collection::sequence;
-use ::objects::native::{self, SignatureBuilder};
+use ::system::primitives::{SignatureBuilder};
+use ::system::primitives as rs;
 
 
 const TYPE_NAME: &'static str = "str";
@@ -35,7 +36,7 @@ pub struct PyStringType {
 
 impl typing::BuiltinType for PyStringType {
     type T = PyString;
-    type V = native::String;
+    type V = rs::String;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -70,7 +71,7 @@ impl typing::BuiltinType for PyStringType {
 }
 
 
-pub struct StringValue(pub native::String);
+pub struct StringValue(pub rs::String);
 pub type PyString = RtValue<StringValue>;
 
 
@@ -264,12 +265,12 @@ impl method::GetAttr for PyString {
 impl method::Hashed for PyString {
     fn op_hash(&self, rt: &Runtime) -> ObjectResult {
         match self.native_hash() {
-            Ok(value) => Ok(rt.int(native::Integer::from(value))),
+            Ok(value) => Ok(rt.int(rs::Integer::from(value))),
             Err(err) => Err(err),
         }
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         let mut s = DefaultHasher::new();
         self.value.0.hash(&mut s);
         Ok(s.finish())
@@ -284,7 +285,7 @@ impl method::StringCast for PyString {
         self.rc.upgrade()
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         Ok(self.value.0.clone())
     }
 
@@ -299,7 +300,7 @@ impl method::Equal for PyString {
         }
     }
 
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs {
             &Type::Str(ref string) => Ok(self.value.0.eq(&string.value.0)),
             _ => Ok(false),
@@ -316,7 +317,7 @@ impl method::BooleanCast for PyString {
         }
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         Ok(!self.value.0.is_empty())
     }
 }
@@ -330,8 +331,8 @@ impl method::IntegerCast for PyString {
         }
     }
 
-    fn native_int(&self) -> RtResult<native::Integer> {
-        match native::Integer::from_str(&self.value.0) {
+    fn native_int(&self) -> RtResult<rs::Integer> {
+        match rs::Integer::from_str(&self.value.0) {
             Ok(int) => Ok(int),
             Err(_) => Err(Error::value(
                 &format!("Invalid literal '{}' for int", self.value.0)))
@@ -387,7 +388,7 @@ impl method::Contains for PyString {
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Type) -> RtResult<native::Boolean> {
+    fn native_contains(&self, item: &Type) -> RtResult<rs::Boolean> {
         match item {
             &Type::Str(ref string) => {
                 Ok(self.value.0.contains(&string.value.0))
@@ -405,9 +406,9 @@ impl method::Iter for PyString {
         Ok(rt.iter(iter))
     }
 
-    fn native_iter(&self) -> RtResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<rs::Iterator> {
         match self.rc.upgrade() {
-            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
+            Ok(selfref) => Ok(rs::Iterator::new(&selfref)?),
             Err(err) => Err(err)
         }
     }
@@ -418,8 +419,8 @@ impl method::Length for PyString {
         Ok(rt.int(self.value.0.len()))
     }
 
-    fn native_len(&self) -> RtResult<native::Integer> {
-        Ok(native::Integer::from(self.value.0.len()))
+    fn native_len(&self) -> RtResult<rs::Integer> {
+        Ok(rs::Integer::from(self.value.0.len()))
     }
 }
 

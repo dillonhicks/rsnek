@@ -8,12 +8,12 @@ use ::api::result::{ObjectResult, RtResult};
 use api::selfref::{self, SelfRef};
 use api::{RtValue, PyAPI, method, typing};
 
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 use ::modules::builtins::Type;
 
 
-pub const NONE: &'static native::None = &native::None();
+pub const NONE: &'static rs::None = &rs::None();
 pub const NONE_STR: &'static str = "None";
 
 
@@ -24,7 +24,7 @@ pub struct PyNoneType {
 
 impl typing::BuiltinType for PyNoneType {
     type T = PyNone;
-    type V = &'static native::None;
+    type V = &'static rs::None;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -58,7 +58,7 @@ impl typing::BuiltinType for PyNoneType {
 }
 
 
-pub struct NoneValue(&'static native::None, String);
+pub struct NoneValue(&'static rs::None, String);
 pub type PyNone = RtValue<NoneValue>;
 
 
@@ -84,7 +84,7 @@ impl method::StringCast for PyNone {
         Ok(rt.str(self.value.1.clone()))
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         Ok(self.value.1.clone())
     }
 }
@@ -96,7 +96,7 @@ impl method::Equal for PyNone {
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs {
             &Type::None(_) => Ok(true),
             _ => Ok(false),
@@ -110,7 +110,7 @@ impl method::BooleanCast for PyNone {
         Ok(rt.bool(false))
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         Ok(false)
     }
 }

@@ -51,7 +51,8 @@ use ::objects::iterator::{PyIteratorType, IteratorValue};
 use ::objects::list::PyListType;
 use ::objects::method::PyFunctionType;
 use ::objects::module::PyModuleType;
-use ::objects::native::{self, SignatureBuilder};
+use ::system::primitives::{SignatureBuilder};
+use ::system::primitives as rs;
 use ::objects::none::{PyNoneType, NONE};
 use ::objects::object::PyObjectType;
 use ::objects::pytype::PyMeta;
@@ -155,11 +156,11 @@ impl Runtime {
         let rt = Runtime(StrongRc::new(internal));
         {
             let mut _mod: RefMut<RtObject> = rt.0.mod_builtins.borrow_mut();
-            *_mod = rt.module(native::None());
+            *_mod = rt.module(rs::None());
         }
         {
             let mut _mod: RefMut<RtObject> = rt.0.modules.borrow_mut();
-            *_mod = rt.dict(native::None());
+            *_mod = rt.dict(rs::None());
         }
 
 
@@ -180,7 +181,7 @@ impl Runtime {
         WeakRuntime(StrongRc::downgrade(&self.0.clone()))
     }
 
-    pub fn register_builtin(&self, func: native::Func) {
+    pub fn register_builtin(&self, func: rs::Func) {
         let module: Ref<RtObject> = self.0.mod_builtins.borrow();
         let key = self.str(func.name.as_ref());
         module.op_setattr(&self, &key, &self.function(func)).unwrap();
@@ -224,9 +225,9 @@ impl NoneProvider for Runtime {
 // Boolean
 //
 #[deprecated]
-impl BooleanProvider<native::None> for Runtime {
+impl BooleanProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn bool(&self, value: native::None) -> RtObject {
+    fn bool(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .bool
@@ -234,8 +235,8 @@ impl BooleanProvider<native::None> for Runtime {
     }
 }
 
-impl BooleanProvider<native::Boolean> for Runtime {
-    fn bool(&self, value: native::Boolean) -> RtObject {
+impl BooleanProvider<rs::Boolean> for Runtime {
+    fn bool(&self, value: rs::Boolean) -> RtObject {
         self.0
             .types
             .bool
@@ -247,25 +248,25 @@ impl BooleanProvider<native::Boolean> for Runtime {
 // Integer
 //
 impl<T: Num> IntegerProvider<T> for Runtime
-        where native::Integer: std::convert::From<T> {
+        where rs::Integer: std::convert::From<T> {
 
     fn int(&self, value: T) -> RtObject {
         self.0
             .types
             .int
-            .new(&self, native::Integer::from(value))
+            .new(&self, rs::Integer::from(value))
     }
 }
 
 
 #[deprecated]
-impl IntegerProvider<native::None> for Runtime {
+impl IntegerProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn int(&self, value: native::None) -> RtObject {
+    fn int(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .int
-            .new(&self, native::Integer::zero())
+            .new(&self, rs::Integer::zero())
     }
 }
 
@@ -274,16 +275,16 @@ impl IntegerProvider<native::None> for Runtime {
 // Float
 //
 #[deprecated]
-impl FloatProvider<native::None> for Runtime {
+impl FloatProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn float(&self, value: native::None) -> RtObject {
+    fn float(&self, value: rs::None) -> RtObject {
         self.0.types.float.new(&self, 0.0)
     }
 }
 
 
-impl FloatProvider<native::Float> for Runtime {
-    fn float(&self, value: native::Float) -> RtObject {
+impl FloatProvider<rs::Float> for Runtime {
+    fn float(&self, value: rs::Float) -> RtObject {
         self.0.types.float.new(&self, value)
     }
 }
@@ -293,17 +294,17 @@ impl FloatProvider<native::Float> for Runtime {
 // Iterators
 //
 #[deprecated]
-impl IteratorProvider<native::None> for Runtime {
+impl IteratorProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn iter(&self, value: native::None) -> RtObject {
+    fn iter(&self, value: rs::None) -> RtObject {
         self.0.types.iterator.empty(&self)
     }
 }
 
 
-impl IteratorProvider<native::Iterator> for Runtime {
+impl IteratorProvider<rs::Iterator> for Runtime {
     #[allow(unused_variables)]
-    fn iter(&self, value: native::Iterator) -> RtObject {
+    fn iter(&self, value: rs::Iterator) -> RtObject {
         let wrapped = IteratorValue(value, self.clone());
         self.0
             .types
@@ -317,9 +318,9 @@ impl IteratorProvider<native::Iterator> for Runtime {
 // String
 //
 #[deprecated]
-impl StringProvider<native::None> for Runtime {
+impl StringProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn str(&self, value: native::None) -> RtObject {
+    fn str(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .string
@@ -329,9 +330,9 @@ impl StringProvider<native::None> for Runtime {
 }
 
 #[deprecated]
-impl BytesProvider<native::None> for Runtime {
+impl BytesProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn bytes(&self, value: native::None) -> RtObject {
+    fn bytes(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .bytes
@@ -341,9 +342,9 @@ impl BytesProvider<native::None> for Runtime {
 }
 
 
-impl StringProvider<native::String> for Runtime {
+impl StringProvider<rs::String> for Runtime {
     #[allow(unused_variables)]
-    fn str(&self, value: native::String) -> RtObject {
+    fn str(&self, value: rs::String) -> RtObject {
         self.0
             .types
             .string
@@ -370,16 +371,16 @@ impl DefaultStringProvider for Runtime {
 //
 // Dict
 //
-impl DictProvider<native::Dict> for Runtime {
-    fn dict(&self, value: native::Dict) -> RtObject {
+impl DictProvider<rs::Dict> for Runtime {
+    fn dict(&self, value: rs::Dict) -> RtObject {
         self.0.types.dict.new(&self, value)
     }
 }
 
 #[deprecated]
-impl DictProvider<native::None> for Runtime {
+impl DictProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn dict(&self, value: native::None) -> RtObject {
+    fn dict(&self, value: rs::None) -> RtObject {
         self.default_dict()
     }
 }
@@ -387,7 +388,7 @@ impl DictProvider<native::None> for Runtime {
 
 impl DefaultDictProvider for Runtime {
     fn default_dict(&self) -> RtObject {
-        self.0.types.dict.new(&self, native::Dict::new())
+        self.0.types.dict.new(&self, rs::Dict::new())
     }
 }
 
@@ -395,16 +396,16 @@ impl DefaultDictProvider for Runtime {
 // Tuple
 //
 #[deprecated]
-impl TupleProvider<native::None> for Runtime {
+impl TupleProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn tuple(&self, value: native::None) -> RtObject {
+    fn tuple(&self, value: rs::None) -> RtObject {
         self.default_tuple()
     }
 }
 
 
-impl TupleProvider<native::Tuple> for Runtime {
-    fn tuple(&self, value: native::Tuple) -> RtObject {
+impl TupleProvider<rs::Tuple> for Runtime {
+    fn tuple(&self, value: rs::Tuple) -> RtObject {
         self.0
             .types
             .tuple
@@ -422,15 +423,15 @@ impl DefaultTupleProvider for Runtime {
 // List
 //
 #[deprecated]
-impl ListProvider<native::None> for Runtime {
+impl ListProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn list(&self, value: native::None) -> RtObject {
+    fn list(&self, value: rs::None) -> RtObject {
         self.default_list()
     }
 }
 
-impl ListProvider<native::List> for Runtime {
-    fn list(&self, value: native::List) -> RtObject {
+impl ListProvider<rs::List> for Runtime {
+    fn list(&self, value: rs::List) -> RtObject {
         self.0
             .types
             .list
@@ -449,29 +450,29 @@ impl DefaultListProvider for Runtime {
 // Object
 //
 #[deprecated]
-impl ObjectProvider<native::None> for Runtime {
+impl ObjectProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn object(&self, value: native::None) -> RtObject {
+    fn object(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .object
             .new(&self,
-                 native::Object {
+                 rs::Object {
                      class: self.0
                          .types
                          .object
                          .object
                          .clone(),
-                     dict: self.dict(native::None()),
-                     bases: self.dict(native::None()),
+                     dict: self.dict(rs::None()),
+                     bases: self.dict(rs::None()),
                  })
     }
 }
 
 
-impl ObjectProvider<native::Object> for Runtime {
+impl ObjectProvider<rs::Object> for Runtime {
     #[allow(unused_variables)]
-    fn object(&self, value: native::Object) -> RtObject {
+    fn object(&self, value: rs::Object) -> RtObject {
         self.0
             .types
             .object
@@ -482,9 +483,9 @@ impl ObjectProvider<native::Object> for Runtime {
 //
 // type
 //
-impl PyTypeProvider<native::None> for Runtime {
+impl PyTypeProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn pytype(&self, value: native::None) -> RtObject {
+    fn pytype(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .meta
@@ -497,9 +498,9 @@ impl PyTypeProvider<native::None> for Runtime {
 //
 // Functions and Methods
 //
-impl FunctionProvider<native::Func> for Runtime {
-    /// Create a function object from the native::Function and return its `RtObject`
-    fn function(&self, value: native::Func) -> RtObject {
+impl FunctionProvider<rs::Func> for Runtime {
+    /// Create a function object from the rs::Function and return its `RtObject`
+    fn function(&self, value: rs::Func) -> RtObject {
         self.0
             .types
             .function
@@ -508,10 +509,10 @@ impl FunctionProvider<native::Func> for Runtime {
 }
 
 #[deprecated]
-impl FunctionProvider<native::None> for Runtime {
+impl FunctionProvider<rs::None> for Runtime {
     /// Create a function object that returns Ok(None)
     #[allow(unused_variables)]
-    fn function(&self, value: native::None) -> RtObject {
+    fn function(&self, value: rs::None) -> RtObject {
         self.function(self.none())
     }
 }
@@ -520,12 +521,12 @@ impl FunctionProvider<RtObject> for Runtime {
     /// Create a function object that returns Ok(value)
     #[allow(unused_variables)]
     fn function(&self, value: RtObject) -> RtObject {
-        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
-        self.function(native::Func {
+        let callable: Box<rs::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| Ok(value.clone()));
+        self.function(rs::Func {
             name: String::from("returns_const"),
             module: String::from("runtime_provider"),
             signature: [].as_args(),
-            callable: native::FuncType::Wrapper(callable)
+            callable: rs::FuncType::Wrapper(callable)
         })
     }
 }
@@ -534,8 +535,8 @@ impl FunctionProvider<RtObject> for Runtime {
 //
 // Code
 //
-impl CodeProvider<native::Code> for Runtime {
-    fn code(&self, value: native::Code) -> RtObject {
+impl CodeProvider<rs::Code> for Runtime {
+    fn code(&self, value: rs::Code) -> RtObject {
         self.0.types.code.new(&self, value)
     }
 }
@@ -543,8 +544,8 @@ impl CodeProvider<native::Code> for Runtime {
 //
 // Frames
 //
-impl FrameProvider<native::Frame> for Runtime {
-    fn frame(&self, value: native::Frame) -> RtObject {
+impl FrameProvider<rs::Frame> for Runtime {
+    fn frame(&self, value: rs::Frame) -> RtObject {
         self.0.types.frame.new(&self, value)
     }
 }
@@ -553,8 +554,8 @@ impl FrameProvider<native::Frame> for Runtime {
 impl DefaultFrameProvider for Runtime {
     #[allow(unused_variables)]
     fn default_frame(&self) -> RtObject {
-        self.0.types.frame.new(&self, native::Frame {
-            f_lasti: native::Integer::zero(),
+        self.0.types.frame.new(&self, rs::Frame {
+            f_lasti: rs::Integer::zero(),
             f_builtins: self.default_dict(),
             f_code: self.none(),
             f_back: self.none(),
@@ -566,21 +567,21 @@ impl DefaultFrameProvider for Runtime {
 //
 // Module
 //
-impl ModuleProvider<native::None> for Runtime {
+impl ModuleProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
-    fn module(&self, value: native::None) -> RtObject {
+    fn module(&self, value: rs::None) -> RtObject {
         self.0
             .types
             .module
             .new(&self,
-                 native::Object {
+                 rs::Object {
                      class: self.0
                          .types
                          .object
                          .object
                          .clone(),
-                     dict: self.dict(native::None()),
-                     bases: self.dict(native::None()),
+                     dict: self.dict(rs::None()),
+                     bases: self.dict(rs::None()),
                  })
     }
 }
@@ -635,7 +636,7 @@ mod tests {
 
                 let args = rt.tuple(vec![tuple.clone()]);
                 let starargs = rt.tuple(vec![]);
-                let kwargs = rt.dict(native::Dict::new());
+                let kwargs = rt.dict(rs::Dict::new());
 
                 let len = rt.get_builtin("len");
 

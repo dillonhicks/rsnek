@@ -1,23 +1,24 @@
+// Actual objects
+pub mod boolean;
+pub mod bytes;
+pub mod code;
+pub mod complex;
+pub mod dictionary;
+pub mod float;
+pub mod frame;
+pub mod frozenset;
 pub mod integer;
 pub mod iterator;
-pub mod float;
-pub mod string;
-pub mod bytes;
-pub mod tuple;
 pub mod list;
-pub mod dictionary;
-pub mod set;
-pub mod frozenset;
-pub mod complex;
-pub mod native;
-pub mod boolean;
+pub mod method;
+pub mod module;
 pub mod none;
 pub mod object;
 pub mod pytype;
-pub mod method;
-pub mod module;
-pub mod code;
-pub mod frame;
+pub mod set;
+pub mod string;
+pub mod tuple;
 
-mod number;
+// Generic utilities
 mod collection;
+mod number;

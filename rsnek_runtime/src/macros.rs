@@ -461,7 +461,7 @@ macro_rules! rsnek_exception_index {
 macro_rules! unary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
-        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+        let callable: Box<rs::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
             let object = selfref.clone();
             check_args(0, &pos_args)?;
             check_args(0, &starargs)?;
@@ -475,11 +475,11 @@ macro_rules! unary_method_wrapper (
             }
         });
 
-        Ok($rt.function(native::Func {
+        Ok($rt.function(rs::Func {
             name: format!("'{}' of {} object", $fname, $tname),
             signature: [].as_args(),
             module: strings::BUILTINS_MODULE.to_string(),
-            callable: native::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
+            callable: rs::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
         }))
 
     });
@@ -489,7 +489,7 @@ macro_rules! unary_method_wrapper (
 macro_rules! binary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
-        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+        let callable: Box<rs::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
             let object = selfref.clone();
             check_args(1, &pos_args)?;
             check_args(0, &starargs)?;
@@ -505,11 +505,11 @@ macro_rules! binary_method_wrapper (
             }
         });
 
-        Ok($rt.function(native::Func {
+        Ok($rt.function(rs::Func {
             name: format!("'{}' of {} object", $fname, $tname),
             signature: ["arg1"].as_args(),
             module: strings::BUILTINS_MODULE.to_string(),
-            callable: native::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
+            callable: rs::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
         }))
 
     });
@@ -519,7 +519,7 @@ macro_rules! binary_method_wrapper (
 macro_rules! ternary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
-        let callable: Box<native::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
+        let callable: Box<rs::WrapperFn> = Box::new(move |rt, pos_args, starargs, kwargs| {
             let object = selfref.clone();
             check_args(2, &pos_args)?;
             check_args(0, &starargs)?;
@@ -535,11 +535,11 @@ macro_rules! ternary_method_wrapper (
             }
         });
 
-        Ok($rt.function(native::Func {
+        Ok($rt.function(rs::Func {
             name: format!("'{}' of {} object", $fname, $tname),
             signature: ["arg1", "arg2"].as_args(),
             module: strings::BUILTINS_MODULE.to_string(),
-            callable: native::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
+            callable: rs::FuncType::MethodWrapper($sel.rc.upgrade()?, callable)
         }))
 
     });

@@ -6,7 +6,8 @@ use ::api::result::{Error, ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{BooleanProvider, IntegerProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Native};
+use ::system::primitives::{Native};
+use ::system::primitives as rs;
 
 
 // ----------------------------------
@@ -21,7 +22,7 @@ pub trait Init {
     fn op_init(&mut self, rt: &Runtime, named_args: &RtObject, args: &RtObject, kwargs: &RtObject) -> ObjectResult {
         Err(Error::not_implemented())
     }
-    fn native_init(&mut self, named_args: &Type, args: &Type, kwargs: &Type) -> RtResult<native::None> {
+    fn native_init(&mut self, named_args: &Type, args: &Type, kwargs: &Type) -> RtResult<rs::None> {
         Err(Error::not_implemented())
     }
 }
@@ -38,8 +39,8 @@ api_trait!(binary, self, __del__, Delete, op_del, native_del);
 // __class__
 
 #[inline(always)]
-pub fn memory_address<T>(data: &T) -> native::ObjectId {
-    (data as *const _) as native::ObjectId
+pub fn memory_address<T>(data: &T) -> rs::ObjectId {
+    (data as *const _) as rs::ObjectId
 }
 
 
@@ -48,7 +49,7 @@ pub fn memory_address<T>(data: &T) -> native::ObjectId {
 // ----------------------------------
 api_trait!(binary, self, __getattr__, GetAttr, op_getattr, native_getattr, RtObject);
 api_trait!(binary, self, __getattribute__, GetAttribute, op_getattribute, native_getattribute);
-api_trait!(ternary, self, __setattr__, SetAttr, op_setattr, native_setattr, native::None);
+api_trait!(ternary, self, __setattr__, SetAttr, op_setattr, native_setattr, rs::None);
 api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 
 
@@ -59,7 +60,7 @@ api_trait!(binary, self, __delattr__, DelAttr, op_delattr, native_delattr);
 //  represented at runtime except through the `id()`
 //  and `is / is not` keyword operators.
 // ----------------------------------
-// api_trait!(unary, self, id, Id, op_id, native_id, native::ObjectId);
+// api_trait!(unary, self, id, Id, op_id, native_id, rs::ObjectId);
 //
 
 pub trait Id {
@@ -67,8 +68,8 @@ pub trait Id {
         Ok(rt.int(self.native_id()))
     }
 
-    fn native_id(&self) -> native::ObjectId {
-        (&self as *const _) as native::ObjectId
+    fn native_id(&self) -> rs::ObjectId {
+        (&self as *const _) as rs::ObjectId
     }
 }
 
@@ -80,7 +81,7 @@ pub trait Is
         Ok(rt.bool(truth))
     }
 
-    fn native_is(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_is(&self, other: &Type) -> RtResult<rs::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
@@ -94,7 +95,7 @@ pub trait IsNot
     }
 
 
-    fn native_is_not(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_is_not(&self, other: &Type) -> RtResult<rs::Boolean> {
         Ok(self.native_id() != other.native_id())
     }
 }
@@ -105,20 +106,20 @@ pub trait IsNot
 /// that objects which compare equal have the same hash value; it is advised to mix together
 /// the hash values of the components of the object that also play a part in comparison
 /// of objects by packing them into a tuple and hashing the tuple.
-api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, native::HashId);
+api_trait!(unary, self, __hash__, Hashed, op_hash, native_hash, rs::HashId);
 
 // ----------------------------------
 //  String Formatting
 // -----------------------------------
-api_trait!(unary, self, __string__, StringCast, op_str, native_str, native::String);
-api_trait!(unary, self, __bytes__, BytesCast, op_bytes, native_bytes, native::Bytes);
-api_trait!(unary, self, __repr__, StringRepresentation, op_repr, native_repr, native::String);
-api_trait!(unary, self, __format__, StringFormat, op_format, native_format, native::String);
+api_trait!(unary, self, __string__, StringCast, op_str, native_str, rs::String);
+api_trait!(unary, self, __bytes__, BytesCast, op_bytes, native_bytes, rs::Bytes);
+api_trait!(unary, self, __repr__, StringRepresentation, op_repr, native_repr, rs::String);
+api_trait!(unary, self, __format__, StringFormat, op_format, native_format, rs::String);
 
 // ----------------------------------
 //  Rich Comparisons
 // -----------------------------------
-/// `api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, native::Boolean);`
+/// `api_trait!(binary, self, __eq__, Equal, op_eq, native_eq, rs::Boolean);`
 pub trait Equal {
     /// Default implementation of equals fallsbacks to op_is.
     fn op_eq(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
@@ -127,12 +128,12 @@ pub trait Equal {
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<rs::Boolean> {
         Ok(memory_address(&self) == other.native_id())
     }
 }
 
-/// `api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, native::Boolean);`
+/// `api_trait!(binary, self, __ne__, NotEqual, op_ne, native_ne, rs::Boolean);`
 pub trait NotEqual {
     /// Default implementation of equals fallsbacks to !op_is
     fn op_ne(&self, rt: &Runtime, rhs: &RtObject) -> ObjectResult {
@@ -141,31 +142,32 @@ pub trait NotEqual {
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_ne(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_ne(&self, other: &Type) -> RtResult<rs::Boolean> {
         Ok(memory_address(&self) != other.native_id())
     }
 }
 
-api_trait!(binary, self, __lt__, LessThan, op_lt, native_lt, native::Boolean);
-api_trait!(binary, self, __le__, LessOrEqual, op_le, native_le, native::Boolean);
-api_trait!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge, native::Boolean);
-api_trait!(binary, self, __gt__, GreaterThan, op_gt, native_gt, native::Boolean);
+api_trait!(binary, self, __lt__, LessThan, op_lt, native_lt, rs::Boolean);
+api_trait!(binary, self, __le__, LessOrEqual, op_le, native_le, rs::Boolean);
+api_trait!(binary, self, __ge__, GreaterOrEqual, op_ge, native_ge, rs::Boolean);
+api_trait!(binary, self, __gt__, GreaterThan, op_gt, native_gt, rs::Boolean);
 
 // ----------------------------------
 //  Numeric Casts
 // -----------------------------------
-api_trait!(unary, self, __bool__, BooleanCast, op_bool, native_bool, native::Boolean);
-api_trait!(unary, self, __int__, IntegerCast, op_int, native_int, native::Integer);
-api_trait!(unary, self, __float__, FloatCast, op_float, native_float, native::Float);
-api_trait!(unary, self, __complex__, ComplexCast, op_complex, native_complex, native::Complex);
-api_trait!(unary, self, __round__, Rounding, op_round, native_round, native::Number);
-api_trait!(unary, self, __index__, Index, op_index, native_index, native::Integer);
+api_trait!(unary, self, __bool__, BooleanCast, op_bool, native_bool, rs::Boolean);
+api_trait!(unary, self, __int__, IntegerCast, op_int, native_int, rs::Integer);
+api_trait!(unary, self, __float__, FloatCast, op_float, native_float, rs::Float);
+api_trait!(unary, self, __complex__, ComplexCast, op_complex, native_complex, rs::Complex);
+api_trait!(unary, self, __round__, Rounding, op_round, native_round, rs::Number);
+api_trait!(unary, self, __index__, Index, op_index, native_index, rs::Integer);
 
 // Standard unary operators
-api_trait!(unary, self, __neg__, NegateValue, op_neg, native_neg, native::Number);
-api_trait!(unary, self, __abs__, AbsValue, op_abs, native_abs, native::Number);
-api_trait!(unary, self, __pos__, PositiveValue, op_pos, native_pos, native::Number);
-api_trait!(unary, self, __invert__, InvertValue, op_invert, native_invert, native::Number);
+api_trait!(unary, self, __neg__, NegateValue, op_neg, native_neg, rs::Number);
+api_trait!(unary, self, __abs__, AbsValue, op_abs, native_abs, rs::Number);
+api_trait!(unary, self, __pos__, PositiveValue, op_pos, native_pos, rs::Number);
+api_trait!(unary, self, __invert__, InvertValue, op_invert, native_invert, rs::Number);
+
 
 
 // ----------------------------------
@@ -178,7 +180,7 @@ api_trait!(binary, self, __divmod__, DivMod, op_divmod, native_divmod);
 api_trait!(binary, self, __floordiv__, FloorDivision, op_floordiv, native_floordiv);
 api_trait!(binary, self, __lshift__, LeftShift, op_lshift, native_lshift);
 api_trait!(binary, self, __mod__, Modulus, op_mod, native_mod);
-api_trait!(binary, self, __mul__, Multiply, op_mul, native_mul, native::Native);
+api_trait!(binary, self, __mul__, Multiply, op_mul, native_mul, rs::Native);
 api_trait!(binary, self, __matmul__, MatrixMultiply, op_matmul, native_matmul);
 api_trait!(binary, self, __or__, BitwiseOr, op_or, native_or);
 api_trait!(ternary, self, __pow__, Pow, op_pow, native_pow);
@@ -224,27 +226,27 @@ api_trait!(binary, self, __ixor__, InPlaceXOr, op_ixor, native_ixor);
 // -----------------------------------
 //  Collections
 // -----------------------------------
-api_trait!(binary, self, __contains__, Contains, op_contains, native_contains, native::Boolean);
-api_trait!(unary, self, __iter__, Iter, op_iter, native_iter, native::Iterator);
+api_trait!(binary, self, __contains__, Contains, op_contains, native_contains, rs::Boolean);
+api_trait!(unary, self, __iter__, Iter, op_iter, native_iter, rs::Iterator);
 api_trait!(4ary, self, __call__, Call, op_call, native_call);
-api_trait!(unary, self, __len__, Length, op_len, native_len, native::Integer);
-api_trait!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, native::Integer);
+api_trait!(unary, self, __len__, Length, op_len, native_len, rs::Integer);
+api_trait!(unary, self, __length_hint__, LengthHint, op_length_hint, native_length_hint, rs::Integer);
 api_trait!(unary, self, __next__, Next, op_next, native_next, RtObject);
 api_trait!(unary, self, __reversed__, Reversed, op_reversed, native_reversed);
 
 // Sequences
 api_trait!(binary, self, __getitem__, GetItem, op_getitem, native_getitem, RtObject);
-api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, native::None);
+api_trait!(ternary, self, __setitem__, SetItem, op_setitem, native_setitem, rs::None);
 api_trait!(binary, self, __delitem__, DeleteItem, op_delitem, native_delitem);
-api_trait!(binary, self, count, Count, meth_count, native_meth_count, native::Integer);
-api_trait!(binary, self, append, Append, meth_append, native_meth_append, native::None);
-api_trait!(binary, self, extend, Extend, meth_extend, native_meth_extend, native::None);
+api_trait!(binary, self, count, Count, meth_count, native_meth_count, rs::Integer);
+api_trait!(binary, self, append, Append, meth_append, native_meth_append, rs::None);
+api_trait!(binary, self, extend, Extend, meth_extend, native_meth_extend, rs::None);
 api_trait!(binary, self, pop, Pop, meth_pop, native_meth_pop);
 api_trait!(binary, self, remove, Remove, meth_remove, native_meth_remove);
 
 
 // Sets
-api_trait!(binary, self, isdisjoint, IsDisjoint, meth_isdisjoint, native_meth_isdisjoint, native::Boolean);
+api_trait!(binary, self, isdisjoint, IsDisjoint, meth_isdisjoint, native_meth_isdisjoint, rs::Boolean);
 api_trait!(binary, self, add, AddItem, meth_add, native_meth_add);
 api_trait!(unary, self, discard, Discard, meth_discard, native_meth_discard);
 api_trait!(unary, self, clear, Clear, meth_clear, native_meth_clear);
@@ -252,7 +254,7 @@ api_trait!(unary, self, clear, Clear, meth_clear, native_meth_clear);
 
 // Mapping
 api_trait!(binary, self, get, Get, meth_get, native_meth_get);
-api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys, native::Tuple);
+api_trait!(unary, self, keys, Keys, meth_keys, native_meth_keys, rs::Tuple);
 api_trait!(unary, self, values, Values, meth_values, native_meth_values);
 api_trait!(unary, self, items, Items, meth_items, native_meth_items);
 api_trait!(binary, self, popitem, PopItem, meth_popitem, native_meth_popitem);

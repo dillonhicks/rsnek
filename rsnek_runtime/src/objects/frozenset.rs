@@ -5,7 +5,7 @@ use runtime::Runtime;
 use api::{RtValue, PyAPI, method, typing};
 use api::selfref::{self, SelfRef};
 
-use objects::native;
+use ::system::primitives as rs;
 use ::modules::builtins::Type;
 use ::api::RtObject;
 
@@ -16,7 +16,7 @@ pub struct PyFrozenSetType {}
 
 impl typing::BuiltinType for PyFrozenSetType {
     type T = PyFrozenSet;
-    type V = native::Set;
+    type V = rs::Set;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -51,7 +51,7 @@ impl typing::BuiltinType for PyFrozenSetType {
 
 
 #[derive(Clone)]
-pub struct FrozenSetValue(native::Set);
+pub struct FrozenSetValue(rs::Set);
 pub type PyFrozenSet = RtValue<FrozenSetValue>;
 
 

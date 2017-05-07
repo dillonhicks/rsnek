@@ -19,7 +19,8 @@ use ::resources::strings;
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
 use ::modules::builtins::Type;
-use objects::native::{self, WrapperFn, Signature, FuncType, SignatureBuilder};
+use ::system::primitives::{WrapperFn, Signature, FuncType, SignatureBuilder};
+use ::system::primitives as rs;
 use objects::object::PyObjectType;
 use ::api::RtObject;
 
@@ -35,9 +36,9 @@ impl PyFunctionType {
     pub fn init_type(typeref: &RtObject, object: &RtObject) -> Self {
 
         let method = PyObjectType::inject_selfref(PyObjectType::alloc(
-            native::Object {
+            rs::Object {
                 class: typeref.clone(),
-                dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+                dict: PyDictType::inject_selfref(PyDictType::alloc(rs::Dict::new())),
                 bases: PyTupleType::inject_selfref(PyTupleType::alloc(vec![object.clone()])),
             }));
 
@@ -47,7 +48,7 @@ impl PyFunctionType {
 
 impl typing::BuiltinType for PyFunctionType {
     type T = PyFunction;
-    type V = native::Func;
+    type V = rs::Func;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -80,7 +81,7 @@ impl typing::BuiltinType for PyFunctionType {
     }
 }
 
-pub struct FuncValue(pub native::Func);
+pub struct FuncValue(pub rs::Func);
 pub type PyFunction = RtValue<FuncValue>;
 
 
@@ -299,7 +300,7 @@ impl method::GetAttr for PyFunction {
 impl method::Id for PyFunction {
     // TODO: {T104} why do we have to go back through the builtin? Is there a good reason to
     //  special case this at the builtin.rs layer?
-    fn native_id(&self) -> native::ObjectId {
+    fn native_id(&self) -> rs::ObjectId {
         match self.rc.upgrade() {
             Ok(this_object) => {
                 this_object.native_id()
@@ -315,7 +316,7 @@ impl method::Hashed for PyFunction {
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         let mut s = DefaultHasher::new();
         self.native_id().hash(&mut s);
         Ok(s.finish())
@@ -328,7 +329,7 @@ impl method::StringCast for PyFunction {
         Ok(rt.str(value))
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         let name = match self.value.0.callable {
             FuncType::Wrapper(_) => format!("<builtin-function {}>", self.value.0.name),
             FuncType::MethodWrapper(ref objref, _) => {
@@ -342,7 +343,7 @@ impl method::StringCast for PyFunction {
 }
 
 impl method::Equal for PyFunction {
-    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<rs::Boolean> {
         Ok(self.native_id() == other.native_id())
     }
 }
@@ -404,9 +405,9 @@ mod tests {
     #[test]
     fn is_() {
         let rt = setup_test();
-        let func = rt.function(native::None());
+        let func = rt.function(rs::None());
         let func2 = func.clone();
-        let func3 = rt.function(native::None());
+        let func3 = rt.function(rs::None());
         
         let result = func.op_is(&rt, &func2).unwrap();
         assert_eq!(result, rt.bool(true));
@@ -419,9 +420,9 @@ mod tests {
     #[test]
     fn is_not() {
         let rt = setup_test();
-        let func = rt.function(native::None());
+        let func = rt.function(rs::None());
         let func2 = func.clone();
-        let func3 = rt.function(native::None());
+        let func3 = rt.function(rs::None());
 
         let result = func.op_is_not(&rt, &func2).unwrap();
         assert_eq!(result, rt.bool(false));
@@ -434,11 +435,11 @@ mod tests {
     #[test]
     fn __call__() {
         let rt = setup_test();
-        let func = rt.function(native::None());
+        let func = rt.function(rs::None());
 
-        let pos_args = rt.tuple(native::None());
-        let starargs = rt.tuple(native::None());
-        let kwargs = rt.dict(native::None());
+        let pos_args = rt.tuple(rs::None());
+        let starargs = rt.tuple(rs::None());
+        let kwargs = rt.dict(rs::None());
 
         let result = func.op_call(&rt, &pos_args, &starargs, &kwargs).unwrap();
         assert_eq!(result, rt.none());

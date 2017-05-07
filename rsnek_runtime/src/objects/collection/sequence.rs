@@ -8,17 +8,17 @@ use ::api::result::Error;
 use ::api::result::RtResult;
 use ::resources::strings;
 use ::modules::builtins::Type;
-use ::objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 
 
-pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> native::Boolean {
+pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> rs::Boolean {
     ((left.len() == right.len()) &&
         left.iter().zip(right.iter())
             .all(|(l, r)| l == r))
 }
 
-pub fn contains<'a>(seq: &'a [RtObject], item: &Type) -> native::Boolean {
+pub fn contains<'a>(seq: &'a [RtObject], item: &Type) -> rs::Boolean {
     seq.iter()
         .map(|objref| objref.as_ref())
         .any(|value: &Type| {

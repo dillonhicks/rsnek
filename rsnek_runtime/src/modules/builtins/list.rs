@@ -8,16 +8,17 @@ use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{ListProvider, DefaultListProvider, IntegerProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Func, FuncType, SignatureBuilder};
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
+use ::system::primitives as rs;
 
 
 pub struct ListFn;
 
 
 impl ListFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => "list");
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_list);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_list);
 
         Func {
             name: String::from("list"),
@@ -41,7 +42,7 @@ fn rs_builtin_list(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwarg
     }
 
     let value = pos_args.op_getitem(&rt, &rt.int(0))?;
-    let new_list  = value.op_iter(&rt)?.collect::<native::List>();
+    let new_list  = value.op_iter(&rt)?.collect::<rs::List>();
     Ok(rt.list(new_list))
 }
 

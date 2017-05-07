@@ -398,10 +398,11 @@ impl<'a> From<&'a str> for Native {
 
 // Serialization for native Rust and external types
 
-// Serde calls this the definition of the remote type. It is just a copy of the
-// remote type. The `remote` attribute gives the path to the actual type.
+/// Serde calls this the definition of the remote type. It is just a copy of the
+/// remote type. The `remote` attribute gives the path to the actual type.
 #[derive(Serialize)]
 #[serde(remote = "Complex")]
+#[doc(hidden)]
 struct ComplexSerdeDef {
     /// Real portion of the complex number
     pub re: Float,
@@ -415,7 +416,7 @@ pub mod serialize {
     const JSON_MAX_INT_BITS_LOSSLESS: usize = 54;
 
 
-    /// Serialize a native::Integer type as a string if it will fit in a JSON double
+    /// Serialize a rs::Integer type as a string if it will fit in a JSON double
     /// otherwise a string.
     pub fn integer<S>(int: &Integer, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer

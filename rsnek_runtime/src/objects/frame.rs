@@ -10,7 +10,7 @@ use runtime::Runtime;
 
 use ::api::result::{ObjectResult};
 use ::modules::builtins::Type;
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 
 //pub const FRAME_MAX_BLOCKS: usize = 20;
@@ -22,7 +22,7 @@ pub struct PyFrameType {}
 
 impl typing::BuiltinType for PyFrameType {
     type T = PyFrame;
-    type V = native::Frame;
+    type V = rs::Frame;
 
     fn init_type() -> Self {
         PyFrameType {}
@@ -58,7 +58,7 @@ impl typing::BuiltinType for PyFrameType {
 
 
 #[derive(Debug, Clone)]
-pub struct FrameValue(pub native::Frame);
+pub struct FrameValue(pub rs::Frame);
 pub type PyFrame = RtValue<FrameValue>;
 
 

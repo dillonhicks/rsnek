@@ -16,7 +16,8 @@ use api::typing::BuiltinType;
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
 use ::modules::builtins::Type;
-use objects::native::{self, DictKey};
+use ::system::primitives::{DictKey};
+use ::system::primitives as rs;
 use ::api::RtObject;
 
 
@@ -29,16 +30,16 @@ impl PyObjectType {
     pub fn init_type(typeref: &RtObject) -> Self {
 
         // TODO: {T106} Fundamental objects should have __setitem__ set to a attribute error
-        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
+        let typ = PyObjectType::inject_selfref(PyObjectType::alloc(rs::Object {
             class: typeref.clone(),
-            dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-            bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+            dict: PyDictType::inject_selfref(PyDictType::alloc(rs::Dict::new())),
+            bases: PyTupleType::inject_selfref(PyTupleType::alloc(rs::Tuple::new())),
         }));
 
-        let object = PyObjectType::inject_selfref(PyObjectType::alloc(native::Object {
+        let object = PyObjectType::inject_selfref(PyObjectType::alloc(rs::Object {
             class: typeref.clone(),
-            dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-            bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+            dict: PyDictType::inject_selfref(PyDictType::alloc(rs::Dict::new())),
+            bases: PyTupleType::inject_selfref(PyTupleType::alloc(rs::Tuple::new())),
         }));
 
         PyObjectType {
@@ -50,7 +51,7 @@ impl PyObjectType {
 
 impl typing::BuiltinType for PyObjectType {
     type T = PyObject;
-    type V = native::Object;
+    type V = rs::Object;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -84,11 +85,11 @@ impl typing::BuiltinType for PyObjectType {
 }
 
 
-pub struct ObjectValue(pub native::Object);
+pub struct ObjectValue(pub rs::Object);
 pub type PyObject = RtValue<ObjectValue>;
 
 impl PyObject {
-    pub fn dir(&self) -> RtResult<native::Tuple> {
+    pub fn dir(&self) -> RtResult<rs::Tuple> {
         self.value.0.dict.native_meth_keys()
     }
 
@@ -154,7 +155,7 @@ impl method::SetAttr for PyObject {
         Ok(rt.none())
     }
 
-    fn native_setattr(&self, name: &Type, value: &Type) -> RtResult<native::None> {
+    fn native_setattr(&self, name: &Type, value: &Type) -> RtResult<rs::None> {
 
         let hashid = name.native_hash()?;
         let key_ref = name.upgrade()?;
@@ -163,14 +164,14 @@ impl method::SetAttr for PyObject {
         let dict = &self.value.0.dict;
 
         match dict.native_setitem(&Type::DictKey(key), &value) {
-            Ok(_) => Ok(native::None()),
+            Ok(_) => Ok(rs::None()),
             Err(_) => Err(Error::attribute("Could not set attribute")),
         }
     }
 }
 
 impl method::Id for PyObject {
-    fn native_id(&self) -> native::ObjectId {
+    fn native_id(&self) -> rs::ObjectId {
         match self.rc.upgrade() {
             Ok(this_object) => this_object.native_id(),
             Err(_) => 0,
@@ -184,7 +185,7 @@ impl method::Hashed for PyObject {
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         let mut s = DefaultHasher::new();
         self.native_id().hash(&mut s);
         Ok(s.finish())
@@ -228,9 +229,9 @@ mod tests {
     #[test]
     fn is_() {
         let rt = setup_test();
-        let object = rt.object(native::None());
+        let object = rt.object(rs::None());
         let object2 = object.clone();
-        let object3 = rt.object(native::None());
+        let object3 = rt.object(rs::None());
 
         let result = object.op_is(&rt, &object2).unwrap();
         assert_eq!(result, rt.bool(true));
@@ -243,9 +244,9 @@ mod tests {
     #[test]
     fn is_not() {
         let rt = setup_test();
-        let object = rt.object(native::None());
+        let object = rt.object(rs::None());
         let object2 = object.clone();
-        let object3 = rt.object(native::None());
+        let object3 = rt.object(rs::None());
 
         let result = object.op_is_not(&rt, &object2).unwrap();
         assert_eq!(result, rt.bool(false));
@@ -257,7 +258,7 @@ mod tests {
     #[test]
     fn __setattr__() {
         let rt = setup_test();
-        let object = rt.object(native::None());
+        let object = rt.object(rs::None());
 
         let key = rt.str("hello");
         let value = rt.int(234);
@@ -273,7 +274,7 @@ mod tests {
         #[test]
         fn set_and_get() {
             let rt = setup_test();
-            let object = rt.object(native::None());
+            let object = rt.object(rs::None());
 
             let key = rt.str("hello");
             let value = rt.int(234);
@@ -289,7 +290,7 @@ mod tests {
         #[should_panic]
         fn get_missing_key() {
             let rt = setup_test();
-            let object = rt.object(native::None());
+            let object = rt.object(rs::None());
 
             let key = rt.str("hello");
             let value = rt.int(234);
@@ -311,7 +312,7 @@ mod tests {
     #[test]
     fn function_setattr_getattr_call() {
         let rt = setup_test();
-        let object = rt.object(native::None());
+        let object = rt.object(rs::None());
 
         let builtin_func = rt.get_builtin("len");
         let key = rt.str("test_function");
@@ -324,7 +325,7 @@ mod tests {
         let tuple = rt.tuple(vec![rt.none(), rt.int(3), rt.str("Potato!@!@")]);
         let args = rt.tuple(vec![tuple.clone()]);
         let starargs = rt.tuple(vec![]);
-        let kwargs = rt.dict(native::Dict::new());
+        let kwargs = rt.dict(rs::Dict::new());
 
         let result = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
         assert_eq!(result, rt.int(3));

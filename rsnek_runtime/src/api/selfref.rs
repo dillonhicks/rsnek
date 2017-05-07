@@ -7,7 +7,7 @@ use num::Zero;
 use ::api::result::Error;
 use ::api::{RtObject, WeakRtObject};
 use ::api::result::ObjectResult;
-use ::objects::native;
+use ::system::primitives as rs;
 
 
 /// A trait that must be implemented on a refcount wrapper type
@@ -23,8 +23,8 @@ use ::objects::native;
 ///    must be set after the struct is moved into the appropriate `Box` and `Rc` containers.
 ///    So the field must be
 pub trait SelfRef: Sized {
-    fn strong_count(&self) -> native::Integer;
-    fn weak_count(&self) -> native::Integer;
+    fn strong_count(&self) -> rs::Integer;
+    fn weak_count(&self) -> rs::Integer;
     fn set(&self, &RtObject);
     fn get(&self) -> WeakRtObject;
     fn upgrade(&self) -> ObjectResult;
@@ -56,22 +56,22 @@ impl Clone for RefCount {
 impl SelfRef for RefCount {
     /// Unwrap the optional type and proxy to the underlying WeakRtObject if present
     /// otherwise return 0.
-    fn strong_count(&self) -> native::Integer {
+    fn strong_count(&self) -> rs::Integer {
         match *self.0.borrow().deref() {
             Some(ref weak) => weak.strong_count(),
-            None => native::Integer::zero(),
+            None => rs::Integer::zero(),
         }
     }
 
     /// Unwrap the optional type and proxy to the underlying WeakRtObject if present
     /// otherwise return 0.
-    fn weak_count(&self) -> native::Integer {
-        let count: native::Integer;
+    fn weak_count(&self) -> rs::Integer {
+        let count: rs::Integer;
         // use a scope to ensure that the borrow is dropped
         {
             count = match *self.0.borrow().deref() {
                 Some(ref weak) => weak.weak_count(),
-                None => native::Integer::zero(),
+                None => rs::Integer::zero(),
             }
         }
 

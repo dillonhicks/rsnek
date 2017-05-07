@@ -8,16 +8,17 @@ use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Func, FuncType, SignatureBuilder};
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
+use ::system::primitives as rs;
 
 
 pub struct IntFn;
 
 
 impl IntFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => "int");
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_int);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_int);
 
         Func {
             name: String::from("int"),

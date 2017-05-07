@@ -5,7 +5,7 @@ use runtime::Runtime;
 use api::{RtValue, PyAPI, method, typing};
 use api::selfref::{self, SelfRef};
 
-use objects::native;
+use ::system::primitives as rs;
 use ::modules::builtins::Type;
 use ::api::RtObject;
 
@@ -16,7 +16,7 @@ pub struct PySetType {}
 
 impl typing::BuiltinType for PySetType {
     type T = PySet;
-    type V = native::Set;
+    type V = rs::Set;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -51,7 +51,7 @@ impl typing::BuiltinType for PySetType {
 
 
 #[derive(Clone)]
-pub struct SetValue(native::Set);
+pub struct SetValue(rs::Set);
 pub type PySet = RtValue<SetValue>;
 
 

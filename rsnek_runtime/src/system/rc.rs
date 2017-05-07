@@ -1,7 +1,7 @@
-
+///! Configure the type of reference counts through compile time feature flags.
+///!
 pub use self::internal::StrongRc;
 pub use self::internal::WeakRc;
-
 
 
 #[cfg(not(feature="rsnek_multithreaded"))]

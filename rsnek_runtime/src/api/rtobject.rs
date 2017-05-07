@@ -18,7 +18,8 @@ use ::runtime::Runtime;
 use ::system::{StrongRc, WeakRc};
 use ::runtime::traits::{IntegerProvider, BooleanProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Native, ObjectId};
+use ::system::primitives::{Native, ObjectId};
+use ::system::primitives as rs;
 
 type RuntimeRef = StrongRc<Type>;
 type RuntimeWeakRef = WeakRc<Type>;
@@ -38,12 +39,12 @@ impl RtObject {
         WeakRtObject(StrongRc::downgrade(&self.0))
     }
 
-    pub fn strong_count(&self) -> native::Integer {
-        native::Integer::from(StrongRc::strong_count(&self.0))
+    pub fn strong_count(&self) -> rs::Integer {
+        rs::Integer::from(StrongRc::strong_count(&self.0))
     }
 
-    pub fn weak_count(&self) -> native::Integer {
-        native::Integer::from(StrongRc::weak_count(&self.0))
+    pub fn weak_count(&self) -> rs::Integer {
+        rs::Integer::from(StrongRc::weak_count(&self.0))
     }
 
     pub fn id(&self) -> ObjectId {
@@ -54,7 +55,7 @@ impl RtObject {
         self.as_ref().debug_name()
     }
 
-    pub fn to_string(&self) -> native::String {
+    pub fn to_string(&self) -> rs::String {
         self.native_str().unwrap_or(format!("{}", self))
     }
 }
@@ -157,7 +158,7 @@ impl method::SetAttr for RtObject {
         foreach_type!(self.as_ref(), rt, op_setattr, lhs, name, value)
     }
 
-    fn native_setattr(&self, name: &Type, value: &Type) -> RtResult<native::None> {
+    fn native_setattr(&self, name: &Type, value: &Type) -> RtResult<rs::None> {
         native_foreach_type!(self.as_ref(), native_setattr, lhs, name, value)
     }
 }
@@ -168,9 +169,9 @@ impl method::Id for RtObject {
         Ok(rt.int(self.native_id()))
     }
 
-    fn native_id(&self) -> native::ObjectId {
+    fn native_id(&self) -> rs::ObjectId {
         expr_foreach_type!(self.as_ref(), obj, {
-            (obj as *const _) as native::ObjectId
+            (obj as *const _) as rs::ObjectId
         })
     }
 }
@@ -183,7 +184,7 @@ impl method::Is for RtObject {
         Ok(rt.bool(truth))
     }
 
-    fn native_is(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_is(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         Ok(self.native_id() == rhs.native_id())
     }
 }
@@ -194,7 +195,7 @@ impl method::IsNot for RtObject {
         Ok(rt.bool(truth))
     }
 
-    fn native_is_not(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_is_not(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         Ok(self.native_id() != rhs.native_id())
     }
 }
@@ -206,7 +207,7 @@ impl method::Hashed for RtObject {
         foreach_type!(self.as_ref(), rt, op_hash, obj)
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         native_foreach_type!(self.as_ref(), native_hash, obj)
     }
 }
@@ -217,7 +218,7 @@ impl method::StringCast for RtObject {
         foreach_type!(self.as_ref(), rt, op_str, obj)
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         native_foreach_type!(self.as_ref(), native_str, obj)
     }
 }
@@ -228,7 +229,7 @@ impl method::BytesCast for RtObject {
         foreach_type!(self.as_ref(), rt, op_bytes, obj)
     }
 
-    fn native_bytes(&self) -> RtResult<native::Bytes> {
+    fn native_bytes(&self) -> RtResult<rs::Bytes> {
         native_foreach_type!(self.as_ref(), native_bytes, obj)
     }
 }
@@ -239,7 +240,7 @@ impl method::StringFormat for RtObject {
         foreach_type!(self.as_ref(), rt, op_format, obj)
     }
 
-    fn native_format(&self) -> RtResult<native::String> {
+    fn native_format(&self) -> RtResult<rs::String> {
         native_foreach_type!(self.as_ref(), native_format, obj)
     }
 }
@@ -250,7 +251,7 @@ impl method::StringRepresentation for RtObject {
         foreach_type!(self.as_ref(), rt, op_repr, obj)
     }
 
-    fn native_repr(&self) -> RtResult<native::String> {
+    fn native_repr(&self) -> RtResult<rs::String> {
         native_foreach_type!(self.as_ref(), native_repr, obj)
     }
 }
@@ -262,7 +263,7 @@ impl method::Equal for RtObject {
     }
 
     /// Default implementation of equals fallsbacks to op_is.
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_eq, lhs, rhs)
     }
 }
@@ -273,7 +274,7 @@ impl method::NotEqual for RtObject {
         foreach_type!(self.as_ref(), rt, op_ne, lhs, rhs)
     }
 
-    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_ne, lhs, rhs)
     }
 }
@@ -283,7 +284,7 @@ impl method::LessThan for RtObject {
         foreach_type!(self.as_ref(), rt, op_lt, lhs, rhs)
     }
 
-    fn native_lt(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_lt(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_lt, lhs, rhs)
     }
 }
@@ -294,7 +295,7 @@ impl method::LessOrEqual for RtObject {
         foreach_type!(self.as_ref(), rt, op_le, lhs, rhs)
     }
 
-    fn native_le(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_le(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_le, lhs, rhs)
     }
 }
@@ -305,7 +306,7 @@ impl method::GreaterOrEqual for RtObject {
         foreach_type!(self.as_ref(), rt, op_ge, lhs, rhs)
     }
 
-    fn native_ge(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_ge(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_ge, lhs, rhs)
     }
 }
@@ -316,7 +317,7 @@ impl method::GreaterThan for RtObject {
         foreach_type!(self.as_ref(), rt, op_gt, lhs, rhs)
     }
 
-    fn native_gt(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_gt(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_gt, lhs, rhs)
     }
 }
@@ -327,7 +328,7 @@ impl method::BooleanCast for RtObject {
         foreach_type!(self.as_ref(), rt, op_bool, obj)
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_bool, obj)
     }
 }
@@ -337,7 +338,7 @@ impl method::IntegerCast for RtObject {
         foreach_type!(self.as_ref(), rt, op_int, obj)
     }
 
-    fn native_int(&self) -> RtResult<native::Integer> {
+    fn native_int(&self) -> RtResult<rs::Integer> {
         native_foreach_type!(self.as_ref(), native_int, obj)
     }
 }
@@ -347,7 +348,7 @@ impl method::FloatCast for RtObject {
         foreach_type!(self.as_ref(), rt, op_float, obj)
     }
 
-    fn native_float(&self) -> RtResult<native::Float> {
+    fn native_float(&self) -> RtResult<rs::Float> {
         native_foreach_type!(self.as_ref(), native_float, obj)
     }
 }
@@ -357,7 +358,7 @@ impl method::ComplexCast for RtObject {
         foreach_type!(self.as_ref(), rt, op_complex, obj)
     }
 
-    fn native_complex(&self) -> RtResult<native::Complex> {
+    fn native_complex(&self) -> RtResult<rs::Complex> {
         native_foreach_type!(self.as_ref(), native_complex, obj)
     }
 }
@@ -368,7 +369,7 @@ impl method::Index for RtObject {
         foreach_type!(self.as_ref(), rt, op_index, obj)
     }
 
-    fn native_index(&self) -> RtResult<native::Integer> {
+    fn native_index(&self) -> RtResult<rs::Integer> {
         native_foreach_type!(self.as_ref(), native_index, obj)
     }
 }
@@ -379,7 +380,7 @@ impl method::NegateValue for RtObject {
         foreach_type!(self.as_ref(), rt, op_neg, obj)
     }
 
-    fn native_neg(&self) -> RtResult<native::Number> {
+    fn native_neg(&self) -> RtResult<rs::Number> {
         native_foreach_type!(self.as_ref(), native_neg, obj)
     }
 }
@@ -390,7 +391,7 @@ impl method::AbsValue for RtObject {
         foreach_type!(self.as_ref(), rt, op_abs, obj)
     }
 
-    fn native_abs(&self) -> RtResult<native::Number> {
+    fn native_abs(&self) -> RtResult<rs::Number> {
         native_foreach_type!(self.as_ref(), native_abs, obj)
     }
 }
@@ -401,7 +402,7 @@ impl method::PositiveValue for RtObject {
         foreach_type!(self.as_ref(), rt, op_pos, obj)
     }
 
-    fn native_pos(&self) -> RtResult<native::Number> {
+    fn native_pos(&self) -> RtResult<rs::Number> {
         native_foreach_type!(self.as_ref(), native_pos, obj)
     }
 }
@@ -412,7 +413,7 @@ impl method::InvertValue for RtObject {
         foreach_type!(self.as_ref(), rt, op_invert, obj)
     }
 
-    fn native_invert(&self) -> RtResult<native::Number> {
+    fn native_invert(&self) -> RtResult<rs::Number> {
         native_foreach_type!(self.as_ref(), native_invert, obj)
     }
 }
@@ -489,7 +490,7 @@ impl method::Multiply for RtObject {
         foreach_type!(self.as_ref(), rt, op_mul, lhs, rhs)
     }
 
-    fn native_mul(&self, rhs: &Type) -> RtResult<native::Native> {
+    fn native_mul(&self, rhs: &Type) -> RtResult<rs::Native> {
         native_foreach_type!(self.as_ref(), native_mul, lhs, rhs)
     }
 }
@@ -731,7 +732,7 @@ impl method::Contains for RtObject {
         foreach_type!(self.as_ref(), rt, op_contains, lhs, rhs)
     }
 
-    fn native_contains(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_contains(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_contains, lhs, rhs)
     }
 }
@@ -742,7 +743,7 @@ impl method::Iter for RtObject {
         foreach_type!(self.as_ref(), rt, op_iter, lhs)
     }
 
-    fn native_iter(&self) -> RtResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<rs::Iterator> {
         native_foreach_type!(self.as_ref(), native_iter, lhs)
     }
 }
@@ -764,7 +765,7 @@ impl method::Length for RtObject {
         foreach_type!(self.as_ref(), rt, op_len, lhs)
     }
 
-    fn native_len(&self) -> RtResult<native::Integer> {
+    fn native_len(&self) -> RtResult<rs::Integer> {
         native_foreach_type!(self.as_ref(), native_len, lhs)
     }
 }
@@ -798,7 +799,7 @@ impl method::SetItem for RtObject {
         foreach_type!(self.as_ref(), rt, op_setitem, object, name, item)
     }
 
-    fn native_setitem(&self, name: &Type, item: &Type) -> RtResult<native::None> {
+    fn native_setitem(&self, name: &Type, item: &Type) -> RtResult<rs::None> {
         native_foreach_type!(self.as_ref(), native_setitem, object, name, item)
     }
 }
@@ -818,7 +819,7 @@ impl method::Count for RtObject {
         foreach_type!(self.as_ref(), rt, meth_count, object, name)
     }
 
-    fn native_meth_count(&self, name: &Type) -> RtResult<native::Integer> {
+    fn native_meth_count(&self, name: &Type) -> RtResult<rs::Integer> {
         native_foreach_type!(self.as_ref(), native_meth_count, object, name)
     }
 }
@@ -829,7 +830,7 @@ impl method::Append for RtObject {
         foreach_type!(self.as_ref(), rt, meth_append, object, name)
     }
 
-    fn native_meth_append(&self, name: &Type) -> RtResult<native::None> {
+    fn native_meth_append(&self, name: &Type) -> RtResult<rs::None> {
         native_foreach_type!(self.as_ref(), native_meth_append, object, name)
     }
 }
@@ -840,7 +841,7 @@ impl method::Extend for RtObject {
         foreach_type!(self.as_ref(), rt, meth_extend, object, name)
     }
 
-    fn native_meth_extend(&self, name: &Type) -> RtResult<native::None> {
+    fn native_meth_extend(&self, name: &Type) -> RtResult<rs::None> {
         native_foreach_type!(self.as_ref(), native_meth_extend, object, name)
     }
 }
@@ -873,7 +874,7 @@ impl method::IsDisjoint for RtObject {
         foreach_type!(self.as_ref(), rt, meth_isdisjoint, object, name)
     }
 
-    fn native_meth_isdisjoint(&self, name: &Type) -> RtResult<native::Boolean> {
+    fn native_meth_isdisjoint(&self, name: &Type) -> RtResult<rs::Boolean> {
         native_foreach_type!(self.as_ref(), native_meth_isdisjoint, object, name)
     }
 }
@@ -895,7 +896,7 @@ impl method::Keys for RtObject {
         foreach_type!(self.as_ref(), rt, meth_keys, object)
     }
 
-    fn native_meth_keys(&self) -> RtResult<native::Tuple> {
+    fn native_meth_keys(&self) -> RtResult<rs::Tuple> {
         native_foreach_type!(self.as_ref(), native_meth_keys, object)
     }
 }
@@ -928,12 +929,12 @@ impl Default for WeakRtObject {
 
 
 impl WeakRtObject {
-    pub fn weak_count(&self) -> native::Integer {
-        let count: native::Integer;
+    pub fn weak_count(&self) -> rs::Integer {
+        let count: rs::Integer;
         {
             let objref = match self.upgrade() {
                 Ok(strong) => strong,
-                Err(_) => return native::Integer::zero(),
+                Err(_) => return rs::Integer::zero(),
             };
 
             count = objref.weak_count();
@@ -943,12 +944,12 @@ impl WeakRtObject {
         count
     }
 
-    pub fn strong_count(&self) -> native::Integer {
-        let count: native::Integer;
+    pub fn strong_count(&self) -> rs::Integer {
+        let count: rs::Integer;
         {
             let objref = match self.upgrade() {
                 Ok(strong) => strong,
-                Err(_) => return native::Integer::zero(),
+                Err(_) => return rs::Integer::zero(),
             };
 
             count = objref.strong_count();

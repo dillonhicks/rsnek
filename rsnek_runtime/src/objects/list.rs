@@ -17,7 +17,8 @@ use api::selfref::{self, SelfRef};
 
 use ::objects::collection::sequence;
 use ::modules::builtins::Type;
-use ::objects::native::{self, List};
+use ::system::primitives::{List};
+use ::system::primitives as rs;
 use ::api::RtObject;
 
 
@@ -28,7 +29,7 @@ pub struct PyListType {
 
 impl typing::BuiltinType for PyListType {
     type T = PyList;
-    type V = native::List;
+    type V = rs::List;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -37,7 +38,7 @@ impl typing::BuiltinType for PyListType {
     }
 
     fn init_type() -> Self {
-        PyListType { empty: PyListType::inject_selfref(PyListType::alloc(native::List::new())) }
+        PyListType { empty: PyListType::inject_selfref(PyListType::alloc(rs::List::new())) }
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
@@ -61,7 +62,7 @@ impl typing::BuiltinType for PyListType {
     }
 }
 
-pub struct ListValue(pub native::List);
+pub struct ListValue(pub rs::List);
 pub type PyList = RtValue<ListValue>;
 
 
@@ -86,7 +87,7 @@ impl method::StringCast for PyList {
         Ok(rt.str(s))
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         let elems = self.value.0.iter()
             .map(RtObject::native_str)
             .fold_results(Vec::new(), |mut acc, s| {acc.push(s); acc})
@@ -104,7 +105,7 @@ impl method::Equal for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs {
             &Type::List(ref other) => {
                 let left = &self.value.0;
@@ -122,7 +123,7 @@ impl method::NotEqual for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         let truth = self.native_eq(rhs)?;
         Ok(!truth)
     } 
@@ -135,7 +136,7 @@ impl method::BooleanCast for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         Ok(!self.value.0.is_empty())
     }
 }
@@ -171,7 +172,7 @@ impl method::Contains for PyList {
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Type) -> RtResult<native::Boolean> {
+    fn native_contains(&self, item: &Type) -> RtResult<rs::Boolean> {
         Ok(sequence::contains(&self.value.0, item))
     }
 }
@@ -181,9 +182,9 @@ impl method::Iter for PyList {
         Ok(rt.iter(iter))
     }
 
-    fn native_iter(&self) -> RtResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<rs::Iterator> {
         match self.rc.upgrade() {
-            Ok(selfref) => Ok(native::Iterator::new(&selfref)?),
+            Ok(selfref) => Ok(rs::Iterator::new(&selfref)?),
             Err(err) => Err(err)
         }
     }
@@ -198,8 +199,8 @@ impl method::Length for PyList {
         }
     }
 
-    fn native_len(&self) -> RtResult<native::Integer> {
-        Ok(native::Integer::from(self.value.0.len()))
+    fn native_len(&self) -> RtResult<rs::Integer> {
+        Ok(rs::Integer::from(self.value.0.len()))
     }
 }
 
@@ -343,7 +344,7 @@ mod tests {
         let len = list.op_len(&rt).unwrap();
         assert_eq!(len, rt.int(0));
         let len = list.native_len().unwrap();
-        assert_eq!(len, native::Integer::zero());
+        assert_eq!(len, rs::Integer::zero());
 
         // N Elements
         let list = rt.list(vec![rt.none(), rt.none(), rt.none()]);
@@ -351,7 +352,7 @@ mod tests {
         let len = list.op_len(&rt).unwrap();
         assert_eq!(len, rt.int(3));
         let len = list.native_len().unwrap();
-        assert_eq!(len, native::Integer::from(3));
+        assert_eq!(len, rs::Integer::from(3));
     }
 
     #[test]

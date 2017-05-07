@@ -17,7 +17,8 @@ use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Native, HashId, SignatureBuilder};
+use ::system::primitives::{Native, HashId, SignatureBuilder};
+use ::system::primitives as rs;
 use ::objects::number::{self, FloatAdapter, IntAdapter, format_int};
 
 
@@ -33,10 +34,10 @@ pub struct PyIntegerType {
 
 impl typing::BuiltinType for PyIntegerType {
     type T = PyInteger;
-    type V = native::Integer;
+    type V = rs::Integer;
 
     #[allow(unused_variables)]
-    fn new(&self, rt: &Runtime, value: native::Integer) -> RtObject {
+    fn new(&self, rt: &Runtime, value: rs::Integer) -> RtObject {
         match value.to_isize() {
             Some(idx @ -5..1024) => self.static_integers[(idx + 5) as usize].clone(),
             Some(_) |
@@ -47,7 +48,7 @@ impl typing::BuiltinType for PyIntegerType {
 
     fn init_type() -> Self {
         let range: Vec<RtObject> = STATIC_INT_RANGE
-            .map(native::Integer::from)
+            .map(rs::Integer::from)
             .map(PyIntegerType::alloc)
             .map(PyIntegerType::inject_selfref)
             .collect();
@@ -79,7 +80,7 @@ impl typing::BuiltinType for PyIntegerType {
 }
 
 
-pub struct IntValue(pub native::Integer);
+pub struct IntValue(pub rs::Integer);
 pub type PyInteger = RtValue<IntValue>;
 
 impl PyInteger {
@@ -302,7 +303,7 @@ impl method::StringCast for PyInteger {
         Ok(rt.str(string))
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         Ok(format_int(&self.value.0))
     }
 }
@@ -315,7 +316,7 @@ impl method::StringRepresentation for PyInteger {
         Ok(rt.str(string))
     }
 
-    fn native_repr(&self) -> RtResult<native::String> {
+    fn native_repr(&self) -> RtResult<rs::String> {
         Ok(format_int(&self.value.0))
     }
 }
@@ -328,7 +329,7 @@ impl method::Equal for PyInteger {
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, other: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, other: &Type) -> RtResult<rs::Boolean> {
         let lhs = IntAdapter(&self.value.0);
 
         match *other {
@@ -348,7 +349,7 @@ impl method::NotEqual for PyInteger {
         Ok(rt.bool(truth))
     }
 
-    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         let truth = !self.native_eq(rhs)?;
         Ok(truth)
     }
@@ -364,7 +365,7 @@ impl method::BooleanCast for PyInteger {
         }
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         return Ok(!self.value.0.is_zero());
     }
 }
@@ -376,7 +377,7 @@ impl method::IntegerCast for PyInteger {
         self.rc.upgrade()
     }
 
-    fn native_int(&self) -> RtResult<native::Integer> {
+    fn native_int(&self) -> RtResult<rs::Integer> {
         return Ok(self.value.0.clone());
     }
 }
@@ -387,8 +388,8 @@ impl method::NegateValue for PyInteger {
         Ok(rt.int(- self.value.0.clone()))
     }
 
-    fn native_neg(&self) -> RtResult<native::Number> {
-        Ok(native::Number::Int(- self.value.0.clone()))
+    fn native_neg(&self) -> RtResult<rs::Number> {
+        Ok(rs::Number::Int(- self.value.0.clone()))
     }
 }
 

@@ -9,16 +9,17 @@ use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IteratorProvider, NoneProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Signature, Func, FuncType};
+use ::system::primitives::{Signature, Func, FuncType};
+use ::system::primitives as rs;
 
 
 pub struct PrintFn;
 
 
 impl PrintFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => "print");
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_print);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_print);
 
         Func {
             name: String::from("print"),
@@ -38,7 +39,7 @@ fn rs_builtin_print(rt: &Runtime, pos_args: &ObjectRef,
     trace!("call"; "native_builtin" => "print");
 
     let mut strings: Vec<String> = Vec::new();
-    let tuple_iterator = match native::Iterator::new(pos_args){
+    let tuple_iterator = match rs::Iterator::new(pos_args){
         Ok(iterator) => rt.iter(iterator),
         Err(_) => unreachable!(),
     };

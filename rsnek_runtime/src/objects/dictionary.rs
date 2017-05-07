@@ -12,7 +12,8 @@ use ::api::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, NoneProvider, BooleanProvider, TupleProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, DictKey};
+use ::system::primitives::{DictKey};
+use ::system::primitives as rs;
 
 
 const TYPE_NAME: &'static str = "dict";
@@ -24,7 +25,7 @@ pub struct PyDictType;
 
 impl typing::BuiltinType for PyDictType {
     type T = PyDict;
-    type V = native::Dict;
+    type V = rs::Dict;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -56,7 +57,7 @@ impl typing::BuiltinType for PyDictType {
     }
 }
 
-pub struct DictValue(pub RefCell<native::Dict>);
+pub struct DictValue(pub RefCell<rs::Dict>);
 pub type PyDict = RtValue<DictValue>;
 
 
@@ -76,13 +77,13 @@ impl method::Hashed for PyDict {
         Err(Error::typerr(&format!("Unhashable type {}", TYPE_NAME)))
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         Err(Error::typerr(&format!("Unhashable type {}", TYPE_NAME)))
     }
 }
 
 impl method::StringCast for PyDict {
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         let mut strings: Vec<String> = Vec::new();
 
         for (key_wrapper, value) in self.value.0.borrow().iter() {
@@ -114,7 +115,7 @@ impl method::BooleanCast for PyDict {
         }
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         Ok(!self.value.0.borrow().is_empty())
     }
 }
@@ -128,8 +129,8 @@ impl method::Length for PyDict {
         }
     }
 
-    fn native_len(&self) -> RtResult<native::Integer> {
-        Ok(native::Integer::from(self.value.0.borrow().len()))
+    fn native_len(&self) -> RtResult<rs::Integer> {
+        Ok(rs::Integer::from(self.value.0.borrow().len()))
     }
 }
 
@@ -179,11 +180,11 @@ impl method::SetItem for PyDict {
     }
 
     #[allow(unused_variables)]
-    fn native_setitem(&self, key: &Type, value: &Type) -> RtResult<native::None> {
+    fn native_setitem(&self, key: &Type, value: &Type) -> RtResult<rs::None> {
         match key {
             &Type::DictKey(ref key) => {
                 self.value.0.borrow_mut().insert(key.clone(), value.upgrade()?);
-                Ok(native::None())
+                Ok(rs::None())
             }
             _ => Err(Error::typerr("key is not a dictkey type")),
         }
@@ -197,10 +198,10 @@ impl method::Keys for PyDict {
         Ok(rt.tuple(keys))
     }
 
-    fn native_meth_keys(&self) -> RtResult<native::Tuple> {
+    fn native_meth_keys(&self) -> RtResult<rs::Tuple> {
         let keys = self.value.0.borrow().keys()
             .map(|key| key.value())
-            .collect::<native::Tuple>();
+            .collect::<rs::Tuple>();
 
         Ok(keys)
     }
@@ -251,13 +252,13 @@ mod tests {
     fn is_() {
         let rt = setup_test();
 
-        let dict = rt.dict(native::None());
+        let dict = rt.dict(rs::None());
         let dict2 = dict.clone();
 
         let result = dict.op_is(&rt, &dict2).unwrap();
         assert_eq!(result, rt.bool(true));
 
-        let dict3 = rt.dict(native::None());
+        let dict3 = rt.dict(rs::None());
         let result = dict.op_is(&rt, &dict3).unwrap();
         assert_eq!(result, rt.bool(false));
     }
@@ -267,7 +268,7 @@ mod tests {
     fn __bool__() {
         let rt = setup_test();
 
-        let dict = rt.dict(native::None());
+        let dict = rt.dict(rs::None());
 
         let result = dict.op_bool(&rt).unwrap();
         assert_eq!(result, rt.bool(false));
@@ -285,7 +286,7 @@ mod tests {
     fn __int__() {
         let rt = setup_test();
         
-        let dict = rt.dict(native::None());
+        let dict = rt.dict(rs::None());
         dict.op_int(&rt).unwrap();
     }
 
@@ -294,7 +295,7 @@ mod tests {
     #[should_panic]
     fn __hash__() {
         let rt = setup_test();
-        let dict = rt.dict(native::None());
+        let dict = rt.dict(rs::None());
 
         dict.op_hash(&rt).unwrap();
     }
@@ -303,7 +304,7 @@ mod tests {
     #[test]
     fn __setitem__() {
         let rt = setup_test();
-        let dict = rt.dict(native::None());
+        let dict = rt.dict(rs::None());
 
         let key = rt.str("hello");
         let value = rt.int(234);
@@ -316,7 +317,7 @@ mod tests {
     #[test]
     fn __getitem__() {
         let rt = setup_test();
-        let dict = rt.dict(native::None());
+        let dict = rt.dict(rs::None());
 
         let key = rt.str("hello");
         let value = rt.int(234);

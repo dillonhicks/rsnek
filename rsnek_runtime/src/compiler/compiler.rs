@@ -18,7 +18,8 @@ use ::compiler::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
 use ::compiler::scope::{ScopeNode, ManageScope, Descriptor};
 use ::compiler::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
 use ::api::result::Error;
-use ::objects::native::{self, Instr, Native};
+use ::system::primitives::{Instr, Native};
+use ::system::primitives as rs;
 use ::runtime::OpCode;
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
@@ -33,7 +34,7 @@ pub enum Context {
 
 #[derive(Debug, Clone, Serialize)]
 struct ModuleCode {
-    co_const: RefCell<Vec<native::Code>>
+    co_const: RefCell<Vec<rs::Code>>
 }
 
 impl ModuleCode {
@@ -43,7 +44,7 @@ impl ModuleCode {
         }
     }
 
-    fn add_const(&self, code: &native::Code) -> usize {
+    fn add_const(&self, code: &rs::Code) -> usize {
         let idx = self.co_const.borrow().len();
         self.co_const.borrow_mut().push(code.clone());
         idx
@@ -213,7 +214,7 @@ impl<'a> Compiler<'a> {
 
         let stmt =  self.compile_stmt(body)?;
 
-        let code = native::Code {
+        let code = rs::Code {
             co_name: name.as_string(),
             co_names: argnames.iter().cloned().collect::<Vec<_>>(),
             co_varnames: Vec::new(),

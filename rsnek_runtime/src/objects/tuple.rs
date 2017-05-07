@@ -19,7 +19,8 @@ use ::runtime::traits::{BooleanProvider, IntegerProvider, StringProvider,
                IteratorProvider, DefaultTupleProvider, TupleProvider};
 use ::modules::builtins::Type;
 use ::objects::collection::sequence;
-use ::objects::native::{self, Tuple};
+use ::system::primitives::{Tuple};
+use ::system::primitives as rs;
 
 
 pub struct PyTupleType {
@@ -29,7 +30,7 @@ pub struct PyTupleType {
 
 impl typing::BuiltinType for PyTupleType {
     type T = PyTuple;
-    type V = native::Tuple;
+    type V = rs::Tuple;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -38,7 +39,7 @@ impl typing::BuiltinType for PyTupleType {
     }
 
     fn init_type() -> Self {
-        PyTupleType { empty: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())) }
+        PyTupleType { empty: PyTupleType::inject_selfref(PyTupleType::alloc(rs::Tuple::new())) }
     }
 
     fn inject_selfref(value: Self::T) -> RtObject {
@@ -63,7 +64,7 @@ impl typing::BuiltinType for PyTupleType {
 }
 
 
-pub struct TupleValue(pub native::Tuple);
+pub struct TupleValue(pub rs::Tuple);
 pub type PyTuple = RtValue<TupleValue>;
 
 
@@ -88,7 +89,7 @@ impl method::Hashed for PyTuple {
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         if self.native_len().unwrap().is_zero() {
             let mut s = DefaultHasher::new();
             let this_object = self.rc.upgrade()?;
@@ -109,7 +110,7 @@ impl method::StringCast for PyTuple {
         Ok(rt.str(string))
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         let elems = self.value.0.iter()
                 .map(RtObject::native_repr)
                 .fold_results(
@@ -128,7 +129,7 @@ impl method::Equal for PyTuple {
         Ok(rt.bool(truth))
     }
 
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs {
             &Type::Tuple(ref other) => {
                 let left = &self.value.0;
@@ -147,7 +148,7 @@ impl method::BooleanCast for PyTuple {
         Ok(rt.bool(truth))
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         Ok(!self.value.0.is_empty())
     }
 }
@@ -182,7 +183,7 @@ impl method::Contains for PyTuple {
         Ok(rt.bool(truth))
     }
 
-    fn native_contains(&self, item: &Type) -> RtResult<native::Boolean> {
+    fn native_contains(&self, item: &Type) -> RtResult<rs::Boolean> {
         Ok(sequence::contains(&self.value.0, item))
     }
 }
@@ -193,9 +194,9 @@ impl method::Iter for PyTuple {
         Ok(rt.iter(iter))
     }
 
-    fn native_iter(&self) -> RtResult<native::Iterator> {
+    fn native_iter(&self) -> RtResult<rs::Iterator> {
         let this_object = self.rc.upgrade()?;
-        Ok(native::Iterator::new(&this_object)?)
+        Ok(rs::Iterator::new(&this_object)?)
     }
 
 }
@@ -207,8 +208,8 @@ impl method::Length for PyTuple {
         Ok(rt.int(value))
     }
 
-    fn native_len(&self) -> RtResult<native::Integer> {
-        Ok(native::Integer::from(self.value.0.len()))
+    fn native_len(&self) -> RtResult<rs::Integer> {
+        Ok(rs::Integer::from(self.value.0.len()))
     }
 }
 
@@ -265,9 +266,9 @@ mod tests {
     #[test]
     fn is_() {
         let rt = setup_test();
-        let tuple = rt.tuple(native::None());
+        let tuple = rt.tuple(rs::None());
         let tuple2 = tuple.clone();
-        let tuple3 = rt.tuple(vec![rt.tuple(native::None())]);
+        let tuple3 = rt.tuple(vec![rt.tuple(rs::None())]);
 
         let result = tuple.op_is(&rt, &tuple2).unwrap();
         assert_eq!(result, rt.bool(true));
@@ -283,7 +284,7 @@ mod tests {
         #[test]
         fn empty_stable() {
             let rt = setup_test();
-            let tuple = rt.tuple(native::None());
+            let tuple = rt.tuple(rs::None());
             let tuple2 = tuple.clone();
 
             let r1 = tuple.op_hash(&rt).unwrap();
@@ -295,7 +296,7 @@ mod tests {
         #[test]
         fn hashable_items() {
             let rt = setup_test();
-            let empty = rt.tuple(native::None());
+            let empty = rt.tuple(rs::None());
 
             let tuple = rt.tuple(vec![rt.int(1), rt.int(2), rt.str("3")]);
             let tuple2 = rt.tuple(vec![rt.int(1), rt.int(2), rt.str("3")]);
@@ -313,7 +314,7 @@ mod tests {
         fn unhashable_items_causes_error() {
             let rt = setup_test();
 
-            let tuple = rt.tuple(vec![rt.dict(native::None())]);
+            let tuple = rt.tuple(vec![rt.dict(rs::None())]);
             tuple.op_hash(&rt).unwrap();
         }
     }

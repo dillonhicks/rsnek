@@ -9,7 +9,7 @@ use api::selfref::{self, SelfRef};
 use api::typing;
 use api::method;
 
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 use ::modules::builtins::Type;
 
@@ -18,7 +18,7 @@ pub struct PyCodeType {}
 
 impl typing::BuiltinType for PyCodeType {
     type T = PyCode;
-    type V = native::Code;
+    type V = rs::Code;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -53,7 +53,7 @@ impl typing::BuiltinType for PyCodeType {
 }
 
 
-pub struct CodeValue(pub native::Code);
+pub struct CodeValue(pub rs::Code);
 pub type PyCode = RtValue<CodeValue>;
 
 

@@ -9,7 +9,8 @@ use ::runtime::Runtime;
 use ::runtime::traits::{TupleProvider, ModuleImporter};
 use ::api::RtObject;
 use ::modules::builtins::Type;
-use ::objects::native::{self, Func, FuncType, SignatureBuilder};
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
+use ::system::primitives as rs;
 
 
 const FUNC_NAME: &'static str = "globals";
@@ -18,9 +19,9 @@ pub struct GlobalsFn;
 
 
 impl GlobalsFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => FUNC_NAME);
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_globals);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_globals);
 
         Func {
             name: String::from(FUNC_NAME),

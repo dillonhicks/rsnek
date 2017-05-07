@@ -13,7 +13,8 @@ use ::api::result::{ObjectResult, RtResult};
 use ::modules::builtins::Type;
 use ::api::RtObject;
 use ::objects::number;
-use ::objects::native::{self, Number, HashId};
+use ::system::primitives::{Number, HashId};
+use ::system::primitives as rs;
 
 
 pub const TRUE_STR: &'static str = "True";
@@ -31,7 +32,7 @@ pub struct PyBooleanType {
 
 impl typing::BuiltinType for PyBooleanType {
     type T = PyBoolean;
-    type V = native::Boolean;
+    type V = rs::Boolean;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -65,9 +66,9 @@ impl typing::BuiltinType for PyBooleanType {
 
     fn alloc(value: Self::V) -> Self::T {
         let int = if value {
-            native::Integer::from_usize(1).unwrap()
+            rs::Integer::from_usize(1).unwrap()
         } else {
-            native::Integer::zero()
+            rs::Integer::zero()
         };
         PyBoolean {
             value: BoolValue(int),
@@ -78,7 +79,7 @@ impl typing::BuiltinType for PyBooleanType {
 
 
 #[derive(Clone)]
-pub struct BoolValue(pub native::Integer);
+pub struct BoolValue(pub rs::Integer);
 pub type PyBoolean = RtValue<BoolValue>;
 
 
@@ -112,14 +113,14 @@ impl method::StringCast for PyBoolean {
         self.op_repr(rt)
     }
 
-    fn native_str(&self) -> RtResult<native::String> {
+    fn native_str(&self) -> RtResult<rs::String> {
         self.native_repr()
     }
 }
 
 impl method::BytesCast for PyBoolean {
 
-    fn native_bytes(&self) -> RtResult<native::Bytes> {
+    fn native_bytes(&self) -> RtResult<rs::Bytes> {
         let result = if self.value.0.is_zero() {
             FALSE_BYTES.to_vec()
         } else {
@@ -137,7 +138,7 @@ impl method::StringRepresentation for PyBoolean {
         }
     }
 
-    fn native_repr(&self) -> RtResult<native::String> {
+    fn native_repr(&self) -> RtResult<rs::String> {
         let value = if self.value.0.is_zero() {
             FALSE_STR
         } else {
@@ -162,7 +163,7 @@ impl method::Equal for PyBoolean {
         }
     }
 
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs.native_bool() {
             Ok(value) => Ok(self.native_bool().unwrap() == value),
             Err(err) => Err(err),
@@ -184,7 +185,7 @@ impl method::NotEqual for PyBoolean {
         }
     }
 
-    fn native_ne(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_ne(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs.native_bool() {
             Ok(value) => Ok(self.native_bool()? != value),
             Err(err) => Err(err),
@@ -200,7 +201,7 @@ impl method::BooleanCast for PyBoolean {
         self.rc.upgrade()
     }
 
-    fn native_bool(&self) -> RtResult<native::Boolean> {
+    fn native_bool(&self) -> RtResult<rs::Boolean> {
         Ok(!self.value.0.is_zero())
     }
 }
@@ -209,7 +210,7 @@ impl method::IntegerCast for PyBoolean {
         Ok(rt.int(self.value.0.clone()))
     }
 
-    fn native_int(&self) -> RtResult<native::Integer> {
+    fn native_int(&self) -> RtResult<rs::Integer> {
         Ok(self.value.0.clone())
     }
 }
@@ -220,7 +221,7 @@ impl method::FloatCast for PyBoolean {
             Ok(rt.float(value))
         }
 
-        fn native_float(&self) -> RtResult<native::Float> {
+        fn native_float(&self) -> RtResult<rs::Float> {
             return Ok(self.value.0.to_f64().unwrap());
         }
 }
@@ -249,7 +250,7 @@ impl method::Index for PyBoolean {
         }
     }
 
-    fn native_index(&self) -> RtResult<native::Integer> {
+    fn native_index(&self) -> RtResult<rs::Integer> {
         self.native_int()
     }
 }

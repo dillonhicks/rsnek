@@ -7,7 +7,8 @@ use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, BooleanProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Func, FuncType, SignatureBuilder};
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
+use ::system::primitives as rs;
 
 use ::modules::precondition::{check_args, check_kwargs};
 
@@ -15,9 +16,9 @@ pub struct AllFn;
 
 
 impl AllFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => "all");
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_all);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_all);
 
         Func {
             name: String::from("all"),
@@ -43,7 +44,7 @@ fn rs_builtin_all(rt: &Runtime, pos_args: &RtObject, starargs: &RtObject, kwargs
 }
 
 
-pub fn iterator_all<I>(rt: &Runtime, iterator: I) -> native::Boolean
+pub fn iterator_all<I>(rt: &Runtime, iterator: I) -> rs::Boolean
     where I: Iterator<Item=RtObject> {
 
     let true_ = rt.bool(true);
@@ -73,7 +74,7 @@ mod tests {
     fn empty() {
         let rt = setup();
         let tuple = rt.default_tuple();
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), true);
     }
@@ -84,7 +85,7 @@ mod tests {
         let rt = setup();
         let f = rt.bool(false);
         let tuple = rt.tuple(vec![f.clone(),f.clone(),f.clone(),f.clone()]);
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), false);
     }
@@ -94,7 +95,7 @@ mod tests {
         let rt = setup();
         let t = rt.bool(true);
         let tuple = rt.tuple(vec![t.clone(),t.clone(),t.clone(),t.clone()]);
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), true);
     }
@@ -104,7 +105,7 @@ mod tests {
         let rt = setup();
         let f = rt.bool(false);
         let tuple = rt.tuple(vec![rt.bool(true), f.clone(), f.clone(), f.clone(), f.clone()]);
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), false);
     }
@@ -114,7 +115,7 @@ mod tests {
         let rt = setup();
         let t = rt.bool(true);
         let tuple = rt.tuple(vec![t.clone(), t.clone(), t.clone(), t.clone(), rt.bool(false)]);
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), false);
     }
@@ -124,12 +125,12 @@ mod tests {
     fn sequences() {
         let rt = setup();
         let tuple = rt.tuple(vec![rt.str("")]);
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), false);
 
         let tuple = rt.tuple(vec![rt.str(" ")]);
-        let iterator = rt.iter(native::Iterator::new(&tuple).unwrap());
+        let iterator = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
         assert_eq!(iterator_all(&rt, iterator), true);
     }

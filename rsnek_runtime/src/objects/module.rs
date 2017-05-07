@@ -9,7 +9,7 @@ use api::typing::BuiltinType;
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
 use ::modules::builtins::Type;
-use objects::native;
+use ::system::primitives as rs;
 use objects::object::{PyObject, ObjectValue};
 use ::api::RtObject;
 
@@ -24,17 +24,17 @@ pub struct PyModuleType {
 
 impl PyModuleType {
     pub fn init_type(typeref: &RtObject) -> Self {
-        let typ = PyModuleType::inject_selfref(PyModuleType::alloc(native::Object {
+        let typ = PyModuleType::inject_selfref(PyModuleType::alloc(rs::Object {
             class: typeref.clone(),
-            dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
-            bases: PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+            dict: PyDictType::inject_selfref(PyDictType::alloc(rs::Dict::new())),
+            bases: PyTupleType::inject_selfref(PyTupleType::alloc(rs::Tuple::new())),
         }));
 
-        let object = PyModuleType::inject_selfref(PyModuleType::alloc(native::Object {
+        let object = PyModuleType::inject_selfref(PyModuleType::alloc(rs::Object {
             class: typeref.clone(),
-            dict: PyDictType::inject_selfref(PyDictType::alloc(native::Dict::new())),
+            dict: PyDictType::inject_selfref(PyDictType::alloc(rs::Dict::new())),
             bases:
-            PyTupleType::inject_selfref(PyTupleType::alloc(native::Tuple::new())),
+            PyTupleType::inject_selfref(PyTupleType::alloc(rs::Tuple::new())),
         }));
 
         PyModuleType {
@@ -46,7 +46,7 @@ impl PyModuleType {
 
 impl typing::BuiltinType for PyModuleType {
     type T = PyObject;
-    type V = native::Object;
+    type V = rs::Object;
 
     #[inline(always)]
     #[allow(unused_variables)]

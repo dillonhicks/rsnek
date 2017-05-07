@@ -13,7 +13,7 @@ use api::method::{self, GetItem, Next};
 use api::typing::BuiltinType;
 
 use ::modules::builtins::Type;
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 
 
@@ -26,7 +26,7 @@ pub struct PyIteratorType {}
 impl PyIteratorType {
 
     pub fn empty(&self, rt: &Runtime) -> RtObject {
-        let value = IteratorValue(native::Iterator::Empty, rt.clone());
+        let value = IteratorValue(rs::Iterator::Empty, rt.clone());
         self.new(&rt, value)
     }
 }
@@ -67,7 +67,7 @@ impl typing::BuiltinType for PyIteratorType {
 }
 
 
-pub struct IteratorValue(pub native::Iterator, pub Runtime);
+pub struct IteratorValue(pub rs::Iterator, pub Runtime);
 pub type PyIterator = RtValue<IteratorValue>;
 
 
@@ -114,7 +114,7 @@ impl method::Next for PyIterator {
 
         match self.value.0 {
             // TODO: {T82} Use weakref or some other mechanism to not keep a handle to source forever?
-            native::Iterator::Sequence {ref source, ref idx_next} => {
+            rs::Iterator::Sequence {ref source, ref idx_next} => {
                 let mut idx = idx_next.get();;
 
                 match source.native_getitem(rt.int(idx).as_ref()) {
@@ -127,7 +127,7 @@ impl method::Next for PyIterator {
                 }
             }
 
-            native::Iterator::Empty => Err(Error::stop_iteration())
+            rs::Iterator::Empty => Err(Error::stop_iteration())
         }
     }
 }
@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn is_() {
         let rt = setup_test();
-        let iter = rt.iter(native::None());
+        let iter = rt.iter(rs::None());
         let iter2 = iter.clone();
 
         let result = iter.op_is(&rt, &iter2).unwrap();
@@ -196,7 +196,7 @@ mod tests {
         #[should_panic]
         fn empty() {
             let rt = setup_test();
-            let iterator = rt.iter(native::None());
+            let iterator = rt.iter(rs::None());
             // Should raise an StopIteration error
             iterator.op_next(&rt).unwrap();
         }
@@ -205,7 +205,7 @@ mod tests {
         fn len3_tuple() {
             let rt = setup_test();
             let tuple = rt.tuple(vec![rt.none(), rt.int(1), rt.bool(true)]);
-            let iter = rt.iter(native::Iterator::new(&tuple).unwrap());
+            let iter = rt.iter(rs::Iterator::new(&tuple).unwrap());
 
             let result = iter.op_next(&rt).unwrap();
             assert_eq!(result, rt.none());
@@ -239,7 +239,7 @@ mod tests {
             let tuple = rt.tuple(elems);
 
             b.iter(|| {
-                let iter = rt.iter(native::Iterator::new(&tuple).unwrap());
+                let iter = rt.iter(rs::Iterator::new(&tuple).unwrap());
                 loop {
                     match iter.op_next(&rt) {
                         Ok(_) => continue,

@@ -8,16 +8,17 @@ use ::api::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::runtime::traits::IntegerProvider;
 use ::modules::builtins::Type;
-use ::objects::native::{self, SignatureBuilder, Func, FuncType};
+use ::system::primitives::{SignatureBuilder, Func, FuncType};
+use ::system::primitives as rs;
 
 
 pub struct LenFn;
 
 
 impl LenFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => "len");
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_len);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_len);
 
         Func {
             name: String::from("len"),

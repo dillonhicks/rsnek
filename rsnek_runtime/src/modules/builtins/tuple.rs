@@ -8,7 +8,8 @@ use ::api::result::ObjectResult;
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
 use ::modules::builtins::Type;
-use ::objects::native::{self, Func, FuncType, SignatureBuilder};
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
+use ::system::primitives as rs;
 
 
 pub struct TupleFn;
@@ -17,9 +18,9 @@ const FUNC_NAME: &'static str = "tuple";
 
 
 impl TupleFn {
-    pub fn create() -> native::Func {
+    pub fn create() -> rs::Func {
         trace!("create builtin"; "function" => FUNC_NAME);
-        let callable: Box<native::WrapperFn> = Box::new(rs_builtin_tuple);
+        let callable: Box<rs::WrapperFn> = Box::new(rs_builtin_tuple);
 
         Func {
             name: String::from(FUNC_NAME),
@@ -43,7 +44,7 @@ fn rs_builtin_tuple(rt: &Runtime, pos_args: &ObjectRef, starargs: &ObjectRef, kw
     }
 
     let value = pos_args.op_getitem(&rt, &rt.int(0))?;
-    let new_tuple = value.op_iter(&rt)?.collect::<native::List>();
+    let new_tuple = value.op_iter(&rt)?.collect::<rs::List>();
     Ok(rt.tuple(new_tuple))
 }
 

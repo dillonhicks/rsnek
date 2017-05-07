@@ -5,7 +5,7 @@ use runtime::Runtime;
 use api::{RtValue, PyAPI, method, typing};
 use api::selfref::{self, SelfRef};
 
-use objects::native;
+use ::system::primitives as rs;
 use ::modules::builtins::Type;
 use ::api::RtObject;
 
@@ -16,7 +16,7 @@ pub struct PyComplexType {}
 
 impl typing::BuiltinType for PyComplexType {
     type T = PyComplex;
-    type V = native::Complex;
+    type V = rs::Complex;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -51,7 +51,7 @@ impl typing::BuiltinType for PyComplexType {
 
 
 #[derive(Clone)]
-pub struct ComplexValue(native::Complex);
+pub struct ComplexValue(rs::Complex);
 pub type PyComplex = RtValue<ComplexValue>;
 
 

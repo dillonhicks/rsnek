@@ -14,7 +14,8 @@ use ::compiler::graph::{DiGraph, Graph, Node};
 use ::compiler::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};
 use ::compiler::scope::{ScopeNode, ScopeHint, ManageScope};
 use ::api::result::Error;
-use ::objects::native::{self, Instr, Native};
+use ::system::primitives::{Instr, Native};
+use ::system::primitives as rs;
 use ::runtime::OpCode;
 
 

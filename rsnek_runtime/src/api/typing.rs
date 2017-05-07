@@ -1,11 +1,11 @@
 use ::api::method;
 use ::api::RtObject as ObjectRef;
 use ::runtime::Runtime;
-use ::objects::native;
+use ::system::primitives as rs;
 
 
 pub trait HasName {
-    fn get_name(&self) -> native::String;
+    fn get_name(&self) -> rs::String;
 }
 
 

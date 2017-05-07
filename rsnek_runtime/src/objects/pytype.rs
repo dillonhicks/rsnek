@@ -8,7 +8,7 @@ use runtime::Runtime;
 use api::{self, RtValue, method, typing};
 use api::selfref::{self, SelfRef};
 
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 use ::modules::builtins::Type;
 
@@ -20,7 +20,7 @@ pub struct PyMeta {
 
 impl typing::BuiltinType for PyMeta {
     type T = PyType;
-    type V = native::Type;
+    type V = rs::Type;
 
     #[inline(always)]
     #[allow(unused_variables)]
@@ -30,7 +30,7 @@ impl typing::BuiltinType for PyMeta {
 
     fn init_type() -> Self {
         PyMeta {
-            pytype: PyMeta::inject_selfref(PyMeta::alloc(native::Type {
+            pytype: PyMeta::inject_selfref(PyMeta::alloc(rs::Type {
                                                              name: "type".to_string(),
                                                              module: strings::BUILTINS_MODULE.to_string(),
                                                              bases: Vec::new(),
@@ -62,7 +62,7 @@ impl typing::BuiltinType for PyMeta {
 
 
 pub type PyType = RtValue<TypeValue>;
-pub struct TypeValue(pub native::Type);
+pub struct TypeValue(pub rs::Type);
 
 
 impl fmt::Display for PyType {

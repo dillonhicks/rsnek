@@ -13,7 +13,7 @@ use api::selfref::{self, SelfRef};
 use api::typing;
 use api::method;
 
-use objects::native;
+use ::system::primitives as rs;
 use ::api::RtObject;
 use ::modules::builtins::Type;
 
@@ -25,7 +25,7 @@ pub struct PyBytesType {
 
 impl typing::BuiltinType for PyBytesType {
     type T = PyBytes;
-    type V = native::Bytes;
+    type V = rs::Bytes;
 
     #[allow(unused_variables)]
     fn new(&self, rt: &Runtime, value: Self::V) -> RtObject {
@@ -33,7 +33,7 @@ impl typing::BuiltinType for PyBytesType {
     }
 
     fn init_type() -> Self {
-        PyBytesType { empty: PyBytesType::inject_selfref(PyBytesType::alloc(native::Bytes::new())) }
+        PyBytesType { empty: PyBytesType::inject_selfref(PyBytesType::alloc(rs::Bytes::new())) }
     }
 
 
@@ -60,7 +60,7 @@ impl typing::BuiltinType for PyBytesType {
 }
 
 
-pub struct StringValue(pub native::Bytes);
+pub struct StringValue(pub rs::Bytes);
 pub type PyBytes = RtValue<StringValue>;
 
 
@@ -80,7 +80,7 @@ impl method::Hashed for PyBytes {
         Ok(rt.int(value))
     }
 
-    fn native_hash(&self) -> RtResult<native::HashId> {
+    fn native_hash(&self) -> RtResult<rs::HashId> {
         let mut s = DefaultHasher::new();
         self.value.0.hash(&mut s);
         Ok(s.finish())
@@ -93,7 +93,7 @@ impl method::Equal for PyBytes {
         Ok(rt.bool(value))
     }
 
-    fn native_eq(&self, rhs: &Type) -> RtResult<native::Boolean> {
+    fn native_eq(&self, rhs: &Type) -> RtResult<rs::Boolean> {
         match rhs {
             &Type::Bytes(ref bytes) => Ok(self.value.0 == bytes.value.0),
             _ => Ok(false),
