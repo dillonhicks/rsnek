@@ -15,7 +15,7 @@ use api::method::{self, Id, Hashed};
 use api::selfref::{self, SelfRef};
 use api::typing::BuiltinType;
 
-use ::resource::strings;
+use ::resources::strings;
 use objects::dictionary::PyDictType;
 use objects::tuple::PyTupleType;
 use objects::builtin::Builtin;

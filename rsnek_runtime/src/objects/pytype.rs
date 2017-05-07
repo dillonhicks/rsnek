@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
-use ::resource::strings;
+use ::resources::strings;
 use runtime::Runtime;
 use api::{self, RtValue, method, typing};
 use api::selfref::{self, SelfRef};

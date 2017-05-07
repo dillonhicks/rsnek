@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use ::modules::precondition::{check_args, check_kwargs};
 use ::error::Error;
 use ::result::{ObjectResult};
-use ::resource::strings;
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::traits::{TupleProvider, ModuleImporter};
 use ::api::RtObject;

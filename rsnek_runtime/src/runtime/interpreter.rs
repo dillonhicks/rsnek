@@ -55,7 +55,7 @@ use ::api::method::{
     GetAttr,
     SetItem,
 };
-use ::resource;
+use ::resources::strings;
 use ::result::ObjectResult;
 use ::runtime::{OpCode, Runtime};
 use ::traits::{
@@ -988,9 +988,9 @@ impl<'a> Thread<'a> for Greenlet<'a> {
 /// 2. https://youtu.be/tHnA94-hTC8?t=2m47s
 #[inline(always)]
 fn print_banner() {
-    info!("\n{}", resource::strings::BANNER2);
-    info!("{}", resource::strings::VERSION);
-    info!("{}", resource::strings::BUILD);
+    info!("\n{}", strings::BANNER2);
+    info!("{}", strings::VERSION);
+    info!("{}", strings::BUILD);
 }
 
 
@@ -1112,7 +1112,7 @@ fn python_main_interactive(rt: &Runtime) -> i64 {
 
 
         prompt_count += 1;
-        info!("In[{}] {} ", prompt_count, resource::strings::PROMPT);
+        info!("In[{}] {} ", prompt_count, strings::PROMPT);
 
         let text = match rl.readline(&"") {
             Ok(line) => {

@@ -12,7 +12,7 @@ use ::api::method::{self, Id, Length, StringRepresentation};
 use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};
 use ::api::{self, RtValue, typing};
-use ::resource::strings;
+use ::resources::strings;
 use ::result::{ObjectResult, RtResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, IntegerProvider, StringProvider,

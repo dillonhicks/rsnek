@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use itertools::Itertools;
 use num::ToPrimitive;
 
-use ::resource::strings;
+use ::resources::strings;
 use error::Error;
 use result::{ObjectResult, RtResult};
 use runtime::Runtime;

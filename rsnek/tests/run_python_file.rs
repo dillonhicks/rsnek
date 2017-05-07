@@ -1,6 +1,6 @@
 extern crate rsnek_runtime;
 
-use rsnek_runtime::resource::strings;
+use rsnek_runtime::resources::strings;
 use std::env;
 use std::process::Command;
 

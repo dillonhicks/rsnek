@@ -6,7 +6,7 @@ use num::ToPrimitive;
 
 use ::error::Error;
 use ::result::RtResult;
-use ::resource::strings;
+use ::resources::strings;
 use ::objects::builtin::Builtin;
 use ::objects::native;
 use ::api::RtObject;

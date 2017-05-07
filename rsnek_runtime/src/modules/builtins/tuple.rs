@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use ::modules::precondition::{check_args, check_kwargs, check_args_range};
 use ::api::method::{GetItem, Iter};
 use ::api::RtObject as ObjectRef;
-use ::resource::strings;
+use ::resources::strings;
 use ::result::ObjectResult;
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};

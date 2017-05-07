@@ -1,5 +1,5 @@
 use std;
-use resource::strings;
+use ::resources::strings;
 
 pub trait Exception: Sized + std::fmt::Debug + std::fmt::Display {
     fn error_type(&self) -> ErrorType;

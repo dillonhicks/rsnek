@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 
 use ::api::method::{GetItem, Iter, BooleanCast};
 use ::api::RtObject;
-use ::resource::strings;
+use ::resources::strings;
 use ::result::{ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, BooleanProvider};

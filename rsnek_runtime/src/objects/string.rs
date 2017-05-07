@@ -15,7 +15,7 @@ use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};
 use ::api::typing::{self, BuiltinType};
 use ::api::{self, RtValue};
-use ::resource::strings;
+use ::resources::strings;
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{IntegerProvider, BooleanProvider, StringProvider, DefaultStringProvider,

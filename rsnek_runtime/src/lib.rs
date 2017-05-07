@@ -37,4 +37,4 @@ mod result;
 pub mod runtime;
 mod system;
 mod traits;
-pub mod resource;
+pub mod resources;

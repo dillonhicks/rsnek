@@ -12,7 +12,7 @@ use ::api::method::{Equal, Hashed, IntegerCast, StringCast, BooleanCast, NegateV
 use ::api::RtObject;
 use ::api::selfref::{self, SelfRef};
 use ::api::{self, RtValue, method, typing};
-use ::resource::strings;
+use ::resources::strings;
 use ::result::{RtResult, ObjectResult};
 use ::runtime::Runtime;
 use ::traits::{BooleanProvider, StringProvider, FunctionProvider, IntegerProvider, FloatProvider};

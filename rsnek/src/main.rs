@@ -16,7 +16,7 @@ extern crate rsnek_runtime;
 
 use clap::{Arg, App, ArgGroup};
 
-use rsnek_runtime::resource::strings;
+use rsnek_runtime::resources::strings;
 use rsnek_runtime::runtime::{Interpreter, Config, ThreadModel, Logging, Mode};
 
 
