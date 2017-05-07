@@ -1,0 +1,106 @@
+[
+  [
+    "LoadConst",
+    {
+      "Int": 1
+    }
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "x"
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 1
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 2
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Int": 2
+    }
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "y"
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 3
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 4
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "x"
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "y"
+    }
+  ],
+  [
+    "BinaryAdd",
+    null
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "z"
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 5
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "print"
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "z"
+    }
+  ],
+  [
+    "CallFunction",
+    {
+      "Count": 1
+    }
+  ],
+  [
+    "PopTop",
+    null
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 6
+    }
+  ]
+]

@@ -1,0 +1,392 @@
+[
+  [
+    "LoadConst",
+    {
+      "Code": {
+        "co_name": "hello",
+        "co_names": [],
+        "co_varnames": [],
+        "co_code": [
+          [
+            "LoadConst",
+            {
+              "Int": 1
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Int": 2
+            }
+          ],
+          [
+            "BinaryAdd",
+            null
+          ],
+          [
+            "StoreName",
+            {
+              "Str": "x"
+            }
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 1
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Int": 3
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Int": 4
+            }
+          ],
+          [
+            "BinaryAdd",
+            null
+          ],
+          [
+            "StoreName",
+            {
+              "Str": "y"
+            }
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 2
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Code": {
+                "co_name": "potato",
+                "co_names": [
+                  "v"
+                ],
+                "co_varnames": [],
+                "co_code": [
+                  [
+                    "LoadName",
+                    {
+                      "Str": "v"
+                    }
+                  ],
+                  [
+                    "LoadConst",
+                    {
+                      "Int": 20
+                    }
+                  ],
+                  [
+                    "BinaryMultiply",
+                    null
+                  ],
+                  [
+                    "StoreName",
+                    {
+                      "Str": "i_am_a_nested_scope_object"
+                    }
+                  ],
+                  [
+                    "SetLineNumber",
+                    {
+                      "Count": 3
+                    }
+                  ],
+                  [
+                    "SetLineNumber",
+                    {
+                      "Count": 4
+                    }
+                  ],
+                  [
+                    "LoadConst",
+                    {
+                      "Str": "yams"
+                    }
+                  ],
+                  [
+                    "LoadName",
+                    {
+                      "Str": "i_am_a_nested_scope_object"
+                    }
+                  ],
+                  [
+                    "BinaryMultiply",
+                    null
+                  ],
+                  [
+                    "ReturnValue",
+                    null
+                  ],
+                  [
+                    "SetLineNumber",
+                    {
+                      "Count": 5
+                    }
+                  ],
+                  [
+                    "SetLineNumber",
+                    {
+                      "Count": 6
+                    }
+                  ]
+                ]
+              }
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Str": "potato"
+            }
+          ],
+          [
+            "MakeFunction",
+            null
+          ],
+          [
+            "StoreName",
+            {
+              "Str": "potato"
+            }
+          ],
+          [
+            "LoadName",
+            {
+              "Str": "potato"
+            }
+          ],
+          [
+            "ReturnValue",
+            null
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 7
+            }
+          ]
+        ]
+      }
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Str": "hello"
+    }
+  ],
+  [
+    "MakeFunction",
+    null
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "hello"
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Code": {
+        "co_name": "operator",
+        "co_names": [],
+        "co_varnames": [],
+        "co_code": [
+          [
+            "LoadConst",
+            {
+              "Str": "call me anytime"
+            }
+          ],
+          [
+            "ReturnValue",
+            null
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 8
+            }
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 9
+            }
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 10
+            }
+          ]
+        ]
+      }
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Str": "operator"
+    }
+  ],
+  [
+    "MakeFunction",
+    null
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "operator"
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "operator"
+    }
+  ],
+  [
+    "CallFunction",
+    {
+      "Count": 0
+    }
+  ],
+  [
+    "PopTop",
+    null
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 11
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 12
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "print"
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Int": 1
+    }
+  ],
+  [
+    "CallFunction",
+    {
+      "Count": 1
+    }
+  ],
+  [
+    "PopTop",
+    null
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 13
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 14
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 15
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "hello"
+    }
+  ],
+  [
+    "CallFunction",
+    {
+      "Count": 0
+    }
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "g"
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 16
+    }
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 17
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "print"
+    }
+  ],
+  [
+    "LoadName",
+    {
+      "Str": "g"
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Int": 13
+    }
+  ],
+  [
+    "CallFunction",
+    {
+      "Count": 1
+    }
+  ],
+  [
+    "CallFunction",
+    {
+      "Count": 1
+    }
+  ],
+  [
+    "PopTop",
+    null
+  ],
+  [
+    "SetLineNumber",
+    {
+      "Count": 18
+    }
+  ]
+]

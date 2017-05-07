@@ -1,0 +1,270 @@
+[
+  [
+    "LoadConst",
+    {
+      "Code": {
+        "co_name": "hello",
+        "co_names": [],
+        "co_varnames": [],
+        "co_code": [
+          [
+            "LoadName",
+            {
+              "Str": "print"
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Str": "yup"
+            }
+          ],
+          [
+            "CallFunction",
+            {
+              "Count": 1
+            }
+          ],
+          [
+            "PopTop",
+            null
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 1
+            }
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 2
+            }
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 3
+            }
+          ]
+        ],
+        "co_consts": []
+      }
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Str": "hello"
+    }
+  ],
+  [
+    "MakeFunction",
+    null
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "hello"
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Code": {
+        "co_name": "scope",
+        "co_names": [],
+        "co_varnames": [],
+        "co_code": [
+          [
+            "LoadConst",
+            {
+              "Code": {
+                "co_name": "scope_again",
+                "co_names": [],
+                "co_varnames": [],
+                "co_code": [
+                  [
+                    "LoadConst",
+                    {
+                      "Code": {
+                        "co_name": "scope_yet_again",
+                        "co_names": [],
+                        "co_varnames": [],
+                        "co_code": [
+                          [
+                            "LoadConst",
+                            {
+                              "Code": {
+                                "co_name": "scope_scope_scope_my_boat",
+                                "co_names": [],
+                                "co_varnames": [],
+                                "co_code": [
+                                  [
+                                    "LoadConst",
+                                    {
+                                      "Code": {
+                                        "co_name": "down_the_stream",
+                                        "co_names": [],
+                                        "co_varnames": [],
+                                        "co_code": [
+                                          [
+                                            "LoadConst",
+                                            "None"
+                                          ],
+                                          [
+                                            "ReturnValue",
+                                            null
+                                          ]
+                                        ],
+                                        "co_consts": []
+                                      }
+                                    }
+                                  ],
+                                  [
+                                    "LoadConst",
+                                    {
+                                      "Str": "down_the_stream"
+                                    }
+                                  ],
+                                  [
+                                    "MakeFunction",
+                                    null
+                                  ],
+                                  [
+                                    "StoreName",
+                                    {
+                                      "Str": "down_the_stream"
+                                    }
+                                  ],
+                                  [
+                                    "LoadName",
+                                    {
+                                      "Str": "down_the_stream"
+                                    }
+                                  ],
+                                  [
+                                    "ReturnValue",
+                                    null
+                                  ]
+                                ],
+                                "co_consts": []
+                              }
+                            }
+                          ],
+                          [
+                            "LoadConst",
+                            {
+                              "Str": "scope_scope_scope_my_boat"
+                            }
+                          ],
+                          [
+                            "MakeFunction",
+                            null
+                          ],
+                          [
+                            "StoreName",
+                            {
+                              "Str": "scope_scope_scope_my_boat"
+                            }
+                          ],
+                          [
+                            "LoadName",
+                            {
+                              "Str": "scope_scope_scope_my_boat"
+                            }
+                          ],
+                          [
+                            "ReturnValue",
+                            null
+                          ]
+                        ],
+                        "co_consts": []
+                      }
+                    }
+                  ],
+                  [
+                    "LoadConst",
+                    {
+                      "Str": "scope_yet_again"
+                    }
+                  ],
+                  [
+                    "MakeFunction",
+                    null
+                  ],
+                  [
+                    "StoreName",
+                    {
+                      "Str": "scope_yet_again"
+                    }
+                  ],
+                  [
+                    "LoadName",
+                    {
+                      "Str": "scope_yet_again"
+                    }
+                  ],
+                  [
+                    "ReturnValue",
+                    null
+                  ]
+                ],
+                "co_consts": []
+              }
+            }
+          ],
+          [
+            "LoadConst",
+            {
+              "Str": "scope_again"
+            }
+          ],
+          [
+            "MakeFunction",
+            null
+          ],
+          [
+            "StoreName",
+            {
+              "Str": "scope_again"
+            }
+          ],
+          [
+            "LoadName",
+            {
+              "Str": "scope_again"
+            }
+          ],
+          [
+            "ReturnValue",
+            null
+          ],
+          [
+            "SetLineNumber",
+            {
+              "Count": 4
+            }
+          ]
+        ],
+        "co_consts": []
+      }
+    }
+  ],
+  [
+    "LoadConst",
+    {
+      "Str": "scope"
+    }
+  ],
+  [
+    "MakeFunction",
+    null
+  ],
+  [
+    "StoreName",
+    {
+      "Str": "scope"
+    }
+  ]
+]
