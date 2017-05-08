@@ -10,6 +10,7 @@
 #![feature(type_ascription)]
 #![recursion_limit="4000"]
 
+// Third Party Extern Crates
 #[macro_use(slog_info, slog_log, slog_record, slog_b, slog_crit, slog_trace, slog_debug, slog_error, slog_warn, slog_kv, slog_record_static)]
 extern crate slog;
 #[macro_use]
@@ -25,15 +26,18 @@ extern crate rustyline;
 extern crate serde;
 extern crate test;
 
+// First Party Extern Crates
 extern crate python_ast;
 
+// Private Modules for $crate
 #[macro_use]
 mod macros;
 mod api;
-mod compiler;
 mod modules;
 mod objects;
-#[macro_use]
+
+// Public modules for $crate
+pub mod compiler;
 pub mod system;
 pub mod resources;
 pub mod runtime;

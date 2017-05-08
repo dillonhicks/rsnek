@@ -1,5 +1,6 @@
 //! Compiler takes an `python_ast::Ast` and turns it into `Code` and `Instr` objects.
 //!
+use core::array::FixedSizeArray;
 use std::convert::TryFrom;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::{RefMut, RefCell, Cell};
@@ -203,9 +204,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_stmt_funcdef(&self, name: &'a OwnedTk, arguments: &'a [Expr],
                             body: &'a Stmt) -> CompilerResult {
-        let mut instructions: Vec<Instr> = vec![];
-
-        let mut argnames: Vec<String> = Vec::new();
+        let mut argnames: Vec<String> = Vec::with_capacity(arguments.len() + 1);
         for arg in arguments {
             match arg {
                 &Expr::Constant(ref owned_tk) => argnames.push(owned_tk.as_string()),
@@ -227,8 +226,10 @@ impl<'a> Compiler<'a> {
         let defn = Definition(name.as_string(), Native::Code(code.clone()));
         self.define_symbol(&defn)?;
 
-        let parent = self.metadata.graph().get_node(
-            self.current_scope().parent_id());
+        let parent = self.metadata.graph()
+            .get_node(
+                self.current_scope()
+                .parent_id());
 
         match *parent {
             Descriptor::Function(_) |
@@ -238,14 +239,16 @@ impl<'a> Compiler<'a> {
             _ => {}
         };
 
-        instructions.append(&mut vec![
+        let arr: [Instr; 10];
+
+
+        Ok(Box::new(&[
+
             Instr(OpCode::LoadConst, Some(Native::Code(code))),
             Instr(OpCode::LoadConst, Some(Native::from(name))),
             Instr(OpCode::MakeFunction, None),
             Instr(OpCode::StoreName, Some(Native::from(name)))
-        ]);
-
-        Ok(instructions.into_boxed_slice())
+        ].as_slice()))
     }
 
     fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> CompilerResult {
