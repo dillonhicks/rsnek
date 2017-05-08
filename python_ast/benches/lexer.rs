@@ -2,7 +2,7 @@
 
 extern crate test;
 extern crate num;
-extern crate rsnek_compile;
+extern crate python_ast;
 extern crate nom;
 
 use std::fs::File;
@@ -11,7 +11,7 @@ use std::io::Read;
 
 use test::Bencher;
 
-use rsnek_compile::Lexer;
+use python_ast::Lexer;
 
 
 fn text(path: &str) -> String {

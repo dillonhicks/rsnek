@@ -1,6 +1,6 @@
 [workspace]
 members = [
-        "rsnek_compile",
+        "python_ast",
         "rsnek_runtime",
         "rsnek"
 ]

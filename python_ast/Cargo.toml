@@ -1,5 +1,5 @@
 [package]
-name = "rsnek_compile"
+name = "python_ast"
 version = "0.7.2"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 
@@ -10,7 +10,7 @@ include = [
 ]
 
 [lib]
-name = "rsnek_compile"
+name = "python_ast"
 
 
 [dependencies]

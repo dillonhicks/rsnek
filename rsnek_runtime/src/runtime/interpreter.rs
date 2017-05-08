@@ -18,7 +18,7 @@ use rustyline::Config as RLConfig;
 use rustyline::error::ReadlineError;
 use rustyline;
 
-use rsnek_compile::fmt;
+use python_ast::fmt;
 
 use ::modules::builtins::{logical_and, logical_or};
 use ::compiler::Compiler;

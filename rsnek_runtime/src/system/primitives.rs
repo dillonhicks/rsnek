@@ -16,7 +16,7 @@ use num::{ToPrimitive};
 use num::Num as NumTrait;
 use serde::ser::{Serializer};
 
-use rsnek_compile::{Id, Tag, Num, OwnedTk};
+use python_ast::{Id, Tag, Num, OwnedTk};
 
 use ::api::result::{ObjectResult, RtResult, Error};
 use ::api::RtObject;
@@ -522,7 +522,7 @@ pub mod serialize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnek_compile::fmt::json;
+    use python_ast::fmt::json;
 
     #[test]
     fn value_serialization() {

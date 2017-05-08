@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeSeq};
 
-use rsnek_compile::fmt;
+use python_ast::fmt;
 
 use ::compiler::graph::{DiGraph, Graph, Node};
 use ::compiler::scope::ScopeHint::{BaseScope, ModuleScope, FunctionScope};

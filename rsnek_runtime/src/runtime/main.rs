@@ -18,7 +18,7 @@ use rustyline::Config as RLConfig;
 use rustyline::error::ReadlineError;
 use rustyline;
 
-use rsnek_compile::fmt;
+use python_ast::fmt;
 
 use ::api::result::Error;
 use ::api::result::ObjectResult;

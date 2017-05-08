@@ -18,7 +18,7 @@ slog-bunyan = { git = "https://github.com/slog-rs/bunyan.git", branch = "master"
 
 
 clap = "*"
-rsnek_compile = { version = "*", path = "../rsnek_compile" }
+python_ast = { version = "*", path = "../python_ast" }
 
 [build-dependencies]
 rustc_version = "*"

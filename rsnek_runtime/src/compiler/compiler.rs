@@ -7,11 +7,11 @@ use std::hash::Hash;
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeSeq};
 
-use rsnek_compile::{
+use python_ast::{
     Ast, Module, Stmt, Expr, Op, Lexer,
     LexResult, Parser, ParserResult,
     OwnedTk, Id};
-use rsnek_compile::fmt;
+use python_ast::fmt;
 
 use ::compiler::graph::{Node, Graph};
 use ::compiler::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
@@ -474,7 +474,7 @@ impl<'a> TrackSymbol for Compiler<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnek_compile::fmt;
+    use python_ast::fmt;
 
     /// Use to create a named test case of a single line snippet of code.
     /// This `basic_test!(print_function, "print('hello world!')`

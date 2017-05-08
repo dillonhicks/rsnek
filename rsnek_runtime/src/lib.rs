@@ -25,7 +25,7 @@ extern crate rustyline;
 extern crate serde;
 extern crate test;
 
-extern crate rsnek_compile;
+extern crate python_ast;
 
 #[macro_use]
 mod macros;
