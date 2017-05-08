@@ -4,21 +4,20 @@ extern crate slog_term;
 extern crate slog_async;
 #[macro_use]
 extern crate slog_scope;
-extern crate slog_bunyan;
 
 use slog::Drain;
 use std::sync::Arc;
 
 
 extern crate clap;
-extern crate rsnek_runtime;
+extern crate librsnek;
 
 
 use clap::{Arg, App, ArgGroup};
 
-use rsnek_runtime::resources::strings;
-use rsnek_runtime::runtime::{Interpreter, Config, Logging, Mode};
-use rsnek_runtime::system::ThreadModel;
+use librsnek::resources::strings;
+use librsnek::runtime::{Interpreter, Config, Logging, Mode};
+use librsnek::system::ThreadModel;
 
 
 fn main() {

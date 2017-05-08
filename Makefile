@@ -140,7 +140,7 @@ test-release: $(ARTIFACTS_DIR)
 
 
 
-bench: bench-python_ast bench-rsnek_runtime bench-rsnek
+bench: bench-python_ast bench-rsnek
 
 
 bench-%: $(ARTIFACTS_DIR)
@@ -217,7 +217,7 @@ pipeline-status:
 docs:
 	$(CARGO) doc --all
 	$(MAKE) docs-python_ast
-	$(MAKE) docs-rsnek_runtime
+	$(MAKE) docs-rsnek
 
 
 docs-%: $(ARTIFACTS_DIR)

@@ -6,6 +6,7 @@
 ///! type is contained within the current variant.
 ///!
 ///! Example adding an int and a float:
+///!
 ///! ```ignore
 ///!
 ///! let rt: Runtime /// generally accessible in all necessary scopes
@@ -17,7 +18,6 @@
 ///!
 ///! /// And lets do a string comparison for laughs
 ///! assert_eq!(result.native_str()?, "4.14159");
-///!
 ///! ```
 mod rtobject;
 pub mod method;

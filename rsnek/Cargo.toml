@@ -4,25 +4,43 @@ version = "0.7.2"
 authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 build = "build.rs"
 
+[lib]
+name = "librsnek"
+
+[[bin]]
+path = "src/bin/rsnek.rs"
+name = "rsnek"
+
 [features]
-default = ["rsnek_multithreaded"]
+default = []
 rsnek_multithreaded = []
 
+[build-dependencies]
+rustc_version = "*"
+
 [dependencies]
+python_ast = {path = "../python_ast" }
+
+clap = "*"
+
+# Userland ctx swtiches for nix platforms
+fringe = "^1.2.1"
+
+itertools = "^0.6.0"
+
+# BigInt, BigComplex, and Num Traits
+num = "^0.1.37"
+num-bigint = "^0.1.37"
+
+# CLI Readline Support for Interactive mode
+rustyline = { git = "https://github.com/kkawakam/rustyline", branch = "master"}
+
+# Serialization
+serde = "^1.0.0"
+serde_derive = "^1.0.0"
+
 slog = {version = "2", features=["max_level_trace", "release_max_level_info"]}
 slog-async = "2.0.1"
 slog-term = "~2.0.0-4"
 slog-scope = "^3.0.0"
 slog-stream = "^1.2.0"
-slog-bunyan = { git = "https://github.com/slog-rs/bunyan.git", branch = "master"}
-
-
-clap = "*"
-python_ast = { version = "*", path = "../python_ast" }
-
-[build-dependencies]
-rustc_version = "*"
-
-[dependencies.rsnek_runtime]
-version = "*"
-path = "../rsnek_runtime"
