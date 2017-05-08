@@ -1,3 +1,8 @@
+//! PyType - The fundamental type object
+//!
+//! ```ignore
+//! type(thing)
+//! ```
 use std::fmt;
 use std::cell::RefCell;
 use std::borrow::Borrow;

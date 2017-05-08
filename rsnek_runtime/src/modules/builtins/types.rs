@@ -1,43 +1,44 @@
+//! `Type` is an enum wrapper for all known builtin types to act as a generic proxy
+//! for `PyAPI` trait methods.
+//!
+//! Note that `Type` contains both internal and external types. It is not necessary to expose all
+//! well known types as externally accessible types.
+//!
 use std;
 use std::fmt;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 
-use runtime::Runtime;
-use ::runtime::traits::{IntegerProvider, BooleanProvider};
-use ::api::result::{RtResult, ObjectResult};
-
-use ::api::PyAPI;
-use ::api::RtObject;
-use ::api::WeakRtObject as WeakRtObject;
 use ::api::method::{self, Id, StringRepresentation, Equal, Hashed};
+use ::api::PyAPI;
+use ::api::result::{RtResult, ObjectResult};
+use ::api::RtObject;
 use ::api::selfref::SelfRef;
-
-use ::system::primitives::{Native};
-use ::system::primitives as rs;
-use ::objects::dictionary::PyDict;
-use ::objects::object::PyObject;
+use ::api::WeakRtObject as WeakRtObject;
 use ::objects::boolean::PyBoolean;
-use ::objects::integer::PyInteger;
-use ::objects::float::PyFloat;
-use ::objects::iterator::PyIterator;
-use ::objects::string::PyString;
 use ::objects::bytes::PyBytes;
-use ::objects::complex::PyComplex;
-use ::objects::none::PyNone;
-use ::objects::tuple::PyTuple;
-use ::objects::list::PyList;
-use ::objects::pytype::PyType;
-use ::objects::method::PyFunction;
 use ::objects::code::PyCode;
+use ::objects::complex::PyComplex;
+use ::objects::dictionary::PyDict;
+use ::objects::float::PyFloat;
 use ::objects::frame::PyFrame;
-use ::objects::set::PySet;
 use ::objects::frozenset::PyFrozenSet;
+use ::objects::integer::PyInteger;
+use ::objects::iterator::PyIterator;
+use ::objects::list::PyList;
+use ::objects::method::PyFunction;
+use ::objects::none::PyNone;
+use ::objects::object::PyObject;
+use ::objects::pytype::PyType;
+use ::objects::set::PySet;
+use ::objects::string::PyString;
+use ::objects::tuple::PyTuple;
+use ::runtime::Runtime;
+use ::runtime::traits::{IntegerProvider, BooleanProvider};
+use ::system::primitives as rs;
+use ::system::primitives::{Native};
 
 
-/// Type wrapper for all known builtin types to act as a generic proxy.
-/// Note that it is not necessary to dispatch expose all of the internally 
-/// known types to as externally accessible types.
 #[allow(dead_code)]
 pub enum Type {
     Object(PyObject),
@@ -66,6 +67,8 @@ pub enum Type {
 
 
 impl Type {
+    /// Since we do not have actual type objects just statically map the names of
+    /// all of the types to a constant string.
     pub fn debug_name(&self) -> &str {
 
         match *self {

@@ -1,16 +1,20 @@
+//! `globals()` - builtin function
+//!
+//! Return the tuple of names defined in the builtin module. This is not CPython behavior but
+//! until scopes are implemented, it serves as an example.
 use std::ops::Deref;
 use std::borrow::Borrow;
 
-use ::modules::precondition::{check_args, check_kwargs};
 use ::api::result::Error;
 use ::api::result::{ObjectResult};
+use ::api::RtObject;
+use ::modules::builtins::Type;
+use ::modules::precondition::{check_args, check_kwargs};
 use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{TupleProvider, ModuleImporter};
-use ::api::RtObject;
-use ::modules::builtins::Type;
-use ::system::primitives::{Func, FuncType, SignatureBuilder};
 use ::system::primitives as rs;
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
 
 
 const FUNC_NAME: &'static str = "globals";

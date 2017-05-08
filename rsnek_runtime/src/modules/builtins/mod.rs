@@ -1,3 +1,6 @@
+//! `builtins` - The builtin types, constants, and functions that are available at anytime
+//! and in any namespace.
+//!
 mod len;
 mod print;
 mod typefn;

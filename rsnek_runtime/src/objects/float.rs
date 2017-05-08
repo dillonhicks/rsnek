@@ -1,3 +1,10 @@
+//! PyFloat - Double Precision Floating Point Numbers
+//!
+//! ```ignore
+//! float()
+//! 1.23456
+//!```
+//!
 use std::fmt;
 use std::borrow::Borrow;
 use std::ops::Deref;

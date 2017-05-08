@@ -1,3 +1,10 @@
+//! PySet - mutable collection of unique objects
+//!
+//! ```ignore
+//! set()
+//! {2.0, "sets", 4, "reps"}
+//! ```
+//!
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;

@@ -1,3 +1,5 @@
+//! rsnek - An Implementation of Python in Rust
+//!
 #![feature(associated_consts)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
@@ -32,6 +34,6 @@ mod compiler;
 mod modules;
 mod objects;
 #[macro_use]
-mod system;
+pub mod system;
 pub mod resources;
 pub mod runtime;

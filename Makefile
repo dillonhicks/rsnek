@@ -222,6 +222,7 @@ docs:
 
 docs-%: $(ARTIFACTS_DIR)
 	$(CARGO) rustdoc --lib -p $* -- \
+            --no-defaults \
 	    --passes strip-hidden \
 	    --passes collapse-docs \
 	    --passes unindent-comments \

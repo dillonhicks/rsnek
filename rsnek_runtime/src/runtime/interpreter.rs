@@ -1,3 +1,4 @@
+//! Where the magic happens...
 use std::borrow::Borrow;
 use std::cell::{Ref, Cell, RefCell};
 use std::collections::HashMap;
@@ -76,168 +77,16 @@ use ::system::primitives::{Native, Instr, FuncType};
 use ::system::primitives as rs;
 use ::system::primitives::SignatureBuilder;
 use ::modules::builtins::Type;
+use ::runtime::config::{Config, Mode, Logging};
+use ::system::{
+    ThreadModel, Pthread, GreenThread, Thread,
+    ExitCode, RECURSION_LIMIT, SharedMainFnRef,
+    MainFn, MainFnRef};
+use ::runtime::main::{create_python_main, python_main_interactive};
 
-
-const RECURSION_LIMIT: usize = 256;
-
-pub type Argv<'a> =  &'a [&'a str];
-pub type MainFn = Fn(&Runtime) -> i64;
-pub type MainFnRef<'a> = &'a Fn(&Runtime) -> (i64);
-
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-pub enum Mode {
-    Interactive,
-    Command(String),
-    Module(String),
-    File
-}
-
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-pub struct Config<'a> {
-    pub mode: Mode,
-    pub arguments: Argv<'a>,
-    pub debug_support: bool,
-    pub thread_model: ThreadModel,
-    pub logging: Logging
-}
-
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-pub struct Logging;
-
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-pub enum ThreadModel {
-    OsThreads,
-    GreenThreads,
-}
-
-/// Exit codes for the main interpreter loops
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize)]
-#[repr(u8)]
-enum ExitCode {
-    Ok = 0,
-    GenericError = 1,
-    SyntaxError = 2,
-    NotImplemented = 3,
-}
-
-
-pub struct Interpreter {}
-
-
-impl Interpreter {
-
-    // TODO: {T100} Arguments plumbing via a sys module?
-    pub fn run(config: &Config) -> i64 {
-        let interactive_main: MainFnRef = &python_main_interactive;
-        let main = create_python_main(config.mode.clone(), config.arguments);
-
-        let main_func = match config.mode {
-            Mode::Interactive => Box::new(interactive_main),
-            _ => Box::new(&(*main)),
-        };
-
-        let main_thread: Box<Thread> = match config.thread_model {
-            ThreadModel::OsThreads => Box::new(Pthread {func: (*main_func).clone()}),
-            ThreadModel::GreenThreads => Box::new(GreenThread {func: SharedMainFnRef((*main_func).clone())})
-        };
-
-        let rt = &Runtime::new();
-        main_thread.start(&rt)
-    }
-
-}
-
-#[derive(Clone, Debug, Serialize)]
-struct InterpreterFrame {
-    frame: RtObject,
-    stack: RefCell<rs::List>,
-    lineno: Cell<usize>
-}
-
-
-impl InterpreterFrame {
-    pub fn new(frame: RtObject) -> Self {
-        InterpreterFrame {
-            frame: frame,
-            stack: RefCell::new(rs::List::new()),
-            lineno: Cell::new(0)
-        }
-    }
-
-    pub fn object(&self) -> &RtObject {
-        &self.frame
-    }
-
-    pub fn stack(&self) -> Ref<rs::List> {
-        self.stack.borrow()
-    }
-
-    pub fn line(&self) -> usize {
-        self.lineno.get()
-    }
-
-    pub fn set_line(&self, line: usize) -> usize {
-        trace!("InterpreterFrame"; "action" => "set_line", "value" => line);
-        let previous = self.lineno.get();
-        self.lineno.set(line);
-        previous
-    }
-
-    pub fn push_stack(&self, objref: &RtObject) {
-        self.stack.borrow_mut().push(objref.clone());
-    }
-
-    pub fn pop_stack(&self) -> Option<RtObject> {
-        self.stack.borrow_mut().pop()
-    }
-
-    pub fn clear_stack(&self) {
-        self.stack.borrow_mut().clear()
-    }
-
-}
-
-#[derive(Clone, Debug, Serialize)]
-struct TracebackFrame {
-    frame: RtObject,
-    line: usize
-}
-
-impl TracebackFrame{
-    pub fn object(&self) -> &RtObject {
-        &self.frame
-    }
-
-    pub fn line(&self) -> usize {
-        self.line
-    }
-}
-
-
-impl<'a> From<&'a InterpreterFrame> for TracebackFrame {
-    fn from(frame: &InterpreterFrame) -> Self {
-        TracebackFrame {
-            frame: frame.object().clone(),
-            line: frame.line()
-        }
-    }
-}
-
-
-struct InterpreterState {
-    rt: Runtime,
-    // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
-    ns: HashMap<rs::String, RtObject>,
-    // (frame, stack)
-    frames: VecDeque<InterpreterFrame>,
-}
 
 /// Macro to expand the optional of the `self.frames.back()` of
-/// `InterpreterState` in a way that allows you to to specify a block of
+/// `Interpreter` in a way that allows you to to specify a block of
 /// code to run on the frame in a generic way that doesn't make a whole
 /// pot of al dente copy pasta.
 ///
@@ -262,7 +111,16 @@ macro_rules! with_current_frame (
 );
 
 
-impl InterpreterState {
+pub struct Interpreter {
+    rt: Runtime,
+    // TODO: {T100} Change namespace to be PyDict or PyModule or PyObject or something
+    ns: HashMap<rs::String, RtObject>,
+    // (frame, stack)
+    frames: VecDeque<InterpreterFrame>,
+}
+
+
+impl Interpreter {
     pub fn new(rt: &Runtime) -> Self {
 
         // Create the initial frame objects that
@@ -286,7 +144,7 @@ impl InterpreterState {
         let mut frames = VecDeque::new();
         frames.push_back(InterpreterFrame::new(rt.frame(main_frame)));
 
-        let mut istate = InterpreterState {
+        let mut istate = Interpreter {
             rt: rt.clone(),
             ns: HashMap::new(),
             frames: frames,
@@ -308,13 +166,32 @@ impl InterpreterState {
         istate
     }
 
-    fn set_line(&mut self, line: usize) {
+    // TODO: {T100} Arguments plumbing via a sys module?
+    pub fn run(config: &Config) -> i64 {
+        let interactive_main: MainFnRef = &python_main_interactive;
+        let main = create_python_main(config.mode.clone(), config.arguments);
+
+        let main_func = match config.mode {
+            Mode::Interactive => Box::new(interactive_main),
+            _ => Box::new(&(*main)),
+        };
+
+        let main_thread: Box<Thread> = match config.thread_model {
+            ThreadModel::OsThreads => Box::new(Pthread {func: (*main_func).clone()}),
+            ThreadModel::GreenThreads => Box::new(GreenThread {func: SharedMainFnRef((*main_func).clone())})
+        };
+
+        let rt = &Runtime::new();
+        main_thread.start(&rt)
+    }
+
+    pub fn set_line(&mut self, line: usize) {
         with_current_frame!(self |frame| {
             frame.set_line(line);
         })
     }
 
-    fn pop_frame(&mut self)  {
+    pub fn pop_frame(&mut self)  {
         trace!("Interpreter"; "action" => "pop_frame", "idx" => self.frames.len() - 1);
 
         self.frames.pop_back();
@@ -327,7 +204,7 @@ impl InterpreterState {
 
     }
 
-    fn push_frame(&mut self, func: &RtObject) -> Result<usize, Error>{
+    pub fn push_frame(&mut self, func: &RtObject) -> Result<usize, Error>{
         if self.frames.len() + 1 == RECURSION_LIMIT {
             return Err(Error::recursion())
         }
@@ -352,25 +229,25 @@ impl InterpreterState {
         Ok(self.frames.len())
     }
 
-    fn push_stack(&mut self, objref: &RtObject)  {
+    pub fn push_stack(&mut self, objref: &RtObject)  {
         with_current_frame!(self |frame| {
             frame.push_stack(&objref);
         });
     }
 
-    fn pop_stack(&mut self) -> Option<RtObject> {
+    pub fn pop_stack(&mut self) -> Option<RtObject> {
         with_current_frame!(self |frame| {
             frame.pop_stack()
         })
     }
 
-    fn stack_view(&self) -> Ref<rs::List> {
+    pub fn stack_view(&self) -> Ref<rs::List> {
         with_current_frame!(self |frame| {
             frame.stack()
         })
     }
 
-    fn frame_view(&self) -> Vec<TracebackFrame> {
+    pub fn frame_view(&self) -> Vec<TracebackFrame> {
         self.frames.iter()
             .map(TracebackFrame::from)
             .collect::<Vec<_>>()
@@ -380,7 +257,7 @@ impl InterpreterState {
     /// Used in lieu of an actual exception handling mechanism,
     /// clear all frames back to __main__ and clear that frame's
     /// value stack.
-    fn clear_traceback(&mut self) {
+    pub fn clear_traceback(&mut self) {
         self.frames.truncate(1);
 
         with_current_frame!(self |frame| {
@@ -435,15 +312,11 @@ impl InterpreterState {
         }
     }
 
-    fn force_pop(&mut self) -> Option<RtObject> {
-        self.pop_stack()
-    }
-
     /// Execute exactly one instruction
-    fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<ObjectResult> {
+    pub fn exec_one(&mut self, rt: &Runtime, instr: &Instr) -> Option<ObjectResult> {
         trace!("Interpreter"; "action" => "exec_one", "instr" => format!("{:?}", instr));
 
-        match instr.tuple() {
+        match instr.to_tuple() {
             (OpCode::LoadConst, Some(value)) => {
                 let objref = match value {
                     Native::Str(string) => rt.str(string),
@@ -562,7 +435,7 @@ impl InterpreterState {
                     None => return Some(Err(Error::system(
                         &format!("No values in value stack for {:?}!", instr.code()))))
                 };
-                
+
                 let result = match self.exec_unaryop(rt, instr.code(), &operand) {
                     Ok(objref) => objref,
                     err => return Some(err)
@@ -791,7 +664,7 @@ impl InterpreterState {
         }
     }
 
-    fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> ObjectResult {
+    pub fn exec(&mut self, rt: &Runtime, ins: &[Instr]) -> ObjectResult {
         let mut objects: VecDeque<RtObject> = VecDeque::new();
 
         let result = ins.iter()
@@ -885,296 +758,107 @@ impl InterpreterState {
     }
 }
 
-trait Thread<'a> {
-    fn start(&self, rt: &Runtime) -> i64;
-    fn run<'b>(&self, rt: &'b Runtime) -> i64;
+
+
+/// Attaches extra data to a frame object which is Interpreter runtime execution
+/// metadata including the frame's linenumber and value stack.
+#[derive(Clone, Debug, Serialize)]
+struct InterpreterFrame {
+    frame: RtObject,
+    stack: RefCell<rs::List>,
+    lineno: Cell<usize>
 }
 
 
-struct Pthread<'a>  {
-    func: MainFnRef<'a>
-}
-
-
-impl<'a> Thread<'a> for Pthread<'a> {
-    fn start(&self, rt: &Runtime) -> i64 {
-        self.run(&rt)
-    }
-
-    fn run<'b>(&self, rt: &'b Runtime) -> i64 {
-        let func = self.func.clone();
-        func(rt)
-    }
-
-}
-
-
-struct GreenThread<'a> {
-    func: SharedMainFnRef<'a>
-}
-
-impl<'a> Thread<'a> for GreenThread<'a> {
-    fn start(&self, rt: &Runtime) -> i64 {
-       self.run(&rt)
-    }
-
-    /// Note: Since `Runtime` doesn't implement Sync or Send
-    /// it cannot be passed into the context of the greenlet.
-    /// It is on the roadmap to fix that so there is not the
-    /// need to create 2 runtimes.
-    #[allow(unused_variables)]
-    fn run<'b>(&self, rt: &'b Runtime) -> i64 {
-        /// Start the stack off with 4kb
-        let stack = OsStack::new(1 << 12).unwrap();
-
-        let mut gen = Generator::new(stack, move |yielder, ()| {
-            let main_thread = Greenlet {
-                yielder: yielder,
-                func: self.func.clone()
-            };
-            let rt = Runtime::new();
-
-            main_thread.start(&rt);
-        });
-
-        let mut prev: Option<i64> = None;
-
-        /// The hallowed event loop
-        loop {
-            let out = gen.resume(());
-            match out {
-                None => { break },
-                _ => (),
-            };
-            prev = out;
+impl InterpreterFrame {
+    /// Create a new frame from an RtObject. Note that there are no asserts
+    /// about the concrete type of `frame`, so be careful.
+    fn new(frame: RtObject) -> Self {
+        InterpreterFrame {
+            frame: frame,
+            stack: RefCell::new(rs::List::new()),
+            lineno: Cell::new(0)
         }
+    }
 
-        prev.unwrap_or(0)
+    /// Get the reference to the object that represents the frame.
+    pub fn object(&self) -> &RtObject {
+        &self.frame
+    }
+
+    /// Get a `Ref` to the frame's value stack.
+    pub fn stack(&self) -> Ref<rs::List> {
+        self.stack.borrow()
+    }
+
+    /// The most recent line number. The parser and compiler eat a lot of the
+    /// information about the source so the line numbers right now are approximate
+    /// at best.
+    pub fn line(&self) -> usize {
+        self.lineno.get()
+    }
+
+
+    /// Called by the interpreter to set the line of the frame
+    pub fn set_line(&self, line: usize) -> usize {
+        trace!("InterpreterFrame"; "action" => "set_line", "value" => line);
+        let previous = self.lineno.get();
+        self.lineno.set(line);
+        previous
+    }
+
+    /// Push an object onto this frame's value stack. That object will become
+    /// the top of stack (often referred to in the CPython documentation as TOS).
+    pub fn push_stack(&self, objref: &RtObject) {
+        self.stack.borrow_mut().push(objref.clone());
+    }
+
+    /// Pop a value off of the value stack if present.
+    pub fn pop_stack(&self) -> Option<RtObject> {
+        self.stack.borrow_mut().pop()
+    }
+
+    /// Remove all values in this frame's value stack. For use in the current
+    /// exception handling mechanism. That is to say there is no mechanism besides
+    /// exploding and clearing the frames and stacks back to the __main__ frame.
+    pub fn clear_stack(&self) {
+        self.stack.borrow_mut().clear()
+    }
+
+}
+
+/// Lighter weight read only version of `InterpreterFrame` without the value stack
+/// for use in creating a copy of the current frame stack before a traceback is formatted.
+#[derive(Clone, Debug, Serialize)]
+pub struct TracebackFrame {
+    frame: RtObject,
+    line: usize
+}
+
+
+impl TracebackFrame{
+    pub fn object(&self) -> &RtObject {
+        &self.frame
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
 
-/// Wrapper around the `MainFnRef` so we have an owned
-/// type on which we can specify clone semantics for
-/// `Send` and `Sync` traits which allows the function reference
-/// to be shared across threads.
-#[derive(Clone)]
-struct SharedMainFnRef<'a>(MainFnRef<'a>);
 
-unsafe impl<'a> Sync for SharedMainFnRef<'a> {}
-unsafe impl<'a> Send for SharedMainFnRef<'a> {}
-
-
-struct Greenlet<'a> {
-    yielder: &'a mut Yielder<(), i64>,
-    func: SharedMainFnRef<'a>,
-}
-
-
-impl<'a> Thread<'a> for Greenlet<'a> {
-    fn start(&self, rt: &Runtime) -> i64 {
-        self.run(&rt)
-    }
-
-    fn run(&self, rt: &Runtime) -> i64 {
-        let func = self.func.0.clone();
-        self.yielder.suspend(func(rt));
-        0
+impl<'a> From<&'a InterpreterFrame> for TracebackFrame {
+    /// Convert an `InterpreterFrame` into a `TracebackFrame` by
+    /// cloning values and dropping the value stack.
+    fn from(frame: &InterpreterFrame) -> Self {
+        TracebackFrame {
+            frame: frame.object().clone(),
+            line: frame.line()
+        }
     }
 }
 
 
-/// Two equally valid explanations exist for this banner
-///
-/// 1. Print the obligatory banner to let everyone know what program is running.
-/// 2. https://youtu.be/tHnA94-hTC8?t=2m47s
-#[inline(always)]
-fn print_banner() {
-    info!("\n{}", strings::BANNER2);
-    info!("{}", strings::VERSION);
-    info!("{}", strings::BUILD);
-}
-
-
-/// Create the closure with the `MainFn` signature that captures a copy
-/// of the arguments sent to `create_python_main`. The closure will try to use
-/// the first argument as the file to load.
-fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
-
-    let myargs: Box<Vec<String>> = Box::new(args.iter().map(|s| s.to_string()).collect());
-
-    Box::new(move |rt: &Runtime| -> i64 {
-        let text: String = match (mode.clone(), myargs.get(0)) {
-            (Mode::Command(cmd), _) => cmd.clone(),
-            (Mode::Module(_), _) => {
-                error!("Not Implemented"; "mode" => "-m <module>");
-                return ExitCode::NotImplemented as i64
-            },
-            (Mode::File, Some(path)) => {
-                match File::open(&path) {
-                    // TODO: {T100} Check size so we aren't going ham and trying to read a file the size
-                    // of memory or something?
-                    Ok(ref mut file) => {
-                        let mut buf: Vec<u8> = Vec::new();
-                        match file.read_to_end(&mut buf) {
-                            Err(err) => {
-                                debug!("{:?}", err);
-
-                                return match err.raw_os_error() {
-                                    Some(code) => code as i64,
-                                    _ => ExitCode::GenericError as i64
-                                };
-                            },
-                            _ => {}
-                        };
-                        // TODO: {T100} Is using lossy here a good idea?
-                        String::from_utf8_lossy(&buf).to_string()
-                    },
-                    Err(err) => {
-                        debug!("{:?}", err);
-                        return match err.raw_os_error() {
-                            Some(code) => code as i64,
-                            _ => ExitCode::GenericError as i64
-                        }
-                    }
-                }
-            },
-            _ => {
-                debug!("Unable to determine input type");
-                return ExitCode::GenericError as i64
-            }
-        };
-
-        let mut compiler = Compiler::new();
-        let mut interpreter = InterpreterState::new(&rt);
-
-        let ins = match compiler.compile_str(&text) {
-            Ok(ins) => ins,
-            Err(_) => {
-                error!("SyntaxError: Unable to compile input");
-                return ExitCode::SyntaxError as i64
-            },
-        };
-
-        if let Some(path) = myargs.get(0) {
-            let outpath = [path, "compiled"].join(".");
-
-            match File::create(&outpath) {
-                Ok(ref mut file) => {
-                   match file.write(fmt::json(&ins).as_bytes()) {
-                       Err(err) => {
-                           debug!("{:?}", err);
-                       }
-                       _ => {}
-                   };
-                },
-                Err(err) => {
-                    debug!("{:?}", err);
-                }
-            }
-        }
-
-        let result = interpreter.exec(&rt, &(*ins));
-
-        let code = match result {
-            Ok(_) => {
-                ExitCode::Ok as i64
-            },
-            Err(err) => {
-                error!("{}", interpreter.format_traceback());
-                error!("{:?}Error", err.0; "message" => err.1.clone());
-                ExitCode::GenericError as i64
-            }
-        };
-
-        code
-    })
-}
-
-
-/// Entry point for the interactive repl mode of the interpreter
-fn python_main_interactive(rt: &Runtime) -> i64 {
-
-    let config = RLConfig::builder()
-        .history_ignore_space(true)
-        .completion_type(CompletionType::List)
-        .build();
-
-    let mut rl = rustyline::Editor::<()>::with_config(config);
-    let mut interpreter = InterpreterState::new(&rt);
-    let mut prompt_count = 0;
-
-    print_banner();
-
-    'repl: loop {
-        match io::stdout().flush() {
-            Err(err) => error!("Error Flushing STDOUT: {:?}", err),
-            _ => ()
-        }
-
-
-        prompt_count += 1;
-        info!("In[{}] {} ", prompt_count, strings::PROMPT);
-
-        let text = match rl.readline(&"") {
-            Ok(line) => {
-                rl.add_history_entry(line.as_ref());
-                line
-            },
-            Err(ReadlineError::Interrupted) => {
-                warn!("CTRL-C");
-                break;
-            }
-            Err(ReadlineError::Eof) => {
-                warn!("CTRL-D");
-                break;
-            }
-            _ => continue
-        };
-
-
-        let mut compiler = Compiler::new();
-        let ins = match compiler.compile_str(&text) {
-            Ok(ins) => ins,
-            Err(err) => {
-                err.log();
-                continue 'repl
-            },
-        };
-
-        'process_ins: for i in ins.iter() {
-            match interpreter.exec_one(rt, &i) {
-                Some(Err(err)) => {
-
-                    error!("{}", interpreter.format_traceback());
-                    err.log();
-                    interpreter.clear_traceback();
-                    break 'process_ins
-                },
-
-                _ => continue 'process_ins
-            }
-
-        }
-
-        // Force pop in interactive mode to clear return values?
-        match interpreter.force_pop() {
-            Some(object) => {
-                if object != rt.none() {
-                    let string = match object.native_str() {
-                        Ok(s) => s,
-                        Err(err) => format!("{:?}Error: {}", err.0, err.1),
-                    };
-                    info!("\nOut[{}]: {}\n\n", prompt_count, string);
-                }
-            }
-            _ => {},
-        }
-
-        interpreter.log_state();
-    }
-
-    ExitCode::Ok as i64
-}
 
 #[cfg(test)]
 mod tests {
@@ -1350,7 +1034,7 @@ test = {[1,2,3,4]: "bad key value"}
     fn print(b: &mut Bencher) {
         let rt = Runtime::new();
         let mut compiler = Compiler::new();
-        let mut interpreter = InterpreterState::new(&rt);
+        let mut interpreter = Interpreter::new(&rt);
 
         let code = "print(print(print(print(print(1)))))";
         let ins = match compiler.compile_str(&code) {

@@ -1,3 +1,5 @@
+//! PyBoolean - Object for the True and False singletons
+//!
 use std;
 use std::ops::{Deref, Neg};
 use std::borrow::Borrow;

@@ -1,3 +1,10 @@
+//! PyString - fixed size, immutable, unicode character buffer type.
+//!
+//! ```ignore
+//! str()
+//! "BY THE POWER OF GREYSKULL!"
+//! ```
+//!
 use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;

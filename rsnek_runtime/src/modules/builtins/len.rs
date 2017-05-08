@@ -1,15 +1,19 @@
+//! `len()` - builtin function
+//!
+//! Get the size of a collection or implementer of `op_len` or `__len__`.
+//!
 use std::borrow::Borrow;
 
-use ::modules::precondition::{check_args, check_kwargs};
 use ::api::method::{GetItem, Length};
-use ::api::RtObject;
-use ::resources::strings;
 use ::api::result::{ObjectResult};
+use ::api::RtObject;
+use ::modules::builtins::Type;
+use ::modules::precondition::{check_args, check_kwargs};
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::IntegerProvider;
-use ::modules::builtins::Type;
-use ::system::primitives::{SignatureBuilder, Func, FuncType};
 use ::system::primitives as rs;
+use ::system::primitives::{SignatureBuilder, Func, FuncType};
 
 
 pub struct LenFn;

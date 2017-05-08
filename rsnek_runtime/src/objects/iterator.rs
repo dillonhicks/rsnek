@@ -1,3 +1,8 @@
+//! PyIterator - It holds state to help iterate over collections
+//!
+//! ```ignore
+//! iter(collection)
+//! ```
 use std::fmt;
 use std::default::Default;
 use std::ops::{Deref};

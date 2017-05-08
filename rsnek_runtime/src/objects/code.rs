@@ -1,3 +1,5 @@
+//! PyCode - Object wrapper around a bytecode object
+//!
 use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;

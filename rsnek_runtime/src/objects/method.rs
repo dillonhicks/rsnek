@@ -1,3 +1,12 @@
+//! PyFunction - Represent callable python functions as either wrapped native methods or bytecode
+//!
+//! ```ignore
+//! def potato():
+//!     return "mashed"
+//!
+//! len()
+//!
+//! ```
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;

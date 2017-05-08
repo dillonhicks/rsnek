@@ -1,3 +1,5 @@
+//! PyModule - Better off as just a plain ol' python object?
+//!
 use std::ops::Deref;
 use std::borrow::Borrow;
 

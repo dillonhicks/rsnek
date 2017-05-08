@@ -1,3 +1,10 @@
+//! PyTuple - statically sized, immutable, sequence of `RtObject` elements
+//!
+//!```ignore
+//! tuple()
+//! (1,3,3,5)
+//! ```
+//!
 use std::fmt;
 use std::ops::{Add, Deref};
 use std::borrow::Borrow;

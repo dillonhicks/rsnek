@@ -1,3 +1,6 @@
+//! PyBytes - Like PyString but without an explicit encoding for working with binary
+//! data.
+//!
 use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;

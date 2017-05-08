@@ -1,15 +1,17 @@
+//! `type()` - builtin function
+//!
 use std::borrow::Borrow;
 
-use ::modules::precondition::{check_args, check_kwargs};
 use ::api::method::{GetItem};
-use ::api::RtObject as ObjectRef;
-use ::resources::strings;
 use ::api::result::{ObjectResult};
+use ::api::RtObject as ObjectRef;
+use ::modules::builtins::Type;
+use ::modules::precondition::{check_args, check_kwargs};
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, StringProvider};
-use ::modules::builtins::Type;
-use ::system::primitives::{Signature, Func, FuncType};
 use ::system::primitives as rs;
+use ::system::primitives::{Signature, Func, FuncType};
 
 
 pub struct TypeFn;

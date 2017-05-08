@@ -1,3 +1,8 @@
+//! PyNone - Implementation of Singleton `None` Value
+//!
+//! ```ignore
+//! None
+//! ```
 use std::borrow::Borrow;
 use std::fmt;
 use std::ops::Deref;

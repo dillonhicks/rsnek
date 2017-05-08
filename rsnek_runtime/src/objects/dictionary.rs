@@ -1,3 +1,10 @@
+//! PyDict - A HashMap of RtObject => RtObject
+//!
+//! ```ignore
+//! dict()
+//! {"key": "value"}
+//! ```
+//!
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
@@ -88,7 +95,7 @@ impl method::StringCast for PyDict {
 
         for (key_wrapper, value) in self.value.0.borrow().iter() {
 
-            let key = &key_wrapper.1;
+            let key = &key_wrapper.value();
             let ks = match key.native_repr() {
                 Ok(s) => s,
                 Err(_) => format!("{:?}", key)
@@ -139,7 +146,7 @@ impl method::GetItem for PyDict {
     fn op_getitem(&self, rt: &Runtime, key: &RtObject) -> ObjectResult {
         match key.native_hash() {
             Ok(hash) => {
-                let key_wrapper = DictKey(hash, key.clone());
+                let key_wrapper = DictKey::new(hash, &key);
                 match self.value.0.borrow().get(&key_wrapper) {
                     Some(objref) => Ok(objref.clone()),
                     None => {
@@ -168,7 +175,7 @@ impl method::SetItem for PyDict {
     fn op_setitem(&self, rt: &Runtime, key: &RtObject, value: &RtObject) -> ObjectResult {
         match key.native_hash() {
             Ok(hash) => {
-                let key_wrapper = Type::DictKey(DictKey(hash, key.clone()));
+                let key_wrapper = Type::DictKey(DictKey::new(hash, &key));
 
                 match self.native_setitem(&key_wrapper, value.as_ref()) {
                     Ok(_) => Ok(rt.none()),

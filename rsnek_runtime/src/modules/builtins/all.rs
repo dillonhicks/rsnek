@@ -1,14 +1,18 @@
+//! `all()` - builtin function
+//!
+//! Given an iterable, return `True` if every element produced by the iterator
+//! returns `True` after calling its `PyAPI::op_bool` method (`__bool__` in python code).
 use std::borrow::Borrow;
 
 use ::api::method::{GetItem, Iter, BooleanCast};
-use ::api::RtObject;
-use ::resources::strings;
 use ::api::result::{ObjectResult};
+use ::api::RtObject;
+use ::modules::builtins::Type;
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, BooleanProvider};
-use ::modules::builtins::Type;
-use ::system::primitives::{Func, FuncType, SignatureBuilder};
 use ::system::primitives as rs;
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
 
 use ::modules::precondition::{check_args, check_kwargs};
 

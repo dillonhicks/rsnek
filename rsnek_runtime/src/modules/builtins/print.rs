@@ -1,16 +1,19 @@
+//! `print()` - builtin function
+//!
+//! For printing characters onto stdout.
 use std::borrow::Borrow;
 
 use itertools::Itertools;
 
 use ::api::method::StringCast;
-use ::api::RtObject as ObjectRef;
-use ::resources::strings;
 use ::api::result::{ObjectResult};
+use ::api::RtObject as ObjectRef;
+use ::modules::builtins::Type;
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{IteratorProvider, NoneProvider};
-use ::modules::builtins::Type;
-use ::system::primitives::{Signature, Func, FuncType};
 use ::system::primitives as rs;
+use ::system::primitives::{Signature, Func, FuncType};
 
 
 pub struct PrintFn;

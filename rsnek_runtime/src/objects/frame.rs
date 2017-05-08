@@ -1,3 +1,6 @@
+//! PyFrame - Tracks function calls and exception handlers for the interpreter
+//!
+//!
 use std::ops::Deref;
 use std::borrow::Borrow;
 use std::fmt;

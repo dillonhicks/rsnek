@@ -1,3 +1,5 @@
+//! Common functions for sequence like data. Generally this mean that the backing data type
+//! is representable as a slice or an iterator.
 use std::iter::FromIterator;
 use std::ops::Deref;
 use std::borrow::Borrow;
@@ -11,13 +13,29 @@ use ::modules::builtins::Type;
 use ::system::primitives as rs;
 use ::api::RtObject;
 
+/// Returns true if `object` looks like a sequence type
+pub fn is_sequence(object: &RtObject) -> rs::Boolean {
+    match object.as_ref() {
+        &Type::List(_)       |
+        &Type::Tuple(_)      |
+        &Type::Dict(_)       |
+        &Type::Set(_)        |
+        &Type::FrozenSet(_)  |
+        &Type::Str(_)        |
+        &Type::Bytes(_)      => true,
+        _ => false
+    }
+}
 
+/// Determine if two two sequences are equal by first comparing their lengths
+/// then comparing each of their elements, in order.
 pub fn equals<'a>(left: &'a [RtObject], right: &'a [RtObject]) -> rs::Boolean {
     ((left.len() == right.len()) &&
         left.iter().zip(right.iter())
             .all(|(l, r)| l == r))
 }
 
+/// Test if `item` is contained in the sequence `seq`
 pub fn contains<'a>(seq: &'a [RtObject], item: &Type) -> rs::Boolean {
     seq.iter()
         .map(|objref| objref.as_ref())

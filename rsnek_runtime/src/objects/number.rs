@@ -1,4 +1,5 @@
-//! Native number coercions and comparisons
+//! Native number coercions and comparisons. I think rust already does this with the `Wrapped`
+//! traits...
 use std;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

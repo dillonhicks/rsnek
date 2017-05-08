@@ -1,3 +1,9 @@
+//! PyObject - Sort of an object with bases, dictionary, and stuff. Only partially implemented
+//!
+//! ```ignore
+//! object()
+//! ```
+//!
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;
@@ -123,7 +129,7 @@ impl method::GetAttr for PyObject {
             &Type::Str(ref string) => {
                 let string_obj = string.rc.upgrade()?;
 
-                let key = DictKey(string.native_hash()?, string_obj);
+                let key = DictKey::new(string.native_hash()?, &string_obj);
                 let dict = &self.value.0.dict;
 
                 match dict.native_getitem(&Type::DictKey(key)) {
@@ -160,7 +166,7 @@ impl method::SetAttr for PyObject {
         let hashid = name.native_hash()?;
         let key_ref = name.upgrade()?;
 
-        let key = DictKey(hashid, key_ref);
+        let key = DictKey::new(hashid, &key_ref);
         let dict = &self.value.0.dict;
 
         match dict.native_setitem(&Type::DictKey(key), &value) {

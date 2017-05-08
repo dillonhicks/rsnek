@@ -1,15 +1,18 @@
+//! `int()` - builtin function
+//!
+//! In the future this will be replaced by a type object.
 use std::borrow::Borrow;
 
-use ::modules::precondition::{check_args, check_kwargs};
 use ::api::method::{GetItem, IntegerCast};
-use ::api::RtObject;
-use ::resources::strings;
 use ::api::result::{ObjectResult};
+use ::api::RtObject;
+use ::modules::builtins::Type;
+use ::modules::precondition::{check_args, check_kwargs};
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider};
-use ::modules::builtins::Type;
-use ::system::primitives::{Func, FuncType, SignatureBuilder};
 use ::system::primitives as rs;
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
 
 
 pub struct IntFn;

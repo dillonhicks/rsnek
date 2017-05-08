@@ -1,3 +1,10 @@
+//! PyTuple - dynamically sized, mutable, sequence of `RtObject` elements
+//!
+//!```ignore
+//! list()
+//! ['a', 3, []]
+//! ```
+//!
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;

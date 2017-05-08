@@ -1,3 +1,9 @@
+//! PyInteger - Dynamically Sized Signed Integers
+//!
+//! ```ignore
+//! int()
+//! 1 + 3
+//! ```
 use std;
 use std::fmt;
 use std::borrow::Borrow;

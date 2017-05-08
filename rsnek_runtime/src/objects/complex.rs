@@ -1,3 +1,10 @@
+//! PyComplex - It's not complicated it's merely imaginary...
+//!
+//! ```ignore
+//! complex()
+//! 12 + 42j
+//!
+//! ```
 use std::fmt;
 use std::ops::Deref;
 use std::borrow::Borrow;

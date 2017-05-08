@@ -1,3 +1,9 @@
+//! Type aliases and rust defined types used to back the higher level objects
+//!
+//! The well known primitive types that have a fairly direct
+//! 1:1 representation to rusts primitive types. The 'native api',
+//! along with not using the reference counting wrappers, will
+//! should return these types directly.
 use std;
 use std::fmt;
 use std::cell::Cell;
@@ -6,50 +12,77 @@ use std::str::FromStr;
 
 use num;
 #[allow(unused_imports)]
-use num::ToPrimitive;
+use num::{ToPrimitive};
 use num::Num as NumTrait;
 use serde::ser::{Serializer};
 
 use rsnek_compile::{Id, Tag, Num, OwnedTk};
 
+use ::api::result::{ObjectResult, RtResult, Error};
 use ::api::RtObject;
 use ::modules::builtins::Type as BuiltinType;
+use ::objects::collection::sequence::is_sequence;
 use ::objects;
-use ::api::result::{ObjectResult, RtResult};
 use ::runtime::{OpCode, Runtime};
 
+/// The representation of the Id of an object as the cast of its memory address to
+/// the platform size. Note that this mimics the CPython way and may change. The only
+/// guarantee is that Object ids must be unique for the life of an object. This is an
+/// implementation detail and is subject to change.
+pub type ObjectId = usize;
 
-// Implementation specific types
-//
-pub type ObjectId = u64;
+/// Hashes are currently computed using the rust std machinery that computes hashes
+/// as u64. This is considered an implementation detail and is subject to change.
 pub type HashId = u64;
 
-// The well known primitive types that have a fairly direct
-// 1:1 representation to rusts primitive types. The 'native api',
-// along with not using the reference counting wrappers, will
-// always return these types directly.
+/// All integer values are aliased to use `BigInt` by default
+/// to support python's idea of unbounded integer types.
 pub type Integer = num::BigInt;
+
+/// Not exposed as type per se. However, the maximum value of `Count` (`usize`) is
+/// an upper limit for operations such as vector indexing and integer exponentiation.
 pub type Count = usize;
+
+/// Floats are doubles (`f64`) no surprise there, which is the same as CPython.
 pub type Float = f64;
+
+/// Booleans are `bool` because why do something special like make them an int?
 pub type Boolean = bool;
+
+
+/// Complex is represented as
 pub type Complex = num::complex::Complex<Float>;
 
-pub type Byte = u8;
-
+/// Used the own String type for most string value representations
+/// in order to prevent descending into reference lifetime hell.
 pub type String = std::string::String;
+
+pub type Byte = u8;
 pub type Bytes = Vec<Byte>;
+
+/// None is a alias to the unit struct.
 pub struct None();
 
-
-//
-// Collection Primitive Types
-//
+/// `List` is backed by a `Vec` type which is an array list.
 pub type List = Vec<RtObject>;
+
+/// List `List`, `Tuple` is backed by a `Vec` type which is an array list.
+/// The type alias does not prevent resizing that is done where the tuple is used
+/// since rust has a strong idea about interior mutability.
 pub type Tuple = Vec<RtObject>;
 
+
+/// Necessary to hold the computed value of the hash since RtObject cannot call
+/// `op_hash` without a reference to the `Runtime`. So the `DictKey::hash` should
+/// should be the value returned from `op_hash` or `native_hash`.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct DictKey(pub HashId, pub RtObject);
+pub struct DictKey(HashId, RtObject);
+
 impl DictKey {
+    pub fn new(id: HashId, object: &RtObject) -> Self {
+        DictKey(id, object.clone())
+    }
+
     pub fn hash(&self) -> HashId {
         self.0
     }
@@ -59,18 +92,30 @@ impl DictKey {
     }
 }
 
+
+/// Dictionaries use the standard rust HashMap from collections that map
+/// RtObject => RtObject. They are keyed using the `DictKey` instead in order
+/// to store the hash with the object since the runtime is needed to compute
+/// the hash.
 pub type Dict = std::collections::HashMap<DictKey, RtObject>;
 
+/// See: `DictKey`
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct SetElement(pub HashId, pub RtObject);
+
+/// Just a hash set of RtObject.
 pub type Set = std::collections::HashSet<SetElement>;
 
-pub type NativeFnArgs = (Tuple, Tuple, Dict);
-pub type FnArgs = (RtObject, RtObject, RtObject);
-
-pub type NativeFn = Fn(&Tuple, &Tuple, &Dict) -> RtResult<BuiltinType>;
+/// Defines a function ptr to a function with a python like signature of
+/// `fn (rt: &Runtime, args: &RtObject, stargs: &RtObject, kwargs: &RtObject) -> ObjectResult`
+///
+/// Especially useful for creating method wrappers or exposing rust closures as python objects.
 pub type WrapperFn = Fn(&Runtime, &RtObject, &RtObject, &RtObject) -> ObjectResult;
 
+
+/// Struct defining the data needed for a Python function including the name, signature, module,
+/// and callable. Note that `FuncType` allows for both native functions and a bytecode object
+/// to be stored in the same `Func` struct.
 #[derive(Debug, Serialize)]
 pub struct Func {
     pub name: String,
@@ -79,9 +124,7 @@ pub struct Func {
     pub callable: FuncType,
 }
 
-
-// TODO: {127} Figure out how to the box<fn> types to clone/copy properly without
-// the need for the none type.
+// TODO: {127} Figure out how to the box<fn> types to clone/copy properly
 #[derive(Serialize)]
 pub enum FuncType {
 
@@ -113,20 +156,28 @@ impl fmt::Debug for FuncType {
 }
 
 
+/// Wrapper to hold iterators that come from difference sources.
+/// Currently, the only supported iterators are `Empty` and well known
+/// `BuiltinType` variants.
 #[derive(Debug)]
 pub enum Iterator {
-    Sequence {source: RtObject, idx_next: Cell<u64>},
+    Sequence {source: RtObject, idx_next: Cell<Count>},
     Empty,
 }
 
 impl Iterator {
     pub fn new(source: &RtObject) -> RtResult<Self> {
-        // TODO: {T101} Type assertions on new iterators or make it part of the `iter()`
-        // builtin?
-        Ok(Iterator::Sequence {source: source.clone(), idx_next: Cell::new(0)})
+        if is_sequence(source) {
+            return Ok(Iterator::Sequence {source: source.clone(), idx_next: Cell::new(0)})
+        }
+
+        Err(Error::typerr(
+            &format!("'{}' is not a sequence", source.debug_name())))
     }
 }
 
+/// Work in progress to define the properties required to a generic python defined
+/// class object.
 #[derive(Debug)]
 pub struct Object {
     pub class: RtObject,
@@ -134,6 +185,7 @@ pub struct Object {
     pub bases: RtObject,
 }
 
+/// WIP
 #[allow(dead_code)]
 pub struct Module {
     pub name: RtObject,
@@ -158,7 +210,7 @@ pub struct Type {
     pub subclasses: std::cell::RefCell<List>,
 }
 
-
+/// Defines the bytecode object.
 #[derive(Debug, Clone, Serialize)]
 pub struct Code {
     pub co_name: String,
@@ -179,10 +231,10 @@ pub struct Code {
     //pub co_stacksize: Int,
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize)]
-pub struct Block {
 
-}
+/// Placeholder for try/catch block accounting
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize)]
+pub struct Block {}
 
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize)]
@@ -196,24 +248,37 @@ pub struct Frame {
 }
 
 
+/// Represents the canonical python function signature of
+/// `args`, `*args`, `kw_only_args`, and `**kwargs`.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Signature {
+    /// Good ol' "business in the front" positional named arguments
     args: Box<[String]>,
+
+    /// `def(*, named,...)` required keyword only arguments
     required_kwargs: Box<[String]>,
-    // vargs = "*name"
+
+    /// vargs = "*name"
     vargs: Option<String>,
 
+    /// name="value"
     default_kwargs: std::collections::HashMap<String, RtObject>,
-    // kwargs = "**name"
+
+    /// and the "party in the back" `**kwargs` arguments.
     kwargs: Option<String>,
 }
 
 
+/// Trait to allow conversions of any implementer into a `Signature`
+/// type. Primary use case is `[String]` arrays into a signature of
+/// of named positional arguments.
 pub trait SignatureBuilder {
     fn as_args(&self) -> Signature;
 }
 
+
 impl Signature {
+    /// By default, creating a sigunature
     pub fn new(args: &[&str],
                required_kwargs: &[&str],
                vargs: Option<&str>,
@@ -245,6 +310,7 @@ impl Signature {
         self.kwargs.is_some()
     }
 
+    /// Return the variable `Some(name)` for `*kwargs` if present, otherwise `None`
     pub fn vargs(&self) -> Option<&str> {
         match self.vargs {
             Some(ref string) => Some(&string),
@@ -252,6 +318,7 @@ impl Signature {
         }
     }
 
+    /// Return the variable `Some(name)` for `**kwargs` if present, otherwise `None`
     pub fn kwargs(&self) -> Option<&str> {
         match self.kwargs {
             Some(ref string) => Some(&string),
@@ -259,10 +326,14 @@ impl Signature {
         }
     }
 
+    /// Return the minimum number of arguments allowed by this `Signature`.
     pub fn min_arg_count(&self) -> Integer {
         Integer::from(self.args.len() + self.required_kwargs.len())
     }
 
+    /// Return the maximum number of arguments allowed by the `Signature` as
+    /// `Some(count)`. In the variadic case where `*args` or `**args` is defined
+    /// return `None` since there is no practical upper limit.
     pub fn max_arg_count(&self) -> Option<Integer> {
         if self.vargs.is_some() || self.kwargs.is_some() {
             return Option::None
@@ -276,16 +347,27 @@ impl Signature {
 
 }
 
+
+impl Default for Signature {
+    /// Create an empty signature
+    fn default() -> Signature {
+        Signature::new(&[][..], &[], Option::None, Option::None)
+    }
+}
+
+
 macro_rules! signature_impls {
   ($i:ty, $($N:expr)+) => {
     $(
         impl<'a> SignatureBuilder for [$i; $N] {
+            /// Create a `Signature` of named positional arguments from the array
             fn as_args(&self) -> Signature {
                 Signature::new(&self[..], &[], Option::None, Option::None)
             }
         }
 
         impl<'a> SignatureBuilder for &'a [$i; $N] {
+            /// Create a `Signature` of named positional arguments from the array reference
             fn as_args(&self) -> Signature {
                 Signature::new(&self[..], &[], Option::None, Option::None)
             }
@@ -299,6 +381,7 @@ signature_impls!(&'a str, 0 1 2 3 4 5 6);
 
 
 impl<'a> SignatureBuilder for &'a [String] {
+    /// Create a `Signature` of named positional arguments from a slice of strings.
     fn as_args(&self) -> Signature {
         let arr = self.iter().map(String::as_str).collect::<Vec<&str>>();
         Signature::new(&arr[..], &[], Option::None, Option::None)
@@ -307,19 +390,20 @@ impl<'a> SignatureBuilder for &'a [String] {
 
 
 impl SignatureBuilder for Vec<String> {
+    /// Create a `Signature` of named positional arguments from a vector of strings.
     fn as_args(&self) -> Signature {
         let arr: Vec<&str> = self.iter().map(String::as_str).collect::<Vec<&str>>();
         Signature::new(&arr[..], &[], Option::None, Option::None)
     }
 }
 
-// Compiler Types
-
+/// Instruction type used by the compiler and interpreter
 #[derive(Debug, Clone, Serialize)]
 pub struct Instr(pub OpCode, pub Option<Native>);
 
+
 impl Instr {
-    pub fn tuple(&self) -> (OpCode, Option<Native>) {
+    pub fn to_tuple(&self) -> (OpCode, Option<Native>) {
         (self.0.clone(), self.1.clone())
     }
 
@@ -333,6 +417,9 @@ impl Instr {
 }
 
 
+/// Enum of well known primitive types similar to `modules::builtins::type::Type`.
+/// for uses where appropriate such as return values of native api methods,
+/// the compiler, etc.
 #[derive(Debug, Clone, Serialize)]
 pub enum Native {
     Str(String),
@@ -353,11 +440,10 @@ pub enum Native {
 }
 
 
-
 impl<'a> From<&'a OwnedTk> for Native {
     // TODO: {T96} Refactor to use stdlib traits From / TryFrom if possible
     // TODO: {T96} unwrap() can cause panics, make this able to return a result
-
+    /// Convert an `&OwnedTk` into a `Native` type by token id.
     fn from(tk: &'a OwnedTk) -> Self {
         let parsed = String::from_utf8(tk.bytes().to_vec()).unwrap();
         let content = parsed.as_str();
@@ -390,13 +476,12 @@ impl<'a> From<&'a OwnedTk> for Native {
 }
 
 impl<'a> From<&'a str> for Native {
+    /// Convert a `str` into `Native::Str` as s convenience.
     fn from(s: &'a str) -> Self {
         Native::Str(s.to_string())
     }
 }
 
-
-// Serialization for native Rust and external types
 
 /// Serde calls this the definition of the remote type. It is just a copy of the
 /// remote type. The `remote` attribute gives the path to the actual type.
@@ -410,9 +495,13 @@ struct ComplexSerdeDef {
     pub im: Float
 }
 
+
 pub mod serialize {
     use super::*;
 
+    /// The epsilon for doubles (the only JS number type)
+    /// becomes nonzero after 2**54 and integer values
+    /// start to loose precision.
     const JSON_MAX_INT_BITS_LOSSLESS: usize = 54;
 
 

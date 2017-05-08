@@ -1,15 +1,18 @@
+//! `tuple()` - builtin function
+//!
+//! In the future this will be replaced by a type object.
 use std::borrow::Borrow;
 
-use ::modules::precondition::{check_args, check_kwargs, check_args_range};
 use ::api::method::{GetItem, Iter};
-use ::api::RtObject as ObjectRef;
-use ::resources::strings;
 use ::api::result::ObjectResult;
+use ::api::RtObject as ObjectRef;
+use ::modules::builtins::Type;
+use ::modules::precondition::{check_args, check_kwargs, check_args_range};
+use ::resources::strings;
 use ::runtime::Runtime;
 use ::runtime::traits::{IntegerProvider, TupleProvider, DefaultTupleProvider};
-use ::modules::builtins::Type;
-use ::system::primitives::{Func, FuncType, SignatureBuilder};
 use ::system::primitives as rs;
+use ::system::primitives::{Func, FuncType, SignatureBuilder};
 
 
 pub struct TupleFn;

@@ -1,3 +1,7 @@
+//! `any()` - builtin function
+//!
+//! Given an iterable, return `True` if any element produced by the iterator
+//! returns `True` after calling its `PyAPI::op_bool` method (`__bool__` in python code).
 use std::borrow::Borrow;
 
 use ::modules::precondition::{check_args, check_kwargs};

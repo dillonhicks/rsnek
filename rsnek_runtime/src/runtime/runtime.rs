@@ -1,4 +1,6 @@
+//! Interface to
 use std;
+use std::ops::BitAnd;
 use std::borrow::Borrow;
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::VecDeque;
@@ -56,38 +58,44 @@ use ::system::primitives as rs;
 use ::objects::none::{PyNoneType, NONE};
 use ::objects::object::PyObjectType;
 use ::objects::pytype::PyMeta;
+use ::objects::set::PySetType;
+use ::objects::frozenset::PyFrozenSetType;
 use ::objects::string::PyStringType;
 use ::objects::tuple::PyTupleType;
+use ::objects::complex::PyComplexType;
 
 /// Holder struct around the Reference Counted RuntimeInternal that
 /// is passable and consumable in the interpreter code.
-///
 pub struct Runtime(RuntimeRef);
+
+/// Same as `Runtime` but holds a weak reference instead of a strong reference.
 pub struct WeakRuntime(RuntimeWeakRef);
 
-
-/// Well Known builtin types
-pub struct BuiltinTypes {
-    none: PyNoneType,
+/// Well Known builtin types that will be initialized by `Runtime` and provided
+/// via the type specific provider methods.
+struct BuiltinTypes {
     bool: PyBooleanType,
-    int: PyIntegerType,
-    float: PyFloatType,
-    iterator: PyIteratorType,
-    dict: PyDictType,
-    string: PyStringType,
     bytes: PyBytesType,
-    tuple: PyTupleType,
-    list: PyListType,
-    function: PyFunctionType,
-    object: PyObjectType,
-    module: PyModuleType,
     code: PyCodeType,
+    dict: PyDictType,
+    float: PyFloatType,
     frame: PyFrameType,
+    frozenset: PyFrozenSetType,
+    function: PyFunctionType,
+    int: PyIntegerType,
+    iterator: PyIteratorType,
+    list: PyListType,
     meta: PyMeta,
+    module: PyModuleType,
+    none: PyNoneType,
+    object: PyObjectType,
+    set: PySetType,
+    string: PyStringType,
+    tuple: PyTupleType,
 }
 
-/// Concrete struct that holds the current runtime state, heap, etc.
 // TODO: {T99} add ability to intern objects
+/// Concrete struct that holds the current runtime state, heap, etc.
 struct RuntimeInternal {
     types: BuiltinTypes,
     modules: RefCell<RtObject>, // should be a dict
@@ -96,23 +104,20 @@ struct RuntimeInternal {
 
 
 /// Type that is the Reference Counted wrapper around the actual runtime
-///
-/// Patterns about References Taken from:
-///  https://ricardomartins.cc/2016/06/08/interior-mutability
 type RuntimeRef = StrongRc<RuntimeInternal>;
 type RuntimeWeakRef = WeakRc<RuntimeInternal>;
 
 
-/// Cloning a runtime just increases the strong reference count and gives
-/// back another RC'd RuntimeInternal wrapper `Runtime`.
 impl Clone for Runtime {
+    /// Cloning a runtime just increases the strong reference count and gives
+    /// back another RC'd RuntimeInternal wrapper `Runtime`.
     fn clone(&self) -> Self {
         Runtime((self.0).clone())
     }
 }
 
-
 impl Default for WeakRuntime {
+    /// Creates an empty weakref.
     fn default() -> Self {
         WeakRuntime(WeakRc::new())
     }
@@ -120,6 +125,15 @@ impl Default for WeakRuntime {
 
 
 impl Runtime {
+    /// Create a new instance of runtime which will initialize the runtime
+    /// available to types implementing the API. Most Api methods take a
+    /// `&Runtime` as their first argument after `&self`. The `Interpreter`
+    /// is responsible for passing the reference to the instance of the
+    /// `Runtime` with which it was instantiated.
+    ///
+    ///  - All builtin types
+    ///  - All builtin functions
+    ///  - Create a builtin module
     pub fn new() -> Runtime {
 
         let meta = PyMeta::init_type();
@@ -127,22 +141,24 @@ impl Runtime {
         let module = PyModuleType::init_type(&meta.pytype);
 
         let builtins = BuiltinTypes {
-            none: PyNoneType::init_type(),
             bool: PyBooleanType::init_type(),
-            int: PyIntegerType::init_type(),
-            float: PyFloatType::init_type(),
-            iterator: PyIteratorType::init_type(),
-            dict: PyDictType::init_type(),
-            string: PyStringType::init_type(),
             bytes: PyBytesType::init_type(),
-            tuple: PyTupleType::init_type(),
-            list: PyListType::init_type(),
-            function: PyFunctionType::init_type(&object.pytype, &object.object),
-            object: object,
-            module: module,
             code: PyCodeType::init_type(),
+            dict: PyDictType::init_type(),
+            float: PyFloatType::init_type(),
             frame: PyFrameType::init_type(),
+            frozenset: PyFrozenSetType::init_type(),
+            function: PyFunctionType::init_type(&object.pytype, &object.object),
+            int: PyIntegerType::init_type(),
+            iterator: PyIteratorType::init_type(),
+            list: PyListType::init_type(),
             meta: meta,
+            module: module,
+            none: PyNoneType::init_type(),
+            object: object,
+            set: PySetType::init_type(),
+            string: PyStringType::init_type(),
+            tuple: PyTupleType::init_type(),
         };
 
         let placeholder = builtins.meta.pytype.clone();
@@ -177,16 +193,16 @@ impl Runtime {
         rt
     }
 
-    pub fn downgrade(&self) -> WeakRuntime {
-        WeakRuntime(StrongRc::downgrade(&self.0.clone()))
-    }
-
+    /// Temporary method to put a function into the builtin module
+    /// until the full module system is complete.
     pub fn register_builtin(&self, func: rs::Func) {
         let module: Ref<RtObject> = self.0.mod_builtins.borrow();
         let key = self.str(func.name.as_ref());
         module.op_setattr(&self, &key, &self.function(func)).unwrap();
     }
 
+    /// Temporary solution to get a builtin function by name until
+    /// the module and namespace system is complete.
     pub fn get_builtin(&self, name: &'static str) -> RtObject {
         let module: Ref<RtObject> = self.0.mod_builtins.borrow();
         let key = self.str(name);
@@ -197,16 +213,20 @@ impl Runtime {
 
 
 impl<'a> ModuleImporter<&'a str> for Runtime {
-    fn import_module(&self, name: &'a str) -> ObjectResult {
-        match name {
+    /// Import a module by path. Currently this will only allow imports of
+    /// the builtin module with the name defined by `strings::BUILTINS_MODULE`
+    /// but will be expanded to filesystem search in a later version.
+    fn import_module(&self, path: &'a str) -> ObjectResult {
+        match path {
             strings::BUILTINS_MODULE => {
                 let ref_: Ref<RtObject> = self.0.mod_builtins.borrow();
                 Ok(ref_.clone())
             },
-            _ => Err(Error::module_not_found(name))
+            _ => Err(Error::module_not_found(path))
         }
     }
 }
+
 
 //
 // None
@@ -214,35 +234,19 @@ impl<'a> ModuleImporter<&'a str> for Runtime {
 impl NoneProvider for Runtime {
     #[inline]
     fn none(&self) -> RtObject {
-        self.0
-            .types
-            .none
-            .new(&self, NONE)
+        self.0.types.none.new(&self, NONE)
     }
 }
+
 
 //
 // Boolean
-//
-#[deprecated]
-impl BooleanProvider<rs::None> for Runtime {
-    #[allow(unused_variables)]
-    fn bool(&self, value: rs::None) -> RtObject {
-        self.0
-            .types
-            .bool
-            .new(&self, false)
+impl BooleanProvider<rs::Boolean> for Runtime {
+    fn bool(&self, value: rs::Boolean) -> RtObject {
+        self.0.types.bool.new(&self, value)
     }
 }
 
-impl BooleanProvider<rs::Boolean> for Runtime {
-    fn bool(&self, value: rs::Boolean) -> RtObject {
-        self.0
-            .types
-            .bool
-            .new(&self, value)
-    }
-}
 
 //
 // Integer
@@ -250,23 +254,10 @@ impl BooleanProvider<rs::Boolean> for Runtime {
 impl<T: Num> IntegerProvider<T> for Runtime
         where rs::Integer: std::convert::From<T> {
 
+    /// Create an `RtObject` from any integer type for which `rs::Integer`
+    /// defines a `From` implementation, which is all of the rust native types.
     fn int(&self, value: T) -> RtObject {
-        self.0
-            .types
-            .int
-            .new(&self, rs::Integer::from(value))
-    }
-}
-
-
-#[deprecated]
-impl IntegerProvider<rs::None> for Runtime {
-    #[allow(unused_variables)]
-    fn int(&self, value: rs::None) -> RtObject {
-        self.0
-            .types
-            .int
-            .new(&self, rs::Integer::zero())
+        self.0.types.int.new(&self, rs::Integer::from(value))
     }
 }
 
@@ -274,18 +265,14 @@ impl IntegerProvider<rs::None> for Runtime {
 //
 // Float
 //
-#[deprecated]
-impl FloatProvider<rs::None> for Runtime {
-    #[allow(unused_variables)]
-    fn float(&self, value: rs::None) -> RtObject {
-        self.0.types.float.new(&self, 0.0)
-    }
-}
+impl<T: Num> FloatProvider<T> for Runtime
+    where rs::Float: std::convert::From<T> {
 
-
-impl FloatProvider<rs::Float> for Runtime {
-    fn float(&self, value: rs::Float) -> RtObject {
-        self.0.types.float.new(&self, value)
+    /// Create an `RtObject` from any integer type for which `rs::Integer`
+    /// defines a `From` implementation. All of the the rust native number
+    /// types should be covered.
+    fn float(&self, value: T) -> RtObject {
+        self.0.types.float.new(&self, rs::Float::from(value))
     }
 }
 
@@ -306,10 +293,7 @@ impl IteratorProvider<rs::Iterator> for Runtime {
     #[allow(unused_variables)]
     fn iter(&self, value: rs::Iterator) -> RtObject {
         let wrapped = IteratorValue(value, self.clone());
-        self.0
-            .types
-            .iterator
-            .new(&self, wrapped)
+        self.0.types.iterator.new(&self, wrapped)
     }
 }
 
@@ -321,23 +305,7 @@ impl IteratorProvider<rs::Iterator> for Runtime {
 impl StringProvider<rs::None> for Runtime {
     #[allow(unused_variables)]
     fn str(&self, value: rs::None) -> RtObject {
-        self.0
-            .types
-            .string
-            .empty
-            .clone()
-    }
-}
-
-#[deprecated]
-impl BytesProvider<rs::None> for Runtime {
-    #[allow(unused_variables)]
-    fn bytes(&self, value: rs::None) -> RtObject {
-        self.0
-            .types
-            .bytes
-            .empty
-            .clone()
+        self.0.types.string.empty.clone()
     }
 }
 
@@ -352,7 +320,7 @@ impl StringProvider<rs::String> for Runtime {
     }
 }
 
-impl<'a>  StringProvider<&'a str> for Runtime {
+impl<'a> StringProvider<&'a str> for Runtime {
     #[allow(unused_variables)]
     fn str(&self, value: &'a str) -> RtObject {
         self.0
@@ -587,28 +555,6 @@ impl ModuleProvider<rs::None> for Runtime {
 }
 
 
-// Module registry
-impl ModuleFinder<&'static str> for Runtime {
-    fn get_module(&self, name: &'static str) -> ObjectResult {
-        let modules: Ref<RtObject> = self.0.modules.borrow();
-
-        match modules.op_getitem(&self, &self.str(name)) {
-            Ok(objref) => Ok(objref),
-            Err(Error(ErrorType::Key, _)) => Err(Error::module_not_found(name)),
-            Err(err) => Err(err)
-        }
-    }
-}
-
-impl<'a> ModuleImporter<(&'static str, &'a RtObject)> for Runtime {
-
-    #[allow(unused_variables)]
-    fn import_module(&self, args: (&'static str, &RtObject)) -> ObjectResult {
-        Err(Error::not_implemented())
-    }
-}
-
-// stdlib
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Runtime()")
@@ -641,6 +587,9 @@ mod tests {
                 let len = rt.get_builtin("len");
 
                 b.iter(|| { len.op_call(&rt, &args, &starargs, &kwargs).unwrap(); });
+
+                let count = len.op_call(&rt, &args, &starargs, &kwargs).unwrap();
+                assert_eq!(count, rt.int($N));
             }
         );
     );

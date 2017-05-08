@@ -1,4 +1,4 @@
-// Actual objects
+//! Definitions of builtin objects available to all python implementations
 pub mod boolean;
 pub mod bytes;
 pub mod code;
@@ -20,5 +20,5 @@ pub mod string;
 pub mod tuple;
 
 // Generic utilities
-mod collection;
+pub mod collection;
 mod number;
