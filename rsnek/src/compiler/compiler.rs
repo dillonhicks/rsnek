@@ -1,6 +1,5 @@
 //! Compiler takes an `python_ast::Ast` and turns it into `Code` and `Instr` objects.
 //!
-use core::array::FixedSizeArray;
 use std::convert::TryFrom;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::{RefMut, RefCell, Cell};
@@ -239,16 +238,14 @@ impl<'a> Compiler<'a> {
             _ => {}
         };
 
-        let arr: [Instr; 10];
-
-
-        Ok(Box::new(&[
-
+        let instructions = vec![
             Instr(OpCode::LoadConst, Some(Native::Code(code))),
             Instr(OpCode::LoadConst, Some(Native::from(name))),
             Instr(OpCode::MakeFunction, None),
             Instr(OpCode::StoreName, Some(Native::from(name)))
-        ].as_slice()))
+        ];
+
+        Ok(instructions.into_boxed_slice())
     }
 
     fn compile_stmt_assign(&self, target: &'a Expr, value: &'a Expr) -> CompilerResult {
