@@ -49,7 +49,7 @@ CODEBUILD_SOURCE_REPO_URL ?= NotSet
 # with the version of the source code to be built. For GitHub, the
 # commit ID, branch name, or tag name associated with the version of the
 # source code to be built.
-CODEBUILD_SOURCE_VERSION ?= notset
+CODEBUILD_SOURCE_VERSION ?= "$(shell git rev-parse HEAD | head -c7)"
 
 # The directory path that AWS CodeBuild uses for the build (for
 # example, /tmp/src123456789/src).
@@ -57,27 +57,57 @@ CODEBUILD_SRC_DIR ?= NotSet
 
 
 AWS_ACCOUNT_ID = 043206986030
-AWS_REGION = us-west-2
-IMAGE_NAME = rust-toolchain
-IMAGE_REPO = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE_NAME)
-ECR_LOGIN := $(shell aws ecr get-login --region=$(AWS_REGION) 2>/dev/null || echo 'echo "NO AWSCLI INSTALLED!" && false')
-
+#IMAGE_NAME = rust-toolchain
+#IMAGE_REPO = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(IMAGE_NAME)
+#ECR_LOGIN := $(shell aws ecr get-login --region=$(AWS_REGION) 2>/dev/null || echo 'echo "NO AWSCLI INSTALLED!" && false')
 
 BUILD_DATETIME := $(shell date -u +%FT%TZ)
-
-
 VERSION ?= $(CODEBUILD_SOURCE_VERSION)
 LOG_FORMAT ?= human
-CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
+ARTIFACTS_DIR=target
 
-.PHONY: all toolchain build
+# When building in CODEBUILD and running on EC2 special packages
+# are needed to run things like oprofile and perf.
+#
+ifeq ($(CODEBUILD_BUILD_ID), NotSet)
+CONDITIONAL_REQUIREMENTS=
+CARGO_ARGS=--color=always --message-format=human
+CARGO=cargo
+LOG_SUFFIX=local.$(CODEBUILD_SOURCE_VERSION).$(BUILD_DATETIME)
+else
+CARGO=PATH=/root/.cargo/bin:$(PATH) cargo
+CARGO_ARGS=--message-format=json
+CONDITIONAL_REQUIREMENTS=ec2-requirements
+LOG_SUFFIX=$(CODEBUILD_BUILD_ID).$(BUILD_DATETIME)
+endif
+
+
+
+.PHONY: all toolchain build release test \
+	test-release bench perf docs clean \
+	pipeline-status sysinfo lshw lscpu
 
 
 all:
 	exit 1
 
 
-toolchain:
+# Run the steps for buildspec.yml locally with the exception of toolchain
+codebuild-local: | clean $(ARTIFACTS_DIR) sysinfo build test release test-release bench perf docs
+
+
+ec2-requirements:
+	-apt-get update && apt-get install -y \
+		linux-headers-aws \
+		linux-tools-aws \
+		linux-cloud-tools-4.4.0-1016-aws
+
+
+$(ARTIFACTS_DIR):
+	-mkdir -p $@
+
+
+toolchain: $(CONDITIONAL_REQUIREMENTS) $(ARTIFACTS_DIR)
 	apt-get update && apt-get install -y \
 		cmake \
 		curl \
@@ -87,51 +117,67 @@ toolchain:
 		make \
 		valgrind \
 		oprofile \
-		linux-tools-generic ;
+		lshw \
+		linux-tools-generic
 
 	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
 
 
-build:
-	$(CARGO) build --message-format=$(LOG_FORMAT) -p rsnek
+build: $(ARTIFACTS_DIR)
+	$(CARGO) build $(CARGO_ARGS) -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-release:
-	$(CARGO) build --message-format=$(LOG_FORMAT) --release -p rsnek
+release: $(ARTIFACTS_DIR)
+	$(CARGO) build $(CARGO_ARGS)  --release -p rsnek 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-test:
-	$(CARGO) test --message-format=$(LOG_FORMAT) --all
+test: $(ARTIFACTS_DIR)
+	$(CARGO) test $(CARGO_ARGS) --all 2>&1 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-test-release:
-	$(CARGO) test --release --message-format=$(LOG_FORMAT) --all
+test-release: $(ARTIFACTS_DIR)
+	$(CARGO) test $(CARGO_ARGS) --release --all 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 
-bench:
-	$(CARGO) bench --message-format=$(LOG_FORMAT) -p rsnek*
 
+bench: bench-python_ast bench-rsnek
+
+
+bench-%: $(ARTIFACTS_DIR)
+	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
+	-$(CARGO) bench --all-features $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.all-features.$(LOG_SUFFIX).txt
+
+
+sysinfo: lshw lscpu
+
+
+lshw: $(ARTIFACTS_DIR)
+	-lshw -sanitize -xml 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).xml
+
+
+lscpu: $(ARTIFACTS_DIR)
+	-lscpu 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
 
 # I do not expect there to be random memory leaks because Rust handles a lot of that.
 # This is more of a curiosity and an experiment to see:
 #  - If the cyclical ObjectRefs cause issues
 #  - Detect any hot code areas not obvious by rust benching
 #
-RSNEK_BINARY=target/release/rsnek
+RSNEK_BINARY=$(ARTIFACTS_DIR)/release/rsnek
 VALGRIND_PYTHON_SRCFILE=rsnek/tests/test.py
-VALGRIND_MEMCHECK_XMLFILE=target/release/valgrind.memcheck.xml
+VALGRIND_MEMCHECK_XMLFILE=$(ARTIFACTS_DIR)/valgrind.memcheck.$(LOG_SUFFIX).xml
+VALGRIND_CACHEGRIND_FILE=$(ARTIFACTS_DIR)/valgrind.cachegrind.$(LOG_SUFFIX).txt
+OPROF_OUTDIR=$(ARTIFACTS_DIR)/oprofile_data.$(LOG_SUFFIX)
+PERF_STATS_FILE=$(ARTIFACTS_DIR)/perf.stats.$(LOG_SUFFIX).txt
 
-valgrind:
-	-$(CARGO) install cargo-profiler
+perf: $(ARTIFACTS_DIR)
 	printf "%s\n%s\n\n" "#![feature(alloc_system)]" "extern crate alloc_system;" > rsnek/maingrind.rs
 	cat rsnek/src/main.rs >> rsnek/maingrind.rs
 	mv rsnek/src/main.rs rsnek/src/main.rs.bak
 	mv rsnek/maingrind.rs rsnek/src/main.rs
-	cd rsnek; \
-		cargo profiler callgrind --release ; \
-		cargo profiler cachegrind --release  -- $(VALGRIND_PYTHON_SRCFILE)
+	$(CARGO) rustc -p rsnek --release -- -g
 	mv rsnek/src/main.rs.bak rsnek/src/main.rs
-	valgrind \
+	-valgrind \
 		--tool=memcheck \
 		--leak-check=full \
 		--show-leak-kinds=all \
@@ -139,14 +185,21 @@ valgrind:
 		--xml=yes \
 		--xml-file=$(VALGRIND_MEMCHECK_XMLFILE) \
 		--track-fds=yes -v $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
-	cat $(VALGRIND_MEMCHECK_XMLFILE)
+	-cat $(VALGRIND_MEMCHECK_XMLFILE)
+	-valgrind \
+		--tool=cachegrind \
+		--branch-sim=yes \
+		--cachegrind-out-file=$(VALGRIND_CACHEGRIND_FILE) \
+		-v $(RSNEK_BINARY) \
+		$(VALGRIND_PYTHON_SRCFILE)
+	-cat $(VALGRIND_CACHEGRIND_FILE)
+	-mkdir -p $(OPROF_OUTDIR)
+	-operf -d $(OPROF_OUTDIR) $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
+	-opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
 
+	-perf stat -r 25 -ddd $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE) 2>&1 | tee -a $(PERF_STATS_FILE)
+	-perf stat -r 25 -ddd python -B $(VALGRIND_PYTHON_SRCFILE) 2>&1 | tee -a $(PERF_STATS_FILE)
 
-OPROF_OUTDIR=target/oprofile_data
-oprofile:
-	mkdir -p $(OPROF_OUTDIR)
-	operf -d $(OPROF_OUTDIR) $(RSNEK_BINARY) $(VALGRIND_PYTHON_SRCFILE)
-	opreport --session-dir $(OPROF_OUTDIR) --details --verbose=stats
 
 
 # Get the status of the stages of the AWS CodePipeline for this project and
@@ -155,15 +208,6 @@ oprofile:
 pipeline-status:
 	./tools/aws-cli-sugar/pipeline-status.sh
 
-#
-docs-%:
-	cargo rustdoc --lib -p $* -- \
-	    --no-defaults \
-	    --passes strip-hidden \
-	    --passes collapse-docs \
-	    --passes unindent-comments \
-	    --passes strip-priv-imports
-
 
 # Generate the docs for all of dependencies and libraries Note that
 # cargo doc --all filters out private modules in in the generated
@@ -171,9 +215,18 @@ docs-%:
 # directly to ensure that the private modules are present in the
 # documentation.
 docs:
-	cargo doc --all
-	$(MAKE) docs-rsnek_compile
-	$(MAKE) docs-rsnek_runtime
+	$(CARGO) doc --all
+	$(MAKE) docs-python_ast
+	$(MAKE) docs-rsnek
+
+
+docs-%: $(ARTIFACTS_DIR)
+	$(CARGO) rustdoc --lib -p $* -- \
+            --no-defaults \
+	    --passes strip-hidden \
+	    --passes collapse-docs \
+	    --passes unindent-comments \
+	    --passes strip-priv-imports
 
 
 clean:
