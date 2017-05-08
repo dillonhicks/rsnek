@@ -18,6 +18,7 @@ extern crate slog_scope;
 #[macro_use]
 extern crate serde_derive;
 
+extern crate bincode;
 extern crate fringe;
 extern crate itertools;
 extern crate num;

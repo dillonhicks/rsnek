@@ -4,4 +4,6 @@ mod graph;
 mod symbol;
 mod scope;
 
-pub use self::compiler::{Compiler, CompilerResult, Context};
+pub mod fmt;
+
+pub use self::compiler::{Compiler, CompilerResult, Context, Instr};

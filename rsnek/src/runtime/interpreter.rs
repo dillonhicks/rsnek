@@ -1030,23 +1030,4 @@ assert len(crazytown) == 5
 test = {[1,2,3,4]: "bad key value"}
     "#, ExitCode::GenericError);
 
-    #[bench]
-    fn print(b: &mut Bencher) {
-        let rt = Runtime::new();
-        let mut compiler = Compiler::new();
-        let mut interpreter = Interpreter::new(&rt);
-
-        let code = "print(print(print(print(print(1)))))";
-        let ins = match compiler.compile_str(&code) {
-            Ok(ins) => ins,
-            Err(_) => {
-                panic!("SyntaxError: Unable to compile input");
-            },
-        };
-
-        b.iter(|| {
-            interpreter.exec(&rt, &(*ins)).unwrap()
-        });
-    }
-
 }

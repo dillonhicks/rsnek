@@ -145,7 +145,7 @@ bench: bench-python_ast bench-rsnek
 
 bench-%: $(ARTIFACTS_DIR)
 	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
-	-$(CARGO) bench --all-features $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.all-features.$(LOG_SUFFIX).txt
+	#-$(CARGO) bench --all-features $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.all-features.$(LOG_SUFFIX).txt
 
 
 sysinfo: lshw lscpu

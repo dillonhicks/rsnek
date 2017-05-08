@@ -24,6 +24,7 @@ use ::api::result::Error;
 use ::api::result::ObjectResult;
 use ::api::RtObject;
 use ::compiler::Compiler;
+use ::compiler::fmt::bincode as fmt_bincode;
 use ::modules::builtins::{Type, logical_and, logical_or};
 use ::resources::strings;
 use ::runtime::config::Mode;
@@ -107,11 +108,11 @@ pub fn create_python_main(mode: Mode, args: Argv) -> Box<MainFn> {
         };
 
         if let Some(path) = myargs.get(0) {
-            let outpath = [path, "compiled"].join(".");
+            let outpath = format!("{}.{}", path, strings::COMPILED_SOURCE_EXT);
 
             match File::create(&outpath) {
                 Ok(ref mut file) => {
-                    match file.write(fmt::json(&ins).as_bytes()) {
+                    match file.write(&fmt_bincode(&ins)) {
                         Err(err) => {
                             debug!("{:?}", err);
                         }

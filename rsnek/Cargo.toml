@@ -21,6 +21,7 @@ rustc_version = "*"
 [dependencies]
 python_ast = {path = "../python_ast" }
 
+bincode = "^0.8.0"
 clap = "*"
 
 # Userland ctx swtiches for nix platforms

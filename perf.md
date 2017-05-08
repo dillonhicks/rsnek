@@ -1,4 +1,5 @@
 #
+## Compiler
 test expr_attr::attrs_0001           ... bench:       2,178 ns/iter (+/- 190)
 test expr_attr::attrs_0002           ... bench:       2,904 ns/iter (+/- 297)
 test expr_attr::attrs_0003           ... bench:       3,760 ns/iter (+/- 2,547)
@@ -66,6 +67,33 @@ test stmt_funcdef::nested_funcs_0006 ... bench:      68,256 ns/iter (+/- 1,556)
 test stmt_funcdef::nested_funcs_0007 ... bench:      88,336 ns/iter (+/- 1,898)
 test stmt_funcdef::nested_funcs_0008 ... bench:     111,718 ns/iter (+/- 2,122)
 test stmt_funcdef::nested_funcs_0016 ... bench:     375,482 ns/iter (+/- 10,779)
+
+## librsnek
+test objects::integer::benches::__add__::dynamic_dynamic       ... bench:          92 ns/iter (+/- 1)
+test objects::integer::benches::__add__::dynamic_static        ... bench:          93 ns/iter (+/- 1)
+test objects::integer::benches::__add__::static_static         ... bench:          64 ns/iter (+/- 1)
+test objects::integer::benches::native__add__::dynamic_dynamic ... bench:          53 ns/iter (+/- 4)
+test objects::integer::benches::native__add__::dynamic_static  ... bench:          53 ns/iter (+/- 0)
+test objects::integer::benches::native__add__::static_static   ... bench:          53 ns/iter (+/- 0)
+test objects::iterator::tests::__next__::iter_list_elems_0     ... bench:         219 ns/iter (+/- 4)
+test objects::iterator::tests::__next__::iter_list_elems_1     ... bench:         261 ns/iter (+/- 12)
+test objects::iterator::tests::__next__::iter_list_elems_1024  ... bench:      41,495 ns/iter (+/- 2,321)
+test objects::iterator::tests::__next__::iter_list_elems_16    ... bench:         897 ns/iter (+/- 25)
+test objects::iterator::tests::__next__::iter_list_elems_16384 ... bench:   1,044,530 ns/iter (+/- 24,173)
+test objects::iterator::tests::__next__::iter_list_elems_256   ... bench:      10,381 ns/iter (+/- 155)
+test objects::iterator::tests::__next__::iter_list_elems_4     ... bench:         381 ns/iter (+/- 24)
+test objects::iterator::tests::__next__::iter_list_elems_4096  ... bench:     248,580 ns/iter (+/- 5,283)
+test objects::iterator::tests::__next__::iter_list_elems_64    ... bench:       2,754 ns/iter (+/- 69)
+test runtime::runtime::tests::builtin_len_tuple_elems_0        ... bench:          51 ns/iter (+/- 0)
+test runtime::runtime::tests::builtin_len_tuple_elems_1        ... bench:          67 ns/iter (+/- 1)
+test runtime::runtime::tests::builtin_len_tuple_elems_1024     ... bench:          99 ns/iter (+/- 1)
+test runtime::runtime::tests::builtin_len_tuple_elems_16       ... bench:          68 ns/iter (+/- 0)
+test runtime::runtime::tests::builtin_len_tuple_elems_16384    ... bench:          99 ns/iter (+/- 1)
+test runtime::runtime::tests::builtin_len_tuple_elems_256      ... bench:          66 ns/iter (+/- 6)
+test runtime::runtime::tests::builtin_len_tuple_elems_4        ... bench:          67 ns/iter (+/- 4)
+test runtime::runtime::tests::builtin_len_tuple_elems_4096     ... bench:          99 ns/iter (+/- 1)
+test runtime::runtime::tests::builtin_len_tuple_elems_64       ... bench:          67 ns/iter (+/- 1)
+test runtime::runtime::tests::int_getattr_hash_method_wrapper  ... bench:         231 ns/iter (+/- 4)
 
 
 

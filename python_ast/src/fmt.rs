@@ -13,21 +13,6 @@ pub fn json<'a, T: Serialize>(input: &'a T) -> String {
     }
 }
 
-/// Take some input that implements `serde::Serialize` and convert it to
-/// bincode format. Note that this encodes the result as ascii for human debugging
-/// and should not be used for actual serialization.
-///
-/// Broken as of {T88} due to some library update.
-#[allow(unused_variables)]
-pub fn bincode<'a, T>(input: &'a T) -> String {
-
-    "".to_string()
-//    match bincode::serialize(&input, bincode::Infinite) {
-//        Ok(bytes) => ASCII.decode(&bytes, DecoderTrap::Strict).unwrap(),
-//        Err(err) => format!("{:?}", err)
-//    }
-}
-
 /// Take a token and output it in tabular format using text alignments
 /// for debugging. The string will take the form:
 /// `Id        String           Tag`

@@ -22,7 +22,8 @@ use ::compiler::scope::{ScopeNode, ManageScope, Descriptor};
 use ::compiler::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
 use ::runtime::OpCode;
 use ::system::primitives as rs;
-use ::system::primitives::{Instr, Native};
+use ::system::primitives::Native;
+pub use ::system::primitives::Instr;
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 

@@ -46,6 +46,8 @@ pub const PROMPT:  &'static str = include_str!("prompt.in");
 /// Static strings are love, static strings are life
 pub const BUILTINS_MODULE: &'static str = "builtins";
 
+pub const COMPILED_SOURCE_EXT: &'static str = "rsc";
+
 /// Stol'd from CPython
 /// ```ignore
 /// type(1).__doc__
