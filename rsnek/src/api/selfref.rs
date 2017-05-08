@@ -1,3 +1,8 @@
+//! Deferred self weak reference implementation
+//!
+//! Using `RtValue<T>` allows for injection of a `WeakRc` back to the contained `RtValue<T>`
+//! value after it has been boxed and moved into the `StrongRc` struct.
+//!
 use std::cell::RefCell;
 use std::fmt::{Debug, Formatter, Result};
 use std::ops::Deref;
@@ -8,6 +13,7 @@ use ::api::result::Error;
 use ::api::{RtObject, WeakRtObject};
 use ::api::result::ObjectResult;
 use ::system::primitives as rs;
+
 
 
 /// A trait that must be implemented on a refcount wrapper type

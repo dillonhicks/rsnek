@@ -1,6 +1,6 @@
 //! PyTuple - dynamically sized, mutable, sequence of `RtObject` elements
 //!
-//!```ignore
+//! ```ignore
 //! list()
 //! ['a', 3, []]
 //! ```

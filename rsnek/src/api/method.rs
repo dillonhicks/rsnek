@@ -1,4 +1,4 @@
-///! Union of all traits used to define the Python Object API. See: `PyAPI`.
+//! Union of all traits used to define the Python Object API. See: `PyAPI`.
 use std::borrow::Borrow;
 
 use ::api::RtObject;

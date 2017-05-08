@@ -1,3 +1,5 @@
+//! Scope driven symbol tables
+//!
 use std;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::{RefMut, RefCell, Cell};

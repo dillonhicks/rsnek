@@ -1,7 +1,7 @@
-///! macros to make working with cases where there is generic code but not generic types
-///! such as dispatching an API method on an `RtObject` or `Type`, creating method wrappers
-///! (e.g. `x = 1; func = x.__hash__` since `__hash__` should be an object representing
-///! `PyInteger::op_hash` for the instance ), shorthand for default implementations, etc.
+//! macros to make working with cases where there is generic code but not generic types
+//! such as dispatching an API method on an `RtObject` or `Type`, creating method wrappers
+//! (e.g. x = 1; func = x.__hash__ since `__hash__` should be an object representing
+//! `PyInteger::op_hash` for the instance ), shorthand for default implementations, etc.
 
 
 /// Creates default "not implemented" impls for the Objects.
@@ -47,12 +47,12 @@ macro_rules! foreach_type {
     );
 }
 
-/// A more flexible sibling of the `foreach_type` and `native_foreach_type` macros
+/// A more flexible sibling of the `foreach_type!` and `native_foreach_type!` macros
 /// which will allow execution an arbitrary block of code on
 /// the inner value of any variant of `Type`. The `$inner:ident` is
 /// identifier used to reference the match expanded value within the given code block.
 ///
-///```ignore
+/// ```ignore
 ///  let object: RtObject = /// something that produces an RtObject;
 ///
 ///  expr_foreach_type!(object.as_ref(), value, {

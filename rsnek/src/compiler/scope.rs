@@ -1,3 +1,4 @@
+//! Accounting for compile type discovered scopes
 use ::compiler::graph::Node;
 
 

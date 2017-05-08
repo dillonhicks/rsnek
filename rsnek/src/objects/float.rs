@@ -3,7 +3,7 @@
 //! ```ignore
 //! float()
 //! 1.23456
-//!```
+//! ```
 //!
 use std::fmt;
 use std::borrow::Borrow;

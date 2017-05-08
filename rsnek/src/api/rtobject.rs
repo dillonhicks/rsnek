@@ -1,7 +1,7 @@
-///! Wrapper around the reference counted pointed to all
-///! runtime objects. In CPython, the StrongRc is as a field in the
-///! PyObject struct. Due to the design of rust, all access to the underlying
-///! structs must be proxied through the rc for ownership and lifetime analysis.
+//! Wrapper around the reference counted pointed to all
+//! runtime objects. In CPython, the StrongRc is as a field in the
+//! PyObject struct. Due to the design of rust, all access to the underlying
+//! structs must be proxied through the rc for ownership and lifetime analysis.
 use std;
 use std::borrow::Borrow;
 use std::fmt;

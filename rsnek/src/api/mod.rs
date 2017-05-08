@@ -1,24 +1,25 @@
-///! The core of the API are defined by the trait `PyAPI` and struct `RtObject`.
-///! The `PyAPI` trait is the union of all possible Object method traits that any
-///! type used in the `Runtime` must implement. `RtObject` is a reference counted
-///! wrapper around the `Builtin` enum. All `PyAPI` methods can be invoked directly from
-///! an `RtObject` without the need to expand the inner builtin to find out which
-///! type is contained within the current variant.
-///!
-///! Example adding an int and a float:
-///!
-///! ```ignore
-///!
-///! let rt: Runtime /// generally accessible in all necessary scopes
-///! let one = rt.int(1);
-///! let pi = rt.float(3.14159);
-///!
-///! let result = one.op_add(&rt, &pi)?;
-///! assert_eq!(result, rt.float(4.14159));
-///!
-///! /// And lets do a string comparison for laughs
-///! assert_eq!(result.native_str()?, "4.14159");
-///! ```
+//! The core of the API are defined by the trait `PyAPI` and struct `RtObject`.
+//! The `PyAPI` trait is the union of all possible Object method traits that any
+//! type used in the `Runtime` must implement. `RtObject` is a reference counted
+//! wrapper around the `Builtin` enum. All `PyAPI` methods can be invoked directly from
+//! an `RtObject` without the need to expand the inner builtin to find out which
+//! type is contained within the current variant.
+//!
+//! Example adding an int and a float:
+//!
+//! ```ignore
+//!
+//! let rt: Runtime /// generally accessible in all necessary scopes
+//! let one = rt.int(1);
+//! let pi = rt.float(3.14159);
+//!
+//! let result = one.op_add(&rt, &pi)?;
+//! assert_eq!(result, rt.float(4.14159));
+//!
+//! /// And lets do a string comparison for laughs
+//! assert_eq!(result.native_str()?, "4.14159");
+//!
+//! ```
 mod rtobject;
 pub mod method;
 pub mod result;

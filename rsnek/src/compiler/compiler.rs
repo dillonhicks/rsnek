@@ -1,3 +1,5 @@
+//! Compiler takes an `python_ast::Ast` and turns it into `Code` and `Instr` objects.
+//!
 use std::convert::TryFrom;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::{RefMut, RefCell, Cell};
@@ -13,14 +15,14 @@ use python_ast::{
     OwnedTk, Id};
 use python_ast::fmt;
 
+use ::api::result::Error;
 use ::compiler::graph::{Node, Graph};
 use ::compiler::scope::ScopeHint::{self, BaseScope, ModuleScope, FunctionScope};
 use ::compiler::scope::{ScopeNode, ManageScope, Descriptor};
 use ::compiler::symbol::{SymbolMetadata, TrackSymbol, Symbol, Definition};
-use ::api::result::Error;
-use ::system::primitives::{Instr, Native};
-use ::system::primitives as rs;
 use ::runtime::OpCode;
+use ::system::primitives as rs;
+use ::system::primitives::{Instr, Native};
 
 pub type CompilerResult = Result<Box<[Instr]>, Error>;
 

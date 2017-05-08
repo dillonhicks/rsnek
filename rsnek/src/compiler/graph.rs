@@ -1,3 +1,5 @@
+//! Simple directed graph implementation with storing nodes as adjacency lists
+//! in order to trace scopes as compilation happens.
 use std::cell::RefCell;
 
 use serde::Serialize;

@@ -1,6 +1,6 @@
 //! PyTuple - statically sized, immutable, sequence of `RtObject` elements
 //!
-//!```ignore
+//! ```ignore
 //! tuple()
 //! (1,3,3,5)
 //! ```

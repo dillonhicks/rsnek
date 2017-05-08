@@ -1,4 +1,4 @@
-///! this whole module is hacky garbage that should be refactored during {T3094} / {T111} (v0.8.0)
+//! this whole module is hacky garbage that should be refactored during {T3094} / {T111} (v0.8.0)
 use std::ops::Range;
 use std::ops::Deref;
 use std::borrow::Borrow;

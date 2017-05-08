@@ -1,3 +1,5 @@
+//! Interpreter OpCodes
+
 /// OpCodes for the interpreter. 1..1024 are reserved for CPython opcodes
 /// while 1024.. are for rsnek specific opcodes.
 #[derive(Debug, Hash, Clone, Copy, Eq, PartialEq, Serialize)]

@@ -1,3 +1,5 @@
+//! The `Result` and `Error` types returned by almost everything in rsnek
+//!
 use std;
 use std::result;
 

@@ -1,3 +1,5 @@
+//! The "main" entrypoint for rsnek
+//!
 #[macro_use(o, kv, slog_info, slog_log, slog_record, slog_b, slog_kv, slog_record_static)]
 extern crate slog;
 extern crate slog_term;
