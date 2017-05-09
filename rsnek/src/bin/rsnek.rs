@@ -12,14 +12,14 @@ use std::sync::Arc;
 
 
 extern crate clap;
-extern crate librsnek;
+extern crate rsnek;
 
 
 use clap::{Arg, App, ArgGroup};
 
-use librsnek::resources::strings;
-use librsnek::runtime::{Interpreter, Config, Logging, Mode};
-use librsnek::system::ThreadModel;
+use rsnek::resources::strings;
+use rsnek::runtime::{Interpreter, Config, Logging, Mode};
+use rsnek::system::ThreadModel;
 
 
 fn main() {

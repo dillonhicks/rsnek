@@ -1,3 +1,4 @@
+//! Take a slice of tokens `TkSlice` and convert it into an `Ast`.
 use nom;
 use nom::{IResult, ErrorKind, Err};
 
@@ -10,6 +11,13 @@ use ::preprocessor::{Preprocessor, BlockScopePreprocessor};
 use self::internal::*;
 
 
+// Hacks to splice in an is not token
+const IS_NOT_BYTES: &'static [u8] = &[105, 115, 32, 110, 111, 116];
+const IS_NOT_TKSLICE: TkSlice<'static>  = TkSlice(&[Tk::const_(Id::IsNot, IS_NOT_BYTES, Tag::None)]);
+
+/// The result type returned by `Parser`. Both `Ok` and `Error` variants contain an
+/// instance of `ParsedAst`.  `Ok` variants are considered to be the case where the
+/// `TkSlice` was fully consumed.
 #[derive(Debug, Clone, Serialize)]
 pub enum ParserResult {
     Ok(ParsedAst),
@@ -17,15 +25,22 @@ pub enum ParserResult {
 }
 
 
+/// Wraps an `Ast` to give extra debug information when bits hit the fan
 #[derive(Debug, Clone, Serialize)]
 pub struct ParsedAst{
+    /// This is your father's Ast. An elegant representation for a more
+    /// civilized compilation.
     pub ast: Ast,
 
+    /// Tokens received by the parser
     #[serde(skip_serializing)]
     pub p1_tokens: Vec<OwnedTk>,
 
+    /// The tokens after the first phase of pre processing
     pub p2_tokens: Vec<OwnedTk>,
 
+    /// Tokens that were not consumed by the parser. Useful to debug
+    /// where the parsing stopped.
     pub remaining_tokens: Vec<OwnedTk>,
 }
 
@@ -50,12 +65,12 @@ impl ParsedAst {
         }
     }
 }
-const IS_NOT_BYTES: &'static [u8] = &[105, 115, 32, 110, 111, 116];
-const IS_NOT_TKSLICE: TkSlice<'static>  = TkSlice(&[Tk::const_(Id::IsNot, IS_NOT_BYTES, Tag::None)]);
 
 
 #[derive(Debug, Copy, Clone, Serialize, Default)]
 struct ParserState<'a> {
+    /// Track number of `\n` seen in an erratic and
+    /// inconsistent manner
     line: usize,
     column: usize,
     indent: usize,
@@ -63,10 +78,13 @@ struct ParserState<'a> {
 }
 
 
+/// The custom result that happens when the parser is unable to parse
+/// a nested expression.
 #[repr(u32)]
 enum ParserError {
     SubExpr = 1024,
 }
+
 
 impl ParserError {
     pub const fn code<'a>(self) -> Err<TkSlice<'a>, u32> {
@@ -86,6 +104,7 @@ pub struct Parser<'a> {
 #[allow(unused_mut, dead_code, unused_imports)]
 impl<'a> Parser<'a> {
 
+    /// Create a new instance of `Parser` eager to consume `TkSlice` instances.
     pub fn new() -> Self {
         let state = ParserState::default();
         Parser { state: state }
@@ -188,6 +207,11 @@ impl<'a> Parser<'a> {
     ///1.    = FunctionDef(identifier name, arguments args,
     ///
     /// Functions are just some fancy window dressing on blocks
+    ///
+    /// ```python
+    /// def call_me(maybe):
+    ///     return 1
+    /// ```
     tk_method!(sub_stmt_funcdef, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
                    def_keyword                                  >>
         func_name: name_token                                   >>
@@ -221,6 +245,16 @@ impl<'a> Parser<'a> {
     ));
 
     /// 4.   | Return(expr? value)
+    ///
+    /// ```python
+    /// return
+    /// ```
+    ///
+    /// and
+    ///
+    /// ```python
+    /// return to_sender
+    /// ```
     tk_method!(sub_stmt_return, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         return_keyword                                          >>
         value: opt!(call_m!(self.start_expr))                   >>
@@ -229,6 +263,10 @@ impl<'a> Parser<'a> {
     ));
 
     /// 5.   | Assign(expr* targets, expr value)
+    ///
+    /// ```python
+    /// orange = 'you glad I didnt say banana?'
+    /// ```
     tk_method!(sub_stmt_assign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         target: name_token                                      >>
                 assign_token                                    >>
@@ -241,6 +279,10 @@ impl<'a> Parser<'a> {
     ));
 
     /// 6.   | AugAssign(expr target, operator op, expr value)
+    ///
+    /// ```python
+    /// x += 15
+    /// ```
     tk_method!(sub_stmt_augassign, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
         target: name_token                                      >>
             op: augassign_token                                 >>
@@ -253,7 +295,11 @@ impl<'a> Parser<'a> {
          })
     ));
 
-    /// 16.   | Assert(expr test, expr? msg)
+    /// 16.1   | Assert(expr test, expr? msg)
+    ///
+    /// ```python
+    /// assert [1,2,3,4]
+    /// ```
     tk_method!(sub_stmt_assert, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
                  assert_keyword                                 >>
             stmt: alt_complete!(
@@ -270,6 +316,11 @@ impl<'a> Parser<'a> {
             (stmt)
     ));
 
+    /// 16.2 - an assert with an additional expression as a message
+    ///
+    /// ```python
+    /// assert False, "halp!"
+    /// ```
     tk_method!(sub_stmt_assert_2arg, 'b, <Parser<'a>, Stmt>, mut self, do_parse!(
            test: terminated!(
                     call_m!(self.start_expr),
@@ -317,6 +368,10 @@ impl<'a> Parser<'a> {
     ));
 
     /// 4.   | Lambda(arguments args, expr body)
+    ///
+    /// ```python
+    /// lambda fleece: fleece == 'white as snow'
+    /// ```
     tk_method!(sub_expr_lambda, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
               lambda_keyword                                    >>
         args: call_m!(self.sub_expr_func_args)                  >>
@@ -331,7 +386,9 @@ impl<'a> Parser<'a> {
 
     /// 5.   | IfExp(expr test, expr body, expr orelse)
     ///
-    ///  `true_case if test else false_case`
+    /// ```python
+    /// cant_handle if True else ignorance_is_bliss
+    /// ```
     tk_method!(sub_expr_conditional, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
         cons: many1!(not_if_keyword)                            >>
               if_keyword                                        >>
@@ -439,8 +496,8 @@ impl<'a> Parser<'a> {
 
     ///  `not a`
     tk_method!(sub_expr_unaryop_logicnot, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-             op: not_token                                          >>
-        operand: call_m!(self.start_expr)                           >>
+             op: not_token                                      >>
+        operand: call_m!(self.start_expr)                       >>
         (Expr::UnaryOp {
             op: Op(op.as_owned_token()),
             operand: Box::new(operand)
@@ -449,8 +506,8 @@ impl<'a> Parser<'a> {
 
     ///  `-a`
     tk_method!(sub_expr_unaryop_neg, 'b, <Parser<'a>, Expr>, mut self, do_parse!(
-             op: minus_token                                        >>
-        operand: call_m!(self.start_expr)                           >>
+             op: minus_token                                    >>
+        operand: call_m!(self.start_expr)                       >>
         (Expr::UnaryOp {
             op: Op(op.as_owned_token()),
             operand: Box::new(operand)
@@ -822,7 +879,7 @@ impl<'a> Parser<'a> {
     tk_method!(sub_expr_dict_items, 'b, <Parser<'a>, Vec<(Expr, Expr)>>, mut self, do_parse!(
         items: separated_list!(comma_token, call_m!(self.sub_expr_dict_item)) >>
         (items)
-));
+    ));
 
     tk_method!(sub_expr_dict_item, 'b, <Parser<'a>, (Expr, Expr)>, mut self, do_parse!(
         key: many1!(not_colon_token)                      >>
@@ -921,7 +978,6 @@ impl<'a> Parser<'a> {
 }
 
 
-///
 #[allow(unused_mut, dead_code, unused_imports)]
 mod internal {
     use nom;
@@ -1057,6 +1113,7 @@ mod internal {
         )
     ));
 
+    ///
     tk_named!(pub constant_token <TkSlice<'a>>, ignore_spaces!(
         alt_complete!(
             tag!(&[Id::Name])               |

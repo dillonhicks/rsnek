@@ -10,7 +10,8 @@ pub trait ManageScope {
 
 pub type ScopeNode = Descriptor<Scope>;
 
-
+/// A way to reference a `Descriptor<T>` variant without knowing the inner
+/// data of the `Descriptor<T>`.
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone, Serialize)]
 pub enum ScopeHint {
     BaseScope,
@@ -18,7 +19,32 @@ pub enum ScopeHint {
     FunctionScope
 }
 
-
+/// Define the scope by its a unique id of all scopes within a module
+/// and the id of its parent. It is an implementation detail that the
+/// scope ids are numbered by incrementing the number of total scopes
+/// discovered in a DFS search of scopes.
+///
+/// # Examples
+/// ```python
+/// # this is a module and it has an implicit definition
+/// # Scope {id: 1, parent_id: 0}
+///
+/// def some_func():
+///     # This scope will be defined by
+///     # Scope {id: 2, parent_id: 1}
+///
+///     def nested():
+///         # It follows that the Scope for this function will be
+///         # Scope {id: 3, parent_id: 2}
+///         pass
+///     pass
+///
+/// def back_to_module_level():
+///     # This Scope will be defined as
+///     # Scope {id: 4, parent_id: 1}
+///     pass
+/// ```
+///
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone, Serialize)]
 pub struct Scope {
     id: usize,
@@ -38,6 +64,7 @@ impl Node for Scope {
 }
 
 
+/// Generic Descriptor enum
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone, Serialize)]
 pub enum Descriptor<T> {
     Base(T),

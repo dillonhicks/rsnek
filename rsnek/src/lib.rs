@@ -33,11 +33,11 @@ extern crate python_ast;
 // Private Modules for $crate
 #[macro_use]
 mod macros;
-mod api;
 mod modules;
 mod objects;
 
 // Public modules for $crate
+pub mod api;
 pub mod compiler;
 pub mod system;
 pub mod resources;

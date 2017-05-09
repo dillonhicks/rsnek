@@ -1,3 +1,5 @@
+//! Skeleton definitions for traits and properties required for
+//! a flexible type system.
 use ::api::method;
 use ::api::RtObject as ObjectRef;
 use ::runtime::Runtime;
@@ -15,6 +17,8 @@ pub trait HasName {
 pub trait Type: method::New + method::Init + HasName {}
 
 
+/// The primordial trait from which all builtin `Py*` types are
+/// created.
 pub trait BuiltinType {
     type T;
     type V;

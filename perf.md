@@ -68,7 +68,7 @@ test stmt_funcdef::nested_funcs_0007 ... bench:      88,336 ns/iter (+/- 1,898)
 test stmt_funcdef::nested_funcs_0008 ... bench:     111,718 ns/iter (+/- 2,122)
 test stmt_funcdef::nested_funcs_0016 ... bench:     375,482 ns/iter (+/- 10,779)
 
-## librsnek
+## rsnek
 test objects::integer::benches::__add__::dynamic_dynamic       ... bench:          92 ns/iter (+/- 1)
 test objects::integer::benches::__add__::dynamic_static        ... bench:          93 ns/iter (+/- 1)
 test objects::integer::benches::__add__::static_static         ... bench:          64 ns/iter (+/- 1)

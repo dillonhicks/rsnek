@@ -1,3 +1,4 @@
+//! Transform bytes into tokens
 use std::str;
 use std::rc::Rc;
 
@@ -8,6 +9,8 @@ use ::token::{Id, Tk, New, Tag, Num, Ws};
 
 pub use nom::IResult as LexResult;
 
+/// Struct that provides the operations to take a slice of bytes and
+/// convert them into `Tk` tokens.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Lexer;
 
@@ -17,13 +20,14 @@ impl Lexer {
         Lexer {}
     }
 
-    /// Convert a slice of bytes into a Rc<Vec<Tk>>
+    /// Convert a slice of bytes into a `Rc<Vec<Tk>>`
+    #[deprecated]
     pub fn tokenize<'a>(&self, bytes: &'a [u8]) -> Rc<LexResult<&'a [u8], Vec<Tk<'a>>>> {
         let result = tokenize_bytes(bytes);
         Rc::new(result)
     }
 
-    /// Convert a slice of bytes into Vec<Tk<'a>>
+    /// Convert a slice of bytes into `Vec<Tk<'a>>`
     pub fn tokenize2<'a>(&self, bytes: &'a [u8]) -> LexResult<&'a [u8], Vec<Tk<'a>>>{
         tokenize_bytes(bytes)
     }
@@ -32,22 +36,18 @@ impl Lexer {
 
 /// Entry point of the lexer into nom parser
 named!(pub tokenize_bytes <Vec<Tk>>, do_parse!(
-    tokens: many0!(line) >>
+    tokens: many0!(
+        alt_complete!(
+            space       |
+            endline     |
+            number      |
+            symbol      |
+            operator    |
+            string      |
+            identifier  |
+            error_marker)
+                            )>>
     (tokens)
-));
-
-
-named!(line <Tk>, do_parse!(
-    token: alt_complete!(
-        space       |
-        endline     |
-        number      |
-        symbol      |
-        operator    |
-        string      |
-        identifier  |
-        error_marker) >>
-    (token)
 ));
 
 
@@ -63,13 +63,23 @@ named!(number <Tk>, do_parse!(
 ));
 
 
+/// Called by `number` to parse `"0x"` prefixed hexadecimal integer strings
 named!(sublex_hex <&[u8]>, recognize!(preceded!(tag!("0x"), hex_digit)));
+
+/// Called by `number` to parse `"0x"` prefixed binary integer strings
 named!(sublex_bin <&[u8]>, recognize!(preceded!(tag!("0b"), many1!(one_of!("01")))));
+
+/// Called by `number` to parse `"0x"` prefixed octal integer strings
 named!(sublex_octal <&[u8]>, recognize!(preceded!(tag!("0o"), hex_digit)));
+
+/// Called by `number` to parse floats
 named!(sublex_float <&[u8]>, recognize!(delimited!(opt!(digit), tag!("."), digit)));
+
+/// Called by `number` to parse `'j'` suffixed floats as complex numbers
 named!(sublex_complex <&[u8]>, recognize!(preceded!(alt!(sublex_float | digit), tag!("j"))));
 
 
+/// Mark the end of each line since it is the end-of-statement qualifier in python
 named!(endline <Tk>, do_parse!(
     nl: tag!("\n") >>
     (Tk::new(Id::Newline,  nl, Tag::W(Ws::Newline)))
@@ -84,12 +94,16 @@ named!(space <Tk>, do_parse!(
 ));
 
 
+/// Keep chugging along if
 named!(error_marker <Tk>, do_parse!(
     content: take!(1) >>
     (Tk::new(Id::ErrorMarker, content, Tag::None))
 ));
 
 
+/// Discover if the next `[u8]` bytes are an identifier `Id::Name`. Cross reference
+/// the matched bytes with the known keywords with `as_keyword`. If a keyword matches
+/// a keyword a `Tk` with `Id::Keyword` is returned instead.
 named!(identifier <Tk>, do_parse!(
     name: call!(ident) >>
     (match as_keyword(name) {
@@ -100,6 +114,9 @@ named!(identifier <Tk>, do_parse!(
 ));
 
 
+/// First step in parsing one of the several flavors of string literals for Python.
+/// Use a 1 byte lookahead to determine if the first byte matches any parsable string
+/// prefix and dispatch the lexer for that particular string format.
 named!(string <Tk>, do_parse!(
     token: switch!(peek!(take!(1)),
         b"#" =>  call!(sublex_comment_string)       |
@@ -112,6 +129,15 @@ named!(string <Tk>, do_parse!(
 ));
 
 
+/// Call the generic string sublexer for `'`, `"`, `'''`, `"""` strings
+/// and tag the result as an `Id::String`.
+named!(sublex_string <Tk>, do_parse!(
+    bytes: sublex_string_u8 >>
+    (Tk::new(Id::String, bytes, Tag::None))
+));
+
+
+/// Comments (`Id::Comment`) are strings that start with `#` and continue until `\n`.
 named!(sublex_comment_string <Tk>, do_parse!(
     bytes: alt_complete!(
         recognize!(preceded!(tag!(b"#"), is_not!("\n"))) |
@@ -120,24 +146,29 @@ named!(sublex_comment_string <Tk>, do_parse!(
 ));
 
 
+/// `r` prefixed "raw" strings, `Id::RawString`
 named!(sublex_rprefix_string <Tk>, do_parse!(
     bytes: sublex_prefixed_string_u8 >>
     (Tk::new(Id::RawString, bytes, Tag::None))
 ));
 
 
+/// `b` prefixed byte string, `Id:ByteString`
 named!(sublex_bprefix_string <Tk>, do_parse!(
     bytes: sublex_prefixed_string_u8 >>
     (Tk::new(Id::ByteString, bytes, Tag::None))
 ));
 
 
+/// `f` prefix format string, `Id::FormatString`
 named!(sublex_fprefix_string <Tk>, do_parse!(
     bytes: sublex_prefixed_string_u8 >>
     (Tk::new(Id::FormatString, bytes, Tag::None))
 ));
 
 
+/// For the known prefixed strings, remove the prefix and
+/// dispatch the plain string lexer.
 named!(sublex_prefixed_string_u8 <&[u8]>,  do_parse!(
     result: preceded!(
         take!(1),
@@ -146,6 +177,18 @@ named!(sublex_prefixed_string_u8 <&[u8]>,  do_parse!(
 ));
 
 
+/// Peek at the first byte of the current input and dispatch either
+/// the single or double quote string lexers for `'` and `"` respectively.
+named!(sublex_string_u8 <&[u8]>, do_parse!(
+    bytes: switch!(peek!(take!(1)),
+        b"'" =>  call!(sublex_squote_string_u8)  |
+        b"\"" => call!(sublex_dquote_string_u8)  ) >>
+    (bytes)
+));
+
+
+/// Peek at the first 3 characters of input. If the it is all `'''` try to parse
+/// the triple-single quoted string. Otherwise a single quoted string.
 named!(sublex_squote_string_u8 <&[u8]>, do_parse!(
     bytes: alt_complete!(
         switch!(peek!(take!(3)),
@@ -188,20 +231,8 @@ named!(sublex_dquote_string_u8 <&[u8]>, do_parse!(
 ));
 
 
-named!(sublex_string_u8 <&[u8]>, do_parse!(
-    bytes: switch!(peek!(take!(1)),
-        b"'" =>  call!(sublex_squote_string_u8)  |
-        b"\"" => call!(sublex_dquote_string_u8)  ) >>
-    (bytes)
-));
-
-
-named!(sublex_string <Tk>, do_parse!(
-    bytes: sublex_string_u8 >>
-    (Tk::new(Id::String, bytes, Tag::None))
-));
-
-
+/// Tag all of the special symbols that can begin, terminate, or delimit an expression
+/// in some way. Each symbol is tagged with it's pertinent `Id`.
 named!(symbol <Tk>, do_parse!(
     token: alt!(
         tag!("(")   => { |r: &'a[u8]| (Tk::new(Id::LeftParen, r, Tag::None))       } |
@@ -265,6 +296,7 @@ named!(operator <Tk>, do_parse!(
 ));
 
 
+/// Use a hardcoded match expression to match if a string is a keyword.
 fn as_keyword(bytes: &[u8]) -> Option<Tk> {
     let string = match str::from_utf8(bytes) {
         Ok(string) => string,

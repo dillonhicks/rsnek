@@ -1,6 +1,6 @@
-extern crate librsnek;
+extern crate rsnek;
 
-use librsnek::resources::strings;
+use rsnek::resources::strings;
 use std::env;
 use std::process::Command;
 

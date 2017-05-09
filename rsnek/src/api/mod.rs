@@ -5,11 +5,16 @@
 //! an `RtObject` without the need to expand the inner builtin to find out which
 //! type is contained within the current variant.
 //!
-//! Example adding an int and a float:
+//! # Examples
+//!
+//! Adding an int and a float:
 //!
 //! ```ignore
 //!
-//! let rt: Runtime /// generally accessible in all necessary scopes
+//! use ::api::method::*;
+//! use ::runtime::Runtime;
+//!
+//! let rt = Runtime::new();
 //! let one = rt.int(1);
 //! let pi = rt.float(3.14159);
 //!
@@ -18,7 +23,6 @@
 //!
 //! /// And lets do a string comparison for laughs
 //! assert_eq!(result.native_str()?, "4.14159");
-//!
 //! ```
 mod rtobject;
 pub mod method;
@@ -33,7 +37,7 @@ pub use self::rtobject::{RtObject, WeakRtObject};
 /// Runtime Value delegate that holds its own self reference
 pub type RtValue<T> = selfref::RefCountedValue<T, selfref::RefCount>;
 
-/// Trait defining all possible method and props
+/// Trait defining all possible methods
 pub trait PyAPI:
 method::New +
 method::Init +

@@ -2,9 +2,11 @@
 //! such as dispatching an API method on an `RtObject` or `Type`, creating method wrappers
 //! (e.g. x = 1; func = x.__hash__ since `__hash__` should be an object representing
 //! `PyInteger::op_hash` for the instance ), shorthand for default implementations, etc.
+//!
 
 
 /// Creates default "not implemented" impls for the Objects.
+///
 /// As an example suppose there is a new type `PyDatabaseConnector` that
 /// should not implement the context manager traits `::api::method::Enter`
 /// and `::api::method::Exit`. Since `PyDatabaseConnector` must implement all traits
@@ -12,6 +14,7 @@
 /// (specifically, `Err(Error::system_not_implemented(...)).` There are many
 /// impl blocks that are empty.
 ///
+/// # Examples
 ///
 /// This macro allows for these cases to be short-hand with the following:
 ///
@@ -20,9 +23,14 @@
 ///
 /// method_not_implemented!(PyDatabaseConnector, Enter Exit);
 /// ```
+#[macro_export]
 macro_rules! method_not_implemented {
   ($Type:ty, $($ApiTrait:ident)+) => {
     $(
+        /// This type uses the default implementation which will return
+        /// `Err(Error(ErrorType::System, "this feature is not implemented for this type")`
+        /// when called.
+        ///
         impl method::$ApiTrait for $Type {}
     )+
   };
@@ -31,7 +39,7 @@ macro_rules! method_not_implemented {
 /// Expands a `&builtins::types::Type` into its variant specific inner type
 /// and dispatches a named `PyAPI` op-prefixed method based on the number of arguments
 /// matched by the pattern.
-///
+#[macro_export]
 macro_rules! foreach_type {
     ($sel:expr, $rt:expr, $function:ident, $receiver:ident) => (
         unary_op_foreach!($sel, $rt, $function, $receiver)
@@ -52,13 +60,17 @@ macro_rules! foreach_type {
 /// the inner value of any variant of `Type`. The `$inner:ident` is
 /// identifier used to reference the match expanded value within the given code block.
 ///
+/// # Examples
+///
 /// ```ignore
-///  let object: RtObject = /// something that produces an RtObject;
+///  let object: RtObject = rt.int(1);  // or something that produces an RtObject
+///
 ///
 ///  expr_foreach_type!(object.as_ref(), value, {
 ///     write!(f, "{:?}", value)
 /// })
 /// ```
+#[macro_export]
 macro_rules! expr_foreach_type {
     ($obj:expr, $inner:ident, $e:block) => (
        match $obj {
@@ -90,6 +102,8 @@ macro_rules! expr_foreach_type {
 /// Type variant expansion and dispatch for unary `PyAPI` methods. This is called
 /// by `foreach_type!` based on the macro pattern patching. When in doubt, use
 /// `foreach_type!`.
+///
+#[macro_export]
 macro_rules! unary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident) => {
         match $obj {
@@ -121,6 +135,8 @@ macro_rules! unary_op_foreach{
 /// Type variant expansion and dispatch for binary `PyAPI` `op` prefixed methods.
 /// This is called by `foreach_type!` based on the macro pattern patching.
 /// When in doubt, use the `foreach_type!` macro.
+///
+#[macro_export]
 macro_rules! binary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
@@ -152,6 +168,8 @@ macro_rules! binary_op_foreach{
 /// Type variant expansion and dispatch for ternary `PyAPI` `op` prefixed methods.
 /// This is called by `foreach_type!` based on the macro pattern patching.
 /// When in doubt, use the `foreach_type!` macro.
+///
+#[macro_export]
 macro_rules! ternary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
@@ -183,6 +201,8 @@ macro_rules! ternary_op_foreach{
 /// Type variant expansion and dispatch for 4ary `PyAPI` `op` prefixed methods.
 /// This is called by `foreach_type!` based on the macro pattern patching.
 /// When in doubt, use the `foreach_type!` macro.
+///
+#[macro_export]
 macro_rules! _4ary_op_foreach{
     ($obj:expr, $rt:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
         match $obj {
@@ -212,6 +232,7 @@ macro_rules! _4ary_op_foreach{
 
 /// Like `foreach_type!` but for `PyAPI` methods that are prefixed with `native_` indicating
 /// they do not need a `&Runtime`.
+#[macro_export]
 macro_rules! native_foreach_type {
     ($sel:expr, $function:ident, $receiver:ident) => (
         native_unary_op_foreach!($sel, $function, $receiver)
@@ -229,6 +250,7 @@ macro_rules! native_foreach_type {
 
 
 /// The `native` version of `unary_op_foreach!`
+#[macro_export]
 macro_rules! native_unary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident) => {
         match $obj {
@@ -257,6 +279,7 @@ macro_rules! native_unary_op_foreach{
 }
 
 /// The `native` version of `binary_op_foreach!`
+#[macro_export]
 macro_rules! native_binary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $rhs:ident) => {
         match $obj {
@@ -285,6 +308,7 @@ macro_rules! native_binary_op_foreach{
 }
 
 /// The `native` version of `ternary_op_foreach!`
+#[macro_export]
 macro_rules! native_ternary_op_foreach{
     ($obj:expr, $op:ident, $lhs:ident, $mid:ident, $rhs:ident) => {
         match $obj {
@@ -314,6 +338,7 @@ macro_rules! native_ternary_op_foreach{
 
 
 /// The `native` version of `_4ary_op_foreach!`
+#[macro_export]
 macro_rules! native_4ary_op_foreach {
     ($obj:expr, $op:ident, $lhs:ident, $arg0:ident, $arg1:ident, $arg2:ident) => {
         match $obj {
@@ -342,112 +367,109 @@ macro_rules! native_4ary_op_foreach {
 }
 
 
-/// Macro to create Object and native typed level hooks for
-/// the rsnek runtime. Each Function is generated with a default implementation
-/// that will return a NotImplemented error.
+/// Macro to create Object and native typed `PyAPI` trait definitions.
+///
+/// Each Function is generated with a default implementation that
+/// will return a NotImplemented error.
 ///
 /// Note that for arity of Functions may appear deceiving since the receiver (self)
 /// is always the first argument and is the first argument by convention.
+///
+///
+///
+#[macro_export]
 macro_rules! api_trait {
-    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+    ($(#[$attr:meta])* unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+    ($(#[$attr:meta])* unary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+    ($(#[$attr:meta])* binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel, &Type) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+    ($(#[$attr:meta])* binary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel, &Type) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+    ($(#[$attr:meta])* ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident, $nativety:ty) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel, &Type, &Type) -> RtResult<$nativety> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+    ($(#[$attr:meta])* ternary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel, &Type, &Type) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+    ($(#[$attr:meta])* 4ary, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &RtObject, &RtObject, &RtObject) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel, &Type, &Type, &Type) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
         }
     };
-    (variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+    ($(#[$attr:meta])* variadic, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
+        $(#[$attr])*
         pub trait $tname {
-            /// Runtime API Method $pyname
             fn $fname(&$sel, &Runtime, &Vec<RtObject>) -> ObjectResult {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
 
-            /// Native API Method $pyname
             fn $nfname(&$sel, &Vec<Type>) -> RtResult<Type> {
                 Err(Error::system_not_implemented(stringify!($pyname), &format!("file: {}, line: {}", file!(), line!()) ))
             }
@@ -458,6 +480,7 @@ macro_rules! api_trait {
 
 /// Create a test stub that panics with unimplemented. Originally used to give an idea of coverage
 /// but has been refactored out of existence.
+#[macro_export]
 macro_rules! api_test_stub {
     ($args:ident, $sel:ident, $pyname:ident, $tname:ident, $fname:ident, $nfname:ident) => {
         //#[test]
@@ -480,6 +503,7 @@ macro_rules! api_test_stub {
 /// x = 1 + '3245'
 /// ```
 /// It will produce the string "unsupported operand type(s) for +: 'int' and 'str'.
+#[macro_export]
 macro_rules! strings_error_bad_operand {
     ($op:expr, $lhs:expr, $rhs:expr) => {
         format!("unsupported operand type(s) for {}: '{}' and '{}'", $op, $lhs, $rhs);
@@ -488,6 +512,7 @@ macro_rules! strings_error_bad_operand {
 
 
 /// Missing attribute error message formatter
+#[macro_export]
 macro_rules! strings_error_no_attribute {
     ($obj:expr, $attr:expr) => {
         format!("'{}' has no attribute '{:?}'", $obj, $attr);
@@ -495,6 +520,7 @@ macro_rules! strings_error_no_attribute {
 }
 
 /// Attribute not string
+#[macro_export]
 macro_rules! string_error_bad_attr_type {
     ($expect:expr, $actual:expr) => {
         &format!("attribute type must be '{}' not '{}'", $expect, $actual)
@@ -502,6 +528,7 @@ macro_rules! string_error_bad_attr_type {
 }
 
 /// Generic index exception formatter
+#[macro_export]
 macro_rules! rsnek_exception_index {
     ($typ:expr) => {
         Error::index(&format!("{} {}", $typ, strings::ERROR_INDEX_OUT_OF_RANGE))
@@ -515,6 +542,7 @@ macro_rules! rsnek_exception_index {
 /// do this using Trait objects but the lifetimes/Sized-ness of the trait objects
 /// always trips my implementations.
 ///
+#[macro_export]
 macro_rules! unary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
@@ -550,6 +578,7 @@ macro_rules! unary_method_wrapper (
 /// do this using Trait objects but the lifetimes/Sized-ness of the trait objects
 /// always trips my implementations.
 ///
+#[macro_export]
 macro_rules! binary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;
@@ -587,6 +616,7 @@ macro_rules! binary_method_wrapper (
 /// do this using Trait objects but the lifetimes/Sized-ness of the trait objects
 /// always trips my implementations.
 ///
+#[macro_export]
 macro_rules! ternary_method_wrapper (
     ($sel:ident, $tname:expr, $fname:ident, $rt:ident, $builtin:path, $func:ident) => ({
         let selfref = $sel.rc.upgrade()?;

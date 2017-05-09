@@ -9,11 +9,11 @@ use traits::redefs_nom::InputLengthRedef;
 /// helper macros to build a separator parser
 ///
 /// ```ignore
-/// # #[macro_use] extern crate nom;
-/// # use nom::IResult::Done;
+/// #[macro_use] extern crate nom;
+/// use nom::IResult::Done;
 ///
 /// named!(pub consume_spaces_and_tabs, drop_tokens!(&[Id::Space, Id::Tab]));
-/// # fn main() {}
+/// fn main() {}
 /// ```
 #[macro_export]
 macro_rules! drop_tokens (
@@ -43,7 +43,9 @@ macro_rules! drop_tokens (
     );
 
 
-/// Redef of noms ws!() macro. Ignores spaces and tabs for the scope of the parser.
+/// Redef of the `ws!()` macro from `nom` for filtering based on `Tk::id()` instead of a bytes.
+/// Ignores spaces, tabs, and other whitespace for the scope of the wrapped subparser.
+///
 #[macro_export]
 macro_rules! ignore_spaces (
   ($i:expr, $($args:tt)*) => (
@@ -56,6 +58,7 @@ macro_rules! ignore_spaces (
 
 
 /// Matches one of the provided tokens.
+///
 /// Generalized form of nom's `one_of!` macro.
 #[macro_export]
 macro_rules! tk_is_one_of (
@@ -80,8 +83,10 @@ macro_rules! tk_is_one_of (
 
 
 /// Matches one of the provided tokens.
+///
 /// Generalized form of nom's `none_of!` macro. which just takes the .as_char() off
-/// of the Some(true) case
+/// of the `Some(true)` case in order to return back the whatever is produced by
+/// the slice.
 #[macro_export]
 macro_rules! tk_is_none_of (
   ($i:expr, $inp: expr) => (

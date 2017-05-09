@@ -5,11 +5,12 @@ authors = ["Dillon Hicks <dillon@dillonhicks.io>"]
 build = "build.rs"
 
 [lib]
-name = "librsnek"
+name = "rsnek"
 
 [[bin]]
 path = "src/bin/rsnek.rs"
 name = "rsnek"
+doc = false
 
 [features]
 default = []

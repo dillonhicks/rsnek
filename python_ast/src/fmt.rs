@@ -1,3 +1,4 @@
+//! Format `python_ast` types as pretty printable strings
 use serde::Serialize;
 use serde_json;
 

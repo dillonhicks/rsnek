@@ -1,3 +1,5 @@
+//! Discover scoping as a preprocessing step to reduce the need to carry around extra
+//! state in either the `Lexer` or `Parser`.
 use nom::Slice;
 use slog;
 use slog_scope;

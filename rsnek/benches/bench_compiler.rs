@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 extern crate python_ast;
-extern crate librsnek;
+extern crate rsnek;
 extern crate itertools;
 
 use std::borrow::Borrow;
@@ -11,7 +11,7 @@ use test::Bencher;
 use python_ast::fmt;
 use python_ast::{Ast, Lexer, LexResult, Parser, ParserResult};
 
-use librsnek::compiler::{Compiler, CompilerResult};
+use rsnek::compiler::{Compiler, CompilerResult};
 
 
 pub fn setup<'a>(text: &str) ->  Ast {

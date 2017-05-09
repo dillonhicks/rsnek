@@ -1,14 +1,14 @@
 #![feature(test)]
 extern crate test;
-extern crate librsnek;
+extern crate rsnek;
 extern crate itertools;
 
 use itertools::Itertools;
 use test::Bencher;
 
 
-use librsnek::compiler::{Compiler, CompilerResult, Instr};
-use librsnek::runtime::{Runtime, Interpreter};
+use rsnek::compiler::{Compiler, CompilerResult, Instr};
+use rsnek::runtime::{Runtime, Interpreter};
 
 
 pub fn setup<'a>(code: &str) ->  Box<[Instr]> {
