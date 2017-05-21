@@ -57,9 +57,10 @@ macro_rules! ignore_spaces (
 );
 
 
-/// Matches one of the provided tokens.
+/// Matches one of the tokens in the input slice.
 ///
 /// Generalized form of nom's `one_of!` macro.
+///
 #[macro_export]
 macro_rules! tk_is_one_of (
     ($i:expr, $inp: expr) => (
@@ -87,6 +88,7 @@ macro_rules! tk_is_one_of (
 /// Generalized form of nom's `none_of!` macro. which just takes the .as_char() off
 /// of the `Some(true)` case in order to return back the whatever is produced by
 /// the slice.
+///
 #[macro_export]
 macro_rules! tk_is_none_of (
   ($i:expr, $inp: expr) => (

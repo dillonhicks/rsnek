@@ -26,6 +26,7 @@ mod slice;
 #[macro_use]
 mod macros;
 
+mod doc;
 mod traits;
 mod lexer;
 mod parser;

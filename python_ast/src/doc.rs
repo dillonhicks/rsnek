@@ -10,7 +10,7 @@
 /// -- singleton: None, True or False
 /// -- constant can be None, whereas None means "no value" for object.
 ///
-/// ```ignore
+/// ```raw
 ///
 /// module Python
 /// {
@@ -36,7 +36,7 @@
 ///           | Delete(expr* targets)
 ///           | Assign(expr* targets, expr value)
 ///           | AugAssign(expr target, operator op, expr value)
-///           -- 'simple' indicates that we annotate simple name without parens
+///           -- simple indicates that we annotate simple name without parens
 ///           | AnnAssign(expr target, expr annotation, expr? value, int simple)
 /// 
 ///           -- use 'orelse' because else is a keyword in target languages
@@ -138,13 +138,15 @@
 ///     withitem = (expr context_expr, expr? optional_vars)
 /// }
 /// ```
+///
 pub struct PythonASDL;
 
 
 /// Grammar for Python
-/// ```
-/// 
-/// # Start symbols for the grammar:
+///
+/// ```raw
+///
+/// /// # Start symbols for the grammar:
 /// #       single_input is a single interactive statement;
 /// #       file_input is a module or sequence of commands read from an input file;
 /// #       eval_input is the input for the eval() functions.
@@ -289,4 +291,5 @@ pub struct PythonASDL;
 /// yield_expr: 'yield' [yield_arg]
 /// yield_arg: 'from' test | testlist
 /// ```
+///
 pub struct PythonGrammar;
