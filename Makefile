@@ -65,6 +65,7 @@ BUILD_DATETIME := $(shell date -u +%FT%TZ)
 VERSION ?= $(CODEBUILD_SOURCE_VERSION)
 LOG_FORMAT ?= human
 ARTIFACTS_DIR=target
+RUST_VERSION=nightly-2017-06-08
 
 # When building in CODEBUILD and running on EC2 special packages
 # are needed to run things like oprofile and perf.
@@ -120,7 +121,7 @@ toolchain: $(CONDITIONAL_REQUIREMENTS) $(ARTIFACTS_DIR)
 		lshw \
 		linux-tools-generic
 
-	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly
+	curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(RUST_VERSION)
 
 
 build: $(ARTIFACTS_DIR)
@@ -144,8 +145,8 @@ bench: bench-python_ast bench-rsnek
 
 
 bench-%: $(ARTIFACTS_DIR)
-	-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
-	#-$(CARGO) bench --all-features $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.all-features.$(LOG_SUFFIX).txt
+	#-$(CARGO) bench $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.$(LOG_SUFFIX).txt
+	-$(CARGO) bench --all-features $(CARGO_ARGS) -p $* 2>&1 | tee -a $(ARTIFACTS_DIR)/$@.all-features.$(LOG_SUFFIX).txt
 
 
 sysinfo: lshw lscpu
